@@ -8,9 +8,9 @@ User = get_user_model()
 class RecommendedUsersView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, user_id):
+    def get(self, request, id):
         try:
-            user = User.objects.get(user_id=user_id)
+            user = User.objects.get(user_id=id)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
 
@@ -18,7 +18,7 @@ class RecommendedUsersView(APIView):
 
         data = [
             {"id": u.user_id, "username": u.username, "avatar": str(u.avatar), "official": u.official, "about": u.about}
-            for u in recommended_users
+            for u in recommended_users if u.user_id not in user.follow_for
         ]
 
         return Response({"recommended_users": data}, status=200)
