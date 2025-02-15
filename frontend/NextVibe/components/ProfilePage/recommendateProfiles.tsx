@@ -33,7 +33,6 @@ const darkTheme = {
 
 const RecommendedUsers = () => {
     const [users, setUsers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState(true); 
     const theme = useColorScheme() === "dark" ? darkTheme : lightTheme;
 
@@ -44,9 +43,7 @@ const RecommendedUsers = () => {
                 setUsers(response.recommended_users);
             } catch (error) {
                 console.error("Error fetching recommendations:", error);
-            } finally {
-                setLoading(false);
-            }
+            } 
         };
 
         fetchRecommendedUsers();
@@ -55,10 +52,6 @@ const RecommendedUsers = () => {
     const handleFollow = (id: number) => {
         console.log(`Followed user with ID: ${id}`);
     };
-
-    if (loading) {
-        return <ActivityIndicator size="large" color="#58a6ff" />;
-    }
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -82,6 +75,7 @@ const RecommendedUsers = () => {
                     keyExtractor={(item) => item.id.toString()}
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.listContainer}
+                    nestedScrollEnabled
                     renderItem={({ item }) => (
                         <View style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.border, 
                             borderWidth: theme === lightTheme ? 1 : 1  }]}>

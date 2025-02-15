@@ -27,7 +27,8 @@ const profileLightStyles = StyleSheet.create({
         width: 110,
         height: 110,
         borderRadius: 60,
-        objectFit: "cover"
+        objectFit: "cover",
+        marginLeft: 5
     },
     text: {
         color: colors.textPrimary,

@@ -9,7 +9,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import formatNumber from "@/src/utils/formatNumber";
 import ButtonEditProfile from "./ButtonEditProfile";
 import ButtonWallet from "./ButtomWallet";
-import RecommendedUsers from "./reccomendateProfiles";
+import RecommendedUsers from "./recommendateProfiles";
 import PostGallery from "./PostsMenu";
 
 

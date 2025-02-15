@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "917502296605-ubhldq2kdjet223sj89lpmao6ao0a1tg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.harrddddd.NextVibe",
+            "certificate_hash": "c0eda92e0a88b89904a6cf3fc3306006c30a062d"
+          }
+        },
+        {
           "client_id": "917502296605-mjvinqqafhbnv4ucopebd9ek8mnd1nom.apps.googleusercontent.com",
           "client_type": 3
         }
