@@ -1,0 +1,1 @@
+from .posts_menu import PostMenuView
