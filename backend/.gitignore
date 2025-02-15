@@ -1,1 +1,6 @@
 backend\NextVibeAPI\NextVibeAPI\.env
+.env
+media/
+**/migrations/
+*.pyc
+__pycache__/

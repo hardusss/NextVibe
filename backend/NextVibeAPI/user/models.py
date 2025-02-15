@@ -1,7 +1,5 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
-import os
-import segno
 
 
 class UserManager(BaseUserManager):
@@ -26,13 +24,11 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser):
     user_id = models.AutoField(primary_key=True, unique=True)
-    avatar = models.ImageField(upload_to='images/', default='images/default.jpg')
+    avatar = models.ImageField(upload_to='images/', default='images/default.png')
     about = models.CharField(default="",max_length=120, null=True)
     username = models.CharField(max_length=150, unique=True)
-    first_name = models.CharField(max_length=50, null=False, blank=True)
-    last_name = models.CharField(default="",max_length=50, null=True)
     email = models.EmailField(unique=True)
-    password = models.CharField(max_length=128)
+    password = models.CharField(max_length=128, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     post_count = models.IntegerField(default=0)
     readers_count = models.IntegerField(default=0)
@@ -55,3 +51,5 @@ class User(AbstractBaseUser):
 
     def has_module_perms(self, app_label):
         return self.is_superuser
+
+    
