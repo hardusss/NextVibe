@@ -1,10 +1,5 @@
-import RegisterView from '@/components/RegisterPage/registerView';
-import ProfileView from '@/components/ProfilePage/ProfilePage';
-import PostGallery from '@/components/ProfilePage/PostsMenu';
+import { Redirect } from "expo-router";
 
-const App = () =>  {
-  return (
-    <ProfileView />
-  );
+export default function Index() {
+    return <Redirect href="/profile" />;
 }
-export default App; 
