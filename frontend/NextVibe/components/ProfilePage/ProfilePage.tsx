@@ -7,7 +7,7 @@ import getUserDetail from "@/src/api/user.detail";
 import GetApiUrl from "@/src/utils/url_api";
 import { MaterialIcons } from '@expo/vector-icons';
 import formatNumber from "@/src/utils/formatNumber";
-import ButtonEditProfile from "./ButtonEditProfile";
+import ButtonSettings from "./ButtonSettings";
 import ButtonWallet from "./ButtomWallet";
 import RecommendedUsers from "./recommendateProfiles";
 import PostGallery from "./PostsMenu";
@@ -100,7 +100,7 @@ const ProfileView = () => {
                         
                     </View>
                     <View style={{flexDirection: "row", justifyContent: "space-evenly", marginTop: 20, marginLeft: -12}}>
-                        <ButtonEditProfile />
+                        <ButtonSettings />
                         <ButtonWallet />
                     </View>
 
