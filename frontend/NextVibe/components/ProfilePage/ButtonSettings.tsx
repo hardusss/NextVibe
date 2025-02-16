@@ -1,7 +1,7 @@
 import { Pressable, Text, StyleSheet, Animated, Dimensions} from "react-native";
 import { useState } from "react";
 const screenWidth = Dimensions.get("window").width;
-const ButtonEditProfile = () => {
+const ButtonSsetings = () => {
     const [scale] = useState(new Animated.Value(1));
     const handlePressIn = () => {
         Animated.spring(scale, {
@@ -28,7 +28,7 @@ const ButtonEditProfile = () => {
                     { backgroundColor: pressed ? "#0b124c" : "#0d1663" },
                 ]}
             >
-                <Text style={styles.text}>Edit</Text>
+                <Text style={styles.text}>Settings</Text>
             </Pressable>
         </Animated.View>
     );
@@ -53,4 +53,4 @@ const styles = StyleSheet.create({
     }
 });
 
-export default ButtonEditProfile;
+export default ButtonSsetings;

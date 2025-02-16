@@ -65,7 +65,7 @@ const PostGallery = () => {
                     numColumns={3}
                     nestedScrollEnabled={true}
                     scrollEnabled={false}
-                    contentContainerStyle={{ flexGrow: 1 }}
+                    contentContainerStyle={{ flexGrow: 1,  paddingBottom: 250 }}
                     renderItem={({ item }) => {
                         if (!item.media?.media_url) {
                             console.warn("❌ Media URL is missing for post:", item);

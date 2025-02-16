@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { 
     View, Text, Image, FlatList, TouchableOpacity, 
-    ActivityIndicator, StyleSheet, useColorScheme 
+    StyleSheet, useColorScheme 
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import getRoccomendationsProfiles from "@/src/api/recommendations.profiles";
 import GetApiUrl from "@/src/utils/url_api";
 import { MaterialIcons } from '@expo/vector-icons';
+import followUser from "@/src/api/follow";
 
 
 const lightTheme = {
@@ -17,6 +18,8 @@ const lightTheme = {
     border: "#d1d1d1",
     followButton: "#0095f6",
     followText: "#ffffff",
+    followedButton: "#262626",
+    followedText: "#ffffff",
     iconColor: "black"
 };
 
@@ -28,12 +31,15 @@ const darkTheme = {
     border: "#5A31F4",
     followButton: "#0095f6",
     followText: "#ffffff",
+    followedButton: "#262626",
+    followedText: "#ffffff",
     iconColor: "white"
 };
 
 const RecommendedUsers = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [expanded, setExpanded] = useState(true); 
+    const [followedUsers, setFollowedUsers] = useState<number[]>([]); 
     const theme = useColorScheme() === "dark" ? darkTheme : lightTheme;
 
     useEffect(() => {
@@ -49,8 +55,11 @@ const RecommendedUsers = () => {
         fetchRecommendedUsers();
     }, []);
 
-    const handleFollow = (id: number) => {
-        console.log(`Followed user with ID: ${id}`);
+    const handleFollow = async (id: number) => {
+        const response = await followUser(id);
+        if (response === 200) {
+            setFollowedUsers([...followedUsers, id]); 
+        }
     };
 
     return (
@@ -76,38 +85,51 @@ const RecommendedUsers = () => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.listContainer}
                     nestedScrollEnabled
-                    renderItem={({ item }) => (
-                        <View style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.border, 
-                            borderWidth: theme === lightTheme ? 1 : 1  }]}>
-                            <Image 
-                                source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} 
-                                style={styles.avatar} 
-                            />
-                            <View style={styles.userInfo}>
-                                <View style={{ flexDirection: "row" }}>
-                                    <Text style={[styles.username, { color: theme.textPrimary }]}>
-                                        {item.username}
-                                    </Text>
-                                    {item.official ? (
-                                        <MaterialIcons 
-                                            name="check-circle" 
-                                            size={16} 
-                                            color="#58a6ff" 
-                                            style={{ marginLeft: 5, marginTop: 1 }} 
-                                        />
-                                    ) : null}
+                    renderItem={({ item }) => {
+                        const isFollowed = followedUsers.includes(item.id);
+
+                        return (
+                            <View style={[
+                                styles.userCard, 
+                                { backgroundColor: theme.cardBackground, borderColor: theme.border, borderWidth: 1 }
+                            ]}>
+                                <Image 
+                                    source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} 
+                                    style={styles.avatar} 
+                                />
+                                <View style={styles.userInfo}>
+                                    <View style={{ flexDirection: "row" }}>
+                                        <Text style={[styles.username, { color: theme.textPrimary }]}>
+                                            {item.username}
+                                        </Text>
+                                        {item.official && (
+                                            <MaterialIcons 
+                                                name="check-circle" 
+                                                size={16} 
+                                                color="#58a6ff" 
+                                                style={{ marginLeft: 5, marginTop: 1 }} 
+                                            />
+                                        )}
+                                    </View>
+                                    <TouchableOpacity 
+                                        onPress={() => handleFollow(item.id)} 
+                                        style={[
+                                            styles.followButton, 
+                                            { backgroundColor: isFollowed ? theme.followedButton : theme.followButton }
+                                        ]}
+                                        disabled={isFollowed} 
+                                    >
+                                        <Text style={[
+                                            styles.followText, 
+                                            { color: isFollowed ? theme.followedText : theme.followText }
+                                        ]}>
+                                            {isFollowed ? "Following" : "Follow"}
+                                        </Text>
+                                    </TouchableOpacity>
                                 </View>
-                                <TouchableOpacity 
-                                    onPress={() => handleFollow(item.id)} 
-                                    style={[styles.followButton, { backgroundColor: theme.followButton }]}
-                                >
-                                    <Text style={[styles.followText, { color: theme.followText }]}>
-                                        Follow
-                                    </Text>
-                                </TouchableOpacity>
                             </View>
-                        </View>
-                    )}
+                        );
+                    }}
                 />
             )}
         </View>
@@ -131,8 +153,7 @@ const styles = StyleSheet.create({
     iconButton: {
         padding: 5,
     },
-    listContainer: {
-    },
+    listContainer: {},
     userCard: {
         padding: 15,
         borderRadius: 15,
