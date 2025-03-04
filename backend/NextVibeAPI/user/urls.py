@@ -3,7 +3,7 @@ from .views_pac import (
                             RegisterUserView, LoginUserView,
                             GoogleRegisterView, GoogleLoginUserView,
                             UserDetailView, RecommendedUsersView,
-                            FollowView
+                            FollowView, SearchUsersView, HistorySearchView
                         )
 
 
@@ -14,5 +14,7 @@ urlpatterns = [
     path("google-login/", GoogleLoginUserView.as_view(), name="google_login"),
     path("user-detail/<int:id>/", UserDetailView.as_view(), name="user-detail"),
     path("recommendations/<int:id>/", RecommendedUsersView.as_view(), name="recommendations_profiles"),
-    path("follow/<int:id>/<int:follow_id>/", FollowView.as_view(), name="follow")
+    path("follow/<int:id>/<int:follow_id>/", FollowView.as_view(), name="follow"),
+    path("search/", SearchUsersView.as_view(), name="search"),
+    path("history/", HistorySearchView.as_view(), name="history")
 ]

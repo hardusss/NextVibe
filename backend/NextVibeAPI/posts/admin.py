@@ -5,3 +5,5 @@ from .models import *
 
 admin.site.register(Post)
 admin.site.register(PostsMedia)
+admin.site.register(Comment)
+admin.site.register(CommentReply)

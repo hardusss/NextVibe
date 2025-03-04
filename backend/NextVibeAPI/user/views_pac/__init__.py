@@ -5,3 +5,5 @@ from .google_login import GoogleLoginUserView
 from .user_detail import UserDetailView
 from .recommended_users import RecommendedUsersView
 from .follow import FollowView
+from .search import SearchUsersView
+from .history import HistorySearchView
