@@ -15,8 +15,11 @@ class FollowView(APIView):
         except ObjectDoesNotExist:
             return Response({"error": "User not found"}, status=404)
         
+        # If user subscribed for this user 
         if follow_id in user.follow_for :
-            return Response({"error": "You are already subscribed"}, status=400)
+            user.follow_for.remove(follow_id)
+            user.save()
+            return Response({"data": "Success"}, status=200)
         
         user.follow_for.append(follow_id)
         user.save()

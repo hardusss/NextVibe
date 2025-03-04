@@ -53,3 +53,6 @@ class User(AbstractBaseUser):
         return self.is_superuser
 
     
+class HistorySearch(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_history")
+    searched_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="searched_user")

@@ -3,37 +3,38 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import Post, PostsMedia
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractUser
+
+
+User: AbstractUser = get_user_model()
+
 
 class PostMenuView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, id: int) -> Response:
-        limit = request.query_params.get("limit", 12)  # Скільки постів отримати (за замовчуванням 12)
-        offset = request.query_params.get("offset", 0)  # Зміщення (за замовчуванням 0)
-
-        try:
-            limit = int(limit)
-            offset = int(offset)
-            if limit <= 0 or offset < 0:
-                raise ValueError
-        except ValueError:
-            return Response({"error": "Invalid limit or offset value"}, status=status.HTTP_400_BAD_REQUEST)
-
-        posts = Post.objects.filter(owner__user_id=id).order_by("-id")[offset : offset + limit]  # Пагінація
-
+        index: int = int(request.query_params.get("index", 0))
+        who_send_request: int = int(request.user.user_id)
+        
+        posts = Post.objects.filter(owner__user_id=id).order_by("-id")[int(index):]
         data = []
         for post in posts:
-            media = PostsMedia.objects.filter(post=post).first()
-            media_data = {"id": media.id, "media_url": str(media.file)} if media else None
-
+            media = PostsMedia.objects.filter(post=post)
+            media_data = [{"id": m.id, "media_url": str(m.file)} for m in media] if media.exists() else None
+            
             data.append({
+                "user_id": post.owner.user_id,
                 "post_id": post.id,
                 "about": post.about,
                 "count_likes": post.count_likes,
-                "media": media_data
+                "media": media_data,
+                "create_at": post.create_at,
             })
-
+            
+        user = User.objects.get(user_id=who_send_request)
         return Response({
             "data": data,
-            "next_offset": offset + limit if posts else None  # Новий offset для наступного запиту
+            "more_posts": len(data) > 0,
+            "liked_posts": user.liked_posts
         }, status=status.HTTP_200_OK)
