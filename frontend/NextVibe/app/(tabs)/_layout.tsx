@@ -5,15 +5,21 @@ import getUserDetail from "@/src/api/user.detail";
 import { useEffect, useState } from "react";
 import { Image } from "react-native";
 import GetApiUrl from "@/src/utils/url_api";
+import { useSegments } from "expo-router";
 
 
 export default function Layout() {
     const theme = useColorScheme();
     const activeColor = "#7B61FF"; 
-    const inactiveColor = "#7B61FF55"; 
-    const [imageProfile, setImageProfile] =  useState<string | null>(null);
-
+    const inactiveColor = "#2f3030"; 
+    const [imageProfile, setImageProfile] = useState<string | null>(null);
+    const segments = useSegments();
+    const currentPage = segments[segments.length - 1];
+    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post"];
     useEffect(() => {
+        if (blacklist.includes(currentPage)) {
+            return;
+        }
         const getImageProfile = async () => {
             try {
                 const data = await getUserDetail();
@@ -21,32 +27,29 @@ export default function Layout() {
                     setImageProfile(`${GetApiUrl().slice(0, 25)}${data.avatar}`);
                 }
             } catch (error) {
-                console.error("Error get avatar", error);
+                
             }
         };
 
         getImageProfile();
-    }, []);
+    }, [currentPage]);
 
+    
     return (
         <Tabs
             screenOptions={{
                 tabBarStyle: {
-                    backgroundColor: theme === "dark" ? "#0F0E17" : "#ffffff",
+                    backgroundColor: theme === "dark" ? "#0a0c1a" : "#ffffff",
                     position: "absolute",
-                    bottom: 20,
-                    left: 20,
-                    right: 20,
                     height: 70,
-                    borderRadius: 25,
-                    borderWidth: 2,
-                    borderColor: "#7B61FF",
+                    borderTopWidth: 1,
+                    borderColor: "#5A31F4",
                     elevation: 10,
                     shadowOpacity: 1,
                     shadowRadius: 20,
                     shadowColor: "#7B61FF",
                     shadowOffset: { width: 0, height: 5 },
-                    display: "flex",
+                    display: [...blacklist, "camera"].includes(currentPage) ? "none": "flex",
                     alignItems: "center",
                     justifyContent: "center",
                 },
@@ -91,7 +94,7 @@ export default function Layout() {
                 }}
             />
             <Tabs.Screen
-                name="create-post"
+                name="camera"
                 options={{
                     tabBarIcon: ({ focused }) => (
                         <Ionicons
@@ -140,9 +143,12 @@ export default function Layout() {
                 }}
             />
             
-            <Tabs.Screen name="login" options={{ href: null }} />
-            <Tabs.Screen name="register" options={{ href: null }} />
-            <Tabs.Screen name="index" options={{ href: null }} />
+            {
+                blacklist.map((item) => {
+                    return <Tabs.Screen key={item} name={item} options={{ href: null }} />
+                })
+            }
+            
         </Tabs>
     );
 }

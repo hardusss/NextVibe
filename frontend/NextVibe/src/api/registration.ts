@@ -3,9 +3,9 @@ import axios from 'axios';
 import validationInput from '../validation/register-validator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import GetApiUrl from '../utils/url_api';
+import { Router } from 'expo-router';
 
-
-export default async function Register (username: string, email: string, password: string, strength?: string, privacy?: boolean) {
+export default async function Register (username: string, email: string, password: string, router: Router, strength?: string, privacy?: boolean) {
     const validation: boolean = validationInput(username, email, password);
     if (!validation) {
         return;
@@ -37,10 +37,12 @@ export default async function Register (username: string, email: string, passwor
                     text1: 'Registration successful',
                     text2: 'Welcome to NextVibe'
                 });
+                setTimeout(() => {
+                    router.push("/profile");
+                }, 2000);
 
             })
             .catch(error => {
-                console.log(error);
                 Toast.show({
                     type: 'error',
                     text1: 'Registration failed',

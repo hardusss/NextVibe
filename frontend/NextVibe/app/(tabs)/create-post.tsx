@@ -1,5 +1,5 @@
-import { View } from "react-native";
+import PostCreate from "@/components/PostCreate/PostCrate";
 
 export default function CreatePostScreen() {
-    return <View />;
+    return <PostCreate />;
 }

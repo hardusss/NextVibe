@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.harrddddd.NextVibe",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +22,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.harrddddd.NextVibe",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -26,17 +34,23 @@
     },
     "plugins": [
       "expo-router",
-      
       [
         "expo-splash-screen",
         {
+          "cameraPermissionText": "NextVibe needs access to your Camera.",
+          "enableMicrophonePermission": true,
+          "photosPermission": "NextVibe accesses your photos",
+          "videosPermission": "The app accesses your videos",
+          "microphonePermissionText": "NextVibe needs access to your Microphone.",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-video"
+      "expo-image-picker",
+      "expo-video",
+      "react-native-vision-camera"
     ],
     "experiments": {
       "typedRoutes": true

@@ -36,7 +36,7 @@ const ButtonSsetings = () => {
 
 const styles = StyleSheet.create({
     button: {
-        width: screenWidth * 0.42,
+        width: screenWidth * 0.43,
         paddingVertical: 10,
         alignItems: "center",
         borderRadius: 8,

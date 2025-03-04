@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, SafeAreaView, Text, ActivityIndicator, StatusBar, Image, ScrollView } from "react-native";
+import { View, SafeAreaView, Text, StatusBar, Image, ScrollView } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
@@ -11,7 +11,7 @@ import ButtonSettings from "./ButtonSettings";
 import ButtonWallet from "./ButtomWallet";
 import RecommendedUsers from "./recommendateProfiles";
 import PostGallery from "./PostsMenu";
-
+import { ActivityIndicator } from "../CustomActivityIndicator";
 
 type UserData = {
     username: string;
@@ -99,7 +99,7 @@ const ProfileView = () => {
                         {userData.about !== "" ? <Text style={profileStyle.about}>{userData.about}</Text> : ""}
                         
                     </View>
-                    <View style={{flexDirection: "row", justifyContent: "space-evenly", marginTop: 20, marginLeft: -12}}>
+                    <View style={{flexDirection: "row", marginTop: 20, gap: "1.5%", justifyContent: "center", marginLeft: -15}}>
                         <ButtonSettings />
                         <ButtonWallet />
                     </View>

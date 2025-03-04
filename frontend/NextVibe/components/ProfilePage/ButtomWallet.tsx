@@ -1,5 +1,6 @@
 import { Pressable, Text, StyleSheet, Animated, View, Dimensions } from "react-native";
 import { useState } from "react";
+
 const screenWidth = Dimensions.get("window").width;
 const ButtonWallet = () => {
     const [scale] = useState(new Animated.Value(1));
@@ -44,7 +45,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     button: {
-        width: screenWidth * 0.42,
+        width: screenWidth * 0.43,
         paddingVertical: 10,
         alignItems: "center",
         borderRadius: 8,
@@ -62,8 +63,8 @@ const styles = StyleSheet.create({
     },
     badge: {
         position: "absolute",
-        top: -5,
-        right: -15,
+        top: -10,
+        right: -2,
         backgroundColor: "#FF2E63",
         paddingHorizontal: 8,
         paddingVertical: 3,

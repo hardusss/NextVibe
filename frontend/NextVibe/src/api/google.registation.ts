@@ -2,9 +2,9 @@ import axios from "axios";
 import GetApiUrl from "../utils/url_api";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Router } from "expo-router";
 
-
-export default function GoogleRegister(username: string, email: string, avatar_url: string) {
+export default function GoogleRegister(username: string, email: string, avatar_url: string, router: Router) {
 
     const data = {
         username: username,
@@ -21,10 +21,12 @@ export default function GoogleRegister(username: string, email: string, avatar_u
             text1: 'Registration successful',
             text2: 'Welcome to NextVibe'
         });
+        setTimeout(() => {
+            router.push("/profile");
+        }, 2000);
 
     })
-    .catch(error => {
-        console.log(error);
+    .catch(error => {;
         Toast.show({
             type: 'error',
             text1: 'Registration failed',

@@ -4,43 +4,61 @@ import registerStyles from '../../styles/dark-theme/registerStyles';
 import { useEffect } from 'react';
 import GoogleRegister from '../../src/api/google.registation';
 import GoogleLogin from '@/src/api/google.login';
+import { useRouter } from 'expo-router';
+import Toast from "react-native-toast-message";
 
+export default function GoogleButtonAuth({ page }: { page: string }) {
+    const router = useRouter();
 
-export default function GoogleButtonAuth({page}: {page: string}) {
     useEffect(() => {
         GoogleSignin.configure({
-            webClientId: '917502296605-mjvinqqafhbnv4ucopebd9ek8mnd1nom.apps.googleusercontent.com', 
+            webClientId: '917502296605-mjvinqqafhbnv4ucopebd9ek8mnd1nom.apps.googleusercontent.com',
         });
     }, []);
 
     const signInWithGoogle = async () => {
         try {
             const userInfo = await GoogleSignin.signIn();
-            const userData = userInfo.data?.user
-            if (userInfo.type === "success" && page === "register"){
-                GoogleRegister(`${userData?.givenName}${userData?.familyName}`, `${userData?.email}`, `${userData?.photo}`)
-            } 
-            if (userInfo.type === "success" && page === "login"){
-                GoogleLogin(`${userData?.email}`)
+            const userData = userInfo.data?.user;
+            if (userInfo.type === "success" && page === "register") {
+                GoogleRegister(`${userData?.givenName}${userData?.familyName}`, `${userData?.email}`, `${userData?.photo}`, router);
+            }
+            if (userInfo.type === "success" && page === "login") {
+                GoogleLogin(`${userData?.email}`, router);
             }
         } catch (error: any) {
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-                console.log('Sign-in was cancelled by the user.');
+                Toast.show({
+                    type: 'info',
+                    text1: 'Sign-in Cancelled',
+                    text2: 'Sign-in was cancelled by the user.',
+                });
             } else if (error.code === statusCodes.IN_PROGRESS) {
-                console.log('Sign-in is already in progress.');
+                Toast.show({
+                    type: 'info',
+                    text1: 'Sign-in In Progress',
+                    text2: 'Sign-in is already in progress.',
+                });
             } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-                console.log('Google Play Services are not available or outdated.');
-            } 
+                Toast.show({
+                    type: 'error',
+                    text1: 'Play Services Error',
+                    text2: 'Google Play Services are not available or outdated.',
+                });
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Sign-in Error',
+                    text2: error.message || 'An unexpected error occurred.',
+                });
+            }
         }
     };
+
     return (
         <Pressable onPress={signInWithGoogle} style={registerStyles.googlebutton}>
-            <Image
-                    source={ require('../../assets/google.png')}
-                        style={registerStyles.icon}
-                    />
+            <Image source={require('../../assets/google.png')} style={registerStyles.icon} />
             <Text style={registerStyles.googletext}>Sign in with Google</Text>
         </Pressable>
     );
 }
-

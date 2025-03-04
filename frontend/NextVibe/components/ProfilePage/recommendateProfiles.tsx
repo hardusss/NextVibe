@@ -9,7 +9,6 @@ import GetApiUrl from "@/src/utils/url_api";
 import { MaterialIcons } from '@expo/vector-icons';
 import followUser from "@/src/api/follow";
 
-
 const lightTheme = {
     background: "#ffffff",
     cardBackground: "#f0f0f0",
@@ -55,19 +54,21 @@ const RecommendedUsers = () => {
         fetchRecommendedUsers();
     }, []);
 
-    const handleFollow = async (id: number) => {
+    const handleFollowUnfollow = async (id: number) => {
         const response = await followUser(id);
         if (response === 200) {
-            setFollowedUsers([...followedUsers, id]); 
+            setFollowedUsers(prevState => 
+                prevState.includes(id) 
+                    ? prevState.filter(userId => userId !== id) 
+                    : [...prevState, id]
+            );
         }
     };
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.textPrimary }]}>
-                    Recommended for you
-                </Text>
+                <Text style={[styles.title, { color: theme.textPrimary }]}>Recommended for you</Text>
                 <TouchableOpacity onPress={() => setExpanded(!expanded)} style={styles.iconButton}>
                     <Ionicons 
                         name={expanded ? "chevron-up" : "chevron-down"} 
@@ -89,41 +90,24 @@ const RecommendedUsers = () => {
                         const isFollowed = followedUsers.includes(item.id);
 
                         return (
-                            <View style={[
-                                styles.userCard, 
-                                { backgroundColor: theme.cardBackground, borderColor: theme.border, borderWidth: 1 }
-                            ]}>
+                            <View style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.border, borderWidth: 1 }]}> 
                                 <Image 
                                     source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} 
                                     style={styles.avatar} 
                                 />
                                 <View style={styles.userInfo}>
                                     <View style={{ flexDirection: "row" }}>
-                                        <Text style={[styles.username, { color: theme.textPrimary }]}>
-                                            {item.username}
-                                        </Text>
+                                        <Text style={[styles.username, { color: theme.textPrimary }]}>{item.username}</Text>
                                         {item.official && (
-                                            <MaterialIcons 
-                                                name="check-circle" 
-                                                size={16} 
-                                                color="#58a6ff" 
-                                                style={{ marginLeft: 5, marginTop: 1 }} 
-                                            />
+                                            <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5, marginTop: 1 }} />
                                         )}
                                     </View>
                                     <TouchableOpacity 
-                                        onPress={() => handleFollow(item.id)} 
-                                        style={[
-                                            styles.followButton, 
-                                            { backgroundColor: isFollowed ? theme.followedButton : theme.followButton }
-                                        ]}
-                                        disabled={isFollowed} 
+                                        onPress={() => handleFollowUnfollow(item.id)} 
+                                        style={[styles.followButton, { backgroundColor: isFollowed ? theme.followedButton : theme.followButton }]}
                                     >
-                                        <Text style={[
-                                            styles.followText, 
-                                            { color: isFollowed ? theme.followedText : theme.followText }
-                                        ]}>
-                                            {isFollowed ? "Following" : "Follow"}
+                                        <Text style={[styles.followText, { color: theme.followText }]}>
+                                            {isFollowed ? "Unfollow" : "Follow"}
                                         </Text>
                                     </TouchableOpacity>
                                 </View>

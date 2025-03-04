@@ -6,46 +6,54 @@ import {
     TouchableOpacity, 
     StyleSheet, 
     Dimensions, 
-    ActivityIndicator 
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { ActivityIndicator } from "../CustomActivityIndicator";
 import { Video } from "expo-av";
 import getMenuPosts from "@/src/api/menu.posts";
 import GetApiUrl from "@/src/utils/url_api";
+import { useRouter } from "expo-router";
+import { ResizeMode } from "expo-av";
+
 
 const screenWidth = Dimensions.get("window").width;
-const padding = 25;
+const padding = 26;
 const imageSize = (screenWidth - padding * 2) / 3; 
 
 const PostGallery = () => {
+    const router = useRouter();
     const [posts, setPosts] = useState<any[]>([]);
-    const [limit] = useState(12);
-    const [offset, setOffset] = useState(0);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true); 
-
+    const [index, setIndex] = useState(0);
     const fetchPosts = async (loadMore = false) => {
         if (loadingMore || !hasMore) return;
-
+    
         if (loadMore) setLoadingMore(true);
         else setLoading(true);
-
+    
         try {
-            const response = await getMenuPosts(limit, offset);
+            const response = await getMenuPosts(index);
             const newPosts = response.data;
-
-            setPosts((prevPosts) => [...prevPosts, ...newPosts]); 
-            setOffset(offset + limit); 
-            setHasMore(newPosts.length === limit); 
+    
+            setHasMore(newPosts.more_posts)
+    
+            setPosts((prevPosts) => {
+                const uniquePosts = new Map(prevPosts.map(post => [post.post_id, post]));
+                newPosts.forEach((post: any) => uniquePosts.set(post.post_id, post));
+                return Array.from(uniquePosts.values());
+            });
+    
+            setIndex((prevIndex) => prevIndex + newPosts.length);
         } catch (error) {
             console.error("❌ Error fetching posts:", error);
         }
-
+    
         setLoading(false);
         setLoadingMore(false);
     };
-
+    
     useEffect(() => {
         fetchPosts();
     }, []);
@@ -65,18 +73,22 @@ const PostGallery = () => {
                     numColumns={3}
                     nestedScrollEnabled={true}
                     scrollEnabled={false}
+                    initialNumToRender={10}
                     contentContainerStyle={{ flexGrow: 1,  paddingBottom: 250 }}
                     renderItem={({ item }) => {
-                        if (!item.media?.media_url) {
+                        if (!Array.isArray(item.media) || item.media.length === 0 || !item.media[0]?.media_url) {
                             console.warn("❌ Media URL is missing for post:", item);
                             return null;
                         }
-
-                        const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media.media_url}`;
+                    
+                        const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media[0].media_url}`;
                         const isMediaVideo = isVideo(mediaUrl);
-
+                    
                         return (
-                            <TouchableOpacity style={styles.postContainer}>
+                            <TouchableOpacity 
+                                style={styles.postContainer} 
+                                onPress={() => router.push({pathname: "/postslist", params: {id: item.post_id, previous: "/profile"}})}
+                            >
                                 {isMediaVideo ? (
                                     <View style={styles.videoContainer}>
                                         <Video 
@@ -85,17 +97,19 @@ const PostGallery = () => {
                                             shouldPlay={false}
                                             isLooping={false}
                                             useNativeControls={false} 
+                                            resizeMode={"cover" as ResizeMode}
                                         />
                                     </View>
                                 ) : (
                                     <Image 
                                         source={{ uri: mediaUrl }}
-                                        style={styles.media}
+                                        style={[styles.media, {resizeMode: "cover"}]}
                                         resizeMode="cover"
                                         onError={() => console.error("❌ Failed to load image:", mediaUrl)}
+                                        
                                     />
                                 )}
-                                
+                    
                                 <View style={styles.iconContainer}>
                                     <Ionicons 
                                         name={isMediaVideo ? "videocam" : "image"} 
@@ -106,8 +120,9 @@ const PostGallery = () => {
                             </TouchableOpacity>
                         );
                     }}
+                    
                     onEndReached={() => fetchPosts(true)} 
-                    onEndReachedThreshold={0.5} 
+                    onEndReachedThreshold={0.5}
                     ListFooterComponent={
                         loadingMore ? <ActivityIndicator size="small" color="#0000ff" style={{ marginVertical: 10 }} /> : null
                     }
