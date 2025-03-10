@@ -7,3 +7,4 @@ from .recommended_users import RecommendedUsersView
 from .follow import FollowView
 from .search import SearchUsersView
 from .history import HistorySearchView
+from .user2fa import TwoFAView
