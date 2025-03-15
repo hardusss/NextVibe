@@ -259,7 +259,7 @@ const UserPosts = () => {
         />
         <Text style={[styles.text, { fontSize: 28 }]}>Posts</Text>
       </View>
-      <StatusBar animated backgroundColor={isDarkMode ? "#09080f" : "#f0f0f0"} />
+      <StatusBar animated backgroundColor={isDarkMode ? "black" : "#f0f0f0"} />
       {error && <Text style={styles.error}>{error}</Text>}
       <FlatList
         ref={flatListRef}

@@ -1,8 +1,12 @@
 import { Pressable, Text, StyleSheet, Animated, Dimensions} from "react-native";
 import { useState } from "react";
+import { useRouter } from "expo-router";
+
+
 const screenWidth = Dimensions.get("window").width;
 const ButtonSsetings = () => {
     const [scale] = useState(new Animated.Value(1));
+    const router = useRouter();
     const handlePressIn = () => {
         Animated.spring(scale, {
             toValue: 0.95,
@@ -16,6 +20,7 @@ const ButtonSsetings = () => {
             friction: 3,
             useNativeDriver: true,
         }).start();
+        router.push("/settings")
     };
 
     return (
@@ -25,7 +30,7 @@ const ButtonSsetings = () => {
                 onPressOut={handlePressOut}
                 style={({ pressed }) => [
                     styles.button,
-                    { backgroundColor: pressed ? "#0b124c" : "#0d1663" },
+                    { backgroundColor: pressed ? "rgb(6, 174, 157)" : "#05f0d8" }, //rgb(6, 174, 157)
                 ]}
             >
                 <Text style={styles.text}>Settings</Text>
@@ -47,7 +52,7 @@ const styles = StyleSheet.create({
         elevation: 1, 
     },
     text: {
-        color: "white",
+        color: "black",
         fontWeight: "bold",
         fontSize: 14,
     }

@@ -2,14 +2,14 @@ import { BackHandler, StyleSheet } from 'react-native';
 
 
 const colors = {
-    background: '#09080f',
-    cardBackground: '#0a0c1a',
-    inputBackground: '#0a0c1a',
+    background: 'black',
+    cardBackground: 'white',
+    inputBackground: 'black',
     primary: '#58a6ff',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
     textSecondary: '#8b949e',
-    border: '#0b0c2e',
+    border: '#05f0d8',
     shadow: '#0917b3',
 };
 
@@ -44,9 +44,8 @@ const registerDarkStyles = StyleSheet.create({
         width: '100%',
         backgroundColor: colors.inputBackground,
         color: colors.textPrimary,
-        borderRadius: 10,
         padding: 15,
-        borderWidth: 0.5,
+        borderBottomWidth: 1,
         borderColor: colors.border,
         shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 4 },
@@ -65,25 +64,21 @@ const registerDarkStyles = StyleSheet.create({
         marginTop: 15,
     },
     privacyPolicyText: {
-        color: colors.primary,
+        color: colors.border,
         textDecorationLine: 'underline',
         fontSize: 14,
     },
     registerButton: {
-        backgroundColor: colors.primary,
+        backgroundColor: "#05f0d8",
         borderRadius: 10,
         paddingVertical: 15,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 20,
-        shadowColor: colors.shadow,
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.9,
-        shadowRadius: 8,
         elevation: 7,
     },
     registerButtonText: {
-        color: "white",
+        color: "black",
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -113,7 +108,7 @@ const registerDarkStyles = StyleSheet.create({
     },
     googletext: {
         fontSize: 16,
-        color: colors.textPrimary,
+        color: "black",
         fontWeight: 'bold',
     },
     googleButton: {
@@ -137,7 +132,7 @@ const registerDarkStyles = StyleSheet.create({
         width: 24,
         height: 24,
         marginRight: 10,
-        tintColor: '#ffffff',
+        tintColor: 'black',
         objectFit: 'cover',
     },
     googleText: {
@@ -152,7 +147,7 @@ const registerDarkStyles = StyleSheet.create({
         marginTop: 20,
     },
     bottomLink: {
-        color: '#58a6ff',
+        color: colors.border,
         fontSize: 14,
         textDecorationLine: 'underline',
     },

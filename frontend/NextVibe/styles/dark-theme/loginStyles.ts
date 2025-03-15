@@ -1,14 +1,14 @@
 import { StyleSheet } from 'react-native';
 
 const colors = {
-    background: '#09080f',
+    background: 'black',
     cardBackground: '#0a0c1a',
-    inputBackground: '#0a0c1a',
+    inputBackground: 'black',
     primary: '#58a6ff',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
     textSecondary: '#8b949e',
-    border: '#0b0c2e',
+    border: '#05f0d8',
     shadow: '#0917b3',
 };
 
@@ -42,9 +42,8 @@ const loginDarkStyles = StyleSheet.create({
         width: '100%',
         backgroundColor: colors.inputBackground,
         color: colors.textPrimary,
-        borderRadius: 10,
         padding: 15,
-        borderWidth: 1,
+        borderBottomWidth: 1,
         borderColor: colors.border,
         marginBottom: 5,
     },
@@ -55,20 +54,16 @@ const loginDarkStyles = StyleSheet.create({
         transform: [{ translateY: -15 }],
     },
     loginButton: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.border,
         borderRadius: 10,
         paddingVertical: 15,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 50,
-        shadowColor: colors.shadow,
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.9,
-        shadowRadius: 8,
         elevation: 7,
     },
     loginButtonText: {
-        color: "#fafafa",
+        color: "black",
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -87,7 +82,7 @@ const loginDarkStyles = StyleSheet.create({
     line: {
         flex: 1,
         height: 1,
-        backgroundColor: colors.border,
+        backgroundColor: colors.textSecondary,
     },
     hrtext: {
         marginHorizontal: 10,
@@ -119,7 +114,7 @@ const loginDarkStyles = StyleSheet.create({
         marginTop: 20,
     },
     bottomLink: {
-        color: colors.primary,
+        color: colors.border,
         fontSize: 14,
         textDecorationLine: 'underline',
     },

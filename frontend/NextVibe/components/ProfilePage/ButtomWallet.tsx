@@ -27,7 +27,7 @@ const ButtonWallet = () => {
                 onPressOut={handlePressOut}
                 style={({ pressed }) => [
                     styles.button,
-                    { backgroundColor: pressed ? "#5A31F4" : "#4518f0" },
+                    { backgroundColor: pressed ? "black" : "black" },
                 ]}
             >
                 <View style={styles.badge}>
@@ -49,6 +49,8 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         alignItems: "center",
         borderRadius: 8,
+        borderColor: "#05f0d8",
+        borderWidth: 2,
         position: "relative",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
@@ -57,7 +59,7 @@ const styles = StyleSheet.create({
         elevation: 1, 
     },
     text: {
-        color: "white",
+        color: "#05f0d8",
         fontWeight: "bold",
         fontSize: 14,
     },
@@ -65,7 +67,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: -10,
         right: -2,
-        backgroundColor: "#FF2E63",
+        backgroundColor: "red",
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 12,

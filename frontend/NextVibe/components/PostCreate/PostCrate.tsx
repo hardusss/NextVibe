@@ -8,14 +8,14 @@ import createPost from '@/src/api/create.post';
 
 
 const darkColors = {
-    background: '#09080f',
-    cardBackground: '#0a0c1a',
-    inputBackground: '#0a0c1a',
+    background: 'black',
+    cardBackground: 'black', 
+    inputBackground: 'black',
     primary: '#58a6ff',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
     textSecondary: '#8b949e',
-    border: '#0b0c2e',
+    border: '#05f0d8',
     shadow: '#0917b3',
 };
 
@@ -166,7 +166,6 @@ export default function PostCreate() {
             padding: 15,
             borderRadius: 10,
             alignItems: 'center',
-            backgroundColor: colors.cardBackground,
             marginHorizontal: 5,
             shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 2 },
@@ -174,7 +173,7 @@ export default function PostCreate() {
             shadowRadius: 4,
         },
         publishButton: {
-            backgroundColor: colors.primary,
+            backgroundColor: "#05f0d8",
         },
         buttonText: {
             fontSize: 16,
@@ -226,18 +225,18 @@ export default function PostCreate() {
                 <Switch
                     value={enableComments}
                     onValueChange={setEnableComments}
-                    trackColor={{ false: '#767577', true: colors.primary }}
-                    thumbColor={enableComments ? colors.primary : '#f4f3f4'}
+                    trackColor={{ false: '#767577', true: "#05f0d8" }}
+                    thumbColor={enableComments ? '#05f0d8' : '#f4f3f4'}
                 />
             </View>
 
             <View style={themedStyles.footer}>
-                <TouchableOpacity style={[themedStyles.button, { backgroundColor: colors.cardBackground }]} onPress={handleSaveDraft}>
-                    <Text style={themedStyles.buttonText}>Save as Draft</Text>
+                <TouchableOpacity style={[themedStyles.button, { backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border }]} onPress={handleSaveDraft}>
+                    <Text style={[themedStyles.buttonText, {color: "#05f0d8"}]}>Save as Draft</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={[themedStyles.button, themedStyles.publishButton]} onPress={handlePublish}>
-                    <Text style={themedStyles.buttonText}>Publish</Text>
+                    <Text style={[themedStyles.buttonText, {color: "black"}]}>Publish</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>
