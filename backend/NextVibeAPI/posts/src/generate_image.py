@@ -1,13 +1,45 @@
+"""
+Module for generating images using the Replicate API.
+
+This module provides a function to generate an image from a given text prompt using 
+the Stability AI SDXL model via the Replicate API.
+
+Environment Variables:
+    REPLICATE_API_TOKEN (str): API token required for authentication with the Replicate API.
+
+Dependencies:
+    - replicate
+    - dotenv (to load environment variables)
+    - os (to access environment variables)
+"""
+
 import replicate
 from dotenv import load_dotenv
 from os import getenv
 
+# Load environment variables
 load_dotenv()
 REPLICATE_API_TOKEN = getenv("REPLICATE_API_TOKEN")
 
-def generate(promt: str):
+def generate(promt: str) -> str:
+    """
+    Generates an image based on the given text prompt using the Stability AI SDXL model.
+
+    Parameters:
+        promt (str): The text prompt describing the desired image.
+
+    Returns:
+        str: The URL of the generated image.
+
+    Raises:
+        Exception: If the API request fails or an invalid response is returned.
+
+    Example Usage:
+        image_url = generate("A futuristic cityscape at night, ultra-realistic")
+        print(image_url)  # Outputs the URL of the generated image
+    """
     output = replicate.run(
-    "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
+        "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
         input={
             "width": 1024,
             "height": 1024,
@@ -21,12 +53,10 @@ def generate(promt: str):
             "high_noise_frac": 0.8,
             "negative_prompt": "",
             "prompt_strength": 0.8,
-            "num_inference_steps": 25
+            "num_inference_steps": 100
         }
     )
-    image_url = output[0] 
-    return image_url
-
-
     
-print(generate("A highly detailed, ultra-realistic portrait of a young man with short brown hair and green eyes, sitting at a sleek modern desk with a high-end laptop open in front of him. The screen emits a soft glow, reflecting subtly on his face. His hands rest on the keyboard as if he's in the middle of work or deep concentration. The lighting is soft and natural, creating a cinematic effect. His skin texture is flawless yet natural, with visible pores and slight imperfections. The background is blurred, resembling a professional studio or a cozy, modern workspace. Photorealistic, hyper-detailed, DSLR quality, cinematic lighting, ultra-sharp, depth of field."))
+    # Extract the generated image URL from the output
+    image_url = output[0]  
+    return image_url
