@@ -12,6 +12,8 @@ import ButtonWallet from "./ButtomWallet";
 import RecommendedUsers from "./recommendateProfiles";
 import PostGallery from "./PostsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 type UserData = {
     username: string;
@@ -37,34 +39,48 @@ const ProfileView = () => {
     const colorScheme = useColorScheme();
     const profileStyle = colorScheme === "dark" ? profileDarkStyles : profileLightStyles;
 
-    useEffect(() => {
-        const fetchUserData = async () => {
-            try {
-                const data = await getUserDetail();
-                setUserData({
-                    username: data?.username || "",
-                    about: data?.about || "",
-                    avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 25)}${data.avatar}` : null,
-                    post_count: data?.post_count || 0,
-                    readers_count: data?.readers_count || 0,
-                    follows_count: data?.follows_count || 0,
-                    official: true ? data.official === true : false
-                });
-            } catch (error) {
-                console.error("Fetch error reboot page)", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const fetchUserData = async () => {
+        try {
+            const data = await getUserDetail();
+            setUserData({
+                username: data?.username || "",
+                about: data?.about || "",
+                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 25)}${data.avatar}` : null,
+                post_count: data?.post_count || 0,
+                readers_count: data?.readers_count || 0,
+                follows_count: data?.follows_count || 0,
+                official: true ? data.official === true : false
+            });
+        } catch (error) {
+            console.error("Fetch error reboot page)", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        fetchUserData();
-    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchUserData();
+
+            return () => {
+                setUserData({
+                    username: "",
+                    about: "",
+                    avatar_url: null,
+                    post_count: 0,
+                    readers_count: 0,
+                    follows_count: 0,
+                    official: false})
+            }
+        }, [])
+    )
 
     return (
         <SafeAreaView style={profileStyle.container}>
             <StatusBar
                 animated={true}
-                backgroundColor={colorScheme === 'dark' ? '#09080f' : '#f0f0f0'}
+                backgroundColor={colorScheme === 'dark' ? 'black' : '#f0f0f0'} 
             />
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{flex: 1, justifyContent: "center", alignItems: "center"}}/>

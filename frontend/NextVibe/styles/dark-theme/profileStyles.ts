@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 const colors = {
-    background: '#09080f',
+    background: 'black', // #09080f
     cardBackground: '#0a0c1a',
     inputBackground: '#0a0c1a',
     primary: '#fafafa',

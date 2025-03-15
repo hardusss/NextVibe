@@ -23,11 +23,11 @@ const lightTheme = {
 };
 
 const darkTheme = {
-    background: "#09080f",
-    cardBackground: "rgba(11, 18, 76, 0.3)",
+    background: "black", // #09080f
+    cardBackground: "black", //rgba(11, 18, 76, 0.3)
     textPrimary: "#ffffff",
     textSecondary: "#8b949e",
-    border: "#5A31F4",
+    border: "#05f0d8", // #5A31F4
     followButton: "#0095f6",
     followText: "#ffffff",
     followedButton: "#262626",

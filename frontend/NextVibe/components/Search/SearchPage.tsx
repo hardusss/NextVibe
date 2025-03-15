@@ -6,18 +6,19 @@ import { ActivityIndicator } from "../CustomActivityIndicator";
 import { MaterialIcons } from "@expo/vector-icons";
 import formatNumber from "@/src/utils/formatNumber";
 import { setSearchHistory, getSearchHistory, deleteUserFromHistory } from "@/src/api/history.search";
-
+import { useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 const { width } = Dimensions.get("window");
 
 const darkColors = {
-    background: '#09080f',
+    background: 'black',
     cardBackground: '#0a0c1a',
-    inputBackground: '#0a0c1a',
+    inputBackground: 'black',
     primary: '#58a6ff',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
     textSecondary: '#8b949e',
-    border: '#0b0c2e',
+    border: '#05f0d8',
     shadow: '#0917b3',
 };
 
@@ -56,44 +57,57 @@ export default function SearchPage() {
         setSearchHistoryUser(response.data);
     };
 
-    useEffect(() => {
-        fetchHistory();
-    }, []);
-
-    // Якщо поле пошуку очищене — перезаписуємо історію
-    useEffect(() => {
-        if (searchName.length === 0) {
-            setUsers([]);
-            setNotExist(false);
-            setLoading(false);
-            fetchHistory(); // Перезапис історії
-        }
-    }, [searchName]);
-
-    useEffect(() => {
-        if (searchName.length === 0) return;
-
-        setLoading(true);
-        const timeout = setTimeout(async () => {
-            try {
-                const response = await searchByName(searchName);
-                const data: User[] = response.data;
-                if (typeof data === "string") {
-                    setNotExist(true);
-                    setUsers([]);
-                    setLoading(false);
-                    return;
-                }
-                setUsers(data.length ? data : []);
-                setNotExist(!data.length);
-            } catch (error) {
-                console.error("Error searching users:", error);
+    useFocusEffect(
+        useCallback(() => {
+            fetchHistory();
+            return () => {
+                setSearchName("");
+                setUsers([]);
+                setNotExist(false);
+                setLoading(false);
+                setSearchHistoryUser([]);
             }
-            setLoading(false);
-        }, 1000);
+        }, [])
+    );
 
-        return () => clearTimeout(timeout);
-    }, [searchName]);
+    useFocusEffect(
+        useCallback(() => {
+            if (searchName.length === 0) {
+                setUsers([]);
+                setNotExist(false);
+                setLoading(false);
+                fetchHistory(); 
+            }
+        }, [searchName])
+    )
+
+
+    useFocusEffect(
+        useCallback(() => {
+            if (searchName.length === 0) return;
+
+            setLoading(true);
+            const timeout = setTimeout(async () => {
+                try {
+                    const response = await searchByName(searchName);
+                    const data: User[] = response.data;
+                    if (typeof data === "string") {
+                        setNotExist(true);
+                        setUsers([]);
+                        setLoading(false);
+                        return;
+                    }
+                    setUsers(data.length ? data : []);
+                    setNotExist(!data.length);
+                } catch (error) {
+                    console.error("Error searching users:", error);
+                }
+                setLoading(false);
+            }, 1000);
+
+            return () => clearTimeout(timeout);
+        }, [searchName])
+    )
 
     const handleDeleteUser = async (userId: number) => {
         await deleteUserFromHistory(userId);
@@ -207,7 +221,6 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         paddingVertical: 10,
-        borderBottomWidth: 1,
     },
     avatar: {
         width: 50,

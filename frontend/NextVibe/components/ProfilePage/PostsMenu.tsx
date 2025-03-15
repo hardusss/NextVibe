@@ -15,6 +15,9 @@ import GetApiUrl from "@/src/utils/url_api";
 import { useRouter } from "expo-router";
 import { ResizeMode } from "expo-av";
 
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
+
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
@@ -53,10 +56,13 @@ const PostGallery = () => {
         setLoading(false);
         setLoadingMore(false);
     };
-    
-    useEffect(() => {
-        fetchPosts();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            setPosts([]);
+            setIndex(0);
+            fetchPosts();
+        }, [])
+    )
 
     const isVideo = (url: string) => {
         return url.endsWith(".mp4") || url.endsWith(".mov") || url.endsWith(".avi");

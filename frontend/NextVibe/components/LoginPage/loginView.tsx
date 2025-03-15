@@ -36,7 +36,7 @@ export default function LoginView() {
             <View style={{ position: 'absolute', top: 0, justifyContent: 'center', width: '110%', zIndex: 9999 }}>
                 <Toast config={toastConfig} />
             </View>
-            <StatusBar animated={true} backgroundColor={colorScheme === 'dark' ? '#09080f' : '#f0f0f0'} />
+            <StatusBar animated={true} backgroundColor={colorScheme === 'dark' ? 'black' : '#f0f0f0'} />
             
             <View style={{ alignItems: 'center', flexDirection: 'row' }}>
                 <Text style={loginStyes.title}>Login to NextVibe</Text>
@@ -45,7 +45,7 @@ export default function LoginView() {
 
             <View style={{ marginTop: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialIcons name="email" size={20} color="#58a6ff" style={{ marginRight: 10, paddingBottom: 10 }} />
+                    <MaterialIcons name="email" size={20} color="rgb(3, 113, 102)" style={{ marginRight: 10, paddingBottom: 10 }} />
                     <Text style={loginStyes.inputLabel}>Email</Text>
                 </View>
                 <TextInput
@@ -59,7 +59,7 @@ export default function LoginView() {
 
             <View style={{ marginTop: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialIcons name="password" size={20} color="#58a6ff" style={{ marginRight: 10, paddingBottom: 10 }} />
+                    <MaterialIcons name="password" size={20} color="rgb(3, 113, 102)" style={{ marginRight: 10, paddingBottom: 10 }} />
                     <Text style={loginStyes.inputLabel}>Password</Text>
                 </View>
                 <View>

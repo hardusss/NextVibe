@@ -11,11 +11,11 @@ import { useSegments } from "expo-router";
 export default function Layout() {
     const theme = useColorScheme();
     const activeColor = "#7B61FF"; 
-    const inactiveColor = "#2f3030"; 
+    const inactiveColor = theme === "dark" ?  "#fafafa" : "black"; 
     const [imageProfile, setImageProfile] = useState<string | null>(null);
     const segments = useSegments();
     const currentPage = segments[segments.length - 1];
-    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post"];
+    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings"];
     useEffect(() => {
         if (blacklist.includes(currentPage)) {
             return;
@@ -39,11 +39,11 @@ export default function Layout() {
         <Tabs
             screenOptions={{
                 tabBarStyle: {
-                    backgroundColor: theme === "dark" ? "#0a0c1a" : "#ffffff",
+                    backgroundColor: theme === "dark" ? "black" : "#ffffff", //"#0a0c1a"
                     position: "absolute",
                     height: 70,
                     borderTopWidth: 1,
-                    borderColor: "#5A31F4",
+                    borderColor: "#05f0d8", // #5A31F4
                     elevation: 10,
                     shadowOpacity: 1,
                     shadowRadius: 20,
@@ -123,7 +123,7 @@ export default function Layout() {
                                     height: 35,
                                     borderRadius: 50,
                                     borderWidth: focused ? 2 : 0,
-                                    borderColor: activeColor,
+                                    borderColor: "#05f0d8",
                                     marginBottom: -25,
                                 }}
                             />
