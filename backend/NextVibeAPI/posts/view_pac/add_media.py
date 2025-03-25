@@ -1,24 +1,8 @@
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from ..models import PostsMedia
-
-
-class AddMediaToPostView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request, *args, **kwargs) -> Response:
-        medias = request.query_params.get("media", None)
-        post = request.query_params.get("post", None)
-        
-        for media in medias:
-            PostsMedia(post=post, file=media).save()
-        from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from ..models import PostsMedia
 from ..serializers_pac import PostsMediaSerializer
 
 class AddMediaToPostView(APIView):

@@ -2,16 +2,25 @@ import React from "react";
 import { View, StyleSheet, Dimensions, StatusBar } from "react-native";
 import LottieView from "lottie-react-native";
 import { useRouter } from "expo-router";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const {width, height} = Dimensions.get("window")
 
 
 export default function SplashScreen() {
     const router = useRouter();
+    const redirectTo = async () => {
+        AsyncStorage.getItem("access").then((token) => {
+            if (token) {
+                router.push("/profile");
+            } else {
+                router.push("/register");
+            }
+        });
+    }
     const finishSplash = () => {
         setTimeout(() => {
-            router.push("/profile")
+            redirectTo();
         }, 1000)
     }
     return (

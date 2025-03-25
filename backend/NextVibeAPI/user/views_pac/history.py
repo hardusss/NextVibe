@@ -34,7 +34,10 @@ class HistorySearchView(APIView):
         data = []
         for entry in history.values():
             searched_user_id = entry.get("searched_user_id")
-            user_data = User.objects.filter(user_id=searched_user_id).values("user_id", "avatar", "username", "official", "readers_count").first()
+            user_data = User.objects.filter(user_id=searched_user_id).values(
+                "user_id", "avatar",
+                "username", "official", 
+                "readers_count").first()
             if user_data:
                 data.append(user_data)
         return Response({"data": data}, status=200)

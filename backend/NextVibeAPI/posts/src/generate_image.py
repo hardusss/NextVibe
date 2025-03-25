@@ -59,4 +59,4 @@ def generate(promt: str) -> str:
     
     # Extract the generated image URL from the output
     image_url = output[0]  
-    return image_url
+    return str(image_url)

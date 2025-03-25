@@ -18,12 +18,11 @@ import { ResizeMode } from "expo-av";
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 
-
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
 const imageSize = (screenWidth - padding * 2) / 3; 
 
-const PostGallery = () => {
+const PostGallery = ({id, previous}: {id: number, previous: string}) => {
     const router = useRouter();
     const [posts, setPosts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -37,7 +36,7 @@ const PostGallery = () => {
         else setLoading(true);
     
         try {
-            const response = await getMenuPosts(index);
+            const response = await getMenuPosts(id);
             const newPosts = response.data;
     
             setHasMore(newPosts.more_posts)
@@ -93,7 +92,7 @@ const PostGallery = () => {
                         return (
                             <TouchableOpacity 
                                 style={styles.postContainer} 
-                                onPress={() => router.push({pathname: "/postslist", params: {id: item.post_id, previous: "/profile"}})}
+                                onPress={() => router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}})}
                             >
                                 {isMediaVideo ? (
                                     <View style={styles.videoContainer}>

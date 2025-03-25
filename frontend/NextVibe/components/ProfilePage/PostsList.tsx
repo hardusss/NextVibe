@@ -51,6 +51,7 @@ const { width: screenWidth } = Dimensions.get("window");
 
 const UserPosts = () => {
   const router = useRouter();
+  let user_id = useLocalSearchParams().user_id
   const [index, setIndex] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const TARGET_ID = Number(useLocalSearchParams().id);
@@ -82,11 +83,9 @@ const UserPosts = () => {
     setHasMore(true);
   };
 
-  
   useFocusEffect(
     useCallback(() => {
       fetchPosts();
-      
       return () => {
         clearData();
       };
@@ -119,12 +118,11 @@ const UserPosts = () => {
     setError(null);
     if (!hasMore) return;
     try {
-      const data = await getMenuPosts(index);
+      const data = await getMenuPosts(+user_id);
       if (data) {
         const newPosts = data.data;
         setPosts((prevPosts) => [...prevPosts, ...newPosts]);
         newPosts.forEach((post: PostItem) => fetchUser(post.user_id));
-        setIndex((prevIndex) => prevIndex + newPosts.length);
         setHasMore(newPosts.more_posts);
         data.liked_posts.map((liked_id: number) => {
           setLikedPosts((prev) => ({ ...prev, [liked_id]: true }));
@@ -251,11 +249,11 @@ const UserPosts = () => {
   return (
     <View style={styles.container}>
       {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)}/>}
-      <View style={{ flexDirection: "row" }}>
+      <View style={{ flexDirection: "row", marginLeft: -10 }}>
         <MaterialIcons
           name="keyboard-arrow-left"
           style={[styles.text, { fontSize: 42, width: 50 }]}
-          onPress={() => router.push({ pathname: previous })}
+          onPress={() => router.push({ pathname: previous, params: { id: user_id } })}
         />
         <Text style={[styles.text, { fontSize: 28 }]}>Posts</Text>
       </View>
@@ -331,7 +329,7 @@ const getStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
       padding: 10,
-      backgroundColor: isDarkMode ? "#09080f" : "#fff",
+      backgroundColor: isDarkMode ? "black" : "#fff",
       paddingBottom: 100,
     },
     userInfo: {
@@ -354,14 +352,14 @@ const getStyles = (isDarkMode: boolean) =>
       width: screenWidth,
       paddingBottom: 15,
       borderBottomWidth: 1,
-      borderColor: "#4a4a4a",
+      borderColor: "#05f0d8", 
       paddingTop: 15,
-      backgroundColor: isDarkMode ? "#0a0c1a" : "#fff",
+      backgroundColor: isDarkMode ? "black" : "#fff",
       elevation: 3,
     },
     fullMedia: {
       width: screenWidth,
-      height: screenWidth * 0.75,
+      height: screenWidth * 1,
     },
     text: {
       width: screenWidth - 10,

@@ -1,4 +1,3 @@
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GetApiUrl from "../utils/url_api";
 
@@ -8,66 +7,70 @@ export default async function createPost(content: string, mediaUrls: string[], l
         const OWNER_ID = await AsyncStorage.getItem("id");
 
         if (!TOKEN || !OWNER_ID) {
-            console.error("Token або Owner ID не знайдено");
             return;
         }
 
-        const url = `${GetApiUrl()}/posts/posts/`;
+        const postUrl = `${GetApiUrl()}/posts/posts/`;
+        const mediaUploadUrl = `${GetApiUrl()}/posts/add-media/`;
 
-        const data = {
-            about: content,
-            owner: OWNER_ID,
-            location: location
-        };
-
-        const config = {
+        const postResponse = await fetch(postUrl, {
+            method: "POST",
             headers: {
                 "Authorization": `Bearer ${TOKEN}`,
                 "Content-Type": "application/json"
-            }
-        };
+            },
+            body: JSON.stringify({
+                about: content,
+                owner: OWNER_ID,
+                location: location || null
+            })
+        });
 
-        const response = await axios.post(url, data, config);
-
-        if (response.status === 201) {
-            const postId = response.data.id;
-            console.log("Post створено:", postId);
-
-            const mediaUploadUrl = `${GetApiUrl()}/posts/add-media/`;
-            const formData = new FormData();
-
-            for (const [index, uri] of mediaUrls.entries()) {
-                const fixedUri = uri.startsWith('file://') ? uri : `file://${uri}`;
-                console.log(`Обробка зображення ${index}: ${fixedUri}`);
-
-                const imageResponse = await fetch(fixedUri);
-                const blob = await imageResponse.blob();
-
-                formData.append("media", {
-                    uri: fixedUri,
-                    name: fixedUri.endsWith(".mov") || fixedUri.endsWith(".mp4") || fixedUri.endsWith(".mkv") || fixedUri.endsWith(".webm") || fixedUri.endsWith(".ogg") ? `image${postId}-${index}.mov` : `image${index}.jpg`,
-                    type: blob.type
-                } as any);
-            }
-
-            formData.append("post", postId.toString());
-
-            const mediaResponse = await axios.post(mediaUploadUrl, formData, {
-                headers: {
-                    "Authorization": `Bearer ${TOKEN}`,
-                    "Content-Type": "multipart/form-data"
-                }
-            });
-
-            if (mediaResponse.status === 201) {
-                console.log("Media files uploaded successfully");
-            } else {
-                console.error("Помилка при завантаженні медіа", mediaResponse.status, mediaResponse.data);
-            }
-        } else {
-            console.error("Помилка при створенні поста", response.status, response.data);
+        const postData = await postResponse.json();
+        
+        if (!postResponse.ok) {
+            return;
         }
+
+        const postId = postData.id;
+
+        const formData = new FormData();
+
+        for (const [index, uri] of mediaUrls.entries()) {
+            let fixedUri = uri.startsWith("file://") || uri.startsWith("https://") ? uri : `file://${uri}`;
+            console.log(`📸 Файл ${index + 1}:`, fixedUri);
+
+            const imageResponse = await fetch(fixedUri, { headers: { "User-Agent": "ReactNativeApp/1.0" } });
+            const blob = await imageResponse.blob();
+
+            const isVideo = fixedUri.match(/\.(mov|mp4|mkv|webm|ogg)$/);
+            const fileType = isVideo ? "video/mp4" : "image/jpeg";
+            const fileName = isVideo ? `video${index}.mp4` : `image${index}.jpg`;
+
+            formData.append("media", {
+                uri: fixedUri,
+                name: fileName,
+                type: fileType
+            } as any);
+        }
+
+        formData.append("post", postId.toString());
+
+        const mediaResponse = await fetch(mediaUploadUrl, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${TOKEN}`,
+            },
+            body: formData
+        });
+
+        const mediaData = await mediaResponse.json();
+
+        if (!mediaResponse.ok) {
+            return;
+        }
+
     } catch (error) {
-        console.error("Помилка при відправленні запиту:", error);
+        return;
     }
 }

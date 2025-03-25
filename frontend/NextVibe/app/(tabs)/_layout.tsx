@@ -15,7 +15,7 @@ export default function Layout() {
     const [imageProfile, setImageProfile] = useState<string | null>(null);
     const segments = useSegments();
     const currentPage = segments[segments.length - 1];
-    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings"];
+    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "wallet", "select-token", "deposit", "transaction", "user-profile", "create-wallet", "result-transaction"];
     useEffect(() => {
         if (blacklist.includes(currentPage)) {
             return;

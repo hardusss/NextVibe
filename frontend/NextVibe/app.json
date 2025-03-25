@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.harrddddd.NextVibe",
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "NSCameraUsageDescription": "Allow NextVibe access your camera",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
