@@ -9,7 +9,7 @@ import { setSearchHistory, getSearchHistory, deleteUserFromHistory } from "@/src
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 const { width } = Dimensions.get("window");
-
+import { useRouter } from "expo-router";
 const darkColors = {
     background: 'black',
     cardBackground: '#0a0c1a',
@@ -45,7 +45,7 @@ interface User {
 export default function SearchPage() {
     const colorScheme = useColorScheme();
     const colors = colorScheme === "dark" ? darkColors : lightColors;
-
+    const router = useRouter(); 
     const [searchName, setSearchName] = useState<string>("");
     const [users, setUsers] = useState<User[]>([]);
     const [notExist, setNotExist] = useState<boolean>(false);
@@ -111,7 +111,7 @@ export default function SearchPage() {
 
     const handleDeleteUser = async (userId: number) => {
         await deleteUserFromHistory(userId);
-        fetchHistory(); // Оновлюємо історію після видалення
+        fetchHistory();
     };
 
     return (
@@ -149,7 +149,7 @@ export default function SearchPage() {
                     data={searchHistoryUser}
                     keyExtractor={(item) => item.user_id.toString()}
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}>
+                        <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}  onPress={() => {setSearchHistory(item.user_id); router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: "search" } })}}>
                             <Image source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} style={styles.avatar} />
                             <View>
                                 <View style={{ flexDirection: "row" }}>
@@ -179,7 +179,7 @@ export default function SearchPage() {
                     onEndReachedThreshold={0.5}
                     initialNumToRender={2}
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border }]} onPress={() => setSearchHistory(item.user_id)}>
+                        <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border }]} onPress={() => {setSearchHistory(item.user_id); router.push({ pathname: "/user-profile", params: { id: item.user_id } })}}>
                             <Image source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} style={styles.avatar} />
                             <View>
                                 <View style={{ flexDirection: "row" }}>

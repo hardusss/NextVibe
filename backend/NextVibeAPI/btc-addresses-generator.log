@@ -1,0 +1,21 @@
+2025-03-19 16:32:32,619 - INFO - Successfully created BTC wallet for user 94 with address tb1quy3f0qk5eymcjgfvewu8e4lwsgp3z8x9rmux6c wallet name NextVibeWalletBtc94
+2025-03-19 16:33:20,153 - ERROR - Failed to create BTC wallet for user 94: Wallet with name 'NextVibeWalletBtc94' already exists
+2025-03-19 16:33:54,580 - ERROR - Failed to create BTC wallet for user 1: Wallet with name 'NextVibeWalletBtc1' already exists
+2025-03-19 16:34:13,312 - INFO - Successfully created BTC wallet for user 13 with address tb1q7tx7qxy06qy3tqysa36e4xx0yqn8ryaajpltsx wallet name NextVibeWalletBtc13
+2025-03-19 16:35:06,808 - ERROR - Failed to create BTC wallet for user 13: Wallet with name 'NextVibeWalletBtc13' already exists
+2025-03-19 16:35:24,567 - INFO - Successfully created BTC wallet for user 14 with address tb1qj7j8gfxju7pek0yc0hqvuvnfzea0n0cn7g9zrj wallet name NextVibeWalletBtc14
+2025-03-20 09:21:38,524 - ERROR - Failed to create BTC wallet for user 94: Wallet with name 'NextVibeWalletBtc94' already exists
+2025-03-20 09:21:38,531 - INFO - Creating wallet with address A1vw5dFAJ9fLpMvgM4134njbVWJvqxnyK9TC2tNxruBi and private key 885a7e3f3d03c5d5a2b9065fffd7f5c0611771e91951e3290261d096b86fb75285f629f5cb84b459f96c45af0e57b061a728839c624e3593eec5e52912c20c35
+2025-03-20 09:21:38,534 - INFO - Successfully created TRX wallet with address TLhZuC8YvPFezbkRmD4G3WauxkvvMRsf8M and private_key c40e956e6ddb8a74023322c2204f8ad1c213bcf4c0d6c73936416c366969d0bf
+2025-03-20 09:26:09,914 - ERROR - Failed to create BTC wallet for user 94: Wallet with name 'NextVibeWalletBtc94' already exists
+2025-03-20 09:26:09,916 - INFO - Creating wallet with address D6oUf5ahzvRzXwk8LfdwEgpXijv9hKF6LCsKTzR48uFg and private key 432ce73a3ddf20343afc1e095763cc36c7f8c65a05fbee29b0d305cb9bc36993b3c8b2dd4000795f8779694a44017f4d7605ccfaf894cbf57dc7d7d6f422232b
+2025-03-20 09:26:09,918 - INFO - Successfully created TRX wallet with address TEoHCfYpukCS5qRCMVVf5ZwtHTQ7HEcdSB and private_key ef4ef5d23146a8333c36cf2dd5dbfe77158761490713aa33bb1e06397d43b157
+2025-03-24 20:21:37,826 - INFO - Successfully created BTC wallet for user 110 with address tb1q03n8c0c6jhv3e75j3k87rdreelzqjmf5gfl6rr wallet name NextVibeWalletBtc110
+2025-03-24 20:21:37,829 - INFO - Creating wallet with address GAFXN6PaHjQ5HEFQe5Ni4awYc9iiKNC6xFqXqZV97th2 and private key 733592068da55dc599edfd44fb763c47e86abd27a00321eb76069bde3cb56798e13df3f57045f5b47221e11f1f88c35f5705591a9316c2d4de610949e1b7482d
+2025-03-24 20:21:37,830 - INFO - Successfully created TRX wallet with address TE1xHKV8seBAKNAWace8FgRVnwRbKPhiHV and private_key c8cf04e30e28d0de28d801cdab35f5b2f7e7723ecdc51adea53c4b11207c4d05
+2025-03-24 20:21:40,424 - INFO - Balance address: tb1q03n8c0c6jhv3e75j3k87rdreelzqjmf5gfl6rr: 0.0
+2025-03-24 20:21:41,219 - INFO - Balance address: GAFXN6PaHjQ5HEFQe5Ni4awYc9iiKNC6xFqXqZV97th2: 0.0
+2025-03-24 20:21:41,845 - ERROR - Error: account not found on-chain
+2025-03-24 20:27:00,167 - INFO - Balance address: tb1q03n8c0c6jhv3e75j3k87rdreelzqjmf5gfl6rr: 0.0
+2025-03-24 20:27:01,005 - INFO - Balance address: GAFXN6PaHjQ5HEFQe5Ni4awYc9iiKNC6xFqXqZV97th2: 0.0
+2025-03-24 20:27:01,594 - ERROR - Error: account not found on-chain

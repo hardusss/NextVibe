@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, TextInput, Animated, Dimensions, PanResponder, FlatList, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, TextInput, Animated, Dimensions, FlatList, StyleSheet, Image } from 'react-native';
 import getComments from '@/src/api/get.comments';
 import GetApiUrl from '@/src/utils/url_api';
 import { MaterialIcons, Entypo, AntDesign } from '@expo/vector-icons';
@@ -7,7 +7,6 @@ import timeAgo from '@/src/utils/formatTime';
 import { ActivityIndicator } from '../CustomActivityIndicator';
 import getUserDetail from '@/src/api/user.detail';
 import createComment from '@/src/api/create.comment';
-
 
 const { height, width } = Dimensions.get('window');
 
@@ -62,6 +61,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const [likedComments, setLikedComments] = useState<{ [key: number]: boolean }>({});
   const [replyingTo, setReplyingTo] = useState<Comment | Reply | null>(null);
   const [commentText, setCommentText] = useState<string>('');
+  const [expandedTexts, setExpandedTexts] = useState<{ [key: string]: boolean }>({});
 
   const openModal = () => {
     setModalVisible(true);
@@ -128,29 +128,28 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
     setReplyingTo(commentOrReply);
   };
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return gestureState.dy > 0;
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        if (gestureState.dy > 0 && gestureState.dy <= height) {
-          slideAnim.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (evt, gestureState) => {
-        if (gestureState.dy > 100) {
-          closeModal();
-        } else {
-          Animated.spring(slideAnim, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    })
-  ).current;
+  const toggleText = (id: string) => {
+    setExpandedTexts(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const renderCommentText = (text: string, id: string) => {
+    if (text.length <= 200 || expandedTexts[id]) {
+      return <Text style={styles.commentText}>{text}</Text>;
+    }
+    return (
+      <View>
+        <Text style={styles.commentText}>
+          {text.slice(0, 200)}...
+        </Text>
+        <TouchableOpacity onPress={() => toggleText(id)}>
+          <Text style={styles.showMoreText}>Show more</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderComment = ({ item }: { item: Comment }) => (
     <View style={styles.commentContainer}>
@@ -163,7 +162,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
               <MaterialIcons name="check-circle" size={12} color="#58a6ff" style={{ marginLeft: 5 }} />
             )}
           </View>
-          <Text style={styles.commentText}>{item.content}</Text>
+          {renderCommentText(item.content, `comment-${item.id}`)}
           <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
             <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
               <Text style={{color: "gray", fontWeight: "300"}}>{timeAgo(item.create_at)}</Text>
@@ -217,7 +216,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
               <MaterialIcons name="check-circle" size={12} color="#58a6ff" style={{ marginLeft: 5 }} />
             )}
           </View>
-          <Text style={styles.replyText}>{item.content}</Text>
+          {renderCommentText(item.content, `reply-${item.reply_id}`)}
           <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
             <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
               <Text style={{color: "gray", fontWeight: "300"}}>{timeAgo(item.create_at)}</Text>
@@ -251,15 +250,19 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
         visible={modalVisible}
         onRequestClose={closeModal}
       >
-        <View style={styles.modalOverlay}>
-          <Animated.View
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={closeModal}
+        >
+          <TouchableOpacity 
+            activeOpacity={1} 
             style={[
               styles.modalContent,
               {
                 transform: [{ translateY: slideAnim }],
               },
             ]}
-            {...panResponder.panHandlers}
           >
             <View style={styles.header}>
               <View style={styles.bar} />
@@ -302,8 +305,8 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
                 <MaterialIcons name="arrow-upward" size={22} color={"white"}/>
               </TouchableOpacity>
             </View>
-          </Animated.View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -316,7 +319,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderTopWidth: 0.3,
     borderColor: 'gray',
-    backgroundColor: '#00001a',
+    backgroundColor: '#2e2d2d',
     position: 'absolute',
     bottom: 0,
     width: width,
@@ -351,12 +354,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
   },
   modalContent: {
-    backgroundColor: '#00001a', 
+    backgroundColor: '#2e2d2d', 
     padding: 20,
     paddingBottom: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: height * 0.8
+    height: height * 0.8,
   },
   header: {
     alignItems: 'center',
@@ -450,6 +453,12 @@ const styles = StyleSheet.create({
   replyingToText: {
     color: '#FFF',
     marginRight: 10,
+  },
+  showMoreText: {
+    color: '#40E0D0',
+    marginTop: 5,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

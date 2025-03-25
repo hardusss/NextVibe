@@ -22,9 +22,9 @@ const registerDarkStyles = StyleSheet.create({
         justifyContent: 'center',
     },
     logo: {
-        width: 100,
-        height: 100,
-        marginTop: -40,
+        width: 40,
+        height: 40,
+        marginTop: -50,
     },
     title: {
         color: colors.textPrimary,

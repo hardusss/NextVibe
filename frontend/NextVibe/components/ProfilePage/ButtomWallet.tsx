@@ -1,8 +1,11 @@
 import { Pressable, Text, StyleSheet, Animated, View, Dimensions } from "react-native";
 import { useState } from "react";
+import { useRouter } from "expo-router";
+
 
 const screenWidth = Dimensions.get("window").width;
 const ButtonWallet = () => {
+    const router = useRouter();
     const [scale] = useState(new Animated.Value(1));
 
     const handlePressIn = () => {
@@ -13,6 +16,7 @@ const ButtonWallet = () => {
     };
 
     const handlePressOut = () => {
+        router.push("/create-wallet");
         Animated.spring(scale, {
             toValue: 1,
             friction: 3,

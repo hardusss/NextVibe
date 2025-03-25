@@ -20,10 +20,10 @@ const loginLightStyles = StyleSheet.create({
         justifyContent: 'center',
     },
     logo: {
-        width: 100,
-        height: 100,
+        width: 40,
+        height: 40,
         alignSelf: 'center',
-        marginBottom: 20,
+        marginBottom: 30,
     },
     title: {
         color: colors.textPrimary,

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, SafeAreaView, Text, StatusBar, Image, ScrollView } from "react-native";
+import { useState, useEffect, useCallback } from "react";
+import { View, SafeAreaView, Text, StatusBar, Image, ScrollView, RefreshControl } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
@@ -13,7 +13,7 @@ import RecommendedUsers from "./recommendateProfiles";
 import PostGallery from "./PostsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type UserData = {
     username: string;
@@ -36,12 +36,15 @@ const ProfileView = () => {
         official: false
     });
     const [loading, setLoading] = useState<boolean>(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0); // Add refresh key state
+    const [id, setId] = useState<number>();
     const colorScheme = useColorScheme();
     const profileStyle = colorScheme === "dark" ? profileDarkStyles : profileLightStyles;
 
     const fetchUserData = async () => {
         try {
-            const data = await getUserDetail();
+            const data = await getUserDetail(0);
             setUserData({
                 username: data?.username || "",
                 about: data?.about || "",
@@ -58,10 +61,21 @@ const ProfileView = () => {
         }
     };
 
+    const getId = async () => {
+        const id = await AsyncStorage.getItem("id");
+        setId(parseInt(id as string));
+    }
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        setRefreshKey(prev => prev + 1); // Increment refresh key to force re-render
+        setRefreshing(false);
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
+            getId();
             fetchUserData();
+            setRefreshKey(prev => prev + 1); // Also increment on focus
 
             return () => {
                 setUserData({
@@ -85,9 +99,20 @@ const ProfileView = () => {
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{flex: 1, justifyContent: "center", alignItems: "center"}}/>
             ) : (
-                <ScrollView contentContainerStyle={{ paddingBottom: 20 }} 
-                keyboardShouldPersistTaps="handled" 
-                showsVerticalScrollIndicator={false} >
+                <ScrollView 
+                    contentContainerStyle={{ paddingBottom: 20 }} 
+                    keyboardShouldPersistTaps="handled" 
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            tintColor={colorScheme === 'dark' ? "#fff" : "#000"}
+                            colors={["#58a6ff"]}
+                            progressBackgroundColor={colorScheme === 'dark' ? "#000" : "#fff"}
+                        />
+                    }
+                >
                     <View style={{flexDirection: "row"}}>
                         <Text style={profileStyle.username}>{userData.username}</Text>
                         {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 14}} /> :  ""}
@@ -120,18 +145,21 @@ const ProfileView = () => {
                         <ButtonWallet />
                     </View>
 
-                    <RecommendedUsers />
+                    <RecommendedUsers key={`recommended-${refreshKey}`} />
 
                     {userData.post_count === 0 ? 
                         <View style={{borderTopWidth: 1, borderColor: "#5A31F4", marginTop: 20}}>
                             <MaterialIcons name="camera-alt" size={60} color="#58a6ff" style={{ marginTop: 14, alignSelf: "center" }} />
-                            <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10, color: "white", alignSelf: "center" }}>
+                            <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10, color: colorScheme === "dark" ? "#fff" : "black", alignSelf: "center" }}>
                                 No Posts Yet
                             </Text>
                             <Text style={{ fontSize: 16, color: "#666", textAlign: "center", marginBottom: 20 }}>
                                 Start sharing your moments to make your profile more engaging.
                             </Text>
-                        </View> : <PostGallery />}
+                        </View> 
+                        : 
+                        <PostGallery key={`posts-${refreshKey}`} id={id as number} previous="profile"/>
+                    }
                 </ScrollView>
             )}
         </SafeAreaView>

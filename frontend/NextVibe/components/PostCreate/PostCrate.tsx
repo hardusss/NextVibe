@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, Image, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, Image, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Video } from 'expo-av';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { ResizeMode } from 'expo-av';
 import createPost from '@/src/api/create.post';
-
+import generateImage from '@/src/api/generate.image';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 const darkColors = {
     background: 'black',
@@ -33,28 +35,54 @@ const lightColors = {
 
 const {width, height} = Dimensions.get("window")
 
-
 export default function PostCreate() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const mediaUrls = typeof params.urls === 'string' ? JSON.parse(params.urls) : [];
+    const [mediaUrls, setMediaUrls] = useState<string[]>(typeof params.urls === 'string' ? JSON.parse(params.urls) : []);
     const [postText, setPostText] = useState('');
     const [location, setLocation] = useState('');
     const [enableComments, setEnableComments] = useState(true);
-
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? darkColors : lightColors;
 
+    useFocusEffect(
+        useCallback(() => {
+            const newMediaUrls = typeof params.urls === 'string' ? JSON.parse(params.urls) : [];
+            setMediaUrls((prevUrls) => {
+                return JSON.stringify(prevUrls) !== JSON.stringify(newMediaUrls) ? newMediaUrls : prevUrls;
+            });
+        }, [params.urls]) 
+    );
+    
     const isVideo = (uri: string): boolean => {
         return uri.endsWith('.mp4') || uri.endsWith('.mov');
+    };
+
+    const handleDeleteImage = (item: string) => {
+        if (mediaUrls.length !== 0) {
+            setMediaUrls(prev => prev.filter(url => url !== item));
+        }
     };
 
     const renderMedia = ({ item }: { item: string }) => {
         if (isVideo(item)) {
             return (
                 <View style={themedStyles.mediaContainer}>
+                    <View style={{
+                        backgroundColor: "black",
+                        position: "absolute",
+                        right: 0,
+                        top: 0,
+                        width: 20,
+                        height: 20
+                    }}>
+                        <MaterialIcons name="close" color="white"/>
+                    </View>
                     <Video
-                        source={{ uri: item.startsWith('file://') ? item : `file://${item}` }}
+                        source={{ uri: item.startsWith('file://') ||  item.startsWith('https://')? item : `file://${item}` }}
                         style={themedStyles.media}
                         useNativeControls={false}
                         isLooping
@@ -66,8 +94,22 @@ export default function PostCreate() {
         } else {
             return (
                 <View style={themedStyles.mediaContainer}>
+                    <TouchableOpacity onPress={() => handleDeleteImage(item)} style={{
+                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        borderRadius: 50,
+                        position: "absolute",
+                        right: 10,
+                        top: 10,
+                        width: 40,
+                        height: 40,
+                        zIndex: 9990
+                    }}>
+                        <MaterialIcons name="close" color="white" size={30}/>
+                    </TouchableOpacity>
                     <Image
-                        source={{ uri: item.startsWith('file://') ? item : `file://${item}` }}
+                        source={{ uri: item.startsWith('https://') || item.startsWith('file://') ? item : `file://${item}` }}
                         style={themedStyles.media}
                         resizeMode="cover"
                     />
@@ -78,13 +120,31 @@ export default function PostCreate() {
 
     const handlePublish = () => {
         createPost(postText, mediaUrls, location)
+        setMediaUrls([]);
+        setAiPrompt("");
+        setLocation("");
+        setPostText("");
         router.push("/profile")
     };
 
     const handleSaveDraft = () => {
-        console.log('Post saved as draft:', { postText, location, enableComments });
+        setMediaUrls([]);
+        setAiPrompt("");
+        setLocation("");
+        setPostText("");
         router.back();
     };
+
+    const handleGenerateWithAI = async () => {
+        setIsGenerating(true);
+        setIsModalVisible(false); 
+        const generatedImage = await generateImage(aiPrompt);
+        setMediaUrls(prev => [generatedImage as string, ...prev])
+        setPostText(aiPrompt);
+        setIsGenerating(false);
+    };
+
+
 
     const themedStyles = StyleSheet.create({
         container: {
@@ -110,6 +170,7 @@ export default function PostCreate() {
         mediaContainer: {
             width: width * 0.75,
             height: height * 0.4,
+            position: "relative",
             marginRight: 10,
             borderRadius: 10,
             overflow: 'hidden',
@@ -180,13 +241,60 @@ export default function PostCreate() {
             fontWeight: 'bold',
             color: colors.textPrimary,
         },
+        modalContainer: {
+            flex: 1,
+            justifyContent: 'flex-end',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        },
+        modalContent: {
+            width: '100%',
+            padding: 20,
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border,
+            borderTopWidth: 2,
+        },
+        modalHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+        },
+        modalInputContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+        },
+        modalInput: {
+            flex: 1,
+            height: 50,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 10,
+            padding: 10,
+            fontSize: 16,
+            backgroundColor: colors.inputBackground,
+            color: colors.textPrimary,
+        },
+        modalButton: {
+            padding: 10,
+            borderRadius: 10,
+            backgroundColor: colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
     });
 
     return (
         <ScrollView style={themedStyles.container}>
             <StatusBar backgroundColor={colors.background}></StatusBar>
             <View style={themedStyles.header}>
-                <TouchableOpacity onPress={() => router.push("/camera")}>
+                <TouchableOpacity onPress={() => {
+                    setMediaUrls([]);
+                    setAiPrompt("");
+                    setLocation("");
+                    setPostText("");
+                    router.push("/camera")
+                    }}>
                     <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={themedStyles.headerText}>New Post</Text>
@@ -229,6 +337,54 @@ export default function PostCreate() {
                     thumbColor={enableComments ? '#05f0d8' : '#f4f3f4'}
                 />
             </View>
+
+            <TouchableOpacity 
+                style={[themedStyles.button, { backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border }]} 
+                onPress={() =>{ setIsModalVisible(true)}}
+                disabled={isGenerating}
+            >
+                {isGenerating ? (
+                    <ActivityIndicator color={colors.textPrimary} />
+                ) : (
+                    <Text style={[themedStyles.buttonText, {color: "#05f0d8"}]}>Generate with AI</Text>
+                )}
+            </TouchableOpacity>
+
+            <Modal
+                visible={isModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsModalVisible(false)}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={themedStyles.modalContainer}
+                >
+                    <View style={themedStyles.modalContent}>
+                        <View style={themedStyles.modalHeader}>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.textPrimary }}>Generate with AI</Text>
+                            <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+                                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={themedStyles.modalInputContainer}>
+                            <TextInput
+                                style={themedStyles.modalInput}
+                                placeholder="Enter your prompt..."
+                                placeholderTextColor={colors.textSecondary}
+                                value={aiPrompt}
+                                onChangeText={setAiPrompt}
+                            />
+                            <TouchableOpacity 
+                                style={themedStyles.modalButton} 
+                                onPress={handleGenerateWithAI}
+                            >
+                                <Ionicons name="arrow-forward" size={24} color={colors.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
 
             <View style={themedStyles.footer}>
                 <TouchableOpacity style={[themedStyles.button, { backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border }]} onPress={handleSaveDraft}>
