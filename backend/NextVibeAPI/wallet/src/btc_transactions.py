@@ -13,7 +13,8 @@ def get_btc_transactions(address):
     transactions = []
     for tx in txs:
         transactions.append({
-            "icon": "https://cryptologos.cc/logos/bitcoin-btc-logo.png",
+            "blockchain": "BTC",
+            "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968260.png",
             "tx_id": tx.get("tx_hash"),
             "amount": f"{(tx.get('value', 0) / 1e8):.8f}".rstrip('0').rstrip('.'),
             "to_address": address,

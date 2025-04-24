@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,13 +17,12 @@ import getMenuPosts from "@/src/api/menu.posts";
 import GetApiUrl from "@/src/utils/url_api";
 import timeAgo from "@/src/utils/formatTime";
 import getUserDetail from "@/src/api/user.detail";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router"; // Додано useFocusEffect
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router"; // Added useFocusEffect
 import { RelativePathString } from "expo-router";
 import { ResizeMode } from "expo-av";
 import likePost from "@/src/api/like.post";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
-
 
 interface MediaItem {
   id: number;
@@ -51,7 +50,7 @@ const { width: screenWidth } = Dimensions.get("window");
 
 const UserPosts = () => {
   const router = useRouter();
-  let user_id = useLocalSearchParams().user_id
+  let user_id = useLocalSearchParams().user_id;
   const [index, setIndex] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const TARGET_ID = Number(useLocalSearchParams().id);
@@ -60,19 +59,26 @@ const UserPosts = () => {
   const [usersData, setUsersData] = useState<{ [key: number]: User }>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentIndices, setCurrentIndices] = useState<{ [key: number]: number }>({});
+  const [currentIndices, setCurrentIndices] = useState<{
+    [key: number]: number;
+  }>({});
   const [likedPosts, setLikedPosts] = useState<{ [key: number]: boolean }>({});
-  const [expandedPosts, setExpandedPosts] = useState<{ [key: number]: boolean }>({});
-  const [visibleVideoIndex, setVisibleVideoIndex] = useState<number | null>(null);
+  const [expandedPosts, setExpandedPosts] = useState<{
+    [key: number]: boolean;
+  }>({});
+  const [visibleVideoIndex, setVisibleVideoIndex] = useState<number | null>(
+    null
+  );
   const [showPopup, setShowPopup] = useState(false);
   const [popupPostId, setPopupPostId] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
+  const [isFetching, setIsFetching] = useState(false); // Add this line
 
   const styles = getStyles(isDarkMode);
 
-  const clearData = () => {
+  const clearData = useCallback(() => {
     setPosts([]);
     setUsersData({});
     setCurrentIndices({});
@@ -81,15 +87,16 @@ const UserPosts = () => {
     setVisibleVideoIndex(null);
     setIndex(0);
     setHasMore(true);
-  };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
+      clearData();
       fetchPosts();
       return () => {
         clearData();
       };
-    }, [])
+    }, [user_id, clearData])
   );
 
   const fetchUser = async (userId: number) => {
@@ -102,7 +109,7 @@ const UserPosts = () => {
           ...prevUsers,
           [userId]: {
             id: data.user_id,
-            avatar: `${GetApiUrl().slice(0, 25)}${data.avatar}`,
+            avatar: `${GetApiUrl().slice(0, 26)}${data.avatar}`,
             official: data.official,
             username: data.username,
           },
@@ -113,36 +120,47 @@ const UserPosts = () => {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
+    if (isFetching || !hasMore) return; // Add this check
+    setIsFetching(true);
     setLoading(true);
     setError(null);
-    if (!hasMore) return;
     try {
       const data = await getMenuPosts(+user_id);
       if (data) {
-        const newPosts = data.data;
-        setPosts((prevPosts) => [...prevPosts, ...newPosts]);
-        newPosts.forEach((post: PostItem) => fetchUser(post.user_id));
-        setHasMore(newPosts.more_posts);
-        data.liked_posts.map((liked_id: number) => {
-          setLikedPosts((prev) => ({ ...prev, [liked_id]: true }));
-        });
+        setPosts(data.data); // Replace instead of concatenate
+        data.data.forEach((post: PostItem) => fetchUser(post.user_id));
+        setHasMore(data.more_posts);
+        if (data.liked_posts) {
+          const newLikedPosts = data.liked_posts.reduce(
+            (acc: any, liked_id: number) => {
+              acc[liked_id] = true;
+              return acc;
+            },
+            {}
+          );
+          setLikedPosts(newLikedPosts);
+        }
       }
     } catch (err) {
       setError("Error downloading posts");
+    } finally {
+      setLoading(false);
+      setIsFetching(false);
     }
-    setLoading(false);
-  };
+  }, [user_id, isFetching, hasMore]);
 
-  useEffect(() => {
-    if (!posts.length) return;
-    const index = posts.findIndex((item) => item.post_id == TARGET_ID);
-    if (index !== -1) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index, animated: true });
-      }, 300);
-    }
-  }, [TARGET_ID]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!posts.length) return;
+      const index = posts.findIndex((item) => item.post_id == TARGET_ID);
+      if (index !== -1) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index, animated: true });
+        }, 300);
+      }
+    }, [TARGET_ID, posts])
+  );
 
   const handleScroll = (event: any, postId: number) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -165,21 +183,30 @@ const UserPosts = () => {
     }));
   };
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
-    if (viewableItems.length > 0) {
-      const visibleItem = viewableItems[0];
-      setVisibleVideoIndex(visibleItem.index);
-    } else {
-      setVisibleVideoIndex(null);
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: any[] }) => {
+      if (viewableItems.length > 0) {
+        const visibleItem = viewableItems[0];
+        setVisibleVideoIndex(visibleItem.index);
+      } else {
+        setVisibleVideoIndex(null);
+      }
     }
-  }).current;
+  ).current;
 
-  const renderPostItem = ({ item, index }: { item: PostItem; index: number }) => {
+  const renderPostItem = ({
+    item,
+    index,
+  }: {
+    item: PostItem;
+    index: number;
+  }) => {
     const user = usersData[item.user_id];
     const isLiked = likedPosts[item.post_id] ?? false;
     const isExpanded = expandedPosts[item.post_id] ?? false;
     const currentIndex = currentIndices[item.post_id] ?? 0;
-    const truncatedText = item.about.length > 100 ? item.about.slice(0, 100) + "..." : item.about;
+    const truncatedText =
+      item.about.length > 100 ? item.about.slice(0, 100) + "..." : item.about;
 
     return (
       <View key={item.post_id} style={styles.post}>
@@ -189,20 +216,32 @@ const UserPosts = () => {
               <Image source={{ uri: user.avatar }} style={styles.avatar} />
               <Text style={styles.username}>
                 {user.username}
-                {user.official && <MaterialIcons name="check-circle" size={12} color="#58a6ff" />}
+                {user.official && (
+                  <MaterialIcons
+                    name="check-circle"
+                    size={12}
+                    color="#58a6ff"
+                  />
+                )}
               </Text>
             </>
           )}
         </View>
 
         {item.media.length === 1 ? (
-          <MediaItemComponent item={item.media[0]} isVisible={index === visibleVideoIndex} />
+          <MediaItemComponent
+            item={item.media[0]}
+            isVisible={index === visibleVideoIndex}
+          />
         ) : (
           <View style={{ position: "relative" }}>
             <FlatList
               data={item.media}
               renderItem={({ item: mediaItem }) => (
-                <MediaItemComponent item={mediaItem} isVisible={index === visibleVideoIndex} />
+                <MediaItemComponent
+                  item={mediaItem}
+                  isVisible={index === visibleVideoIndex}
+                />
               )}
               keyExtractor={(mediaItem) => mediaItem.id.toString()}
               horizontal
@@ -220,24 +259,46 @@ const UserPosts = () => {
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity onPress={() => toggleLike(item.post_id)} style={{ flexDirection: "row" }}>
-            <Icon name={isLiked ? "heart" : "heart-outline"} size={24} color={isLiked ? "red" : styles.iconColor.color} />
-            <Text style={{ color: isDarkMode ? "white" : "black", fontSize: 16, fontWeight: "bold" }}>
+          <TouchableOpacity
+            onPress={() => toggleLike(item.post_id)}
+            style={{ flexDirection: "row" }}
+          >
+            <Icon
+              name={isLiked ? "heart" : "heart-outline"}
+              size={24}
+              color={isLiked ? "red" : styles.iconColor.color}
+            />
+            <Text
+              style={{
+                color: isDarkMode ? "white" : "black",
+                fontSize: 16,
+                fontWeight: "bold",
+              }}
+            >
               {item.count_likes > 0 ? formatNumber(item.count_likes) : ""}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity>
-            <Icon name="chatbubble-outline" size={24} color={styles.iconColor.color} onPress={() => {
-              setPopupPostId(item.post_id);
-              setShowPopup(true);
-            }} />
+            <Icon
+              name="chatbubble-outline"
+              size={24}
+              color={styles.iconColor.color}
+              onPress={() => {
+                setPopupPostId(item.post_id);
+                setShowPopup(true);
+              }}
+            />
           </TouchableOpacity>
         </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-          <Text style={styles.text}>{isExpanded ? item.about : truncatedText}</Text>
+          <Text style={styles.text}>
+            {isExpanded ? item.about : truncatedText}
+          </Text>
           {item.about.length > 100 && (
             <TouchableOpacity onPress={() => toggleExpand(item.post_id)}>
-              <Text style={styles.readMore}>{isExpanded ? "Show less" : "Read more"}</Text>
+              <Text style={styles.readMore}>
+                {isExpanded ? "Show less" : "Read more"}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -247,13 +308,20 @@ const UserPosts = () => {
   };
 
   return (
-    <View style={styles.container}>
-      {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)}/>}
+    <View style={[styles.container, { flex: 1 }]}>
+      {showPopup && (
+        <PopupModal
+          post_id={popupPostId as number}
+          onClose={() => setShowPopup(false)}
+        />
+      )}
       <View style={{ flexDirection: "row", marginLeft: -10 }}>
         <MaterialIcons
           name="keyboard-arrow-left"
           style={[styles.text, { fontSize: 42, width: 50 }]}
-          onPress={() => router.push({ pathname: previous, params: { id: user_id } })}
+          onPress={() =>
+            router.push({ pathname: previous, params: { id: user_id } })
+          }
         />
         <Text style={[styles.text, { fontSize: 28 }]}>Posts</Text>
       </View>
@@ -264,7 +332,9 @@ const UserPosts = () => {
         data={posts}
         renderItem={renderPostItem}
         keyExtractor={(item) => item.post_id.toString()}
-        initialScrollIndex={posts.findIndex((item) => item.post_id === TARGET_ID)}
+        initialScrollIndex={posts.findIndex(
+          (item) => item.post_id === TARGET_ID
+        )}
         getItemLayout={(data, index) => ({
           length: 500,
           offset: 500 * index,
@@ -278,13 +348,24 @@ const UserPosts = () => {
         viewabilityConfig={{
           itemVisiblePercentThreshold: 50,
         }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: 100,
+        }}
+        style={{ flex: 1 }}
       />
     </View>
   );
 };
 
-const MediaItemComponent = ({ item, isVisible }: { item: MediaItem; isVisible: boolean }) => {
-  const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
+const MediaItemComponent = ({
+  item,
+  isVisible,
+}: {
+  item: MediaItem;
+  isVisible: boolean;
+}) => {
+  const mediaUrl = `${GetApiUrl().slice(0, 26)}/media/${item.media_url}`;
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<Video>(null);
   const styles = getStyles(useColorScheme() === "dark");
@@ -293,16 +374,18 @@ const MediaItemComponent = ({ item, isVisible }: { item: MediaItem; isVisible: b
     setIsMuted((prev) => !prev);
   };
 
-  useEffect(() => {
-    if (item.type === "video") {
-      if (isVisible) {
-        videoRef.current?.playAsync();
-      } else {
-        videoRef.current?.pauseAsync();
-        videoRef.current?.setPositionAsync(0);
+  useFocusEffect(
+    useCallback(() => {
+      if (item.type === "video") {
+        if (isVisible) {
+          videoRef.current?.playAsync();
+        } else {
+          videoRef.current?.pauseAsync();
+          videoRef.current?.setPositionAsync(0);
+        }
       }
-    }
-  }, [isVisible]);
+    }, [isVisible])
+  );
 
   return mediaUrl.match(/\.(mp4|webm|ogg|mov|mkv)$/) ? (
     <View>
@@ -317,11 +400,19 @@ const MediaItemComponent = ({ item, isVisible }: { item: MediaItem; isVisible: b
         volume={isMuted ? 0 : 1}
       />
       <TouchableOpacity onPress={() => toggleMute()} style={styles.muteButton}>
-        <MaterialIcons name={isMuted ? "volume-off" : "volume-up"} size={24} color="white" />
+        <MaterialIcons
+          name={isMuted ? "volume-off" : "volume-up"}
+          size={24}
+          color="white"
+        />
       </TouchableOpacity>
     </View>
   ) : (
-    <Image source={{ uri: mediaUrl }} style={styles.fullMedia} resizeMode="cover" />
+    <Image
+      source={{ uri: mediaUrl }}
+      style={styles.fullMedia}
+      resizeMode="cover"
+    />
   );
 };
 
@@ -331,6 +422,7 @@ const getStyles = (isDarkMode: boolean) =>
       padding: 10,
       backgroundColor: isDarkMode ? "black" : "#fff",
       paddingBottom: 100,
+      flex: 1,
     },
     userInfo: {
       flexDirection: "row",
@@ -352,7 +444,7 @@ const getStyles = (isDarkMode: boolean) =>
       width: screenWidth,
       paddingBottom: 15,
       borderBottomWidth: 1,
-      borderColor: "#05f0d8", 
+      borderColor: "#05f0d8",
       paddingTop: 15,
       backgroundColor: isDarkMode ? "black" : "#fff",
       elevation: 3,

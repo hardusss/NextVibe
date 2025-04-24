@@ -1,6 +1,51 @@
-backend\NextVibeAPI\NextVibeAPI\.env
-.env
-media/
-**/migrations/
-*.pyc
+# Python bytecode files
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Django specific
+*.log
+*.pot
+*.pyc
+db.sqlite3
+db.sqlite3-journal
+media/
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# Environment variables
+.env
+.env.*
+!.env.example
+NextVibeAPI/NextVibeAPI/.env
+NextVibeAPI/posts/src/.env
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Log files
+*.log
+btc-addresses-balance.log
+btc-addresses-generator.log
+sol-addresses-generator.log
+transactions.log
+trx-addresses-generator.log
+
+# OS specific files
+.DS_Store
+Thumbs.db

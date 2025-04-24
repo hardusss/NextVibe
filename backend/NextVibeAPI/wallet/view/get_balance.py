@@ -50,7 +50,7 @@ class GetBalanceWallet(APIView):
                 {
                     "btc": {
                         "address": btc_wallet.address,
-                        "icon": "https://cryptologos.cc/logos/bitcoin-btc-logo.png",
+                        "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968260.png",
                         "amount": convert_scientific_to_decimal(btc_balance),
                         "usdt": btc_usdt,
                         "name": "Bitcoin",
@@ -59,7 +59,7 @@ class GetBalanceWallet(APIView):
                     },
                     "sol": {
                         "address": sol_wallet.address,
-                        "icon": "https://cryptologos.cc/logos/solana-sol-logo.png",
+                        "icon": "https://cdn-icons-png.flaticon.com/512/15208/15208206.png",
                         "amount": convert_scientific_to_decimal(sol_balance),
                         "usdt": sol_usdt,
                         "name": "Solana",
@@ -68,7 +68,7 @@ class GetBalanceWallet(APIView):
                     },
                     "trx": {
                         "address": trx_wallet.address,
-                        "icon": "https://cryptologos.cc/logos/tron-trx-logo.png",
+                        "icon": "https://cdn-icons-png.flaticon.com/512/15208/15208490.png",
                         "amount": convert_scientific_to_decimal(trx_balance),
                         "usdt": trx_usdt,
                         "name": "Tron",

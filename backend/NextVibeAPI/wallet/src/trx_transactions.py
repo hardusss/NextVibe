@@ -15,7 +15,6 @@ def get_trx_transactions(user_address):
     data = response.json()
     transactions = []
 
-    # Конвертуємо user_address в HEX для порівняння
     user_address_hex = to_hex_address(user_address) if is_base58check_address(user_address) else user_address.lower()
 
     for tx in data.get("data", []):
@@ -28,7 +27,8 @@ def get_trx_transactions(user_address):
         direction = from_address == user_address_hex
 
         transactions.append({
-            "icon": "https://cryptologos.cc/logos/tron-trx-logo.png",
+            "blockchain": "TRX",
+            "icon": "https://cdn-icons-png.flaticon.com/512/15208/15208490.png",
             "tx_id": tx.get("txID"),
             "amount": amount / 1_000_000,
             "to_address": to_address,

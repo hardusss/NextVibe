@@ -19,3 +19,21 @@
 2025-03-24 20:27:00,167 - INFO - Balance address: tb1q03n8c0c6jhv3e75j3k87rdreelzqjmf5gfl6rr: 0.0
 2025-03-24 20:27:01,005 - INFO - Balance address: GAFXN6PaHjQ5HEFQe5Ni4awYc9iiKNC6xFqXqZV97th2: 0.0
 2025-03-24 20:27:01,594 - ERROR - Error: account not found on-chain
+2025-04-07 10:06:58,092 - INFO - Successfully created BTC wallet for user 114 with address tb1qn76hn3qwq0mg7esffrdcrtxuwkwq9u5y88z79k wallet name NextVibeWalletBtc114
+2025-04-07 10:06:58,099 - INFO - Creating wallet with address 5sUhE2wSTyRD73HCsHABSbgeJBYYTeDrgZR2FqYAY1nN and private key 3cc6ce3dd27c336eddacd4fe418ef4157f85c1d55fb2b51b481b92570aa28e0f485d19f0f33e5c18a13c7be6f0ce09eadc9516816007090aa1ce9e88d58ae10f
+2025-04-07 10:06:58,102 - INFO - Successfully created TRX wallet with address TGVuM8aE46tqoaERRzjbZykPmsgZ6n2CUK and private_key 5580e438157d68f9cd00da98ef4f004ae9755a0a3c1257ae507a74115fe3a05c
+2025-04-07 10:07:02,198 - INFO - Balance address: tb1qn76hn3qwq0mg7esffrdcrtxuwkwq9u5y88z79k: 0.0
+2025-04-07 10:07:02,701 - INFO - Balance address: 5sUhE2wSTyRD73HCsHABSbgeJBYYTeDrgZR2FqYAY1nN: 0.0
+2025-04-07 10:07:03,353 - ERROR - Error: account not found on-chain
+2025-04-07 10:08:14,564 - INFO - Balance address: tb1qn76hn3qwq0mg7esffrdcrtxuwkwq9u5y88z79k: 0.0
+2025-04-07 10:08:14,987 - INFO - Balance address: 5sUhE2wSTyRD73HCsHABSbgeJBYYTeDrgZR2FqYAY1nN: 0.0
+2025-04-07 10:08:15,587 - ERROR - Error: account not found on-chain
+2025-04-07 10:09:29,310 - INFO - Balance address: tb1qn76hn3qwq0mg7esffrdcrtxuwkwq9u5y88z79k: 0.0
+2025-04-07 10:09:30,198 - INFO - Balance address: 5sUhE2wSTyRD73HCsHABSbgeJBYYTeDrgZR2FqYAY1nN: 0.0
+2025-04-07 10:09:30,781 - INFO - Balance: 2000.0 address: TGVuM8aE46tqoaERRzjbZykPmsgZ6n2CUK
+2025-04-07 10:11:44,401 - INFO - Balance address: tb1qw2ms892ypgqrmt86947vtt5jjs2wrte2m45t09: 0.00022226
+2025-04-07 10:11:45,189 - INFO - Balance address: 9Ek2AohhZWA6boxQT7JHizb7iDq3suNPXCqfGKXL4uEU: 30.0
+2025-04-07 10:11:45,787 - INFO - Balance: 4269.108934 address: TQE5eystzu41x8HWPwdAygfoJ4bdyJ8FM4
+2025-04-07 10:13:00,414 - INFO - Balance address: tb1qw2ms892ypgqrmt86947vtt5jjs2wrte2m45t09: 0.00022226
+2025-04-07 10:13:00,901 - INFO - Balance address: 9Ek2AohhZWA6boxQT7JHizb7iDq3suNPXCqfGKXL4uEU: 30.0
+2025-04-07 10:13:01,541 - INFO - Balance: 4269.108934 address: TQE5eystzu41x8HWPwdAygfoJ4bdyJ8FM4

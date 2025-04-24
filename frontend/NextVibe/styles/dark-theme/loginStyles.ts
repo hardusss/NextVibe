@@ -24,6 +24,7 @@ const loginDarkStyles = StyleSheet.create({
         height: 40,
         alignSelf: 'center',
         marginBottom: 30,
+        objectFit: "contain"
     },
     title: {
         color: colors.textPrimary,

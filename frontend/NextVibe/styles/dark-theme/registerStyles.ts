@@ -25,6 +25,7 @@ const registerDarkStyles = StyleSheet.create({
         width: 40,
         height: 40,
         marginTop: -50,
+        objectFit: "contain"
     },
     title: {
         color: colors.textPrimary,

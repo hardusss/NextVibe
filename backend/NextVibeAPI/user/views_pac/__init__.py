@@ -8,3 +8,6 @@ from .follow import FollowView
 from .search import SearchUsersView
 from .history import HistorySearchView
 from .user2fa import TwoFAView
+from .update import UpdateUserText
+from .update import UpdateUserAvatar
+from .reset_password import UpdatePassword

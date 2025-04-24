@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TextInput, useColorScheme, Animated, PanResponder, Dimensions, Image, TouchableOpacity, ScrollView, RefreshControl, Vibration } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useRef, useEffect } from 'react';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useState, useRef, useCallback } from 'react';
 import { sendSolTransaction, sendBtcTransaction, sendTrxTransaction } from '@/src/api/transactions';
 import React from 'react';
 
@@ -35,29 +35,33 @@ export default function CreateTransactionPage() {
   const loadingRotation = useRef(new Animated.Value(0)).current;
   const [isFailed, setIsFailed] = useState(false);
 
-  useEffect(() => {
-    if (isLoading) {
-      Animated.loop(
-        Animated.timing(loadingRotation, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        })
-      ).start();
-    } else {
-      loadingRotation.setValue(0);
-    }
-  }, [isLoading]);
+  useFocusEffect(
+    useCallback(() => {
+      if (isLoading) {
+        Animated.loop(
+          Animated.timing(loadingRotation, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          })
+        ).start();
+      } else {
+        loadingRotation.setValue(0);
+      }
+    }, [isLoading])
+  );
 
-  useEffect(() => {
-    if (isFailed) {
-      const timer = setTimeout(() => {
-        setIsFailed(false);
-        setIsError(false); 
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isFailed]);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFailed) {
+        const timer = setTimeout(() => {
+          setIsFailed(false);
+          setIsError(false); 
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }, [isFailed])
+  );
 
   const resetForm = () => {
     setRecipientAddress('');

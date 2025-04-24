@@ -3,8 +3,8 @@ import QRCode from 'react-native-qrcode-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 
 export default function DepositPage() {
   const { 
@@ -26,15 +26,17 @@ export default function DepositPage() {
   const [toastVisible, setToastVisible] = useState(false);
   const toastAnimation = useState(new Animated.Value(0))[0];
 
-  useEffect(() => {
-    if (symbol === 'TRX') {
-      setMinimumDep(1);
-    } else if (symbol === 'SOL') {
-      setMinimumDep(0.000005);
-    } else if (symbol === 'BTC') {
-      setMinimumDep(0.00000546);
-    }
-  }, [name])
+  useFocusEffect(
+    useCallback(() => {
+      if (symbol === 'TRX') {
+        setMinimumDep(1);
+      } else if (symbol === 'SOL') {
+        setMinimumDep(0.000005);
+      } else if (symbol === 'BTC') {
+        setMinimumDep(0.00000546);
+      }
+    }, [name])
+  )
   
   const showToast = () => {
     setToastVisible((prev) => !prev);

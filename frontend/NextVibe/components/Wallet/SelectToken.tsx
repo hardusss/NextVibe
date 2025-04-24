@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { ScrollView, View, Image, Text, TextInput, useColorScheme, StyleSheet, StatusBar, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import getBalanceWallet from "@/src/api/wallet.balance";
 import { useRouter, useLocalSearchParams } from "expo-router";
-
+import { useFocusEffect } from "expo-router";
 
 interface Tokens {
   address: string
@@ -40,10 +40,11 @@ export default function SelectTokenPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchBalance();
-  }, []);
-
+  useFocusEffect(
+    useCallback(() => {
+      fetchBalance();
+    }, [])
+  );
   const filteredTokens = tokens.filter(
     (token) =>
       token.name.toLowerCase().includes(search.toLowerCase()) ||

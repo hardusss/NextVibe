@@ -19,10 +19,10 @@ const likePost = async (post_id: number): Promise<number> => {
         return response.status;
     } catch (error) {
         if (axios.isAxiosError(error)) {
-            console.error("❌ Axios error:", error.response?.data || error.message);
+            console.error("Axios error:", error.response?.data || error.message);
             return error.response?.status || 500;
         } else {
-            console.error("❌ Unknown error:", error);
+            console.error("Unknown error:", error);
             return 500;
         }
     }

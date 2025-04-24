@@ -4,7 +4,9 @@ from .views_pac import (
                             GoogleRegisterView, GoogleLoginUserView,
                             UserDetailView, RecommendedUsersView,
                             FollowView, SearchUsersView,
-                            HistorySearchView, TwoFAView
+                            HistorySearchView, TwoFAView,
+                            UpdateUserText, UpdateUserAvatar,
+                            UpdatePassword
                         )
 
 
@@ -18,5 +20,8 @@ urlpatterns = [
     path("follow/<int:id>/<int:follow_id>/", FollowView.as_view(), name="follow"),
     path("search/", SearchUsersView.as_view(), name="search"),
     path("history/", HistorySearchView.as_view(), name="history"),
-    path("2fa/", TwoFAView.as_view(), name="2fa")
+    path("2fa/", TwoFAView.as_view(), name="2fa"),
+    path("update/user-text/", UpdateUserText.as_view(), name="update_user_text"),
+    path("update/user-avatar/", UpdateUserAvatar.as_view(), name="update_user_avatar"),
+    path("reset-password/", UpdatePassword.as_view(), name="reset_password"),
 ]

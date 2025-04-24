@@ -28,22 +28,24 @@ class UpdatePassword(APIView):
             Response: JSON response indicating success or failure.
         """
         user = request.user
-        verify_code = request.query_params.get('verify_code')
+        verify_code = request.query_params.get('verifyCode')
         if verify_code is None:
-            return Response({"error": "Verify code is required"}, status=400)
+            return Response({"message": "Verify code is required"}, status=201)
+        if len(verify_code) != 6:
+            return Response({"message": "Verify code must be 6 digits"}, status=201)
         
         try:
             if user.secret_2fa is None:
-                return Response({"error": "2FA is not enabled. Please connect 2FA!"}, status=400)
+                return Response({"message": "2FA is not enabled. Please connect 2FA!"}, status=400)
             two_fa = TwoFA(user.secret_2fa)
             if not two_fa.auth(verify_code):
-                return Response({"error": "Invalid verify code"}, status=400)
+                return Response({"message": "Invalid verify code"}, status=201)
         except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            return Response({"message": str(e)}, status=201)
         
-        new_password = request.data.get('new_password')
+        new_password = request.data.get('newPassword')
         if new_password is None:
-            return Response({"error": "New password is required"}, status=400)
+            return Response({"message": "New password is required"}, status=201)
         user.set_password(new_password)
         user.save()
         return Response({"message": "Password updated successfully"}, status=200)

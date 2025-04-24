@@ -1,5 +1,5 @@
-import { View } from "react-native";
+import MainPage from "@/components/Home/MainPage";
 
 export default function HomeScreen() {
-    return <View />;
+    return <MainPage />;
 }

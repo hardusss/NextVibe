@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Animated, Easing,  Modal, ScrollView } from "react-native";
 import { Camera, useCameraDevice, useCameraFormat } from "react-native-vision-camera";
 import Slider from '@react-native-community/slider';
 import { MaterialIcons } from "@expo/vector-icons";
 import Svg, { Circle, Defs, LinearGradient, Stop, Line } from "react-native-svg";
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -48,31 +48,37 @@ const CameraScreen = () => {
     })
   };
 
-  useEffect(() => {
-    if (mediaURLS.length === 0){
-      return;
-    }
-    router.push({
-      pathname: "/create-post",
-      params: {urls: JSON.stringify(mediaURLS)}
-    });
+  useFocusEffect(
+    useCallback(() => {
+      if (mediaURLS.length === 0){
+        return;
+      }
+      router.push({
+        pathname: "/create-post",
+        params: {urls: JSON.stringify(mediaURLS)}
+      });
+  
+      setMediaURLS([]);
+    }, [mediaURLS])
+  );
 
-    setMediaURLS([]);
-  }, [mediaURLS])
+  useFocusEffect(
+    useCallback(() => {
+      const requestPermission = async () => {
+        const cameraPermission = await Camera.requestCameraPermission();
+        setHasPermission(cameraPermission === "granted");
+      };
+      requestPermission();
+    }, [])
+  );
 
-  useEffect(() => {
-    const requestPermission = async () => {
-      const cameraPermission = await Camera.requestCameraPermission();
-      setHasPermission(cameraPermission === "granted");
-    };
-    requestPermission();
-  }, []);
-
-  useEffect(() => {
-    if (cameraSide === "back") {
-      setBackgroundContainer("black")
-    }   
-  }, [cameraSide])
+  useFocusEffect(
+    useCallback(() => {
+      if (cameraSide === "back") {
+        setBackgroundContainer("black")
+      }   
+    }, [cameraSide])
+  );
   if (!device) return <Text>Camera not found!</Text>;
 
   const handleTakePhoto = async () => {
