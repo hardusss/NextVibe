@@ -95,7 +95,7 @@ const UserProfileView = () => {
             setUserData({
                 username: data?.username || "",
                 about: data?.about || "",
-                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 25)}${data.avatar}` : null,
+                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 26)}${data.avatar}` : null,
                 post_count: data?.post_count || 0,
                 readers_count: data?.readers_count || 0,
                 follows_count: data?.follows_count || 0,
@@ -173,7 +173,7 @@ const UserProfileView = () => {
                                 alignItems: 'center',
                                 padding: 10,
                             }}
-                            onPress={() => router.push(last_page as RelativePathString || '/home')}
+                            onPress={() => router.push(last_page as RelativePathString || '/search')}
                         >
                             <MaterialIcons 
                                 name="arrow-back" 

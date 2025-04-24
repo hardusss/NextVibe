@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, TextInput, Animated, Dimensions, FlatList, StyleSheet, Image } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Modal, TextInput, Animated, Dimensions, PanResponder, FlatList, StyleSheet, Image } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import getComments from '@/src/api/get.comments';
 import GetApiUrl from '@/src/utils/url_api';
 import { MaterialIcons, Entypo, AntDesign } from '@expo/vector-icons';
@@ -7,6 +8,7 @@ import timeAgo from '@/src/utils/formatTime';
 import { ActivityIndicator } from '../CustomActivityIndicator';
 import getUserDetail from '@/src/api/user.detail';
 import createComment from '@/src/api/create.comment';
+
 
 const { height, width } = Dimensions.get('window');
 
@@ -83,32 +85,34 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
     });
   };
 
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        const data = await getComments(post_id);
-        if (Array.isArray(data)) {
-          setOwner(data[0].author);
-          setComments(data.slice(1));
-        } else {
-          console.error("Data is not array!", data);
+  useFocusEffect(
+    useCallback(() => {
+      const getData = async () => {
+        try {
+          const data = await getComments(post_id);
+          if (Array.isArray(data)) {
+            setOwner(data[0].author);
+            setComments(data.slice(1));
+          } else {
+            console.error("Data is not array!", data);
+            setComments([]);
+          }
+        } catch (error) {
+          console.error("Error get data", error);
           setComments([]);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Error get data", error);
-        setComments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    const getUser = async () => {
-      const user = await getUserDetail();
-      setUser(user);
-    };
-    getUser();
-    getData();
-    openModal();
-  }, [post_id]);
+      };
+      const getUser = async () => {
+        const user = await getUserDetail();
+        setUser(user);
+      };
+      getUser();
+      getData();
+      openModal();
+    }, [post_id])
+  );
 
   const toggleReplies = (commentId: number) => {
     setExpandedComments((prev) => ({
@@ -127,6 +131,30 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const handleReply = (commentOrReply: Comment | Reply) => {
     setReplyingTo(commentOrReply);
   };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return gestureState.dy > 0;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (gestureState.dy > 0 && gestureState.dy <= height) {
+          slideAnim.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dy > 100) {
+          closeModal();
+        } else {
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   const toggleText = (id: string) => {
     setExpandedTexts(prev => ({
@@ -154,7 +182,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const renderComment = ({ item }: { item: Comment }) => (
     <View style={styles.commentContainer}>
       <View style={styles.userInfo}>
-        <Image source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}` }} style={styles.avatar} />
+        <Image source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.user.avatar}` }} style={styles.avatar} />
         <View style={styles.commentContent}>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{item.user.username}</Text>
@@ -208,7 +236,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const renderReply = ({ item }: { item: Reply }) => (
     <View style={styles.replyContainer}>
       <View style={styles.userInfo}>
-        <Image source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}` }} style={styles.avatar} />
+        <Image source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.user.avatar}` }} style={styles.avatar} />
         <View style={styles.commentContent}>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{item.user.username}</Text>
@@ -250,19 +278,15 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
         visible={modalVisible}
         onRequestClose={closeModal}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
-          onPress={closeModal}
-        >
-          <TouchableOpacity 
-            activeOpacity={1} 
+        <View style={styles.modalOverlay}>
+          <Animated.View
             style={[
               styles.modalContent,
               {
                 transform: [{ translateY: slideAnim }],
               },
             ]}
+            {...panResponder.panHandlers}
           >
             <View style={styles.header}>
               <View style={styles.bar} />
@@ -295,7 +319,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
               </View>
             ): ""}
             <View style={styles.inputContainer}>
-              <Image source={{uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
+              <Image source={{uri: `${GetApiUrl().slice(0, 26)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
               <TextInput value={commentText} autoFocus returnKeyType='send' style={styles.input} placeholder={`Add a comment for ${owner}...`} placeholderTextColor="#888" onChange={(e) => setCommentText(e.nativeEvent.text)} />
               <TouchableOpacity style={styles.sendButton} onPress={ async () => {
                 const response = await createComment(commentText, post_id);
@@ -305,8 +329,8 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
                 <MaterialIcons name="arrow-upward" size={22} color={"white"}/>
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </Animated.View>
+        </View>
       </Modal>
     </View>
   );
@@ -359,7 +383,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: height * 0.8,
+    height: height * 0.8
   },
   header: {
     alignItems: 'center',

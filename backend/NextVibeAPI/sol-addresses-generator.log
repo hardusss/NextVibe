@@ -11,3 +11,11 @@
 2025-03-20 09:30:13,987 - INFO - Successfully created TRX wallet with address TXRCUKHMPFzKUw4YN5qaC1ATzg1shjwg5k and private_key 04bed758b4bd5589cc7390aa6725eb96052af75236b7c92c7f24bab5c83d4595
 2025-03-20 10:04:57,285 - INFO - Creating wallet with address 7mn8QnQezmmqCSZgRxQwzLevisBA3pyZVeLWofHRYwv and private key 88dab9128d0c1e9d8802d6793a0f1b783d6f68c71addda1313956b27b27a327601bc1d963dd5ef79bb3cddfa416133026bd5b77abf24ddb9f6fb70cf64ef734d
 2025-03-20 10:04:57,289 - INFO - Successfully created TRX wallet with address TJDG1xs26DUxzTRYqfMLfoXLcvEfvSSzDE and private_key 691e4dd64540b11a36b1584a8df2d6d0ba03206843583c7f3a094ebb0475aa92
+2025-04-10 13:39:46,834 - INFO - Creating wallet with address Hah6Wb9BTNix6QFRdtJUfmres5iXSFFrszSXK51u7VZC and private key 02bbd70d6e6d8d4c152a77968a0d0836028a479598a6e9fd02c4f8b727bb3d60f65c7e3ad2645001b2804498f2a6aec237ea090e3eb64bbcc14e4e754c11fd6b
+2025-04-10 13:39:46,847 - INFO - Successfully created TRX wallet with address TUMqdVTxKhQWw93Pzg3hkgfQvDZTKq21Js and private_key d627c01e3a652b7a491220dadd43059e35074fb0bba574992d2b7afef3ed2c9f
+2025-04-10 13:39:52,709 - INFO - Balance address: tb1qdwkhm5cjn3hzecm8wzucu6cecwfdw5rl5kzc2h: 0.00021503
+2025-04-10 13:39:53,179 - INFO - Balance address: Hah6Wb9BTNix6QFRdtJUfmres5iXSFFrszSXK51u7VZC: 0.0
+2025-04-10 13:39:53,820 - ERROR - Error: account not found on-chain
+2025-04-10 13:40:02,504 - INFO - Balance address: tb1qdwkhm5cjn3hzecm8wzucu6cecwfdw5rl5kzc2h: 0.00021503
+2025-04-10 13:40:02,865 - INFO - Balance address: Hah6Wb9BTNix6QFRdtJUfmres5iXSFFrszSXK51u7VZC: 0.0
+2025-04-10 13:40:03,472 - ERROR - Error: account not found on-chain

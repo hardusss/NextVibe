@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, Image, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Video } from 'expo-av';

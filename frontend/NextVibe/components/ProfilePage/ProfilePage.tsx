@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { View, SafeAreaView, Text, StatusBar, Image, ScrollView, RefreshControl } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
@@ -8,7 +8,7 @@ import GetApiUrl from "@/src/utils/url_api";
 import { MaterialIcons } from '@expo/vector-icons';
 import formatNumber from "@/src/utils/formatNumber";
 import ButtonSettings from "./ButtonSettings";
-import ButtonWallet from "./ButtomWallet";
+import ButtonWallet from "./ButtonWallet";
 import RecommendedUsers from "./recommendateProfiles";
 import PostGallery from "./PostsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
@@ -48,7 +48,7 @@ const ProfileView = () => {
             setUserData({
                 username: data?.username || "",
                 about: data?.about || "",
-                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 25)}${data.avatar}` : null,
+                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 26)}${data.avatar}` : null,
                 post_count: data?.post_count || 0,
                 readers_count: data?.readers_count || 0,
                 follows_count: data?.follows_count || 0,

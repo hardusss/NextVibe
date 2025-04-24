@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, useColorScheme, RefreshControl, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import getBalanceWallet from '@/src/api/wallet.balance';
 import formatNumberWithCommas from '@/src/utils/formatedNumberUs';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 
 
 type Token = {
@@ -41,11 +42,13 @@ export default function WalletScreen() {
     setTotalBalance(`${formatNumberWithCommas(response[0])} $`)
     setLoading(false);
   }
-  useEffect(() => {
-    fetchBalance()
-  }, []);
 
- 
+  useFocusEffect(
+    useCallback(() => {
+      fetchBalance()
+    }, []) 
+  );
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchBalance();
@@ -65,7 +68,7 @@ export default function WalletScreen() {
         height: 20,
         marginVertical: 4,
         overflow: 'hidden'
-     },
+    },
     skeletonSmall: { 
         width: 80,
         height: 15,
@@ -200,9 +203,6 @@ export default function WalletScreen() {
         <TouchableOpacity style={styles.headerButton} onPress={() => router.push({ pathname: "/profile" })}>
           <Ionicons name="arrow-back" size={28} color={isDarkMode ? '#fff' : '#000'} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerButton}>
-          <Ionicons name="settings-outline" size={28} color={isDarkMode ? '#fff' : '#000'} />
-        </TouchableOpacity>
       </View>
       <Text style={styles.balanceText}>Total Balance</Text>
       {loading ? (
@@ -261,7 +261,7 @@ export default function WalletScreen() {
           </View>
         </View>
       ))}
-      <TouchableOpacity style={styles.historyButton}>
+      <TouchableOpacity style={styles.historyButton} onPress={() => router.push("/transactions")}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Ionicons name="list-outline" size={28} color={isDarkMode ? '#fff' : '#000'} style={{ marginRight: 10 }} />
           <Text style={styles.historyText}>Transaction history</Text>

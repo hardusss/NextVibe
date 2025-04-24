@@ -57,7 +57,8 @@ def get_sol_transactions(address):
             direction = "unknown"
 
         transactions.append({
-            "icon": "https://cryptologos.cc/logos/solana-sol-logo.png",
+            "blockchain": "SOL",
+            "icon": "https://cdn-icons-png.flaticon.com/512/15208/15208206.png",
             "tx_id": signature,
             "amount": amount,
             "to_address": account_keys[1] if len(account_keys) > 1 else None,

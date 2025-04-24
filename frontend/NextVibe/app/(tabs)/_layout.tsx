@@ -15,7 +15,7 @@ export default function Layout() {
     const [imageProfile, setImageProfile] = useState<string | null>(null);
     const segments = useSegments();
     const currentPage = segments[segments.length - 1];
-    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "wallet", "select-token", "deposit", "transaction", "user-profile", "create-wallet", "result-transaction"];
+    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "wallet", "select-token", "deposit", "transaction", "user-profile", "create-wallet", "result-transaction", "transactions", "transaction-detail"];
     useEffect(() => {
         if (blacklist.includes(currentPage)) {
             return;
@@ -24,7 +24,7 @@ export default function Layout() {
             try {
                 const data = await getUserDetail();
                 if (data.avatar) {
-                    setImageProfile(`${GetApiUrl().slice(0, 25)}${data.avatar}`);
+                    setImageProfile(`${GetApiUrl().slice(0, 26)}${data.avatar}`);
                 }
             } catch (error) {
                 

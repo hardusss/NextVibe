@@ -38,7 +38,6 @@ export default async function createPost(content: string, mediaUrls: string[], l
 
         for (const [index, uri] of mediaUrls.entries()) {
             let fixedUri = uri.startsWith("file://") || uri.startsWith("https://") ? uri : `file://${uri}`;
-            console.log(`📸 Файл ${index + 1}:`, fixedUri);
 
             const imageResponse = await fetch(fixedUri, { headers: { "User-Agent": "ReactNativeApp/1.0" } });
             const blob = await imageResponse.blob();

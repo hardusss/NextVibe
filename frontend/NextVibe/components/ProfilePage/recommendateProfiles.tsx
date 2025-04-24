@@ -8,6 +8,7 @@ import getRoccomendationsProfiles from "@/src/api/recommendations.profiles";
 import GetApiUrl from "@/src/utils/url_api";
 import { MaterialIcons } from '@expo/vector-icons';
 import followUser from "@/src/api/follow";
+import { useRouter } from "expo-router";
 
 const lightTheme = {
     background: "#ffffff",
@@ -40,6 +41,7 @@ const RecommendedUsers = () => {
     const [expanded, setExpanded] = useState(true); 
     const [followedUsers, setFollowedUsers] = useState<number[]>([]); 
     const theme = useColorScheme() === "dark" ? darkTheme : lightTheme;
+    const router = useRouter();
 
     useEffect(() => {
         const fetchRecommendedUsers = async () => {
@@ -90,9 +92,9 @@ const RecommendedUsers = () => {
                         const isFollowed = followedUsers.includes(item.id);
 
                         return (
-                            <View style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.border, borderWidth: 1 }]}> 
+                            <TouchableOpacity style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.border, borderWidth: 1 }]} onPress={ () => router.push({ pathname: "/user-profile", params: { id: item.id, last_page: "profile" } })} > 
                                 <Image 
-                                    source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} 
+                                    source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.avatar}` }} 
                                     style={styles.avatar} 
                                 />
                                 <View style={styles.userInfo}>
@@ -111,7 +113,7 @@ const RecommendedUsers = () => {
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
-                            </View>
+                            </TouchableOpacity>
                         );
                     }}
                 />

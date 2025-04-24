@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, ActivityIndicator, Switch } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Animated, Dimensions, ActivityIndicator, useColorScheme } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createWallet from '../../src/api/create.wallet';
@@ -18,8 +18,9 @@ export default function CreateWallet() {
   const [checkingWallet, setCheckingWallet] = useState(true);
   const progressWidth = new Animated.Value(0);
   const [isDarkTheme, setIsDarkTheme] = useState(true);
-
+  const scheme = useColorScheme() === "dark";
   useFocusEffect(useCallback(() => {
+    setIsDarkTheme(scheme);
     checkWallet();
   }, []));
 
@@ -40,6 +41,10 @@ export default function CreateWallet() {
   };
 
   const startWalletCreation = async () => {
+    if (await AsyncStorage.getItem('wallet') === 'true') {
+      router.push('/wallet');
+
+    }
     try {
       for (let i = 0; i < steps.length; i++) {
         setActiveStep(i);
@@ -81,15 +86,6 @@ export default function CreateWallet() {
 
   return (
     <View style={[styles.container, theme.container]}>
-      <View style={styles.switchContainer}>
-        <Text style={theme.text}>Theme: {isDarkTheme ? 'Dark' : 'Light'}</Text>
-        <Switch
-          value={isDarkTheme}
-          onValueChange={() => setIsDarkTheme(!isDarkTheme)}
-          thumbColor={isDarkTheme ? '#00bcd4' : '#00bcd4'}
-          trackColor={{ false: '#ccc', true: '#333' }}
-        />
-      </View>
 
       <Ionicons name="wallet-outline" size={80} color={theme.accent} style={{ marginBottom: 20 }} />
 

@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, useColorScheme, TouchableOpacity, Animated, StatusBar, Image, Linking } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useRef, useEffect } from 'react';
+import { useRef, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 
 export default function ResultTransaction() {
   const { from, to, amount, symbol, usdValue, icon, tx_url } = useLocalSearchParams();
@@ -12,21 +12,23 @@ export default function ResultTransaction() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      })
-    ]).start();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        })
+      ]).start();
+    }, [])
+  );
 
   const handleOpenURL = async (url: string) => {
     try {

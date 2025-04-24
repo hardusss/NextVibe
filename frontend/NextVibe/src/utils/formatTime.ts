@@ -4,7 +4,7 @@ const timeAgo = (timestamp: string | number): string => {
 
     if (typeof timestamp === "string") {
         const parsedTime = Date.parse(timestamp);
-        if (isNaN(parsedTime)) return "Invalid date"; // Перевірка, щоб уникнути NaN
+        if (isNaN(parsedTime)) return "Invalid date"; // Check to avoid NaN
         time = parsedTime;
     } else {
         time = timestamp < 1e12 ? timestamp * 1000 : timestamp;
