@@ -33,7 +33,7 @@ ALLOWED_HOSTS = ["*"]
 INSTALLED_APPS = [
     'user',
     'posts',
-    'chats',
+    'chat',
     'wallet',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'NextVibeAPI.middleware.UserActivityMiddleware',
 ]
 
 from datetime import timedelta
