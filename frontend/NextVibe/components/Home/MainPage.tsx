@@ -327,7 +327,7 @@ interface LikedPosts {
 }
 
 const MediaItemComponent = ({ item }: { item: MediaItem }) => {
-    const mediaUrl = `${GetApiUrl().slice(0, 26)}/media/${item.media_url}`;
+    const mediaUrl = `${GetApiUrl().slice(0, 23)}/media/${item.media_url}`;
     const [isMuted, setIsMuted] = useState(true);
     const videoRef = useRef<Video>(null);
     const styles = getStyles(useColorScheme() === "dark" ? darkTheme : lightTheme);
@@ -460,7 +460,7 @@ export default function MainPage() {
             <View style={styles.postContainer}>
                 <View style={styles.postHeader}>
                     <Image 
-                        source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.owner__avatar}` }} 
+                        source={{ uri: `${GetApiUrl().slice(0, 23)}/media/${item.owner__avatar}` }} 
                         style={styles.avatar} 
                     />
                     <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>
