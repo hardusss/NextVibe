@@ -7,15 +7,23 @@ import { Image } from "react-native";
 import GetApiUrl from "@/src/utils/url_api";
 import { useSegments } from "expo-router";
 
-
 export default function Layout() {
+
     const theme = useColorScheme();
     const activeColor = "#7B61FF"; 
     const inactiveColor = theme === "dark" ?  "#fafafa" : "black"; 
     const [imageProfile, setImageProfile] = useState<string | null>(null);
     const segments = useSegments();
     const currentPage = segments[segments.length - 1];
-    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "wallet", "select-token", "deposit", "transaction", "user-profile", "create-wallet", "result-transaction", "transactions", "transaction-detail"];
+    const blacklist = ["register", "login",
+                        "postslist", "splash",
+                        "index", "create-post",
+                        "settings", "wallet",
+                        "select-token", "deposit",
+                        "transaction", "user-profile",
+                        "create-wallet", "result-transaction",
+                        "transactions", "transaction-detail",
+                        "chat-room", "chats"];
     useEffect(() => {
         if (blacklist.includes(currentPage)) {
             return;
@@ -24,7 +32,7 @@ export default function Layout() {
             try {
                 const data = await getUserDetail();
                 if (data.avatar) {
-                    setImageProfile(`${GetApiUrl().slice(0, 26)}${data.avatar}`);
+                    setImageProfile(`${GetApiUrl().slice(0, 23)}${data.avatar}`);
                 }
             } catch (error) {
                 

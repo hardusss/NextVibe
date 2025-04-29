@@ -182,7 +182,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const renderComment = ({ item }: { item: Comment }) => (
     <View style={styles.commentContainer}>
       <View style={styles.userInfo}>
-        <Image source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.user.avatar}` }} style={styles.avatar} />
+        <Image source={{ uri: `${GetApiUrl().slice(0, 23)}/media/${item.user.avatar}` }} style={styles.avatar} />
         <View style={styles.commentContent}>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{item.user.username}</Text>
@@ -236,7 +236,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const renderReply = ({ item }: { item: Reply }) => (
     <View style={styles.replyContainer}>
       <View style={styles.userInfo}>
-        <Image source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.user.avatar}` }} style={styles.avatar} />
+        <Image source={{ uri: `${GetApiUrl().slice(0, 23)}/media/${item.user.avatar}` }} style={styles.avatar} />
         <View style={styles.commentContent}>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{item.user.username}</Text>
@@ -319,7 +319,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
               </View>
             ): ""}
             <View style={styles.inputContainer}>
-              <Image source={{uri: `${GetApiUrl().slice(0, 26)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
+              <Image source={{uri: `${GetApiUrl().slice(0, 23)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
               <TextInput value={commentText} autoFocus returnKeyType='send' style={styles.input} placeholder={`Add a comment for ${owner}...`} placeholderTextColor="#888" onChange={(e) => setCommentText(e.nativeEvent.text)} />
               <TouchableOpacity style={styles.sendButton} onPress={ async () => {
                 const response = await createComment(commentText, post_id);

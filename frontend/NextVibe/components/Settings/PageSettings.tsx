@@ -303,7 +303,7 @@ function PageSettingsContent() {
                                 <TouchableWithoutFeedback onPressIn={() => {handlePressIn(); handleOpenEdit()}} onPressOut={handlePressOut}>
                                     <Animated.Image
                                         style={[styles.image, { transform: [{ scale: scaleAnim }] }]}
-                                        source={{ uri: `${GetApiUrl().slice(0, 26)}${user?.avatar}` }}
+                                        source={{ uri: `${GetApiUrl().slice(0, 23)}${user?.avatar}` }}
                                     />
                                 </TouchableWithoutFeedback>
                             </View>

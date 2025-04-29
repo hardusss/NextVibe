@@ -1,7 +1,7 @@
 import { TouchableOpacity, Text, View, Image, StyleSheet, Animated } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColorScheme } from "react-native";
-
+import { useRouter } from "expo-router";
 
 interface HeaderProps {
     translateY?: Animated.AnimatedInterpolation<string | number>;
@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export default function Header({ translateY }: HeaderProps) {
     const isDark = useColorScheme() === 'dark';
-
+    const router = useRouter();
     const styles = getStyles(isDark);
     return (
         <Animated.View 
@@ -22,7 +22,7 @@ export default function Header({ translateY }: HeaderProps) {
                 <Image source={require('@/assets/logo.png')} style={{ width: 50, height: 50, marginLeft: 10, objectFit: "contain" }} />
                 <Text style={styles.text}>extVibe</Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/chats")}>
                 <MaterialCommunityIcons name="chat-outline" style={styles.chat}/>
             </TouchableOpacity>
         </Animated.View>

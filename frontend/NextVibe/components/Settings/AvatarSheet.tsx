@@ -102,7 +102,7 @@ return (
         <TouchableOpacity style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
         <Animated.View style={[styles.container, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
             <View style={styles.avatarContainer}>
-                <Image source={{ uri: `${GetApiUrl().slice(0, 26)}${avatar}` }} style={styles.avatar} />
+                <Image source={{ uri: `${GetApiUrl().slice(0, 23)}${avatar}` }} style={styles.avatar} />
             </View>
 
             <TouchableOpacity style={styles.button} onPress={pickImage}>
