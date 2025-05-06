@@ -41,15 +41,11 @@ const ButtonSsetings = () => {
 
 const styles = StyleSheet.create({
     button: {
-        width: screenWidth * 0.43,
+        width: (screenWidth * 0.45) - 15,
+        height: 40,
         paddingVertical: 10,
         alignItems: "center",
         borderRadius: 8,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 1, 
     },
     text: {
         color: "black",

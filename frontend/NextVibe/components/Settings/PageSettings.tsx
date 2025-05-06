@@ -303,7 +303,7 @@ function PageSettingsContent() {
                                 <TouchableWithoutFeedback onPressIn={() => {handlePressIn(); handleOpenEdit()}} onPressOut={handlePressOut}>
                                     <Animated.Image
                                         style={[styles.image, { transform: [{ scale: scaleAnim }] }]}
-                                        source={{ uri: `${GetApiUrl().slice(0, 23)}${user?.avatar}` }}
+                                        source={{ uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}` }}
                                     />
                                 </TouchableWithoutFeedback>
                             </View>
@@ -362,7 +362,7 @@ function PageSettingsContent() {
                 )
                 }
             </ScrollView>
-            <AvatarSheet avatar={user?.avatar as string} isVisible={isVisibleAvatar} onClose={() => setIsVisableAvatar((prev)=>!prev)} onReset={() => resetAvatar()}></AvatarSheet>
+            <AvatarSheet isVisible={isVisibleAvatar} onClose={() => setIsVisableAvatar((prev)=>!prev)} onReset={() => resetAvatar()}></AvatarSheet>
             <BottomSheet isVisible={isVisable2FA} onClose={() => setIsVisable2FA(false)} onSuccess={() => {setTwoFA(true); updateStatus(true)}} onFail={() => {setTwoFA(false); updateStatus(false)}}></BottomSheet>
             <LogoutConfirmationSheet 
                 isVisible={isVisibleLogoutConfirmation} 

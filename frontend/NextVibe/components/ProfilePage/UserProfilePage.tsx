@@ -12,9 +12,12 @@ import { ActivityIndicator } from "../CustomActivityIndicator";
 import { useFocusEffect } from 'expo-router';
 import getUserDetail from "@/src/api/user.detail";
 import { RelativePathString } from "expo-router";
+import followUser from "@/src/api/follow";
+import CreateChat from "@/src/api/create.chat";
 
 
 type UserData = {
+    user_id: number;
     username: string;
     about: string;
     avatar_url: string | null;
@@ -47,8 +50,24 @@ const ButtonSubscribe = ({ isSubscribed, onPress, isDark }: { isSubscribed: bool
     </TouchableOpacity>
 );
 
-const ButtonMessage = () => {
+const ButtonMessage = ({user}: {user: UserData}) => {
     const router = useRouter();
+
+    const handleCreateChat = async () => {
+    
+        try {
+            const response = await CreateChat(user.user_id);
+            if (response) {
+                router.push({
+                    pathname: "/(tabs)/chat-room",
+                    params: { id: response.chat_id, userId: user.user_id }
+                });
+            }
+        } catch (error) {
+            console.error("Error creating chat:", error);
+        }
+    
+    }
     return (
         <TouchableOpacity 
             style={{
@@ -57,7 +76,7 @@ const ButtonMessage = () => {
                 borderRadius: 8,
                 width: '48%',
             }}
-            onPress={() => {}}
+            onPress={() => {handleCreateChat()}}
         >
             <Text style={{ 
                 color: '#fff', 
@@ -74,6 +93,7 @@ const UserProfileView = () => {
     const { id, last_page } = useLocalSearchParams();
     const router = useRouter();
     const [userData, setUserData] = useState<UserData>({
+        user_id: 0,
         username: "",
         about: "",
         avatar_url: null,
@@ -91,11 +111,12 @@ const UserProfileView = () => {
 
     const fetchUserData = async () => {
         try {
-            const data = await getUserDetail(+id); // Using the imported getUserDetail
+            const data = await getUserDetail(+id, true); // Using the imported getUserDetail
             setUserData({
+                user_id: data?.user_id || 0,
                 username: data?.username || "",
                 about: data?.about || "",
-                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 23)}${data.avatar}` : null,
+                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 25)}${data.avatar}` : null,
                 post_count: data?.post_count || 0,
                 readers_count: data?.readers_count || 0,
                 follows_count: data?.follows_count || 0,
@@ -111,6 +132,7 @@ const UserProfileView = () => {
     };
 
     const handleSubscribe = async () => {
+        followUser(+id)
         setUserData(prev => ({
             ...prev,
             is_subscribed: !prev.is_subscribed,
@@ -130,6 +152,7 @@ const UserProfileView = () => {
             fetchUserData();
             return () => {
                 setUserData({
+                    user_id: 0,
                     username: "",
                     about: "",
                     avatar_url: null,
@@ -189,7 +212,7 @@ const UserProfileView = () => {
                     {/* Stats Section */}
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
                         <Image style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
-                        <View style={{flexDirection: "row", marginTop: 35, marginLeft: 20, flex: 1, justifyContent: "space-around"}}>
+                        <View style={{flexDirection: "row", marginTop: 35, flex: 1, justifyContent: "space-around"}}>
                             {/* Stats items */}
                             <View>
                                 <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.post_count)}</Text>
@@ -207,14 +230,13 @@ const UserProfileView = () => {
                     </View>
 
                     {/* About Section */}
-                    {userData.about && <Text style={[profileStyle.about, {marginLeft: 20}]}>{userData.about}</Text>}
+                    {userData.about && <Text style={[profileStyle.about, {}]}>{userData.about}</Text>}
 
                     {/* Action Buttons */}
                     <View style={{
                         flexDirection: "row",
                         marginTop: 20,
                         justifyContent: "space-between",
-                        paddingHorizontal: 20,
                         marginBottom: 20
                     }}>
                         <ButtonSubscribe 
@@ -222,7 +244,7 @@ const UserProfileView = () => {
                             onPress={handleSubscribe}
                             isDark={colorScheme === 'dark'} 
                         />
-                        <ButtonMessage />
+                        <ButtonMessage user={userData}/>
                     </View>
                     {userData.post_count === 0 ? (
                         <View style={{borderTopWidth: 1, borderColor: "#5A31F4", marginTop: 20}}>

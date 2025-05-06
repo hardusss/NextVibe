@@ -1,4 +1,4 @@
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, Dimensions, useColorScheme, Animated, RefreshControl } from "react-native";
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, Dimensions, useColorScheme, Animated, RefreshControl, TouchableWithoutFeedback } from "react-native";
 import Header from "./Header";
 import { useEffect, useState, useCallback, useRef } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
@@ -251,6 +251,16 @@ const getStyles = (theme: typeof darkTheme) => {
         backgroundColor: '#1a1a1a',
         overflow: "hidden",
     },
+    heartOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'transparent'
+    },
 });
 }
 
@@ -326,36 +336,96 @@ interface LikedPosts {
     [key: number]: boolean;
 }
 
-const MediaItemComponent = ({ item }: { item: MediaItem }) => {
-    const mediaUrl = `${GetApiUrl().slice(0, 23)}/media/${item.media_url}`;
+const MediaItemComponent = ({ item, postId, onLike, isLiked }: { 
+    item: MediaItem; 
+    postId: number;
+    onLike: (postId: number) => void;
+    isLiked: boolean;
+}) => {
+    const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
     const [isMuted, setIsMuted] = useState(true);
+    const [showHeart, setShowHeart] = useState(false);
+    const heartAnim = useRef(new Animated.Value(0)).current;
+    const lastTap = useRef(0);
     const videoRef = useRef<Video>(null);
     const styles = getStyles(useColorScheme() === "dark" ? darkTheme : lightTheme);
 
-    return mediaUrl.match(/\.(mp4|webm|ogg|mov|mkv)$/) ? (
-        <View style={styles.mediaContainer}>
-            <Video
-                ref={videoRef}
-                source={{ uri: mediaUrl }}
-                style={styles.fullMedia}
-                useNativeControls={false}
-                isLooping
-                shouldPlay={false}
-                resizeMode={ResizeMode.COVER}
-                volume={isMuted ? 0 : 1}
-            />
-            <TouchableOpacity onPress={() => setIsMuted(prev => !prev)} style={styles.muteButton}>
-                <MaterialIcons name={isMuted ? "volume-off" : "volume-up"} size={24} color="white" />
-            </TouchableOpacity>
-        </View>
-    ) : (
-        <View style={styles.mediaContainer}>
-            <Image 
-                source={{ uri: mediaUrl }} 
-                style={styles.fullMedia}
-                resizeMode="cover" 
-            />
-        </View>
+    const handleDoublePress = () => {
+        const now = Date.now();
+        if (now - lastTap.current < 300) {
+            // Показуємо анімацію завжди при подвійному тапі
+            animateHeart();
+            // Ставимо лайк тільки якщо його ще немає
+            if (!isLiked) {
+                onLike(postId);
+            }
+        }
+        lastTap.current = now;
+    };
+
+    const animateHeart = () => {
+        setShowHeart(true);
+        Animated.sequence([
+            Animated.spring(heartAnim, {
+                toValue: 1,
+                friction: 3,
+                useNativeDriver: true
+            }),
+            Animated.delay(500),
+            Animated.timing(heartAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true
+            })
+        ]).start(() => {
+            setShowHeart(false);
+            heartAnim.setValue(0);
+        });
+    };
+
+    return (
+        <TouchableWithoutFeedback onPress={handleDoublePress}>
+            <View style={styles.mediaContainer}>
+                {item.media_url.match(/\.(mp4|webm|ogg|mov|mkv)$/) ? (
+                    <>
+                        <Video
+                            ref={videoRef}
+                            source={{ uri: mediaUrl }}
+                            style={styles.fullMedia}
+                            useNativeControls={false}
+                            isLooping
+                            shouldPlay={false}
+                            resizeMode={ResizeMode.COVER}
+                            volume={isMuted ? 0 : 1}
+                        />
+                        <TouchableOpacity 
+                            onPress={() => setIsMuted(prev => !prev)} 
+                            style={styles.muteButton}
+                        >
+                            <MaterialIcons 
+                                name={isMuted ? "volume-off" : "volume-up"} 
+                                size={24} 
+                                color="white" 
+                            />
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <Image 
+                        source={{ uri: mediaUrl }} 
+                        style={styles.fullMedia}
+                        resizeMode="cover" 
+                    />
+                )}
+                {showHeart && (
+                    <Animated.View style={[styles.heartOverlay, {
+                        transform: [{ scale: heartAnim }],
+                        opacity: heartAnim
+                    }]}>
+                        <MaterialIcons name="favorite" size={80} color="#ff0000" />
+                    </Animated.View>
+                )}
+            </View>
+        </TouchableWithoutFeedback>
     );
 };
 
@@ -442,25 +512,17 @@ export default function MainPage() {
             [postId]: !prev[postId]
         }));
     };
-
-    const handleScroll = (event: any, postId: number) => {
-        const contentOffsetX = event.nativeEvent.contentOffset.x;
-        const index = Math.floor(contentOffsetX / screenWidth);
-        setCurrentIndices((prevIndices) => ({ ...prevIndices, [postId]: index }));
-      };
-
     
     const renderItem = ({ item, index }: { item: Post; index: number }) => {
         const isLiked = likedPosts[item.id] ?? false;
         const isExpanded = expandedPosts[item.id] ?? false;
         const needsMoreButton = item.about.length > 100;
         const displayText = needsMoreButton && !isExpanded ? item.about.slice(0, 100) + "..." : item.about;
-        const currentIndex = currentIndices[item.id] ?? 0;
         return (
             <View style={styles.postContainer}>
                 <View style={styles.postHeader}>
                     <Image 
-                        source={{ uri: `${GetApiUrl().slice(0, 23)}/media/${item.owner__avatar}` }} 
+                        source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.owner__avatar}` }} 
                         style={styles.avatar} 
                     />
                     <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>
@@ -479,14 +541,22 @@ export default function MainPage() {
                 <View style={styles.mediaPlaceholder}>
                     {item.media.length === 1 ? (
                         <MediaItemComponent 
-                            item={item.media[0]} 
+                            item={item.media[0]}
+                            postId={item.id}
+                            onLike={toggleLike}
+                            isLiked={isLiked}
                         />
                     ) : (
                         <View style={{ position: "relative", width: screenWidth }}>
                             <FlatList
                                 data={item.media}
                                 renderItem={({ item: mediaItem }) => (
-                                    <MediaItemComponent item={mediaItem} />
+                                    <MediaItemComponent 
+                                        item={mediaItem} 
+                                        postId={item.id}
+                                        onLike={toggleLike}
+                                        isLiked={isLiked}
+                                    />
                                 )}
                                 keyExtractor={mediaItem => mediaItem.id.toString()}
                                 horizontal

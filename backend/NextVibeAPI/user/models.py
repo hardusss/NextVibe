@@ -26,7 +26,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser):
     user_id = models.AutoField(primary_key=True, unique=True)
     avatar = models.ImageField(upload_to='images/', default='images/default.png')
-    about = models.CharField(default="",max_length=120, null=True)
+    about = models.CharField(default="",max_length=120, null=True, blank=True)
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=128, null=True)
@@ -41,7 +41,7 @@ class User(AbstractBaseUser):
     official = models.BooleanField(default=False, null=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     last_activity = models.DateTimeField(default=timezone.now)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

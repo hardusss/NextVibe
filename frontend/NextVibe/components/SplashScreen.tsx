@@ -12,7 +12,7 @@ export default function SplashScreen() {
     const redirectTo = async () => {
         AsyncStorage.getItem("access").then((token) => {
             if (token) {
-                router.push("/profile");
+                router.push("/home");
             } else {
                 router.push("/register");
             }

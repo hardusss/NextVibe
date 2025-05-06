@@ -1,22 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MediaGrid from './MediaGrid';
+
+interface MediaAttachment {
+  id: number;
+  file_url: string | null;
+  isTemp?: boolean;  // Додаємо опціональне поле isTemp
+}
 
 interface Message {
   message_id: number;
-  sender_id: number;
   content: string;
+  sender_id: number;
   created_at: string;
+  is_read: boolean;
+  media: MediaAttachment[];
+}
+
+interface Props {
+  message: Message;
 }
 
 function formatMessageTime(isoDate: string): string {
   const date = new Date(isoDate);
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const localDate = new Date(date.getTime() + (3 * 60 * 60 * 1000)); 
+  const hours = localDate.getHours().toString().padStart(2, '0');
+  const minutes = localDate.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 }
 
-export default function ChatBubble({ message }: { message: Message }) {
+const ChatBubble: React.FC<Props> = ({ message }) => {
   const isDark = useColorScheme() === 'dark';
   const [userId, setUserId] = useState<number | null>(null);
 
@@ -38,16 +52,21 @@ export default function ChatBubble({ message }: { message: Message }) {
   return (
     <View style={[styles.container, isMyMessage ? styles.rightAlign : styles.leftAlign]}>
       <View style={styles.messageContent}>
+        {message.media && message.media.length > 0 && (
+          <MediaGrid media={message.media} />
+        )}
         <View style={styles.row}>
           {message.content && (
             <Text style={styles.text}>{message.content}</Text>
           )}
-          <Text style={styles.time}>{formatMessageTime(message.created_at)}</Text>
+          <View style={styles.messageStatus}>
+            <Text style={styles.time}>{formatMessageTime(message.created_at)}</Text>
+          </View>
         </View>
       </View>
     </View>
   );
-}
+};
 
 const getStyles = (isDark: boolean, isMyMessage: boolean) => StyleSheet.create({
   container: {
@@ -79,8 +98,38 @@ const getStyles = (isDark: boolean, isMyMessage: boolean) => StyleSheet.create({
     fontSize: 16,
     marginRight: 6,
   },
+  messageStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkIcon: {
+    marginLeft: 4,
+  },
   time: {
     color: isMyMessage ? '#e0f7f5' : (isDark ? '#888' : '#666'),
     fontSize: 12,
   },
+  mediaContainer: {
+    marginBottom: 8,
+  },
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    margin: -2,
+  },
+  mediaPreview: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  readStatus: {
+    fontSize: 12,
+    color: '#8e8e8e',
+    alignSelf: 'flex-end',
+    marginTop: 2,
+  },
 });
+
+export default ChatBubble;

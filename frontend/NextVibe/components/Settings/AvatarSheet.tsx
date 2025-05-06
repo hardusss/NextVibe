@@ -1,199 +1,163 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet, useColorScheme, PanResponder, Image } from 'react-native';
+import React from 'react';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import GetApiUrl from '@/src/utils/url_api';
-import setAvatar from '@/src/api/set.avatar';
+import { MaterialIcons } from '@expo/vector-icons';
 import { usePopup } from '../Popup';
-
+import setAvatar from '@/src/api/set.avatar';
 
 interface Props {
-    isVisible: boolean;
-    onClose: () => void;
-    onReset?: () => void;
-    avatar?: string;
+  isVisible: boolean;
+  onClose: () => void;
+  onReset?: () => void;
 }
 
-const AvatarSheet = ({ isVisible, onClose, onReset, avatar }: Props) => {
-const isDark = useColorScheme() === 'dark';
-const translateY = useRef(new Animated.Value(300)).current;
-const { showPopup } = usePopup();
-const onAvatarChange = (uri: string) => {
-    setAvatar(uri);
-};
-const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
+const AvatarSheet = ({ isVisible, onClose,  onReset }: Props) => {
+  const isDark = useColorScheme() === 'dark';
+  const { showPopup } = usePopup();
+
+  const onImageSelected = async (uri: string) => {
+    setAvatar(uri)
+  }
+
+  const handleCameraPress = async () => {
+    onClose(); // Закриваємо модальне вікно перед відкриттям камери
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        showPopup('error', 'Error', 'Camera permission is required');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
-    });
+      });
 
-    if (!result.canceled && result.assets[0].uri) {
-        onAvatarChange?.(result.assets[0].uri);
-        onClose();
+      if (!result.canceled && result.assets[0].uri) {
+        await onImageSelected(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      showPopup('error', 'Error', 'Failed to take photo');
     }
-};
+  };
 
-const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-        showPopup('error', 'Error', 'We need permission to use the camera for this feature!');
+  const handleGalleryPress = async () => {
+    onClose(); 
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showPopup('error', 'Error', 'Gallery permission is required');
         return;
-    }
+      }
 
-    const result = await ImagePicker.launchCameraAsync({
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
-    });
+      });
 
-    if (!result.canceled && result.assets[0].uri) {
-        setAvatar(result.assets[0].uri);
-        showPopup('success', 'Success', 'Avatar successfully updated');
-        onClose();
+      if (!result.canceled && result.assets[0].uri) {
+        await onImageSelected(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      showPopup('error', 'Error', 'Failed to pick image');
     }
-};
+  };
 
-const handleReset = () => {
-    onReset?.();
-    showPopup('info', 'Information', 'Avatar has been reset to default');
-    onClose();
-};
+  const handleReset = () => {
+    if (onReset) {
+      onReset();
+      onClose();
+    }
+  };
 
-const styles = getStyles(isDark);
-const panResponder = useRef(
-    PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-        translateY.setValue(gestureState.dy);
-        }
-    },
-    onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 50) {
-        onClose();
-        } else {
-        Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8
-        }).start();
-        }
-    },
-    })
-).current;
+  return (
+    <Modal
+      visible={isVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <TouchableOpacity 
+          style={styles.backdrop} 
+          activeOpacity={1} 
+          onPress={onClose}
+        />
+        <View style={[styles.content, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
+          <TouchableOpacity 
+            style={[styles.option, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]} 
+            onPress={handleCameraPress}
+          >
+            <MaterialIcons name="camera-alt" size={24} color={isDark ? '#fff' : '#000'} />
+            <Text style={[styles.optionText, { color: isDark ? '#fff' : '#000' }]}>
+              Take Photo
+            </Text>
+          </TouchableOpacity>
 
-useEffect(() => {
-    Animated.spring(translateY, {
-    toValue: isVisible ? 0 : 300,
-    useNativeDriver: true,
-    tension: 100,
-    friction: 8
-    }).start();
-}, [isVisible]);
+          <TouchableOpacity 
+            style={[styles.option, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]} 
+            onPress={handleGalleryPress}
+          >
+            <MaterialIcons name="photo-library" size={24} color={isDark ? '#fff' : '#000'} />
+            <Text style={[styles.optionText, { color: isDark ? '#fff' : '#000' }]}>
+              Choose from Gallery
+            </Text>
+          </TouchableOpacity>
 
-if (!isVisible) return null;
-
-return (
-    <View style={styles.overlay}>
-        <TouchableOpacity style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
-        <Animated.View style={[styles.container, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
-            <View style={styles.avatarContainer}>
-                <Image source={{ uri: `${GetApiUrl().slice(0, 23)}${avatar}` }} style={styles.avatar} />
-            </View>
-
-            <TouchableOpacity style={styles.button} onPress={pickImage}>
-                <MaterialCommunityIcons name="image" size={24} color="#c9d1d9" />
-                <Text style={styles.buttonText}>Set avatar from gallery</Text>
+          {onReset && (
+            <TouchableOpacity 
+              style={[styles.option, styles.resetOption]} 
+              onPress={handleReset}
+            >
+              <MaterialIcons name="delete" size={24} color="#ff4444" />
+              <Text style={[styles.optionText, { color: '#ff4444' }]}>
+                Remove Photo
+              </Text>
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.button} onPress={takePhoto}>
-                <MaterialCommunityIcons name="camera" size={24} color="#c9d1d9" />
-                <Text style={styles.buttonText}>Take avatar by camera</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.button, styles.resetButton]} onPress={handleReset}>
-                <MaterialCommunityIcons name="delete" size={24} color="red" />
-                <Text style={[styles.buttonText, {color: "red"}]}>Reset</Text>
-            </TouchableOpacity>
-        </Animated.View>
-    </View>
-);
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 };
 
-const darkColors = {
-    background: 'rgb(31, 31, 32)',
-    buttonBackground: '#1f1f1f',
-    textColor: '#c9d1d9',
-    accent: '#00E4FF',
-    overlay: 'rgba(0, 0, 0, 0.5)'
-};
-
-const lightColors = {
-    background: '#ffffff',
-    cardBackground: '#f5f5f5',
-    buttonBackground: '#e5e5e5',
-    textColor: '#000000',
-    overlay: 'rgba(0, 0, 0, 0.3)'
-};
-
-const getStyles = (isDark: boolean) => StyleSheet.create({
-    overlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: isDark ? darkColors.overlay : lightColors.overlay,
-        justifyContent: 'flex-end',
-    },
-    overlayTouchable: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-    },
-    container: {
-        backgroundColor: isDark ? darkColors.background : lightColors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
-        paddingBottom: 40,
-        elevation: 5,
-    },
-    avatarContainer: {
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    avatar: {
-        width: 70,
-        height: 70,
-        borderRadius: 50,
-    },
-    closeButton: {
-        alignSelf: 'flex-end',
-        padding: 10,
-    },
-    button: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 15,
-        borderRadius: 10,
-        marginVertical: 8,
-    },
-    buttonText: {
-        color: isDark ? darkColors.textColor : lightColors.textColor,
-        fontSize: 16,
-        marginLeft: 10,
-        fontWeight: '500',
-    },
-    resetButton: {
-        
-    },
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 40,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  optionText: {
+    fontSize: 16,
+    marginLeft: 12,
+  },
+  resetOption: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#ff4444',
+  }
 });
 
 export default AvatarSheet;

@@ -32,7 +32,7 @@ export default function Layout() {
             try {
                 const data = await getUserDetail();
                 if (data.avatar) {
-                    setImageProfile(`${GetApiUrl().slice(0, 23)}${data.avatar}`);
+                    setImageProfile(`${GetApiUrl().slice(0, 25)}${data.avatar}`);
                 }
             } catch (error) {
                 
