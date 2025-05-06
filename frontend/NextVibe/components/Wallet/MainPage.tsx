@@ -233,12 +233,12 @@ export default function WalletScreen() {
           </TouchableOpacity>
           <Text style={styles.circleText}>Deposit</Text>
         </View>
-        <View style={styles.circleWrapper}>
+        {/* <View style={styles.circleWrapper}>
           <TouchableOpacity style={styles.circleButton}>
             <Ionicons name="swap-horizontal" size={28} style={styles.iconColor} />
           </TouchableOpacity>
           <Text style={styles.circleText}>Swap</Text>
-        </View>
+        </View> */}
       </View>
       {(loading ? Array(3).fill(null) : tokens).map((token, index) => (
         <View key={index} style={styles.tokenItem}>

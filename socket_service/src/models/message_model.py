@@ -53,8 +53,12 @@ class MediaAttachment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     message_id = Column(Integer, ForeignKey('chat_message.id', ondelete='CASCADE'))
-    file_url = Column(String(255))
-    caption = Column(String(255), nullable=True)
-    media_type = Column(String(10))
+    file = Column(String(255))  # Тільки поле file, як у Django моделі
 
     message = relationship("Message", back_populates="media")
+
+    @property
+    def file_url(self):
+        if self.file:
+            return f"/media/{self.file}"
+        return None

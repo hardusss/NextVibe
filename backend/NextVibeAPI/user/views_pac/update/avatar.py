@@ -26,3 +26,7 @@ class UpdateUserAvatar(APIView):
             user.avatar = "images/default.png"
             user.save()
         
+            return Response({'message': 'Avatar updated successfully'})
+        else:
+            return Response({'error': 'No avatar file provided'}, status=400)
+        

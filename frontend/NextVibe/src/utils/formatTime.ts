@@ -1,4 +1,6 @@
-const timeAgo = (timestamp: string | number): string => {
+export default function timeAgo(timestamp: string | null): string {
+    if (!timestamp) return '';
+
     const now = Date.now();
     let time: number;
 
@@ -19,6 +21,4 @@ const timeAgo = (timestamp: string | number): string => {
     if (diff < 31536000) return `${Math.floor(diff / 2592000)} months ago`;
 
     return `${Math.floor(diff / 31536000)} years ago`;
-};
-
-export default timeAgo;
+}

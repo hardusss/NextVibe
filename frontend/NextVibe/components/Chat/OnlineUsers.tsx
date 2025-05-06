@@ -11,26 +11,10 @@ interface OnlineUser {
   avatar: string;
 }
 
-export default function OnlineUsers() {
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+export default function OnlineUsers({users}: { users: OnlineUser[] }) {
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>(users);
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
-
-  useEffect(() => {
-    fetchOnlineUsers();
-  }, []);
-
-  const fetchOnlineUsers = async () => {
-    const token = await AsyncStorage.getItem('access');
-    try {
-      const response = await axios.get(`${GetApiUrl()}/chat/online-users/`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setOnlineUsers(response.data);
-    } catch (error) {
-      console.error('Error fetching online users:', error);
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -39,17 +23,24 @@ export default function OnlineUsers() {
         data={onlineUsers}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.user_id.toString()}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: isDark ? '#666' : '#999' }]}> 
+              No users online at the moment
+            </Text>
+          </View>
+        )}
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={styles.userContainer}
             onPress={() => router.push({
-              pathname: "/chat-room",
-              params: { id: item.user_id }
+              pathname: "/user-profile",
+              params: { id: item?.user_id, last_page: `/chats` }
             })}
           >
             <View style={styles.avatarContainer}>
               <Image
-                source={{ uri: `${GetApiUrl().slice(0, 23)}${item.avatar}` }}
+                source={{ uri: `${GetApiUrl().slice(0, 25)}${item.avatar}` }}
                 style={styles.avatar}
               />
               <View style={styles.onlineIndicator} />
@@ -95,5 +86,16 @@ const styles = StyleSheet.create({
   username: {
     marginTop: 5,
     fontSize: 12
-  }
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
 });
