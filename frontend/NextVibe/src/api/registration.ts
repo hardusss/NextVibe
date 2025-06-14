@@ -32,6 +32,7 @@ export default async function Register (username: string, email: string, passwor
                 AsyncStorage.setItem("id", `${response.data.user_id}`)
                 AsyncStorage.setItem("access", response.data.data.token.access)
                 AsyncStorage.setItem("refresh", response.data.data.token.refresh)
+
                 Toast.show({
                     type: 'success',
                     text1: 'Registration successful',
