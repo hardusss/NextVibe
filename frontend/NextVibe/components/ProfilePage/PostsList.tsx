@@ -23,6 +23,9 @@ import { ResizeMode } from "expo-av";
 import likePost from "@/src/api/like.post";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
+import FastImage from 'react-native-fast-image';
+
+
 
 interface MediaItem {
   id: number;
@@ -37,6 +40,7 @@ interface PostItem {
   media: MediaItem[];
   create_at: string;
   user_id: number;
+  is_ai_generated: boolean;
 }
 
 interface User {
@@ -213,17 +217,21 @@ const UserPosts = () => {
         <View style={styles.userInfo}>
           {user && (
             <>
-              <Image source={{ uri: user.avatar }} style={styles.avatar} />
-              <Text style={styles.username}>
-                {user.username}
-                {user.official && (
-                  <MaterialIcons
-                    name="check-circle"
-                    size={12}
-                    color="#58a6ff"
-                  />
-                )}
-              </Text>
+              <FastImage source={{ uri: user.avatar }} style={styles.avatar} />
+              <View style={styles.userMetaInfo}>
+                <View style={styles.usernameRow}>
+                  <Text style={styles.username}>{user.username}</Text>
+                  {user.official && (
+                    <MaterialIcons name="check-circle" size={12} color="#58a6ff" />
+                  )}
+                  {item.is_ai_generated && (
+                    <View style={styles.aiBadge}>
+                      <MaterialIcons name="auto-awesome" size={12} color="#fff" />
+                      <Text style={styles.aiBadgeText}>AI</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
             </>
           )}
         </View>
@@ -408,7 +416,7 @@ const MediaItemComponent = ({
       </TouchableOpacity>
     </View>
   ) : (
-    <Image
+    <FastImage
       source={{ uri: mediaUrl }}
       style={styles.fullMedia}
       resizeMode="cover"
@@ -520,6 +528,29 @@ const getStyles = (isDarkMode: boolean) =>
       backgroundColor: "rgba(0, 0, 0, 0.6)",
       padding: 5,
       borderRadius: 10,
+    },
+    userMetaInfo: {
+      flex: 1,
+    },
+    usernameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    aiBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#05f0d8',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 12,
+      marginLeft: 4,
+    },
+    aiBadgeText: {
+      color: '#000',
+      fontSize: 10,
+      fontWeight: 'bold',
+      marginLeft: 2,
     },
   });
 

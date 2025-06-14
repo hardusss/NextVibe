@@ -18,21 +18,31 @@ import { ResizeMode } from "expo-av";
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 
+import FastImage from 'react-native-fast-image';
+import { MaterialIcons } from "@expo/vector-icons";
+
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
 const imageSize = (screenWidth - padding * 2) / 3; 
 
+interface Post {
+    post_id: number;
+    media: { media_url: string }[];
+    is_ai_generated: boolean;
+}
+
 const PostGallery = ({id, previous}: {id: number, previous: string}) => {
     const router = useRouter();
-    const [posts, setPosts] = useState<any[]>([]);
+    const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true); 
     const [index, setIndex] = useState(0);
-    const fetchPosts = async (loadMore = false) => {
+
+    const fetchPosts = async (shouldLoadMore = false) => {
         if (loadingMore || !hasMore) return;
     
-        if (loadMore) setLoadingMore(true);
+        if (shouldLoadMore) setLoadingMore(true);
         else setLoading(true);
     
         try {
@@ -46,8 +56,8 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                 newPosts.forEach((post: any) => uniquePosts.set(post.post_id, post));
                 return Array.from(uniquePosts.values());
             });
-    
-            setIndex((prevIndex) => prevIndex + newPosts.length);
+            
+            setIndex((prevIndex: number) => prevIndex + newPosts.length);
         } catch (error) {
             console.error("❌ Error fetching posts:", error);
         }
@@ -55,13 +65,14 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         setLoading(false);
         setLoadingMore(false);
     };
+
     useFocusEffect(
         useCallback(() => {
             setPosts([]);
             setIndex(0);
             fetchPosts();
         }, [])
-    )
+    );
 
     const isVideo = (url: string) => {
         return url.endsWith(".mp4") || url.endsWith(".mov") || url.endsWith(".avi");
@@ -106,26 +117,29 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                         />
                                     </View>
                                 ) : (
-                                    <Image 
+                                    <FastImage 
                                         source={{ uri: mediaUrl }}
-                                        style={[styles.media, {resizeMode: "cover"}]}
-                                        resizeMode="cover"
+                                        style={[styles.media]}
+                                        resizeMode={FastImage.resizeMode.cover}
                                         onError={() => console.error("❌ Failed to load image:", mediaUrl)}
-                                        
                                     />
                                 )}
                     
                                 <View style={styles.iconContainer}>
-                                    <Ionicons 
-                                        name={isMediaVideo ? "videocam" : "image"} 
-                                        size={20} 
-                                        color="white" 
-                                    />
+                                    <View style={styles.iconRow}>
+                                        <Ionicons 
+                                            name={isMediaVideo ? "videocam" : "image"} 
+                                            size={20} 
+                                            color="white" 
+                                        />
+                                        {item.is_ai_generated && (
+                                            <MaterialIcons name="auto-awesome" size={20} color="#05f0d8" />
+                                        )}
+                                    </View>
                                 </View>
                             </TouchableOpacity>
                         );
                     }}
-                    
                     onEndReached={() => fetchPosts(true)} 
                     onEndReachedThreshold={0.5}
                     ListFooterComponent={
@@ -161,6 +175,11 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0,0,0,0.6)",
         borderRadius: 10,
         padding: 5,
+    },
+    iconRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     noPostsText: {
         color: "white",

@@ -9,6 +9,8 @@ import GetApiUrl from "@/src/utils/url_api";
 import { MaterialIcons } from '@expo/vector-icons';
 import followUser from "@/src/api/follow";
 import { useRouter } from "expo-router";
+import FastImage from 'react-native-fast-image';
+
 
 const lightTheme = {
     background: "#ffffff",
@@ -93,7 +95,7 @@ const RecommendedUsers = () => {
 
                         return (
                             <TouchableOpacity style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.border, borderWidth: 1 }]} onPress={ () => router.push({ pathname: "/user-profile", params: { id: item.id, last_page: "profile" } })} > 
-                                <Image 
+                                <FastImage 
                                     source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} 
                                     style={styles.avatar} 
                                 />

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { View, SafeAreaView, Text, StatusBar, Image, ScrollView, RefreshControl } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
@@ -14,6 +14,9 @@ import PostGallery from "./PostsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import FastImage from 'react-native-fast-image';
+
 
 type UserData = {
     username: string;
@@ -42,6 +45,14 @@ const ProfileView = () => {
     const colorScheme = useColorScheme();
     const profileStyle = colorScheme === "dark" ? profileDarkStyles : profileLightStyles;
 
+    useEffect(() => {
+        const func = async () => {
+           const i =  await AsyncStorage.getItem("id");
+           const t = await AsyncStorage.getItem("access");
+           console.log(i, t)
+        }
+        func()
+    })
     const fetchUserData = async () => {
         try {
             const data = await getUserDetail(0);
@@ -118,7 +129,7 @@ const ProfileView = () => {
                         {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 14}} /> :  ""}
                     </View>
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
-                        <Image style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
+                        <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
                         <View style={{flexDirection: "row", marginTop: 35, marginLeft: 20, flex: 1, justifyContent: "space-around"}}>
                             <View >
                                 <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.post_count)}</Text>

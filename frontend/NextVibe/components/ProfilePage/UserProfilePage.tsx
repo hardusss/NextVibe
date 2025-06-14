@@ -14,6 +14,7 @@ import getUserDetail from "@/src/api/user.detail";
 import { RelativePathString } from "expo-router";
 import followUser from "@/src/api/follow";
 import CreateChat from "@/src/api/create.chat";
+import FastImage from 'react-native-fast-image';
 
 
 type UserData = {
@@ -211,7 +212,7 @@ const UserProfileView = () => {
 
                     {/* Stats Section */}
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
-                        <Image style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
+                        <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
                         <View style={{flexDirection: "row", marginTop: 35, flex: 1, justifyContent: "space-around"}}>
                             {/* Stats items */}
                             <View>
