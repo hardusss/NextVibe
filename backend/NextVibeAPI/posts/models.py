@@ -7,6 +7,8 @@ class Post(models.Model):
     count_likes = models.IntegerField(default=0, null=True)
     create_at = models.DateTimeField(auto_now_add=True)
     location = models.CharField(default=None, null=True, blank=True, max_length=255)
+    is_ai_generated = models.BooleanField(default=False)
+
     def __str__(self):
         return f"Post by {self.owner.username} with id {self.id}"
 

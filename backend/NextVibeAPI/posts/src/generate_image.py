@@ -1,18 +1,3 @@
-"""
-Module for generating images using the Replicate API.
-
-This module provides a function to generate an image from a given text prompt using 
-the Stability AI SDXL model via the Replicate API.
-
-Environment Variables:
-    REPLICATE_API_TOKEN (str): API token required for authentication with the Replicate API.
-
-Dependencies:
-    - replicate
-    - dotenv (to load environment variables)
-    - os (to access environment variables)
-"""
-
 import replicate
 from dotenv import load_dotenv
 from os import getenv

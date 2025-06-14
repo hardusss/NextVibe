@@ -36,18 +36,16 @@ class Recomendations:
             posts = base_queryset.filter(
                 Q(id__in=popular_posts) | Q(owner__user_id__in=self.users)
             )
-        else:
-            posts = base_queryset.filter(owner__user_id__in=self.users)
-
+        else:            posts = base_queryset.filter(owner__user_id__in=self.users)
+        
         posts = posts.values(
-            "id", "about", "create_at", "location", "count_likes",
+            "id", "about", "create_at", "location", "count_likes", "is_ai_generated",
             "owner__user_id", "owner__username", "owner__avatar", "owner__official"
         )
         data = []
         for post in posts:
             media = PostsMedia.objects.filter(post_id=post["id"])
             media_data = [{"id": m.id, "media_url": str(m.file)} for m in media] if media.exists() else None
-            
             data.append({
                 "owner__user_id": post["owner__user_id"],
                 "owner__username": post["owner__username"],
@@ -59,6 +57,7 @@ class Recomendations:
                 "count_likes": post["count_likes"],
                 "media": media_data,
                 "create_at": post["create_at"],
+                "is_ai_generated": post["is_ai_generated"],
             })
         return sample(data, min(len(posts), 6))  
 

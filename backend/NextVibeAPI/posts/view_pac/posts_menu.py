@@ -30,6 +30,7 @@ class PostMenuView(APIView):
                 "count_likes": post.count_likes,
                 "media": media_data,
                 "create_at": post.create_at,
+                "is_ai_generated": post.is_ai_generated,
             })
             
         user = User.objects.get(user_id=who_send_request)
