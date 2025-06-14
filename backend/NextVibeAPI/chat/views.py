@@ -228,7 +228,7 @@ class DeleteChatView(APIView):
         try:
             chat = Chat.objects.get(id=chat_id, participants=request.user)
             chat.delete()
-            return Response({'message': 'Chat deleted successfully'}, status=204)
+            return Response({'message': 'Chat deleted successfully'}, status=200)
         except Chat.DoesNotExist:
             print(f"Chat with ID {chat_id} not found for user {request.user.user_id}")
             return Response({'error': 'Chat not found'}, status=404)
