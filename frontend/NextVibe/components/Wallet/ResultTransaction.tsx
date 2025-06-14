@@ -3,6 +3,8 @@ import LottieView from 'lottie-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
+import FastImage from 'react-native-fast-image';
+
 
 export default function ResultTransaction() {
   const { from, to, amount, symbol, usdValue, icon, tx_url } = useLocalSearchParams();
@@ -156,7 +158,7 @@ export default function ResultTransaction() {
           <Text style={styles.amount}>
             {amount} {symbol}
           </Text>
-          <Image 
+          <FastImage 
             source={{ uri: icon as string }} 
             style={styles.tokenIcon}
           />

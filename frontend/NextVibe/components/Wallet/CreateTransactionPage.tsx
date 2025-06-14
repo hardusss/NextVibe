@@ -4,6 +4,8 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useRef, useCallback } from 'react';
 import { sendSolTransaction, sendBtcTransaction, sendTrxTransaction } from '@/src/api/transactions';
 import React from 'react';
+import FastImage from 'react-native-fast-image';
+
 
 export default function CreateTransactionPage() {
   const { symbol, balance, icon, name, usdt, address } = useLocalSearchParams();
@@ -443,7 +445,7 @@ export default function CreateTransactionPage() {
 
         <View style={styles.tokenInfoContainer}>
           <View style={styles.tokenLeftSection}>
-            <Image source={{ uri: icon as string }} style={styles.tokenIcon} />
+            <FastImage source={{ uri: icon as string }} style={styles.tokenIcon} />
             <View style={styles.tokenTextContainer}>
               <Text style={styles.tokenName}>{name}</Text>
               <TouchableOpacity 

@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ActivityIndi
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import getTransactions from '@/src/api/get.transactions';
+import FastImage from 'react-native-fast-image';
+
 
 interface Transaction {
   amount: number;
@@ -89,7 +91,7 @@ export default function TransactionsScreen() {
         }}
       >
         <View style={styles.transactionIconContainer}>
-          <Image source={{ uri: item.icon }} style={styles.tokenIcon} />
+          <FastImage source={{ uri: item.icon }} style={styles.tokenIcon} />
           <View style={[styles.directionIndicator, { 
             backgroundColor: isIncoming ? '#4CAF50' : '#F44336' 
           }]}>

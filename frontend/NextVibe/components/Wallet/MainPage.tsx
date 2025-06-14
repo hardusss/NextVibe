@@ -5,6 +5,8 @@ import getBalanceWallet from '@/src/api/wallet.balance';
 import formatNumberWithCommas from '@/src/utils/formatedNumberUs';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
+import FastImage from 'react-native-fast-image';
+
 
 
 type Token = {
@@ -245,7 +247,7 @@ export default function WalletScreen() {
           {loading ? (
             <View style={styles.skeletonCircle} />
           ) : (
-            <Image source={{ uri: token.icon }} style={styles.tokenIcon} />
+            <FastImage source={{ uri: token.icon }} style={styles.tokenIcon} />
           )}
           <View style={styles.tokenInfo}>
             {loading ? <View style={styles.skeletonSmall} /> : <Text style={styles.tokenName}>{token.name}</Text>}

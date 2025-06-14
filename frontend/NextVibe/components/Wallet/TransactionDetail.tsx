@@ -3,6 +3,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
+import FastImage from 'react-native-fast-image';
+
 
 export default function TransactionDetail() {
   const { 
@@ -234,7 +236,7 @@ export default function TransactionDetail() {
           <Text style={styles.amount}>
             {isIncoming ? '+' : '-'}{amount} {blockchain.toString().toUpperCase() || 'N/A'}
           </Text>
-          <Image 
+          <FastImage 
             source={{ uri: icon as string }} 
             style={styles.tokenIcon}
           />

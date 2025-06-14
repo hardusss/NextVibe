@@ -5,6 +5,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
+import FastImage from 'react-native-fast-image';
+
 
 export default function DepositPage() {
   const { 
@@ -191,12 +193,12 @@ export default function DepositPage() {
           <Text style={styles.warningText}>
             Send only
           </Text>
-          <Image source={{ uri: icon }} style={styles.icon} />
+          <FastImage source={{ uri: icon }} style={styles.icon} />
           <Text style={styles.trx}> {symbol} </Text>
           <Text style={styles.warningText}>
             through network
           </Text>
-          <Image source={{ uri: icon }} style={styles.icon} />
+          <FastImage source={{ uri: icon }} style={styles.icon} />
           <Text style={styles.trx}> {name}</Text>
           <Text style={styles.warningText}>otherwise the coins will be lost.</Text>
         </View>

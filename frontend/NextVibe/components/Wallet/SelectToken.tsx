@@ -4,6 +4,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import getBalanceWallet from "@/src/api/wallet.balance";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "expo-router";
+import FastImage from 'react-native-fast-image';
+
 
 interface Tokens {
   address: string
@@ -220,7 +222,7 @@ export default function SelectTokenPage() {
             onPress={() => Redirect(token)}
           >
             <View style={styles.tokenInfo}>
-              <Image source={{ uri: token.icon }} style={styles.tokenImage} />
+              <FastImage source={{ uri: token.icon }} style={styles.tokenImage} />
               <View style={styles.tokenTextWrapper}>
                 <Text style={styles.tokenName}>{token.symbol}</Text>
                 <Text style={styles.tokenSymbol}>{token.name}</Text>
