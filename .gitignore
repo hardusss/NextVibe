@@ -1,16 +1,16 @@
-# Ігноруємо віртуальне середовище у backend
+**/.env
+
+*.env
+
+
 backend/.venv/
 
-# Ігноруємо папку media в NextVibeAPI
 backend/NextVibeAPI/media/
 
-# Ігноруємо .env у src (в папці posts)
 backend/NextVibeAPI/posts/src/.env
 
-# Ігноруємо .env у NextVibeAPI (внутрішня папка NextVibeAPI)
 backend/NextVibeAPI/NextVibeAPI/.env
 
-# Ігноруємо __pycache__ по всьому проєкту
 **/__pycache__/
 
 ./.vscode

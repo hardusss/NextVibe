@@ -8,7 +8,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\User\\PycharmProjects
 
 
 def main():
-    token = os.getenv("ACCESS_TOKEN")
+    token = os.getenv("TOKEN")
     
     headers = {
         "Authorization": f"Bearer {token}",
