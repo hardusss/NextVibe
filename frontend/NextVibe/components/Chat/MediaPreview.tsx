@@ -3,6 +3,7 @@ import { View, Image, TouchableOpacity, StyleSheet, Modal, Dimensions, ActivityI
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import FastImage from 'react-native-fast-image';
 
 interface MediaPreviewProps {
   uri: string;
@@ -10,6 +11,13 @@ interface MediaPreviewProps {
   customSize?: { width: number; height: number };
   style?: any; // Add style prop
   isInGrid?: boolean;
+}
+
+interface OnLoadEvent {
+  nativeEvent: {
+    width: number;
+    height: number;
+  };
 }
 
 export default function MediaPreview({ uri, type, customSize, style, isInGrid }: MediaPreviewProps) {
@@ -48,11 +56,11 @@ export default function MediaPreview({ uri, type, customSize, style, isInGrid }:
           </View>
         )}
         {type === 'image' ? (
-          <Image
+          <FastImage
             source={{ uri }}
             style={[styles.thumbnail, getThumbnailSize()]}
-            onLoad={(e) => {
-              const { width, height } = e.nativeEvent.source;
+            onLoad={(e: OnLoadEvent) => {
+              const { width, height } = e.nativeEvent;
               handleLoad(width, height);
             }}
           />
@@ -95,10 +103,14 @@ export default function MediaPreview({ uri, type, customSize, style, isInGrid }:
         </TouchableOpacity>
         
         {type === 'image' ? (
-          <Image
-            source={{ uri }}
+          <FastImage
+            source={{ 
+              uri,
+              priority: FastImage.priority.normal,
+              cache: FastImage.cacheControl.immutable 
+            }}
             style={styles.fullScreenMedia}
-            resizeMode="contain"
+            resizeMode={FastImage.resizeMode.contain}
           />
         ) : (
           <Video

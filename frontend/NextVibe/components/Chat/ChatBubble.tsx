@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MediaGrid from './MediaGrid';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 interface MediaAttachment {
   id: number;
@@ -49,9 +50,19 @@ const ChatBubble: React.FC<Props> = ({ message }) => {
   const isMyMessage = message.sender_id === userId;
   const styles = getStyles(isDark, isMyMessage);
 
+  const handleLongPress = () => {
+    if (message.content) {
+      Clipboard.setString(message.content);
+    }
+  };
+
   return (
     <View style={[styles.container, isMyMessage ? styles.rightAlign : styles.leftAlign]}>
-      <View style={styles.messageContent}>
+      <TouchableOpacity 
+        style={styles.messageContent}
+        onLongPress={handleLongPress}
+        delayLongPress={500}
+      >
         {message.media && message.media.length > 0 && (
           <MediaGrid media={message.media} />
         )}
@@ -63,7 +74,7 @@ const ChatBubble: React.FC<Props> = ({ message }) => {
             <Text style={styles.time}>{formatMessageTime(message.created_at)}</Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import GetApiUrl from '@/src/utils/url_api';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import FastImage from 'react-native-fast-image';
 
 interface OnlineUser {
   user_id: number;
@@ -39,8 +40,12 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
             })}
           >
             <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: `${GetApiUrl().slice(0, 25)}${item.avatar}` }}
+              <FastImage
+                source={{ 
+                  uri: `${GetApiUrl().slice(0, 25)}${item.avatar}`,
+                  priority: FastImage.priority.normal,
+                  cache: FastImage.cacheControl.immutable
+                }}
                 style={styles.avatar}
               />
               <View style={styles.onlineIndicator} />
