@@ -1,7 +1,9 @@
-import { TouchableOpacity, Text, View, Image, StyleSheet, Animated } from "react-native";
+import { TouchableOpacity, Text, View, StyleSheet, Animated } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
+import FastImage from 'react-native-fast-image';
+
 
 interface HeaderProps {
     translateY?: Animated.AnimatedInterpolation<string | number>;
@@ -19,7 +21,11 @@ export default function Header({ translateY }: HeaderProps) {
             ]}
         >
             <View style={{flexDirection: "row", alignItems: "center"}}>
-                <Image source={require('@/assets/logo.png')} style={{ width: 50, height: 50, marginLeft: 10, objectFit: "contain" }} />
+                <FastImage 
+                    source={require('@/assets/logo.png')} 
+                    style={{ width: 50, height: 50, marginLeft: 10 }}
+                    resizeMode={FastImage.resizeMode.contain}
+                />
                 <Text style={styles.text}>extVibe</Text>
             </View>
             <TouchableOpacity onPress={() => router.push("/chats")}>

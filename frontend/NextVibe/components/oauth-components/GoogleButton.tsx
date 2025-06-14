@@ -19,6 +19,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
     const signInWithGoogle = async () => {
         try {
             const userInfo = await GoogleSignin.signIn();
+            console.log(userInfo);
             const userData = userInfo.data?.user;
             if (userInfo.type === "success" && page === "register") {
                 GoogleRegister(`${userData?.givenName}${userData?.familyName}`, `${userData?.email}`, `${userData?.photo}`, router);
@@ -46,6 +47,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
                     text2: 'Google Play Services are not available or outdated.',
                 });
             } else {
+                
                 Toast.show({
                     type: 'error',
                     text1: 'Sign-in Error',
@@ -57,7 +59,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
 
     return (
         <Pressable onPress={signInWithGoogle} style={registerStyles.googlebutton}>
-            <Image source={require('../../assets/google.png')} style={registerStyles.icon} />
+            <Image source={require('../../assets/google.png') } style={registerStyles.icon} />
             <Text style={registerStyles.googletext}>Sign in with Google</Text>
         </Pressable>
     );

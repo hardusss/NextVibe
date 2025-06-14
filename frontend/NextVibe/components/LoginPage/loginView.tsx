@@ -4,7 +4,6 @@ import {
     View,
     TextInput,
     TouchableOpacity,
-    Image,
     SafeAreaView,
     StatusBar
 } from 'react-native';
@@ -17,7 +16,7 @@ import Login from '../../src/api/login';
 import { useRouter } from "expo-router";
 import { useColorScheme } from 'react-native';
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
-
+import FastImage from 'react-native-fast-image';
 
 export default function LoginView() {
     const router = useRouter();
@@ -40,7 +39,7 @@ export default function LoginView() {
             
             <View style={{ alignItems: 'center', flexDirection: 'row' }}>
                 <Text style={loginStyes.title}>Login to NextVibe</Text>
-                <Image source={require('../../assets/logo.png')} style={loginStyes.logo} />
+                <FastImage source={require('../../assets/logo.png')} style={loginStyes.logo} />
             </View>
 
             <View style={{ marginTop: 20 }}>

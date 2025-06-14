@@ -11,6 +11,8 @@ import { toastConfig } from '../../src/config/toast-config';
 import { useColorScheme } from 'react-native';
 import { useRouter } from "expo-router";
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
+import FastImage from 'react-native-fast-image';
+
 
 export default function RegisterView() {
     const router = useRouter();
@@ -60,7 +62,7 @@ export default function RegisterView() {
             <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} >
                 <View style={{ alignItems: 'center', flexDirection: 'row', marginTop: 20, }}>
                     <Text style={registerStyles.title}>Register to NextVibe</Text>
-                    <Image source={require('../../assets/logo.png')} style={registerStyles.logo} />
+                    <FastImage source={require('../../assets/logo.png')} style={registerStyles.logo} />
                 </View>
 
                 <View>

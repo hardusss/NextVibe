@@ -1,4 +1,4 @@
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, Dimensions, useColorScheme, Animated, RefreshControl, TouchableWithoutFeedback } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, useColorScheme, Animated, RefreshControl, TouchableWithoutFeedback } from "react-native";
 import Header from "./Header";
 import { useEffect, useState, useCallback, useRef } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
@@ -11,7 +11,7 @@ import GetApiUrl from "@/src/utils/url_api";
 import PopupModal from "../Comments/CommentPopup";
 import { Video, ResizeMode } from "expo-av";
 import likePost from "@/src/api/like.post";
-
+import FastImage from 'react-native-fast-image';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -261,6 +261,21 @@ const getStyles = (theme: typeof darkTheme) => {
         alignItems: 'center',
         backgroundColor: 'transparent'
     },
+    aiBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#05f0d8',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 12,
+        marginLeft: 8,
+    },
+    aiBadgeText: {
+        color: '#000',
+        fontSize: 10,
+        fontWeight: 'bold',
+        marginLeft: 2,
+    },
 });
 }
 
@@ -330,6 +345,7 @@ interface Post {
     owner__avatar: string;
     owner__official: boolean;
     media: MediaItem[];
+    is_ai_generated: boolean;
 }
 
 interface LikedPosts {
@@ -410,10 +426,14 @@ const MediaItemComponent = ({ item, postId, onLike, isLiked }: {
                         </TouchableOpacity>
                     </>
                 ) : (
-                    <Image 
-                        source={{ uri: mediaUrl }} 
-                        style={styles.fullMedia}
-                        resizeMode="cover" 
+                    <FastImage
+                        source={{ 
+                            uri: mediaUrl,
+                            priority: FastImage.priority.normal,
+                            cache: FastImage.cacheControl.immutable
+                        }}
+                        style={styles.mediaImage}
+                        resizeMode={FastImage.resizeMode.cover}
                     />
                 )}
                 {showHeart && (
@@ -513,23 +533,31 @@ export default function MainPage() {
         }));
     };
     
-    const renderItem = ({ item, index }: { item: Post; index: number }) => {
-        const isLiked = likedPosts[item.id] ?? false;
+    const renderItem = ({ item, index }: { item: Post; index: number }) => {        const isLiked = likedPosts[item.id] ?? false;
         const isExpanded = expandedPosts[item.id] ?? false;
         const needsMoreButton = item.about.length > 100;
-        const displayText = needsMoreButton && !isExpanded ? item.about.slice(0, 100) + "..." : item.about;
+        const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
         return (
             <View style={styles.postContainer}>
                 <View style={styles.postHeader}>
-                    <Image 
+                    <FastImage 
                         source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.owner__avatar}` }} 
                         style={styles.avatar} 
                     />
-                    <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>
-                        <View style={styles.usernameContainer}>
-                            <Text style={styles.username}>{item.owner__username}</Text>
-                            {item.owner__official && (
-                                <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5 }} />
+                    <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>                        <View style={styles.usernameContainer}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Text style={styles.username}>{item.owner__username}</Text>
+                                {item.owner__official && (
+                                    <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5 }} />
+                                )}
+                            </View>
+                            {item.is_ai_generated && (
+                                <View style={styles.aiBadge}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <MaterialIcons name="auto-awesome" size={12} color="#fff" />
+                                        <Text style={styles.aiBadgeText}>AI</Text>
+                                    </View>
+                                </View>
                             )}
                         </View>
                         {item.location && (
