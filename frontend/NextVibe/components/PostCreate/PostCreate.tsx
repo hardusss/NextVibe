@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, Image, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Video } from 'expo-av';
@@ -8,6 +8,7 @@ import createPost from '@/src/api/create.post';
 import generateImage from '@/src/api/generate.image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
+import FastImage from 'react-native-fast-image';
 
 const darkColors = {
     background: 'black',
@@ -45,6 +46,7 @@ export default function PostCreate() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [aiPrompt, setAiPrompt] = useState('');
+    const [isAiGenerated, setIsAiGenerated] = useState(false);
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? darkColors : lightColors;
 
@@ -57,6 +59,9 @@ export default function PostCreate() {
         }, [params.urls]) 
     );
     
+    useEffect(() => {
+        console.log(isAiGenerated)
+    }, [isAiGenerated])
     const isVideo = (uri: string): boolean => {
         return uri.endsWith('.mp4') || uri.endsWith('.mov');
     };
@@ -108,10 +113,14 @@ export default function PostCreate() {
                     }}>
                         <MaterialIcons name="close" color="white" size={30}/>
                     </TouchableOpacity>
-                    <Image
-                        source={{ uri: item.startsWith('https://') || item.startsWith('file://') ? item : `file://${item}` }}
+                    <FastImage
+                        source={{ 
+                            uri: item.startsWith('https://') || item.startsWith('file://') ? item : `file://${item}`,
+                            priority: FastImage.priority.normal,
+                            cache: FastImage.cacheControl.immutable
+                        }}
                         style={themedStyles.media}
-                        resizeMode="cover"
+                        resizeMode={FastImage.resizeMode.cover}
                     />
                 </View>
             );
@@ -119,12 +128,13 @@ export default function PostCreate() {
     };
 
     const handlePublish = () => {
-        createPost(postText, mediaUrls, location)
+        createPost(postText, mediaUrls, location, isAiGenerated);
         setMediaUrls([]);
         setAiPrompt("");
         setLocation("");
         setPostText("");
-        router.push("/profile")
+        setIsAiGenerated(false);
+        router.push("/profile");
     };
 
     const handleSaveDraft = () => {
@@ -139,8 +149,9 @@ export default function PostCreate() {
         setIsGenerating(true);
         setIsModalVisible(false); 
         const generatedImage = await generateImage(aiPrompt);
-        setMediaUrls(prev => [generatedImage as string, ...prev])
+        setMediaUrls(prev => [generatedImage as string, ...prev]);
         setPostText(aiPrompt);
+        setIsAiGenerated(true);
         setIsGenerating(false);
     };
 
