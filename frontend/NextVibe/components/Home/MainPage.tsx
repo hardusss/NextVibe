@@ -12,15 +12,15 @@ import PopupModal from "../Comments/CommentPopup";
 import { Video, ResizeMode } from "expo-av";
 import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
-
+import timeAgo from "@/src/utils/formatTime";
 const { width: screenWidth } = Dimensions.get("window");
 
 const darkTheme = {
-    background: "black",
-    cardBackground: "rgba(17, 17, 17, 0.8)",
-    textPrimary: "white",
+    background: "#130E1D",
+    cardBackground: "#130E1D",
+    textPrimary: "#E3E3E3",
     textSecondary: "#aaa",
-    skeletonBackground: "#333",
+    skeletonBackground: "#1a171f",
     skeletonHighlight: "#444",
     accentColor: "#58a6ff",
     likeColor: "#ff4757",
@@ -46,18 +46,13 @@ const getStyles = (theme: typeof darkTheme) => {
         backgroundColor: theme.background
     },
     listContainer: {
-        paddingTop: 60,
+        backgroundColor: theme.background,
         paddingBottom: 50
     },
     postContainer: {
         borderRadius: 12,
         marginBottom: 16,
         padding: 14,
-        shadowColor: theme.shadowColor,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
         position: "relative",
     },
     postHeader: {
@@ -642,7 +637,7 @@ export default function MainPage() {
                     </TouchableOpacity>
                 </View>
                 <Text style={styles.postDate}>
-                    {new Date(item.create_at).toLocaleDateString()}
+                    {timeAgo(item.create_at)}
                 </Text>
             </View>
         );
