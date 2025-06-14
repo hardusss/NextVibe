@@ -14,49 +14,54 @@ export default function Header({ translateY }: HeaderProps) {
     const router = useRouter();
     const styles = getStyles(isDark);
     return (
-        <Animated.View 
-            style={[
-                styles.container,
-                translateY ? { transform: [{ translateY }] } : null
-            ]}
-        >
-            <View style={{flexDirection: "row", alignItems: "center"}}>
-                <FastImage 
-                    source={require('@/assets/logo.png')} 
-                    style={{ width: 50, height: 50, marginLeft: 10 }}
-                    resizeMode={FastImage.resizeMode.contain}
-                />
-                <Text style={styles.text}>extVibe</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push("/chats")}>
-                <MaterialCommunityIcons name="chat-outline" style={styles.chat}/>
+        <View style={[
+                    styles.container,
+                    translateY ? { transform: [{ translateY }] } : null
+                ]}>
+                <View style={{flexDirection: "row", alignItems: "center", width: "100%", justifyContent: "space-between"}}>
+                    
+                    <Text style={styles.text}>NextVibe</Text>
+                    <FastImage 
+                        source={require('@/assets/logo.png')} 
+                        style={{ width: 50, height: 50, marginTop: 5 }}
+                        resizeMode={FastImage.resizeMode.contain}
+                    />
+                </View>
+    
+            <TouchableOpacity style={styles.messageButton} onPress={() => router.push("/chats")}>
+                <Text style={styles.messageButtonText}>Message</Text>
             </TouchableOpacity>
-        </Animated.View>
+        </View>
     )
 }
 
 const getStyles = (isDark: boolean) => {
     return StyleSheet.create({
         container: {
-            backgroundColor: isDark ? 'black' : '#fff',
-            flexDirection: 'row',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
+            backgroundColor: isDark ? '#130E1D' : '#fff',
             zIndex: 100,
-            padding: 10,
+            paddingVertical: 10,
+            paddingHorizontal: 10,
             alignItems: 'center',
             justifyContent: 'space-between',
-            height: 70,
-            borderBottomWidth: 0.2,
-            borderBottomColor: "white"
+        },
+        messageButton: {
+            backgroundColor: isDark ? '#D9D9D9' : '#130E1D',
+            width: "100%",
+            height: 50,
+            borderRadius: 12,
+            justifyContent: "center",
+            alignItems: "center"
+        },
+        messageButtonText: {
+            color: isDark ? '#130E1D' : '#D9D9D9',
+            fontSize: 16,
+            fontWeight: "bold"
         },
         text: { 
-            marginLeft: -10,
-            fontSize: 25,
+            fontSize: 35,
             fontWeight: 'bold',
-            color: isDark? '#fff' : 'black',
+            color: isDark? '#D9D9D9' : 'black',
         },
         chat: {
             marginRight: 10,
