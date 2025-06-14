@@ -7,7 +7,6 @@ import {
   StyleSheet,
   useColorScheme,
   TextInput,
-  Image,
   Linking,
   Vibration
 } from "react-native";
@@ -17,6 +16,7 @@ import { ActivityIndicator } from "../CustomActivityIndicator";
 import { connect2FA, auth } from "@/src/api/2fa";
 import GetApiUrl from "@/src/utils/url_api";
 import LottieView from "lottie-react-native";
+import FastImage from 'react-native-fast-image';
 
 
 interface Props {
@@ -149,7 +149,15 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
 
             <View style={styles.qrContainer}>
               {qrUrl ? (
-                <Image source={{ uri: qrUrl }} style={styles.qrImage} />
+                <FastImage 
+                  source={{ 
+                    uri: qrUrl,
+                    priority: FastImage.priority.normal,
+                    cache: FastImage.cacheControl.immutable
+                  }}
+                  style={styles.qrImage}
+                  resizeMode={FastImage.resizeMode.contain}
+                />
               ) : (
                 <ActivityIndicator />
               )}

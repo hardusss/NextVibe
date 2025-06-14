@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet, useColorScheme, PanResponder } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, useColorScheme } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface Props {
@@ -10,175 +10,142 @@ interface Props {
 
 const LogoutConfirmationSheet = ({ isVisible, onClose, onConfirm }: Props) => {
     const isDark = useColorScheme() === 'dark';
-    const translateY = useRef(new Animated.Value(300)).current;
-    const styles = getStyles(isDark);
-    
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => true,
-            onPanResponderMove: (_, gestureState) => {
-                if (gestureState.dy > 0) {
-                    translateY.setValue(gestureState.dy);
-                }
-            },
-            onPanResponderRelease: (_, gestureState) => {
-                if (gestureState.dy > 50) {
-                    onClose();
-                } else {
-                    Animated.spring(translateY, {
-                        toValue: 0,
-                        useNativeDriver: true,
-                        tension: 100,
-                        friction: 8
-                    }).start();
-                }
-            },
-        })
-    ).current;
-
-    useEffect(() => {
-        Animated.spring(translateY, {
-            toValue: isVisible ? 0 : 300,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8
-        }).start();
-        
-        // Add handler for onConfirm to close the modal window after logout
-        if (isVisible && onConfirm) {
-            const originalOnConfirm = onConfirm;
-            onConfirm = () => {
-                originalOnConfirm();
-                onClose();
-            };
-        }
-    }, [isVisible]);
-
-    if (!isVisible) return null;
 
     return (
-        <View style={styles.overlay}>
-            <TouchableOpacity style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
-            <Animated.View style={[styles.container, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
-                <View style={styles.headerContainer}>
-                    <MaterialCommunityIcons name="logout" size={30} color={isDark ? "#05f0d8" : "#007bff"} />
-                    <Text style={styles.title}>Logout Confirmation</Text>
+        <Modal
+            visible={isVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <TouchableOpacity 
+                style={styles.overlay}
+                activeOpacity={1}
+                onPress={onClose}
+            >
+                <View 
+                    style={[
+                        styles.container,
+                        { backgroundColor: isDark ? '#1f1f1f' : '#ffffff' }
+                    ]}
+                >
+                    <View style={styles.content}>
+                        <MaterialCommunityIcons 
+                            name="logout" 
+                            size={40} 
+                            color={isDark ? "#05f0d8" : "#007bff"} 
+                            style={styles.icon}
+                        />
+                        <Text style={[
+                            styles.title,
+                            { color: isDark ? '#ffffff' : '#000000' }
+                        ]}>
+                            Logout Confirmation
+                        </Text>
+                        <Text style={[
+                            styles.message,
+                            { color: isDark ? '#cccccc' : '#666666' }
+                        ]}>
+                            Are you sure you want to log out?
+                        </Text>
+                        
+                        <View style={styles.buttonContainer}>
+                            <TouchableOpacity
+                                style={[styles.button, styles.cancelButton]}
+                                onPress={onClose}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[
+                                    styles.buttonText,
+                                    { color: isDark ? '#ffffff' : '#000000' }
+                                ]}>
+                                    Cancel
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.button, styles.logoutButton]}
+                                onPress={onConfirm}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.logoutButtonText}>
+                                    Yes, Logout
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 </View>
-                
-                <Text style={styles.message}>Are you sure you want to log out of your account?</Text>
-                
-                <View style={styles.buttonContainer}>
-                    <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={[styles.button, styles.confirmButton]} onPress={() => {
-                        onConfirm();
-                        onClose();
-                    }}>
-                        <Text style={styles.confirmButtonText}>Yes, log out</Text>
-                    </TouchableOpacity>
-                </View>
-            </Animated.View>
-        </View>
+            </TouchableOpacity>
+        </Modal>
     );
 };
 
-const darkColors = {
-    background: 'rgb(31, 31, 32)',
-    buttonBackground: '#1f1f1f',
-    textColor: '#c9d1d9',
-    accent: '#05f0d8',
-    overlay: 'rgba(0, 0, 0, 0.5)',
-    cancelButton: '#333333',
-    confirmButton: '#d32f2f'
-};
-
-const lightColors = {
-    background: '#ffffff',
-    buttonBackground: '#e5e5e5',
-    textColor: '#000000',
-    accent: '#007bff',
-    overlay: 'rgba(0, 0, 0, 0.3)',
-    cancelButton: '#e0e0e0',
-    confirmButton: '#f44336'
-};
-
-const getStyles = (isDark: boolean) => StyleSheet.create({
+const styles = StyleSheet.create({
     overlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: isDark ? darkColors.overlay : lightColors.overlay,
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center'
     },
-    overlayTouchable: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-    },
     container: {
-        backgroundColor: isDark ? darkColors.background : lightColors.background,
-        borderRadius: 20,
-        padding: 20,
-        width: '80%',
+        width: '90%',
+        maxWidth: 400,
+        borderRadius: 15,
+        overflow: 'hidden',
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
     },
-    headerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15,
-        justifyContent: 'center'
+    content: {
+        padding: 20,
+        alignItems: 'center'
+    },
+    icon: {
+        marginBottom: 15
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: isDark ? darkColors.textColor : lightColors.textColor,
-        marginLeft: 10,
+        marginBottom: 10,
+        textAlign: 'center'
     },
     message: {
         fontSize: 16,
-        color: isDark ? darkColors.textColor : lightColors.textColor,
         marginBottom: 20,
-        textAlign: 'center',
+        textAlign: 'center'
     },
     buttonContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        width: '100%',
+        marginTop: 10
     },
     button: {
-        padding: 12,
-        borderRadius: 10,
-        alignItems: 'center',
         flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 8,
         marginHorizontal: 5,
+        alignItems: 'center',
+        justifyContent: 'center'
     },
     cancelButton: {
-        backgroundColor: isDark ? darkColors.cancelButton : lightColors.cancelButton,
+        backgroundColor: 'rgba(35, 35, 35, 0.99)'
     },
-    confirmButton: {
-        backgroundColor: isDark ? darkColors.confirmButton : lightColors.confirmButton,
+    logoutButton: {
+        backgroundColor: '#ff4444'
     },
-    cancelButtonText: {
-        color: isDark ? darkColors.textColor : lightColors.textColor,
-        fontWeight: 'bold',
+    buttonText: {
         fontSize: 16,
+        fontWeight: '600'
     },
-    confirmButtonText: {
+    logoutButtonText: {
         color: '#ffffff',
-        fontWeight: 'bold',
         fontSize: 16,
-    },
+        fontWeight: '600'
+    }
 });
 
 export default LogoutConfirmationSheet;

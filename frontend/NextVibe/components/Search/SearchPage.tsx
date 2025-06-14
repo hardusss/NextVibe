@@ -8,6 +8,8 @@ import formatNumber from "@/src/utils/formatNumber";
 import { setSearchHistory, getSearchHistory, deleteUserFromHistory } from "@/src/api/history.search";
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
+import FastImage from 'react-native-fast-image';
+
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
 const darkColors = {
@@ -150,7 +152,7 @@ export default function SearchPage() {
                     keyExtractor={(item) => item.user_id.toString()}
                     renderItem={({ item }) => (
                         <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}  onPress={() => {setSearchHistory(item.user_id); router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: "search" } })}}>
-                            <Image source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} style={styles.avatar} />
+                            <FastImage source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} style={styles.avatar} />
                             <View>
                                 <View style={{ flexDirection: "row" }}>
                                     <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
@@ -180,7 +182,7 @@ export default function SearchPage() {
                     initialNumToRender={2}
                     renderItem={({ item }) => (
                         <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border }]} onPress={() => {setSearchHistory(item.user_id); router.push({ pathname: "/user-profile", params: { id: item.user_id } })}}>
-                            <Image source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} style={styles.avatar} />
+                            <FastImage source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} style={styles.avatar} />
                             <View>
                                 <View style={{ flexDirection: "row" }}>
                                     <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
