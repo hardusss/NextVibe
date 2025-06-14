@@ -39,7 +39,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
     try:
         while True:
             data = await websocket.receive_json()
-            
+            print(data)
             if data.get("type") == "enter_chat":
                 chat_id = data.get("chat_id")
                 # Знаходимо всі непрочитані повідомлення в чаті від іншого користувача
