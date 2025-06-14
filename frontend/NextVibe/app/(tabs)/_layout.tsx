@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Image } from "react-native";
 import GetApiUrl from "@/src/utils/url_api";
 import { useSegments } from "expo-router";
+import FastImage from 'react-native-fast-image';
 
 export default function Layout() {
 
@@ -124,8 +125,12 @@ export default function Layout() {
                 options={{
                     tabBarIcon: ({ focused }) =>
                         imageProfile ? (
-                            <Image
-                                source={{ uri: imageProfile }}
+                            <FastImage
+                                source={{ 
+                                    uri: imageProfile,
+                                    priority: FastImage.priority.normal,
+                                    cache: FastImage.cacheControl.immutable 
+                                }}
                                 style={{
                                     width: 35,
                                     height: 35,
