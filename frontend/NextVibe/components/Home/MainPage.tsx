@@ -13,6 +13,8 @@ import { Video, ResizeMode } from "expo-av";
 import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
 import timeAgo from "@/src/utils/formatTime";
+import { LayoutAnimation, Platform, UIManager } from 'react-native';
+
 const { width: screenWidth } = Dimensions.get("window");
 
 const darkTheme = {
@@ -47,7 +49,7 @@ const getStyles = (theme: typeof darkTheme) => {
     },
     listContainer: {
         backgroundColor: theme.background,
-        paddingBottom: 50
+        paddingBottom: 50,
     },
     postContainer: {
         borderRadius: 12,
@@ -497,6 +499,9 @@ export default function MainPage() {
     };
 
     useEffect(() => {
+        if (Platform.OS === 'android') {
+            UIManager.setLayoutAnimationEnabledExperimental?.(true);
+        }
         fetchPosts();
     }, []);
     
@@ -529,6 +534,7 @@ export default function MainPage() {
         if (direction !== scrollDirection) {
             setScrollDirection(direction);
         };
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         if (direction === "up"){
             setVsBM(true)
         } else {
