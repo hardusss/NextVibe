@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, useColorScheme, Animated, RefreshControl, TouchableWithoutFeedback } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar, Dimensions, useColorScheme, Animated, RefreshControl, TouchableWithoutFeedback } from "react-native";
 import Header from "./Header";
 import { useEffect, useState, useCallback, useRef } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
@@ -136,7 +136,7 @@ const getStyles = (theme: typeof darkTheme) => {
         color: theme.textSecondary,
         fontSize: 14,
         position: "absolute",
-        bottom: 15,
+        bottom: 20,
         right: 15
     },
     loadingMore: {
@@ -364,9 +364,7 @@ const MediaItemComponent = ({ item, postId, onLike, isLiked }: {
     const handleDoublePress = () => {
         const now = Date.now();
         if (now - lastTap.current < 300) {
-            // Показуємо анімацію завжди при подвійному тапі
             animateHeart();
-            // Ставимо лайк тільки якщо його ще немає
             if (!isLiked) {
                 onLike(postId);
             }
@@ -457,6 +455,9 @@ export default function MainPage() {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);    
+    const [isVisibleButtonMessage, setVsBM] = useState(true);
+    const [scrollDirection, setScrollDirection] = useState<null | string>(null);
+    const lastOffset = useRef(0);
     const [refreshing, setRefreshing] = useState(false);
     const [currentIndices, setCurrentIndices] = useState<{
         [key: number]: number;
@@ -519,6 +520,22 @@ export default function MainPage() {
                 return post;
             })
         );
+    };
+
+    const handleScroll = (event: any) => {
+        const currentOffset = event.nativeEvent.contentOffset.y;
+        const direction = currentOffset > lastOffset.current ? 'down' : 'up';
+
+        if (direction !== scrollDirection) {
+            setScrollDirection(direction);
+        };
+        if (direction === "up"){
+            setVsBM(true)
+        } else {
+            setVsBM(false)
+        }
+
+        lastOffset.current = currentOffset;
     };
 
     const toggleExpandText = (postId: number) => {
@@ -645,11 +662,13 @@ export default function MainPage() {
 
     return (
         <View style={styles.container}>
-            <Header />
+            <StatusBar backgroundColor={colorScheme === "dark" ? "#130E1D" : "white"}></StatusBar>
+            <Header isVisible={isVisibleButtonMessage}/>
             {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)}/>}
             
             {loading ? (
                 <FlatList
+                    onScroll={handleScroll}
                     data={[1, 2, 3, 4, 5, 6]}
                     keyExtractor={(item) => `skeleton-${item}_${Math.random()}`}
                     renderItem={() => <PostSkeleton />}
@@ -658,6 +677,7 @@ export default function MainPage() {
             ) : (
                 <FlatList
                     data={posts}
+                    onScroll={handleScroll}
                     keyExtractor={(item, index) => `${item.id}_${index}`}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContainer}
