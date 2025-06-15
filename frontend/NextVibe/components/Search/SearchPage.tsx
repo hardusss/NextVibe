@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { FlatList, View, TextInput, Text, Image, StyleSheet, useColorScheme, TouchableOpacity, Dimensions } from "react-native";
+import { useState } from "react";
+import { FlatList, View, TextInput, Text, StyleSheet, useColorScheme, TouchableOpacity, Dimensions, StatusBar } from "react-native";
 import searchByName from "@/src/api/search";
 import GetApiUrl from "@/src/utils/url_api";
 import { ActivityIndicator } from "../CustomActivityIndicator";
@@ -9,17 +9,20 @@ import { setSearchHistory, getSearchHistory, deleteUserFromHistory } from "@/src
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import FastImage from 'react-native-fast-image';
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from 'expo-blur';
+
 
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
 const darkColors = {
-    background: 'black',
+    background: '#130E1D',
     cardBackground: '#0a0c1a',
-    inputBackground: 'black',
+    inputBackground: '#1B2842',
     primary: '#58a6ff',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
-    textSecondary: '#8b949e',
+    textSecondary: '#D9D9D9',
     border: '#05f0d8',
     shadow: '#0917b3',
 };
@@ -118,34 +121,79 @@ export default function SearchPage() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={{ flexDirection: "row" }}>
-                <View
+            <StatusBar backgroundColor={colorScheme === "dark" ? "#130E1D" : "white"}></StatusBar>
+            <View style={{ position: "relative", alignItems: "center", marginBottom: 20 }}>
+                <BlurView
+                    intensity={40}
+                    tint={colorScheme === "dark" ? "dark" : "light"}
                     style={{
+                    position: "absolute",
+                    top: -4,
+                    left: -4,
+                    right: -4,
+                    bottom: -4,
+                    borderRadius: 50,
+                    zIndex: 0,
+                    }}
+                >
+                    <LinearGradient
+                    colors={["#00FFF7", "#7B00FF"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                        flex: 1,
+                        borderRadius: 50,
+                        opacity: 0.5,
+                    }}
+                    />
+                </BlurView>
+                
+                <LinearGradient
+                    colors={["#00FFF7", "#7B00FF"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderRadius: 32,
+                    padding: 2,
+                    width: width - 32,
+                    zIndex: 1,
+                    }}
+                >
+                    <View style={{ flexDirection: "row" }}>
+                    <View
+                        style={{
                         height: 50,
                         width: 50,
                         backgroundColor: colors.inputBackground,
-                        borderWidth: 1,
-                        borderColor: colors.border,
+                        borderTopLeftRadius: 32,
+                        borderBottomLeftRadius: 32,
                         justifyContent: "center",
                         alignItems: "center",
-                        borderTopLeftRadius: 8,
-                        borderBottomLeftRadius: 8,
-                        borderRightWidth: 0,
-                    }}
-                >
-                    <MaterialIcons color={colors.textSecondary} size={24} style={{ marginLeft: 10 }} name="search" />
-                </View>
-                <TextInput
-                    style={[
+                        }}
+                    >
+                        <MaterialIcons color={colors.textSecondary} size={24} style={{ marginLeft: 10 }} name="search" />
+                    </View>
+                    <TextInput
+                        style={[
                         styles.input,
-                        { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.textPrimary },
-                    ]}
-                    value={searchName}
-                    placeholder="Search"
-                    placeholderTextColor={colors.textSecondary}
-                    onChangeText={setSearchName}
-                />
+                        {
+                            backgroundColor: colors.inputBackground,
+                            color: colors.textPrimary,
+                        },
+                        ]}
+                        value={searchName}
+                        placeholder="Search profiles..."
+                        placeholderTextColor={colors.textSecondary}
+                        onChangeText={setSearchName}
+                    />
+                    </View>
+                </LinearGradient>
             </View>
+
+
+
             {!searchName.length && searchHistoryUser.length > 0 && (
                 <FlatList
                     data={searchHistoryUser}
@@ -211,13 +259,12 @@ const styles = StyleSheet.create({
     },
     input: {
         height: 50,
-        borderWidth: 1,
-        borderLeftWidth: 0,
-        borderTopRightRadius: 8,
-        borderBottomRightRadius: 8,
+        borderWidth: 0,
+        borderTopRightRadius: 32,
+        borderBottomRightRadius: 32,
         paddingHorizontal: 10,
-        marginBottom: 10,
-        width: width - (32 + 50),
+        width: width - (35 + 50),
+        fontSize: 16
     },
     userContainer: {
         flexDirection: "row",
