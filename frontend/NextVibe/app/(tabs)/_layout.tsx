@@ -1,12 +1,13 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { FontAwesome5, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColorScheme, View } from "react-native";
 import getUserDetail from "@/src/api/user.detail";
 import { useEffect, useState } from "react";
-import { Image } from "react-native";
 import GetApiUrl from "@/src/utils/url_api";
 import { useSegments } from "expo-router";
 import FastImage from 'react-native-fast-image';
+
+
 
 export default function Layout() {
 
@@ -48,30 +49,36 @@ export default function Layout() {
         <Tabs
             screenOptions={{
                 tabBarStyle: {
-                    backgroundColor: theme === "dark" ? "#130E1D" : "#ffffff", //"#0a0c1a"
+                    backgroundColor: theme === "dark" ? "#1A1A2F" : "#D9D9D9", 
                     position: "absolute",
-                    height: 70,
-                    elevation: 10,
-                    shadowOpacity: 1,
-                    shadowRadius: 20,
-                    display: [...blacklist, "camera"].includes(currentPage) ? "none": "flex",
+                    height: 60,
+                    bottom: 10,
+                    width: "90%",
+                    marginLeft: "5%",
+                    borderRadius: 20,
+                    borderWidth: 1, 
+                    borderColor: theme === "dark" ? "rgba(26, 26, 47, 0.95)" : "#D9D9D9", 
+                    shadowColor: "transparent", 
+                    elevation: 0, 
+                    display: [...blacklist, "camera"].includes(currentPage) ? "none" : "flex",
                     alignItems: "center",
                     justifyContent: "center",
                 },
+
                 tabBarShowLabel: false,
                 headerShown: false,
+                headerShadowVisible: false
             }}
         >
             <Tabs.Screen
                 name="home"
                 options={{
                     tabBarIcon: ({ focused }) => (
-                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#130E1D") : (theme === "dark" ? "#130E1D" : "#D9D9D9"), width: 50, height: 50, justifyContent: "center", alignItems: "center", marginBottom: -25, borderRadius: 50}}>
-                            <Ionicons
-
-                                name="home-outline"
-                                size={30}
-                                color={focused ? (theme === "dark" ? "#130E1D" : "#D9D9D9") : inactiveColor}
+                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#1A1A2F") : (theme === "dark" ? "#1A1A2F" : "#D9D9D9"), width: 40, height: 40, justifyContent: "center", alignItems: "center", marginBottom: -20, borderRadius: 50}}>
+                            <MaterialCommunityIcons
+                                name={focused ? "home" : "home-outline"}
+                                size={20}
+                                color={focused ? (theme === "dark" ? "#1A1A2F" : "#D9D9D9") : inactiveColor}
                             />
                         </View>
                     ),
@@ -81,12 +88,41 @@ export default function Layout() {
                 name="search"
                 options={{
                     tabBarIcon: ({ focused }) => (
-                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#130E1D") : (theme === "dark" ? "#130E1D" : "#D9D9D9"), width: 50, height: 50, justifyContent: "center", alignItems: "center", marginBottom: -25, borderRadius: 50}}>
-                            <Ionicons
-                                name="search-outline"
-                                size={30}
-                                color={focused ? (theme === "dark" ? "#130E1D" : "#D9D9D9") : inactiveColor}
-                            />
+                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#1A1A2F") : (theme === "dark" ? "#1A1A2F" : "#D9D9D9"), width: 40, height: 40, justifyContent: "center", alignItems: "center", marginBottom: -20, borderRadius: 50}}>
+                            <View style={{
+                                position: "relative",
+                                justifyContent: "center",
+                                alignItems: "center"
+                            }}>
+                                <View
+                                    style={{
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: 20,
+                                        backgroundColor: focused ? (theme === "dark" ? "#1A1A2F" : "#D9D9D9") : "transparent", 
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                        position: "absolute",
+                                        left: -6,
+                                        bottom: -2
+                                    }}
+                                    >
+                                    </View>
+                                    <MaterialIcons
+                                        name="search"
+                                        size={20}
+                                        color={focused ? (theme === "dark" ? "#1A1A2F" : "#D9D9D9") : (theme === "dark" ? "#D9D9D9" : "#1A1A2F")} 
+                                        style={{
+                                            position: "absolute",
+                                            zIndex: 9999,
+                                            fontWeight: "bold"
+                                        }}
+                                    />
+                                    
+
+                            </View>
+                            
+
                         </View>
                     ),
                 }}
@@ -95,14 +131,13 @@ export default function Layout() {
                 name="camera"
                 options={{
                     tabBarIcon: ({ focused }) => (
-                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#130E1D") : (theme === "dark" ? "#130E1D" : "#D9D9D9"), width: 50, height: 50, justifyContent: "center", alignItems: "center", marginBottom: -25, borderRadius: 50}}>
-                            <Ionicons
-                                name="add-circle-outline"
-                                size={30}
-                                color={focused ? (theme === "dark" ? "#130E1D" : "#D9D9D9") : inactiveColor}
+                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#1A1A2F") : (theme === "dark" ? "#1A1A2F" : "#D9D9D9"), width: 40, height: 40, justifyContent: "center", alignItems: "center", marginBottom: -20, borderRadius: 50}}>
+                            <MaterialIcons
+                                name={focused ? "add-circle" : "add-circle-outline"}
+                                size={20}
+                                color={focused ? (theme === "dark" ? "#1A1A2F" : "#D9D9D9") : inactiveColor}
                             />
                         </View>
-                        
                     ),
                 }}
             />
@@ -118,18 +153,19 @@ export default function Layout() {
                                     cache: FastImage.cacheControl.immutable 
                                 }}
                                 style={{
-                                    width: 35,
-                                    height: 35,
+                                    width: 25,
+                                    height: 25,
                                     borderRadius: 50,
                                     borderWidth: focused ? 2 : 0,
                                     borderColor: "#05f0d8",
-                                    marginBottom: -25,
+                                    marginBottom: -20,
                                 }}
                             />
                         ) : (
-                            <Ionicons
-                                name="person-outline"
-                                size={30}
+                            <FontAwesome5
+                                name="user"
+                                size={20}
+                                solid={focused}
                                 color={focused ? activeColor : inactiveColor}
                                 style={{
                                     textShadowColor: activeColor,
