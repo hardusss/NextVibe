@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useColorScheme } from "react-native";
+import { useColorScheme, View } from "react-native";
 import getUserDetail from "@/src/api/user.detail";
 import { useEffect, useState } from "react";
 import { Image } from "react-native";
@@ -48,16 +48,12 @@ export default function Layout() {
         <Tabs
             screenOptions={{
                 tabBarStyle: {
-                    backgroundColor: theme === "dark" ? "black" : "#ffffff", //"#0a0c1a"
+                    backgroundColor: theme === "dark" ? "#130E1D" : "#ffffff", //"#0a0c1a"
                     position: "absolute",
                     height: 70,
-                    borderTopWidth: 1,
-                    borderColor: "#05f0d8", // #5A31F4
                     elevation: 10,
                     shadowOpacity: 1,
                     shadowRadius: 20,
-                    shadowColor: "#7B61FF",
-                    shadowOffset: { width: 0, height: 5 },
                     display: [...blacklist, "camera"].includes(currentPage) ? "none": "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -70,17 +66,14 @@ export default function Layout() {
                 name="home"
                 options={{
                     tabBarIcon: ({ focused }) => (
-                        <Ionicons
-                            name="home-outline"
-                            size={30}
-                            color={focused ? "#0aaac9" : inactiveColor}
-                            style={{
-                                textShadowColor: "#0aaac9",
-                                textShadowRadius: focused ? 10 : 0,
-                                textShadowOffset: { width: 0, height: 0 },
-                                marginBottom: -25,
-                            }}
-                        />
+                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#130E1D") : (theme === "dark" ? "#130E1D" : "#D9D9D9"), width: 50, height: 50, justifyContent: "center", alignItems: "center", marginBottom: -25, borderRadius: 50}}>
+                            <Ionicons
+
+                                name="home-outline"
+                                size={30}
+                                color={focused ? (theme === "dark" ? "#130E1D" : "#D9D9D9") : inactiveColor}
+                            />
+                        </View>
                     ),
                 }}
             />
@@ -88,17 +81,13 @@ export default function Layout() {
                 name="search"
                 options={{
                     tabBarIcon: ({ focused }) => (
-                        <Ionicons
-                            name="search-outline"
-                            size={30}
-                            color={focused ? activeColor : inactiveColor}
-                            style={{
-                                textShadowColor: "#050bb3",
-                                textShadowRadius: focused ? 10 : 0,
-                                textShadowOffset: { width: 0, height: 0 },
-                                marginBottom: -25,
-                            }}
-                        />
+                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#130E1D") : (theme === "dark" ? "#130E1D" : "#D9D9D9"), width: 50, height: 50, justifyContent: "center", alignItems: "center", marginBottom: -25, borderRadius: 50}}>
+                            <Ionicons
+                                name="search-outline"
+                                size={30}
+                                color={focused ? (theme === "dark" ? "#130E1D" : "#D9D9D9") : inactiveColor}
+                            />
+                        </View>
                     ),
                 }}
             />
@@ -106,17 +95,14 @@ export default function Layout() {
                 name="camera"
                 options={{
                     tabBarIcon: ({ focused }) => (
-                        <Ionicons
-                            name="add-circle-outline"
-                            size={34}
-                            color={focused ? "#FF61FF" : inactiveColor}
-                            style={{
-                                textShadowColor: "#FF61FF",
-                                textShadowRadius: focused ? 10 : 0,
-                                textShadowOffset: { width: 0, height: 0 },
-                                marginBottom: -25,
-                            }}
-                        />
+                        <View style={{backgroundColor: focused ? (theme === "dark" ? "#D9D9D9": "#130E1D") : (theme === "dark" ? "#130E1D" : "#D9D9D9"), width: 50, height: 50, justifyContent: "center", alignItems: "center", marginBottom: -25, borderRadius: 50}}>
+                            <Ionicons
+                                name="add-circle-outline"
+                                size={30}
+                                color={focused ? (theme === "dark" ? "#130E1D" : "#D9D9D9") : inactiveColor}
+                            />
+                        </View>
+                        
                     ),
                 }}
             />
