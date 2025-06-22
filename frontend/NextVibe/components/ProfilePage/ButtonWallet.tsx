@@ -1,9 +1,11 @@
-import { Pressable, Text, StyleSheet, Animated, View, Dimensions } from "react-native";
+import { Pressable, StyleSheet, Animated, Dimensions, Text } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
-
+import { LinearGradient } from "expo-linear-gradient";
+import MaskedView from "@react-native-masked-view/masked-view";
 
 const screenWidth = Dimensions.get("window").width;
+
 const ButtonWallet = () => {
     const router = useRouter();
     const [scale] = useState(new Animated.Value(1));
@@ -26,20 +28,31 @@ const ButtonWallet = () => {
 
     return (
         <Animated.View style={[styles.buttonWrapper, { transform: [{ scale }] }]}>
-            <Pressable
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                style={({ pressed }) => [
-                    styles.button,
-                    { backgroundColor: pressed ? "black" : "black" },
-                ]}
+            <LinearGradient
+                colors={["#05f0d8", "#0ff", "#05f0d8"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientBorder}
             >
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>NEW</Text>
-                </View>
-
-                <Text style={styles.text}>Wallet</Text>
-            </Pressable>
+                <Pressable
+                    onPressIn={handlePressIn}
+                    onPressOut={handlePressOut}
+                    style={styles.innerButton}
+                >
+                    <MaskedView
+                        maskElement={
+                            <Text style={styles.text}>Wallet</Text>
+                        }
+                    >
+                        <LinearGradient
+                            colors={["#05f0d8", "#0ff"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{ flex: 1 }}
+                        />
+                    </MaskedView>
+                </Pressable>
+            </LinearGradient>
         </Animated.View>
     );
 };
@@ -48,35 +61,22 @@ const styles = StyleSheet.create({
     buttonWrapper: {
         alignItems: "center",
     },
-    button: {
+    gradientBorder: {
+        padding: 2,
+        borderRadius: 8,
+    },
+    innerButton: {
         width: (screenWidth * 0.45) - 15,
         height: 40,
-        paddingVertical: 10,
-        alignItems: "center",
         borderRadius: 8,
-        borderColor: "#05f0d8",
-        borderWidth: 2,
-        position: "relative",
-        backgroundColor: "transparent",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "black",
     },
     text: {
-        color: "#05f0d8",
         fontWeight: "bold",
         fontSize: 14,
-    },
-    badge: {
-        position: "absolute",
-        top: -10,
-        right: -2,
-        backgroundColor: "red",
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 12,
-    },
-    badgeText: {
-        color: "white",
-        fontSize: 12,
-        fontWeight: "bold",
+        textAlign: "center",
     },
 });
 

@@ -158,12 +158,14 @@ const styles = StyleSheet.create({
     postContainer: {
         width: imageSize,
         height: imageSize,
+        
         margin: 2,
         position: "relative",
     },
     media: {
         width: "100%",
         height: "100%",
+        borderRadius: 10
     },
     videoContainer: {
         position: "relative",

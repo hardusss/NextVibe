@@ -124,7 +124,7 @@ export default function SearchPage() {
             <StatusBar backgroundColor={colorScheme === "dark" ? "#130E1D" : "white"}></StatusBar>
             <View style={{ position: "relative", alignItems: "center", marginBottom: 20 }}>
                 <BlurView
-                    intensity={40}
+                    intensity={0}
                     tint={colorScheme === "dark" ? "dark" : "light"}
                     style={{
                     position: "absolute",

@@ -30,7 +30,7 @@ const ButtonSsetings = () => {
                 onPressOut={handlePressOut}
                 style={({ pressed }) => [
                     styles.button,
-                    { backgroundColor: pressed ? "rgb(6, 174, 157)" : "#05f0d8" }, //rgb(6, 174, 157)
+                    { backgroundColor: pressed ? "rgb(48, 28, 60)" : "#3B0971" }, //rgb(6, 174, 157)
                 ]}
             >
                 <Text style={styles.text}>Settings</Text>
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     text: {
-        color: "black",
+        color: "white",
         fontWeight: "bold",
         fontSize: 14,
     }

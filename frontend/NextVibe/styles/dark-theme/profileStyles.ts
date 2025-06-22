@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 const colors = {
-    background: 'black', // #09080f
+    background: '#130E1D', // #09080f
     cardBackground: '#0a0c1a',
     inputBackground: '#0a0c1a',
     primary: '#fafafa',
@@ -21,12 +21,12 @@ const profileDarkStyles = StyleSheet.create({
     },
     username: {
         color: colors.textPrimary,
-        fontSize: 36
+        fontSize: 28
         },
     avatar: {
         marginLeft: 5,
-        width: 110,
-        height: 110,
+        width: 100,
+        height: 100,
         borderRadius: 60,
         objectFit: "cover"
     },

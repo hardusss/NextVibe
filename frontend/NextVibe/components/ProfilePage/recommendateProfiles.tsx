@@ -26,13 +26,13 @@ const lightTheme = {
 };
 
 const darkTheme = {
-    background: "black", // #09080f
-    cardBackground: "black", //rgba(11, 18, 76, 0.3)
+    background: "#130E1D", // #09080f
+    cardBackground: "#180B32", //rgba(11, 18, 76, 0.3)
     textPrimary: "#ffffff",
     textSecondary: "#8b949e",
-    border: "#05f0d8", // #5A31F4
-    followButton: "#0095f6",
-    followText: "#ffffff",
+    border: "transparent", // #5A31F4
+    followButton: "#542988",
+    followText: "#180B32",
     followedButton: "#262626",
     followedText: "#ffffff",
     iconColor: "white"
@@ -166,12 +166,13 @@ const styles = StyleSheet.create({
         maxWidth: 120,
     },
     followButton: {
-        paddingVertical: 6,
-        paddingHorizontal: 20,
-        borderRadius: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 25,
+        borderRadius: 10,
         marginTop: "auto",
     },
     followText: {
+        fontSize: 14,
         fontWeight: "bold",
     },
 });

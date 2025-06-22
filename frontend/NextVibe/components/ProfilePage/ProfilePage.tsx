@@ -105,7 +105,7 @@ const ProfileView = () => {
         <SafeAreaView style={profileStyle.container}>
             <StatusBar
                 animated={true}
-                backgroundColor={colorScheme === 'dark' ? 'black' : '#f0f0f0'} 
+                backgroundColor={colorScheme === 'dark' ? '#130E1D' : '#f0f0f0'} 
             />
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{flex: 1, justifyContent: "center", alignItems: "center"}}/>
