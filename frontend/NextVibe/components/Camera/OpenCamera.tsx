@@ -26,18 +26,6 @@ const CameraScreen = () => {
   ]);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  const loadLastPhoto = async () => {
-    const media = await ImagePicker.getMediaLibraryAsync({ mediaType: ImagePicker.MediaTypeOptions.Images, first: 1 });
-    if (media.assets && media.assets.length > 0) {
-      setLastPhoto(media.assets[0].uri);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadLastPhoto();
-    }, [])
-  );
 
   const openGallery = async () => {
     const image = await ImagePicker.launchImageLibraryAsync({
