@@ -12,7 +12,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
 
     useEffect(() => {
         GoogleSignin.configure({
-            webClientId: '917502296605-mjvinqqafhbnv4ucopebd9ek8mnd1nom.apps.googleusercontent.com',
+           webClientId: '917502296605-mjvinqqafhbnv4ucopebd9ek8mnd1nom.apps.googleusercontent.com'
         });
     }, []);
 
@@ -28,6 +28,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
                 GoogleLogin(`${userData?.email}`, router);
             }
         } catch (error: any) {
+            console.log(error.code)
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
                 Toast.show({
                     type: 'info',

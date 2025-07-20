@@ -15,6 +15,3 @@ backend/NextVibeAPI/NextVibeAPI/.env
 
 ./.vscode
 ./.idea
-
-**/*.json
-!frontend/NextVibe/app.json

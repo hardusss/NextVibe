@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, useColorScheme, RefreshControl, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useColorScheme, RefreshControl, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import getBalanceWallet from '@/src/api/wallet.balance';
 import formatNumberWithCommas from '@/src/utils/formatedNumberUs';
@@ -59,7 +59,7 @@ export default function WalletScreen() {
 
   const styles = StyleSheet.create({
     container: {
-      backgroundColor: isDarkMode ? 'black' : '#f2f2f2',
+      backgroundColor: isDarkMode ? '#130E1D' : '#f2f2f2',
       flex: 1,
       padding: 20,
     },
@@ -119,32 +119,28 @@ export default function WalletScreen() {
     },
     circleWrapper: { alignItems: 'center' },
     circleButton: {
-      width: 50,
+      width: 100,
       height: 50,
-      backgroundColor: isDarkMode ? '#00CED1' : '#00CED1',
-      borderRadius: 25,
+      backgroundColor: isDarkMode ? '#3B0971' : '#00CED1',
+      borderRadius: 5,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 8,
-      borderWidth: 2,
-      borderColor: isDarkMode ? '#00CED1' : 'transparent',
     },
     iconColor: {
-      color: isDarkMode ? '#fff' : '#fff',
+      color: isDarkMode ? '#fafafa' : '#fff',
     },
     circleText: {
-      color: isDarkMode ? '#00CED1' : '#000',
-      fontSize: 16,
+      color: isDarkMode ? 'white' : '#fafafa',
+      fontSize: 14,
     },
     tokenItem: {
-      backgroundColor: isDarkMode ? 'black' : '#fff',
+      backgroundColor: isDarkMode ? '#1d0438' : '#fff',
       borderRadius: 16,
       padding: 15,
       flexDirection: 'row',
       alignItems: 'center',
       marginBottom: 16,
-      borderWidth: 1,
-      borderColor: isDarkMode ? '#00CED1' : '#ddd',
     },
     tokenIcon: {
       width: 30,
@@ -176,9 +172,7 @@ export default function WalletScreen() {
       fontSize: 10,
     },
     historyButton: {
-      backgroundColor: isDarkMode ? 'black' : '#fff',
-      borderWidth: 1,
-      borderColor: isDarkMode ? '#00CED1' : '#ccc',
+      backgroundColor: isDarkMode ? '#250647' : '#fff',
       borderRadius: 12,
       padding: 15,
       flexDirection: 'row',
@@ -200,10 +194,10 @@ export default function WalletScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDarkMode ? '#fff' : '#000'} />
       }
     >
-      <StatusBar backgroundColor={isDarkMode ? "black" : "#fff"}/>  
+      <StatusBar backgroundColor={isDarkMode ? "#130E1D" : "#fff"}/>  
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.push({ pathname: "/profile" })}>
-          <Ionicons name="arrow-back" size={28} color={isDarkMode ? '#fff' : '#000'} />
+          <Ionicons name="arrow-back" size={28} color={isDarkMode ? '#fafafa' : '#000'} />
         </TouchableOpacity>
       </View>
       <Text style={styles.balanceText}>Total Balance</Text>
@@ -220,9 +214,10 @@ export default function WalletScreen() {
                 from_page: "send"
               }
             })}>
-            <Ionicons name="arrow-up" size={28} style={styles.iconColor} />
+            <Ionicons name="paper-plane-outline" size={22} style={styles.iconColor} />
+            <Text style={styles.circleText}>Send</Text>
           </TouchableOpacity>
-          <Text style={styles.circleText}>Send</Text>
+          
         </View>
         <View style={styles.circleWrapper}>
           <TouchableOpacity style={styles.circleButton} onPress={() => router.push({
@@ -231,16 +226,16 @@ export default function WalletScreen() {
                 from_page: "deposit"
               }
             })}>
-            <Ionicons name="arrow-down" size={28} style={styles.iconColor} />
+            <Ionicons name="download-outline" size={22} style={styles.iconColor} />
+             <Text style={styles.circleText}>Receive</Text>
           </TouchableOpacity>
-          <Text style={styles.circleText}>Deposit</Text>
         </View>
-        {/* <View style={styles.circleWrapper}>
+        <View style={styles.circleWrapper}>
           <TouchableOpacity style={styles.circleButton}>
-            <Ionicons name="swap-horizontal" size={28} style={styles.iconColor} />
+            <Ionicons name="repeat-outline" size={22} style={styles.iconColor} />
+             <Text style={styles.circleText}>Swap</Text>
           </TouchableOpacity>
-          <Text style={styles.circleText}>Swap</Text>
-        </View> */}
+        </View>
       </View>
       {(loading ? Array(3).fill(null) : tokens).map((token, index) => (
         <View key={index} style={styles.tokenItem}>

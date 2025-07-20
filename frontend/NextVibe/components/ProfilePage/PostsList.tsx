@@ -2,7 +2,6 @@ import React, { useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
@@ -40,6 +39,7 @@ interface PostItem {
   media: MediaItem[];
   create_at: string;
   user_id: number;
+  location: string,
   is_ai_generated: boolean;
 }
 
@@ -133,6 +133,7 @@ const UserPosts = () => {
       const data = await getMenuPosts(+user_id);
       if (data) {
         setPosts(data.data); // Replace instead of concatenate
+        console.log(data.data)
         data.data.forEach((post: PostItem) => fetchUser(post.user_id));
         setHasMore(data.more_posts);
         if (data.liked_posts) {
@@ -231,6 +232,9 @@ const UserPosts = () => {
                     </View>
                   )}
                 </View>
+                {item.location?.trim() ? (
+                  <Text style={styles.location}>{item.location}</Text>
+                ) : null}
               </View>
             </>
           )}
@@ -333,7 +337,7 @@ const UserPosts = () => {
         />
         <Text style={[styles.text, { fontSize: 28 }]}>Posts</Text>
       </View>
-      <StatusBar animated backgroundColor={isDarkMode ? "black" : "#f0f0f0"} />
+      <StatusBar animated backgroundColor={isDarkMode ? "#130E1D" : "#f0f0f0"} />
       {error && <Text style={styles.error}>{error}</Text>}
       <FlatList
         ref={flatListRef}
@@ -428,9 +432,13 @@ const getStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
       padding: 10,
-      backgroundColor: isDarkMode ? "black" : "#fff",
-      paddingBottom: 100,
+      backgroundColor: isDarkMode ? "#130E1D" : "#fff",
       flex: 1,
+    },
+    location: {
+        fontSize: 14,
+        color: isDarkMode ? "#aaa" : "#666",
+        marginTop: 2
     },
     userInfo: {
       flexDirection: "row",
@@ -451,15 +459,14 @@ const getStyles = (isDarkMode: boolean) =>
     post: {
       width: screenWidth,
       paddingBottom: 15,
-      borderBottomWidth: 1,
-      borderColor: "#05f0d8",
       paddingTop: 15,
-      backgroundColor: isDarkMode ? "black" : "#fff",
+      backgroundColor: isDarkMode ? "#130E1D" : "#fff",
       elevation: 3,
     },
     fullMedia: {
       width: screenWidth,
       height: screenWidth * 1,
+      borderRadius: 12,
     },
     text: {
       width: screenWidth - 10,

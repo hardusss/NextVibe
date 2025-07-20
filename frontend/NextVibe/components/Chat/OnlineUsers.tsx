@@ -63,7 +63,8 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
 const styles = StyleSheet.create({
   container: {
     height: 90,
-    paddingHorizontal: 5
+    paddingHorizontal: 15,
+    paddingTop: 15,
   },
   userContainer: {
     alignItems: 'center',

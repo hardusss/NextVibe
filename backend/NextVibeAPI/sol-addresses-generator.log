@@ -30,3 +30,14 @@
 2025-05-27 19:17:15,387 - INFO - Balance address: tb1q7xckmvshh096tddm0392gxuujflhmd6glml863: 0.0
 2025-05-27 19:17:16,415 - INFO - Balance address: BmPBfyZj39QQ4YN3wfFe1JJXqrPYd3x73B89tGXdcWBK: 0.0
 2025-05-27 19:17:17,063 - ERROR - Error: account not found on-chain
+2025-06-30 13:54:04,542 - INFO - Creating wallet with address HbfaTfmfPLyfV8XLCwpPeegg3U1VkqjQVgm4GJtzFXGd and private key 97eda9186efd0954870716b4797b0565c98d67d10f070c333e56ff8b846123dff69c5b7c187529f64dbacf096755a71da457b40bc24aecdd5771dbdc49e56222
+2025-06-30 13:54:04,543 - INFO - Successfully created TRX wallet with address TTuk9mTagq9885mmdfn484kQhrPKcF96BQ and private_key ef4083d1f9487c5a3d137478497e25cbec017eb78c26f777f03a97f323e08fdf
+2025-06-30 13:54:07,002 - INFO - Balance address: tb1quz47le8lejed7dj9n40732jyq6fa78q8ma9thh: 0.0
+2025-06-30 13:54:07,895 - INFO - Balance address: HbfaTfmfPLyfV8XLCwpPeegg3U1VkqjQVgm4GJtzFXGd: 0.0
+2025-06-30 13:54:08,527 - ERROR - Error: account not found on-chain
+2025-06-30 13:55:45,813 - INFO - Balance address: tb1quz47le8lejed7dj9n40732jyq6fa78q8ma9thh: 0.0
+2025-06-30 13:55:46,656 - INFO - Balance address: HbfaTfmfPLyfV8XLCwpPeegg3U1VkqjQVgm4GJtzFXGd: 0.0
+2025-06-30 13:55:47,266 - ERROR - Error: account not found on-chain
+2025-06-30 13:56:44,014 - INFO - Balance address: tb1quz47le8lejed7dj9n40732jyq6fa78q8ma9thh: 0.0
+2025-06-30 13:56:44,509 - INFO - Balance address: HbfaTfmfPLyfV8XLCwpPeegg3U1VkqjQVgm4GJtzFXGd: 0.0
+2025-06-30 13:56:45,093 - ERROR - Error: account not found on-chain

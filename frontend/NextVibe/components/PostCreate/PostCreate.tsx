@@ -9,16 +9,18 @@ import generateImage from '@/src/api/generate.image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import FastImage from 'react-native-fast-image';
+import ButtonAI from './GenerateAIButton';
+
 
 const darkColors = {
-    background: 'black',
+    background: '#130E1D',
     cardBackground: 'black', 
-    inputBackground: 'black',
+    inputBackground: 'rgba(235, 238, 242, 0.17)',
     primary: '#58a6ff',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
     textSecondary: '#8b949e',
-    border: '#05f0d8',
+    border: 'white',
     shadow: '#0917b3',
 };
 
@@ -230,7 +232,7 @@ export default function PostCreate() {
         footer: {
             flexDirection: 'row',
             justifyContent: 'space-between',
-            marginTop: 20,
+            marginTop: 80,
             paddingBottom: 20,
         },
         button: {
@@ -245,7 +247,9 @@ export default function PostCreate() {
             shadowRadius: 4,
         },
         publishButton: {
-            backgroundColor: "#05f0d8",
+            backgroundColor: darkColors.background,
+            borderWidth: 1,
+            borderColor: "white"
         },
         buttonText: {
             fontSize: 16,
@@ -260,17 +264,17 @@ export default function PostCreate() {
         modalContent: {
             width: '100%',
             padding: 20,
-            backgroundColor: colors.cardBackground,
-            borderColor: colors.border,
-            borderTopWidth: 2,
+            backgroundColor: darkColors.background,
         },
         modalHeader: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: 20,
+            backgroundColor: darkColors.background,
         },
         modalInputContainer: {
+            backgroundColor: darkColors.background,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
@@ -348,18 +352,7 @@ export default function PostCreate() {
                     thumbColor={enableComments ? '#05f0d8' : '#f4f3f4'}
                 />
             </View>
-
-            <TouchableOpacity 
-                style={[themedStyles.button, { backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border }]} 
-                onPress={() =>{ setIsModalVisible(true)}}
-                disabled={isGenerating}
-            >
-                {isGenerating ? (
-                    <ActivityIndicator color={colors.textPrimary} />
-                ) : (
-                    <Text style={[themedStyles.buttonText, {color: "#05f0d8"}]}>Generate with AI</Text>
-                )}
-            </TouchableOpacity>
+            <ButtonAI onClick={() =>{ setIsModalVisible(true)} } isGenerating={isGenerating}/>
 
             <Modal
                 visible={isModalVisible}
@@ -398,12 +391,12 @@ export default function PostCreate() {
             </Modal>
 
             <View style={themedStyles.footer}>
-                <TouchableOpacity style={[themedStyles.button, { backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border }]} onPress={handleSaveDraft}>
-                    <Text style={[themedStyles.buttonText, {color: "#05f0d8"}]}>Save as Draft</Text>
+                <TouchableOpacity style={[themedStyles.button, { backgroundColor: "rgb(48, 28, 60)" }]} onPress={handleSaveDraft}>
+                    <Text style={[themedStyles.buttonText, {color: "white"}]}>Save as Draft</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={[themedStyles.button, themedStyles.publishButton]} onPress={handlePublish}>
-                    <Text style={[themedStyles.buttonText, {color: "black"}]}>Publish</Text>
+                    <Text style={[themedStyles.buttonText, {color: "white"}]}>Publish</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

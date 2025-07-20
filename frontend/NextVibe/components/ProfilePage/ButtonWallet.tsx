@@ -6,27 +6,6 @@ import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 
 import { View } from "react-native";
 const screenWidth = Dimensions.get("window").width;
 
-const GradientText = ({ text }: { text: string }) => (
-  <Svg height="20" width="100%">
-    <Defs>
-      <SvgGradient id="grad" x1="0" y1="0" x2="1" y2="0">
-        <Stop offset="0" stopColor="#1DEFEF" />
-        <Stop offset="1" stopColor="#DE0FE9" />
-      </SvgGradient>
-    </Defs>
-    <SvgText
-      fill="url(#grad)"
-      fontSize="14"
-      fontWeight="bold"
-      x="50%"
-      y="15"
-      textAnchor="middle"
-    >
-      {text}
-    </SvgText>
-  </Svg>
-);
-
 const ButtonWallet = () => {
   const router = useRouter();
   const [scale] = useState(new Animated.Value(1));
@@ -90,7 +69,7 @@ const ButtonWallet = () => {
 
 const styles = StyleSheet.create({
   buttonWrapper: {
-    width: (screenWidth * 0.45) ,
+    width: (screenWidth * 0.42) ,
     alignItems: "center",
     position: "relative",
     
@@ -101,11 +80,11 @@ const styles = StyleSheet.create({
     height: 40,
     position: "absolute",
     left: 0,
-    width: (screenWidth * 0.45) ,
+    width: (screenWidth * 0.42) ,
      
   },
   innerButton: {
-    width: (screenWidth * 0.45) - 4,
+    width: (screenWidth * 0.42) - 4,
     left: 2,
     top: 2.2,
     height: 36,

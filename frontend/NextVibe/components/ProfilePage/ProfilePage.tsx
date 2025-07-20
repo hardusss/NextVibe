@@ -126,7 +126,7 @@ const ProfileView = () => {
                 >
                     <View style={{flexDirection: "row"}}>
                         <Text style={profileStyle.username}>{userData.username}</Text>
-                        {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 14}} /> :  ""}
+                        {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 8}} /> :  ""}
                     </View>
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
                         <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />

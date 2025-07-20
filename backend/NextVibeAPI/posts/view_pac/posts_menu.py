@@ -31,6 +31,7 @@ class PostMenuView(APIView):
                 "media": media_data,
                 "create_at": post.create_at,
                 "is_ai_generated": post.is_ai_generated,
+                "location": post.location
             })
             
         user = User.objects.get(user_id=who_send_request)

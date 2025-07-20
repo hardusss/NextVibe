@@ -80,7 +80,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
 
       <Animated.View style={[{ transform: [{ translateX }] }]}>
         <TouchableOpacity
-          style={[styles.container, { backgroundColor: isDark ? '#000' : '#fff' }]}
+          style={[styles.container, { backgroundColor: isDark ? '#130E1D' : '#fff' }]}
           onPress={() => router.push({
             pathname: "/(tabs)/chat-room",
             params: { id: chat.chat_id, userId: chat.other_user.user_id}
@@ -155,7 +155,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     padding: 15,
     borderBottomWidth: 0.2,
     borderBottomColor: 'gray',
-    backgroundColor: isDark ? '#000' : '#fff',
+    backgroundColor: isDark ? '#130E1D' : '#fff',
     zIndex: 1,
   },
   avatarContainer: {

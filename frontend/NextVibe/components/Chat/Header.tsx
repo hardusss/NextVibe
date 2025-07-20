@@ -12,7 +12,7 @@ export default function Header({ title, leftIcon, onLeftPress }: HeaderProps) {
   const isDark = useColorScheme() === 'dark';
   
   return (
-    <View style={[styles.header, { backgroundColor: isDark ? '#000' : '#fff' }]}>
+    <View style={[styles.header, { backgroundColor: isDark ? '#130E1D' : '#fff' }]}>
       {leftIcon && (
         <TouchableOpacity onPress={onLeftPress} style={styles.leftButton}>
           <MaterialIcons name={leftIcon as any} size={24} color={isDark ? '#fff' : '#000'} />
@@ -28,8 +28,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#00CED1'
+    backgroundColor: "#130E1D"
   },
   leftButton: {
     marginRight: 16

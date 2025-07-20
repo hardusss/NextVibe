@@ -2,9 +2,9 @@ import { BackHandler, StyleSheet } from 'react-native';
 
 
 const colors = {
-    background: 'black',
+    background: '#130E1D',
     cardBackground: 'white',
-    inputBackground: 'black',
+    inputBackground: '#130E1D',
     primary: '#58a6ff',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
