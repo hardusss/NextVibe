@@ -5,6 +5,13 @@ plugins {
     id "com.facebook.react"
 }
 
+configurations.all {
+    resolutionStrategy {
+        force 'com.google.android.gms:play-services-measurement-api:21.6.2'
+        force 'com.google.android.gms:play-services-measurement-impl:21.6.2'
+    }
+}
+
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
 /**
@@ -156,6 +163,9 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:32.2.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+    implementation 'com.google.android.gms:play-services-measurement-api:21.6.2'
+    implementation 'com.google.android.gms:play-services-measurement-impl:21.6.2'
+
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
