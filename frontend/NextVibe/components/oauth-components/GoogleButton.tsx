@@ -12,7 +12,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
 
     useEffect(() => {
         GoogleSignin.configure({
-           webClientId: '917502296605-mjvinqqafhbnv4ucopebd9ek8mnd1nom.apps.googleusercontent.com'
+           webClientId: '1000272560342-2sqkk0h0e18rf3o166ipo98n8mdgtt48.apps.googleusercontent.com'
         });
     }, []);
 

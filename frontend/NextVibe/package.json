@@ -75,7 +75,8 @@
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "yup": "^1.6.1",
-    "zxcvbn": "^4.4.2"
+    "zxcvbn": "^4.4.2",
+    "expo-auth-session": "~6.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

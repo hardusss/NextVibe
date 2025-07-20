@@ -1,41 +1,41 @@
 {
   "project_info": {
-    "project_number": "917502296605",
-    "project_id": "nextvibebeta",
-    "storage_bucket": "nextvibebeta.firebasestorage.app"
+    "project_number": "1000272560342",
+    "project_id": "nextvibe-bc1ea",
+    "storage_bucket": "nextvibe-bc1ea.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:917502296605:android:16529eda1b722eba327cf4",
+        "mobilesdk_app_id": "1:1000272560342:android:ca3020238dd5a411a30977",
         "android_client_info": {
-          "package_name": "com.harrddddd.NextVibe"
+          "package_name": "com.harrddddd.nextvibe"
         }
       },
       "oauth_client": [
         {
-          "client_id": "917502296605-8h915ea9mb5ki33ahhftfd5e82ite9j1.apps.googleusercontent.com",
+          "client_id": "1000272560342-2sqkk0h0e18rf3o166ipo98n8mdgtt48.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.harrddddd.NextVibe",
-            "certificate_hash": "0dadb4645fe0733424f780346e5e80fa327c146a"
+            "package_name": "com.harrddddd.nextvibe",
+            "certificate_hash": "c0eda92e0a88b89904a6cf3fc3306006c30a062d"
           }
         },
         {
-          "client_id": "917502296605-mjvinqqafhbnv4ucopebd9ek8mnd1nom.apps.googleusercontent.com",
+          "client_id": "1000272560342-72f16n3h1ibdkj4i76fmtjgp03aam0l4.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDcBedUgQOvO1ULzgpl8OpIgsSO1hB_UwM"
+          "current_key": "AIzaSyDHh7H2MdMt-Ych9W1cqb7ezg_hVjuf5rw"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "917502296605-mjvinqqafhbnv4ucopebd9ek8mnd1nom.apps.googleusercontent.com",
+              "client_id": "1000272560342-72f16n3h1ibdkj4i76fmtjgp03aam0l4.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
