@@ -37,9 +37,15 @@
       "expo-router",
       [
         "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "usesCleartextTraffic": true,
           "cameraPermissionText": "NextVibe needs access to your Camera.",
           "enableMicrophonePermission": true,
           "photosPermission": "NextVibe accesses your photos",
