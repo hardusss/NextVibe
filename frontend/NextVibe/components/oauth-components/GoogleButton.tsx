@@ -12,7 +12,8 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
 
     useEffect(() => {
         GoogleSignin.configure({
-           webClientId: '1063264156706-aj2sm2vuqr5ajltpqi6t1k5g82js5jen.apps.googleusercontent.com'
+           webClientId: '1063264156706-aj2sm2vuqr5ajltpqi6t1k5g82js5jen.apps.googleusercontent.com',
+           offlineAccess: true,
         });
     }, []);
 

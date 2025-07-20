@@ -36,8 +36,10 @@
     "plugins": [
       "expo-router",
       [
+        "expo-build-properties",
         "expo-splash-screen",
         {
+          "usesCleartextTraffic": true,
           "cameraPermissionText": "NextVibe needs access to your Camera.",
           "enableMicrophonePermission": true,
           "photosPermission": "NextVibe accesses your photos",
