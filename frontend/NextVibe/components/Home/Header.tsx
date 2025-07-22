@@ -114,13 +114,13 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   headerFixed: {
     paddingHorizontal: 10,
-    backgroundColor: isDark ? '#130E1D' : '#fff',
+    backgroundColor: isDark ? '#0A0410' : '#fff',
     zIndex: 2,
   },
   buttonContainer: {
     paddingHorizontal: 10,
     paddingBottom :10,
-    backgroundColor: isDark ? '#130E1D' : '#fff',
+    backgroundColor: isDark ? '#0A0410' : '#fff',
     zIndex: 1,
   },
   row: {
@@ -131,7 +131,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   
   },
   messageButton: {
-    backgroundColor: isDark ? '#D9D9D9' : '#130E1D',
+    backgroundColor: isDark ? '#D9D9D9' : '#0A0410',
     width: "100%",
     height: 50,
     borderRadius: 12,
@@ -140,7 +140,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     marginTop: 2,
   },
   messageButtonText: {
-    color: isDark ? '#130E1D' : '#D9D9D9',
+    color: isDark ? '#0A0410' : '#D9D9D9',
     fontSize: 16,
     fontWeight: "bold"
   },

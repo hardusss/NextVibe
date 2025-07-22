@@ -81,7 +81,7 @@ export default function SelectTokenPage() {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDarkTheme ? "#000" : "#fff",
+      backgroundColor: isDarkTheme ? "#0A0410" : "#fff",
       padding: 16,
     },
     titleWrapper: {
@@ -99,7 +99,9 @@ export default function SelectTokenPage() {
       fontWeight: "bold",
     },
     searchBox: {
-      backgroundColor: isDarkTheme ? "#1a1a1a" : "#f2f2f2",
+      backgroundColor: isDarkTheme ? "#1C112E" : "#f2f2f2",
+      borderWidth: 1.5, 
+      borderColor: isDarkTheme ? '#A78BFA' : '#ccc',
       flexDirection: "row",
       alignItems: "center",
       borderRadius: 12,
@@ -109,15 +111,18 @@ export default function SelectTokenPage() {
     },
     searchInput: {
       flex: 1,
-      color: isDarkTheme ? "#fff" : "#000",
+      color: isDarkTheme ? "#aaa" : "#000",
       fontSize: 16,
       marginLeft: 12,
+      
     },
     tokenItem: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      backgroundColor: isDarkTheme ? "#121212" : "#f9f9f9",
+      backgroundColor: isDarkTheme ? "#180F2E" : "#f9f9f9",
+      borderWidth: 1,
+      borderColor: isDarkTheme ? '#A78BFA' : '#ccc',
       padding: 14,
       borderRadius: 14,
       marginBottom: 14,
@@ -150,7 +155,7 @@ export default function SelectTokenPage() {
     skeletonRow: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: isDarkTheme ? "#121212" : "#f0f0f0",
+      backgroundColor: isDarkTheme ? "#1C112E" : "#f0f0f0",
       padding: 14,
       borderRadius: 14,
       marginBottom: 14,
@@ -159,7 +164,7 @@ export default function SelectTokenPage() {
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: isDarkTheme ? "#222" : "#ddd",
+      backgroundColor: isDarkTheme ? "#281842ff" : "#ddd",
       marginRight: 14,
     },
     skeletonTextBlock: {
@@ -169,21 +174,21 @@ export default function SelectTokenPage() {
     skeletonLineShort: {
       width: 80,
       height: 14,
-      backgroundColor: isDarkTheme ? "#222" : "#ddd",
+      backgroundColor: isDarkTheme ? "#281842ff" : "#ddd",
       borderRadius: 8,
       marginBottom: 8,
     },
     skeletonLineLong: {
       width: 140,
       height: 12,
-      backgroundColor: isDarkTheme ? "#222" : "#ddd",
+      backgroundColor: isDarkTheme ? "#281842ff" : "#ddd",
       borderRadius: 8,
     },
   });
 
   return (
     <ScrollView style={styles.container}>
-      <StatusBar backgroundColor={isDarkTheme ? "black" : "#fff"} barStyle={isDarkTheme ? "light-content" : "dark-content"} />
+      <StatusBar backgroundColor={isDarkTheme ? "#0A0410" : "#fff"} barStyle={isDarkTheme ? "light-content" : "dark-content"} />
 
      
       <View style={styles.titleWrapper}>
@@ -194,7 +199,7 @@ export default function SelectTokenPage() {
       </View>
 
       <View style={styles.searchBox}>
-        <MaterialCommunityIcons name="magnify" size={26} color={isDarkTheme ? "#fff" : "#000"} />
+        <MaterialCommunityIcons name="magnify" size={26} color={isDarkTheme ? "#aaa" : "#000"} />
         <TextInput
           style={styles.searchInput}
           placeholder="Token search..."

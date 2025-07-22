@@ -1754,3 +1754,186 @@
 2025-06-30 13:44:11,624 - INFO - Balance address: tb1quz47le8lejed7dj9n40732jyq6fa78q8ma9thh: 0.0
 2025-06-30 13:44:12,527 - INFO - Balance address: C1oQn6BkpJnE2ez8hwvmMB43KQa6xBLcz1YhcjXtBDTu: 0.5
 2025-06-30 13:44:13,126 - ERROR - Error: 'balance'
+2025-07-22 20:55:32,384 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 20:55:33,017 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 20:55:34,134 - ERROR - Error: account not found on-chain
+2025-07-22 20:56:10,947 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 20:56:11,562 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 20:56:12,368 - ERROR - Error: account not found on-chain
+2025-07-22 20:58:09,998 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 20:58:10,700 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 20:58:11,581 - ERROR - Error: account not found on-chain
+2025-07-22 20:58:22,166 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 20:58:22,680 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 20:58:23,502 - ERROR - Error: account not found on-chain
+2025-07-22 20:58:30,218 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 20:58:30,690 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 20:58:31,515 - ERROR - Error: account not found on-chain
+2025-07-22 20:59:09,412 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 20:59:10,209 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 20:59:11,001 - ERROR - Error: account not found on-chain
+2025-07-22 20:59:58,218 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 20:59:59,143 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:00:00,068 - ERROR - Error: account not found on-chain
+2025-07-22 21:00:12,949 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:00:13,903 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:00:14,715 - ERROR - Error: account not found on-chain
+2025-07-22 21:00:20,443 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:00:21,525 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:00:22,244 - ERROR - Error: account not found on-chain
+2025-07-22 21:00:44,112 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:00:44,874 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:00:45,787 - ERROR - Error: account not found on-chain
+2025-07-22 21:06:16,955 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:06:18,085 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:06:19,277 - ERROR - Error: account not found on-chain
+2025-07-22 21:06:27,045 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:06:28,135 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:06:29,863 - ERROR - Error: account not found on-chain
+2025-07-22 21:06:39,427 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:06:40,536 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:06:41,330 - ERROR - Error: account not found on-chain
+2025-07-22 21:06:44,449 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:06:45,434 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:06:46,274 - ERROR - Error: account not found on-chain
+2025-07-22 21:11:02,634 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:11:03,423 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:11:03,925 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:11:04,062 - ERROR - Error: account not found on-chain
+2025-07-22 21:11:04,687 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:11:05,274 - ERROR - Error: account not found on-chain
+2025-07-22 21:23:08,517 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:23:09,013 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:23:09,617 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:23:09,903 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:23:10,528 - ERROR - Error: account not found on-chain
+2025-07-22 21:23:10,621 - ERROR - Error: account not found on-chain
+2025-07-22 21:27:16,004 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:27:19,959 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:27:25,116 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:27:25,117 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:27:26,357 - ERROR - Error: account not found on-chain
+2025-07-22 21:27:26,358 - ERROR - Error: account not found on-chain
+2025-07-22 21:29:39,502 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:29:40,356 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:29:40,897 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:29:41,061 - ERROR - Error: account not found on-chain
+2025-07-22 21:29:41,730 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:29:42,334 - ERROR - Error: account not found on-chain
+2025-07-22 21:29:54,653 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:29:55,409 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:29:56,023 - ERROR - Error: account not found on-chain
+2025-07-22 21:30:52,929 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:30:53,324 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:30:53,909 - ERROR - Error: account not found on-chain
+2025-07-22 21:30:54,124 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:30:54,490 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:30:55,066 - ERROR - Error: account not found on-chain
+2025-07-22 21:31:06,091 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:31:06,444 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:31:07,030 - ERROR - Error: account not found on-chain
+2025-07-22 21:31:08,523 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:31:08,884 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:31:09,357 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:31:09,502 - ERROR - Error: account not found on-chain
+2025-07-22 21:31:09,717 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:31:10,301 - ERROR - Error: account not found on-chain
+2025-07-22 21:31:11,540 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:31:11,858 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:31:11,895 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:31:12,425 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:31:12,537 - ERROR - Error: account not found on-chain
+2025-07-22 21:31:13,007 - ERROR - Error: account not found on-chain
+2025-07-22 21:31:23,514 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:31:23,726 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:31:24,024 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:31:24,162 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:31:24,661 - ERROR - Error: account not found on-chain
+2025-07-22 21:31:24,738 - ERROR - Error: account not found on-chain
+2025-07-22 21:32:58,110 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:32:58,948 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:32:59,528 - ERROR - Error: account not found on-chain
+2025-07-22 21:33:03,924 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:33:04,670 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:33:05,280 - ERROR - Error: account not found on-chain
+2025-07-22 21:33:15,422 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:33:16,170 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:33:16,785 - ERROR - Error: account not found on-chain
+2025-07-22 21:33:20,610 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:33:21,357 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:33:21,967 - ERROR - Error: account not found on-chain
+2025-07-22 21:33:22,402 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:33:23,149 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:33:23,750 - ERROR - Error: account not found on-chain
+2025-07-22 21:33:26,940 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:33:27,696 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:33:28,351 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:04,509 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:05,305 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:06,091 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:06,221 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:06,530 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:06,614 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:07,054 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:07,164 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:07,700 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:08,745 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:09,108 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:09,711 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:11,823 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:12,182 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:12,455 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:12,789 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:12,826 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:13,437 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:13,598 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:13,957 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:14,579 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:27,372 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:27,731 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:28,362 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:32,253 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:32,609 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:33,209 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:37,069 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:37,512 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:38,119 - ERROR - Error: account not found on-chain
+2025-07-22 21:34:54,879 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:34:55,235 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:34:55,923 - ERROR - Error: account not found on-chain
+2025-07-22 21:35:37,251 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:35:37,648 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:35:38,269 - ERROR - Error: account not found on-chain
+2025-07-22 21:35:40,787 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:35:41,176 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:35:41,779 - ERROR - Error: account not found on-chain
+2025-07-22 21:35:45,702 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:35:46,062 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:35:46,674 - ERROR - Error: account not found on-chain
+2025-07-22 21:36:01,225 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:36:01,594 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:36:02,182 - ERROR - Error: account not found on-chain
+2025-07-22 21:40:18,155 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:40:18,670 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:40:20,432 - ERROR - Error: account not found on-chain
+2025-07-22 21:40:27,049 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:40:27,417 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:40:28,011 - ERROR - Error: account not found on-chain
+2025-07-22 21:45:51,094 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:45:51,979 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:45:52,697 - ERROR - Error: account not found on-chain
+2025-07-22 21:45:55,030 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:45:55,791 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:45:56,393 - ERROR - Error: account not found on-chain
+2025-07-22 21:49:49,352 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:49:49,808 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:49:50,310 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:49:50,451 - ERROR - Error: account not found on-chain
+2025-07-22 21:49:50,669 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:49:51,261 - ERROR - Error: account not found on-chain
+2025-07-22 21:50:39,169 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:50:39,575 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:50:40,182 - ERROR - Error: account not found on-chain
+2025-07-22 21:50:40,692 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-22 21:50:41,051 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-22 21:50:41,630 - ERROR - Error: account not found on-chain

@@ -18,8 +18,8 @@ import { LayoutAnimation, Platform, UIManager } from 'react-native';
 const { width: screenWidth } = Dimensions.get("window");
 
 const darkTheme = {
-    background: "#130E1D",
-    cardBackground: "#130E1D",
+    background: "#0A0410",
+    cardBackground: "#0A0410",
     textPrimary: "#E3E3E3",
     textSecondary: "#aaa",
     skeletonBackground: "#1a171f",
@@ -668,7 +668,7 @@ export default function MainPage() {
 
     return (
         <View style={styles.container}>
-            <StatusBar backgroundColor={colorScheme === "dark" ? "#130E1D" : "white"}></StatusBar>
+            <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"}></StatusBar>
             <Header isVisible={isVisibleButtonMessage}/>
             {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)}/>}
             

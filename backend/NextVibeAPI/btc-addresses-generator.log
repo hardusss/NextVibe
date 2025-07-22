@@ -124,3 +124,105 @@
 2025-05-27 18:35:12,453 - INFO - Balance address: tb1qwdch478wjuj2z2d7veyd2d6nlz57tfmy25ecu3: 0.0
 2025-05-27 18:35:13,072 - INFO - Balance address: 6bvhs4x2DRpqYDp4VXTQhsUb7BFpiQEWW3CsU9eS9Fmw: 0.0
 2025-05-27 18:35:13,761 - ERROR - Error: account not found on-chain
+2025-07-20 23:48:01,603 - INFO - Successfully created BTC wallet for user 134 with address tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te wallet name NextVibeWalletBtc134
+2025-07-20 23:48:01,617 - INFO - Creating wallet with address 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj and private key 8d1de171c91753ebfeb75888921bbfbde72ab16c9fdd76a1875857f413565adc319000befb76bb3e7b330372a2c5642e4f9bf6d074b7fe7f8b6f45dd4204586e
+2025-07-20 23:48:01,629 - INFO - Successfully created TRX wallet with address TRdicdp5B9N3wBcq4bR5NkAUXWCAzp7d4c and private_key 3b0353cb6adac7593fc84d297d785960bd8767e554c80b720f9e42f403d84e36
+2025-07-20 23:48:04,678 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-20 23:48:05,157 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-20 23:48:05,875 - ERROR - Error: account not found on-chain
+2025-07-20 23:48:15,124 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-20 23:48:15,488 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-20 23:48:16,188 - ERROR - Error: account not found on-chain
+2025-07-20 23:48:29,870 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-20 23:48:30,236 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-20 23:48:30,658 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-20 23:48:30,824 - ERROR - Error: account not found on-chain
+2025-07-20 23:48:31,009 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-20 23:48:31,607 - ERROR - Error: account not found on-chain
+2025-07-21 00:28:48,850 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-21 00:28:49,678 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-21 00:28:50,337 - ERROR - Error: account not found on-chain
+2025-07-21 19:16:03,903 - INFO - Successfully created BTC wallet for user 135 with address tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m wallet name NextVibeWalletBtc135
+2025-07-21 19:16:03,911 - INFO - Creating wallet with address 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN and private key 801699205787fca301365fb8ff7c271b241a6572676d3ec503e19b515331ff4d75867060f584698c6d3aa179afbd4aaccf412c524496c76140d2a5c6df54814f
+2025-07-21 19:16:03,911 - INFO - Successfully created TRX wallet with address TNjrGyh1xzcyRnoZWAx96Wjuchmufxn5DQ and private_key 81ab72174e552172d21307eff5f0b0cfb7b5f940883fb891d338bfaec11034f8
+2025-07-21 19:16:06,529 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:16:07,391 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:16:08,063 - ERROR - Error: account not found on-chain
+2025-07-21 19:43:14,721 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:43:15,590 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:43:16,240 - ERROR - Error: account not found on-chain
+2025-07-21 19:47:10,667 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:47:11,080 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:47:11,660 - ERROR - Error: account not found on-chain
+2025-07-21 19:49:08,326 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:49:09,163 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:49:09,815 - ERROR - Error: account not found on-chain
+2025-07-21 19:49:20,087 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:49:20,841 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:49:21,213 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:49:21,444 - ERROR - Error: account not found on-chain
+2025-07-21 19:49:21,969 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:49:22,560 - ERROR - Error: account not found on-chain
+2025-07-21 19:49:31,686 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:49:32,444 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:49:33,179 - ERROR - Error: account not found on-chain
+2025-07-21 19:49:33,609 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:49:34,369 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:49:34,986 - ERROR - Error: account not found on-chain
+2025-07-21 19:49:58,245 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:49:59,094 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:49:59,694 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:15,316 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:16,072 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:16,114 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:16,674 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:16,867 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:17,446 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:20,122 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:20,880 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:21,469 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:31,279 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:31,860 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:32,449 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:35,232 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:35,595 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:36,188 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:39,668 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:40,035 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:40,614 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:41,900 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:42,257 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:42,846 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:44,257 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:44,616 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:45,205 - ERROR - Error: account not found on-chain
+2025-07-21 19:50:52,982 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:50:53,339 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:50:53,928 - ERROR - Error: account not found on-chain
+2025-07-21 19:51:23,861 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:51:24,656 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:51:25,254 - ERROR - Error: account not found on-chain
+2025-07-21 19:51:43,615 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:51:44,369 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:51:44,965 - ERROR - Error: account not found on-chain
+2025-07-21 19:52:02,202 - INFO - Balance address: tb1qr0d059ppfekjyl9hz97w3jqjvxmjqrwezjmp2m: 0.0
+2025-07-21 19:52:02,639 - INFO - Balance address: 8umbkYwxpRNs8qCbAspEzVw19PVAdQQhqSjYZHxZAQQN: 0.0
+2025-07-21 19:52:03,232 - ERROR - Error: account not found on-chain
+2025-07-21 19:53:34,589 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-21 19:53:34,994 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-21 19:53:35,577 - ERROR - Error: account not found on-chain
+2025-07-21 19:59:35,745 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-21 19:59:36,178 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-21 19:59:36,862 - ERROR - Error: account not found on-chain
+2025-07-21 19:59:49,329 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-21 19:59:49,690 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-21 19:59:50,295 - ERROR - Error: account not found on-chain
+2025-07-21 19:59:50,557 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-21 19:59:50,920 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 0.0
+2025-07-21 19:59:51,535 - ERROR - Error: account not found on-chain
+2025-07-21 20:00:42,228 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-21 20:00:42,644 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-21 20:00:43,236 - ERROR - Error: account not found on-chain
+2025-07-21 20:01:17,993 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
+2025-07-21 20:01:18,393 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 3.99976
+2025-07-21 20:01:18,991 - ERROR - Error: account not found on-chain

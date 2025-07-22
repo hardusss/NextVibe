@@ -26,7 +26,7 @@ const lightTheme = {
 };
 
 const darkTheme = {
-    background: "#130E1D", // #09080f
+    background: "#0A0410", // #09080f
     cardBackground: "#180B32", //rgba(11, 18, 76, 0.3)
     textPrimary: "#ffffff",
     textSecondary: "#8b949e",

@@ -174,7 +174,7 @@ const getStyles = (isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? '#130E1D' : '#fff',
+      backgroundColor: isDark ? '#0A0410' : '#fff',
     },
     emptyContainer: {
       flex: 1,

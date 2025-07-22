@@ -337,7 +337,7 @@ const UserPosts = () => {
         />
         <Text style={[styles.text, { fontSize: 28 }]}>Posts</Text>
       </View>
-      <StatusBar animated backgroundColor={isDarkMode ? "#130E1D" : "#f0f0f0"} />
+      <StatusBar animated backgroundColor={isDarkMode ? "#0A0410" : "#f0f0f0"} />
       {error && <Text style={styles.error}>{error}</Text>}
       <FlatList
         ref={flatListRef}
@@ -432,7 +432,7 @@ const getStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
       padding: 10,
-      backgroundColor: isDarkMode ? "#130E1D" : "#fff",
+      backgroundColor: isDarkMode ? "#0A0410" : "#fff",
       flex: 1,
     },
     location: {
@@ -460,7 +460,7 @@ const getStyles = (isDarkMode: boolean) =>
       width: screenWidth,
       paddingBottom: 15,
       paddingTop: 15,
-      backgroundColor: isDarkMode ? "#130E1D" : "#fff",
+      backgroundColor: isDarkMode ? "#0A0410" : "#fff",
       elevation: 3,
     },
     fullMedia: {

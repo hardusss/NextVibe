@@ -12,7 +12,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
 
     useEffect(() => {
         GoogleSignin.configure({
-           webClientId: '1063264156706-aj2sm2vuqr5ajltpqi6t1k5g82js5jen.apps.googleusercontent.com',
+           webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
            offlineAccess: true,
         });
     }, []);
@@ -23,7 +23,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
             console.log(userInfo);
             const userData = userInfo.data?.user;
             if (userInfo.type === "success" && page === "register") {
-                GoogleRegister(`${userData?.givenName}${userData?.familyName}`, `${userData?.email}`, `${userData?.photo}`, router);
+                GoogleRegister(`${userData?.givenName}${userData?.familyName ? userData?.familyName != null : ""}`, `${userData?.email}`, `${userData?.photo}`, router);
             }
             if (userInfo.type === "success" && page === "login") {
                 GoogleLogin(`${userData?.email}`, router);

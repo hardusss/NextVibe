@@ -13,7 +13,7 @@ import ButtonAI from './GenerateAIButton';
 
 
 const darkColors = {
-    background: '#130E1D',
+    background: '#0A0410',
     cardBackground: 'black', 
     inputBackground: 'rgba(235, 238, 242, 0.17)',
     primary: '#58a6ff',

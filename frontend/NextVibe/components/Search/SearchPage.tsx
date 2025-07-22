@@ -16,7 +16,7 @@ import { BlurView } from 'expo-blur';
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
 const darkColors = {
-    background: '#130E1D',
+    background: '#0A0410',
     cardBackground: '#0a0c1a',
     inputBackground: '#1B2842',
     primary: '#58a6ff',
@@ -121,7 +121,7 @@ export default function SearchPage() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <StatusBar backgroundColor={colorScheme === "dark" ? "#130E1D" : "white"}></StatusBar>
+            <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"}></StatusBar>
             <View style={{ position: "relative", alignItems: "center", marginBottom: 20 }}>
                 <BlurView
                     intensity={0}

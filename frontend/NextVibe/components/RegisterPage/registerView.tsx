@@ -56,7 +56,7 @@ export default function RegisterView() {
             </View>
             <StatusBar
                 animated={true}
-                backgroundColor={colorScheme === 'dark' ? '#130E1D' : '#f0f0f0'}
+                backgroundColor={colorScheme === 'dark' ? '#0A0410' : '#f0f0f0'}
             />
 
             <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} >

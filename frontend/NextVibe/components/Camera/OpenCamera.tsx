@@ -112,8 +112,8 @@ const CameraScreen = () => {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: '#130E1D' }]}> 
-      <StatusBar backgroundColor={'#130E1D'} />
+    <View style={[styles.container, { backgroundColor: '#0A0410' }]}> 
+      <StatusBar backgroundColor={'#0A0410'} />
       {hasPermission ? (
         <View style={styles.cameraContainer}>
           <Camera
@@ -217,12 +217,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    backgroundColor: '#130E1D',
+    backgroundColor: '#0A0410',
   },
   cameraContainer: {
     width: "100%",
     height: "100%",
-    backgroundColor: '#130E1D',
+    backgroundColor: '#0A0410',
     justifyContent: 'flex-end',
   },
   camera: {

@@ -35,7 +35,7 @@ export default function LoginView() {
             <View style={{ position: 'absolute', top: 0, justifyContent: 'center', width: '110%', zIndex: 9999 }}>
                 <Toast config={toastConfig} />
             </View>
-            <StatusBar animated={true} backgroundColor={colorScheme === 'dark' ? '#130E1D' : '#f0f0f0'} />
+            <StatusBar animated={true} backgroundColor={colorScheme === 'dark' ? '#0A0410' : '#f0f0f0'} />
             
             <View style={{ alignItems: 'center', flexDirection: 'row' }}>
                 <Text style={loginStyes.title}>Login to NextVibe</Text>
