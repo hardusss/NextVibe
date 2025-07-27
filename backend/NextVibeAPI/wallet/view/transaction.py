@@ -12,7 +12,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-
 class BtcTransactionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -34,7 +33,7 @@ class SolTransactionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request) -> Response:
-        
+
         # Get data from the request
         to_address = request.query_params.get("to_address")
         amount = float(request.query_params.get("amount"))
@@ -43,12 +42,9 @@ class SolTransactionView(APIView):
         wallet = UserWallet.objects.get(user=user)
 
         sol_wallet = wallet.sol_wallet
+        sol_model = SolanaTransaction()
         
-        keypair = SolanaTransaction.load_keypair_from_hex(sol_wallet.private_key)
-        transaction = SolanaTransaction.send_transaction(
-            keypair=keypair, recipient_address=to_address, amount_sol=amount
-        )
-
+        transaction = sol_model.send_transaction(sol_wallet.private_key, to_address, amount)
         return Response(transaction, status=status.HTTP_200_OK)
     
 class TrxTrasactionView(APIView):

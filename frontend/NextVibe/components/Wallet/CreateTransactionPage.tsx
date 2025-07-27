@@ -6,7 +6,7 @@ import { sendSolTransaction, sendBtcTransaction, sendTrxTransaction } from '@/sr
 import React from 'react';
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import { Keyboard } from 'react-native';
 const formatValue = (value: any, decimals: number) => {
     const num = Number(value);
     if (isNaN(num)) {
@@ -15,18 +15,30 @@ const formatValue = (value: any, decimals: number) => {
     return num.toFixed(decimals);
 };
 
+const handlers: Record<'SOL' | 'TRX' | 'BTC', (amount: number, address: string) => Promise<any>> = {
+  SOL: sendSolTransaction,
+  TRX: sendTrxTransaction,
+  BTC: sendBtcTransaction,
+};
+
+
 export default function CreateTransactionPage() {
     const { symbol, balance, icon, name, usdt, address } = useLocalSearchParams();
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
-
-    const [recipientAddress, setRecipientAddress] = useState('');
+    const [recipientAddress, setRecipientAddress] = useState<string>('');
     const [amount, setAmount] = useState('');
     const [isSuccess, setIsSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isFailed, setIsFailed] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [refreshing, setRefreshing] = useState(false);
+    const recipientRef = useRef('');
+    const amountRef = useRef('');
+    const symbolRef = useRef(symbol);
+    const usdtRef = useRef(usdt);
+    const balanceRef = useRef(balance);
+    const addressRef = useRef(address);
 
     const pan = useRef(new Animated.ValueXY()).current;
     const panXValue = useRef(0);
@@ -52,6 +64,13 @@ export default function CreateTransactionPage() {
         };
     }, [pan.x]);
 
+    useEffect(() => {
+        symbolRef.current = symbol;
+        usdtRef.current = usdt;
+        balanceRef.current = balance;
+        addressRef.current = address;
+    }, [symbol, usdt, balance, address]);
+
     const startBreathingAnimation = () => {
         Animated.loop(
             Animated.sequence([
@@ -62,6 +81,7 @@ export default function CreateTransactionPage() {
     };
 
     useFocusEffect(useCallback(() => { startBreathingAnimation(); }, []));
+
 
     useFocusEffect(
         useCallback(() => {
@@ -76,6 +96,14 @@ export default function CreateTransactionPage() {
         }, [isLoading])
     );
     
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                resetForm();
+            }; 
+        }, [])
+    );
+
     useFocusEffect(
         useCallback(() => {
             if (isFailed) {
@@ -121,7 +149,7 @@ export default function CreateTransactionPage() {
                 }
 
                 if (now - lastVibrationTime.current > 60) {
-                    if (moveDelta > 2) { // Moving right
+                    if (moveDelta > 2) {
                         const progress = gesture.dx / SWIPE_AREA_WIDTH;
                         if (progress > 0.2) {
                             let duration = 5;
@@ -130,7 +158,7 @@ export default function CreateTransactionPage() {
                             Vibration.vibrate(duration);
                             lastVibrationTime.current = now;
                         }
-                    } else if (moveDelta < -2) { // Moving left
+                    } else if (moveDelta < -2) {
                         const progress = gesture.dx / SWIPE_AREA_WIDTH;
                          if (progress > 0.1) {
                             Vibration.vibrate(5);
@@ -144,66 +172,80 @@ export default function CreateTransactionPage() {
                 pan.flattenOffset();
                 if (gesture.dx > SWIPE_THRESHOLD) {
                     Vibration.vibrate(50);
-                    handleTransaction();
+                    Keyboard.dismiss();
+                    setTimeout(() => {
+                        handleTransaction();
+                    }, 50);
                 } else {
                     resetSwipe();
                 }
-            },
+            }
+
         })
     ).current;
+    const validateAndSend = async (fetchMethod: (amount: number, address: string) => Promise<any>) => {
+        setIsLoading(true);
+        setIsFailed(false);
+        try {
+            const response = await fetchMethod(Number(amountRef.current), recipientRef.current);
+            console.log(response)
+            if (response && response.startsWith('https')) {
+                setIsSuccess(true);
+                Vibration.vibrate(100);
+                Animated.spring(successScale, { toValue: 1, useNativeDriver: true }).start();
+                setTimeout(() => {
+                    resetForm();
+                    resetSwipe()
+                    router.push({
+                        pathname: "/result-transaction",
+                        params: {
+                            from: addressRef.current, to: recipientRef.current, amount: amountRef.current,
+                            symbol: symbolRef.current, usdValue: usdtRef.current, icon: icon, tx_url: response
+                        }
+                    });
+                }, 1000);
+            } else {
+                throw new Error("Transaction failed");
+            }0
+        } catch (error) {
+            setIsFailed(true);
+            Vibration.vibrate([0, 500]);
+            showErrorMessage("Transaction failed. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => { recipientRef.current = recipientAddress; }, [recipientAddress]);
+    useEffect(() => { amountRef.current = amount; }, [amount]);
+
+   
 
     const handleTransaction = async () => {
-        if (!recipientAddress) {
-            showErrorMessage('Please enter recipient address');
+        if (!recipientRef.current) {
+            showErrorMessage(`Please enter recipient address`);
             resetSwipe();
             return;
         }
-        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+        if (!amountRef.current || isNaN(Number(amountRef.current)) || Number(amountRef.current) <= 0) {
             showErrorMessage('Please enter valid amount');
             resetSwipe();
             return;
         }
-        if (Number(amount) > Number(balance)) {
+        if (Number(amountRef.current) > Number(balanceRef.current)) {
             showErrorMessage('Insufficient balance');
             resetSwipe();
             return;
         }
-        
-        await validate("SOL", sendSolTransaction);
-        await validate("TRX", sendTrxTransaction);
-        await validate("BTC", sendBtcTransaction);
-    };
 
-    const validate = async (symbolLocal: string, fetchMethod: (amount: number, address: string) => Promise<any>) => {
-        if (symbol === symbolLocal) {
-            setIsLoading(true);
-            setIsFailed(false);
-            try {
-                const response = await fetchMethod(Number(amount), recipientAddress);
-                if (response.startsWith('https')) {
-                    setIsSuccess(true);
-                    Vibration.vibrate(100);
-                    Animated.spring(successScale, { toValue: 1, useNativeDriver: true }).start();
-                    setTimeout(() => {
-                        router.push({
-                            pathname: "/result-transaction",
-                            params: {
-                                from: address, to: recipientAddress, amount: amount,
-                                symbol: symbol, usdValue: usdt, icon: icon, tx_url: response
-                            }
-                        });
-                    }, 1000);
-                } else {
-                    throw new Error("Transaction failed");
-                }
-            } catch (error) {
-                setIsFailed(true);
-                Vibration.vibrate([0, 500]);
-                showErrorMessage("Transaction failed. Please try again.");
-            } finally {
-                setIsLoading(false);
-            }
-        }
+       const currentSymbol = Array.isArray(symbolRef.current)
+        ? symbolRef.current[0]
+        : symbolRef.current;
+
+        const method = handlers[currentSymbol as 'SOL' | 'TRX' | 'BTC'];
+        await validateAndSend(method);
+
+    
     };
 
     const resetForm = () => {
@@ -211,6 +253,7 @@ export default function CreateTransactionPage() {
         setAmount('');
         setIsSuccess(false);
         successScale.setValue(0);
+        setIsLoading(false);
         resetSwipe();
     };
 
@@ -404,13 +447,27 @@ export default function CreateTransactionPage() {
 
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Recipient Address</Text>
-                    <TextInput style={styles.input} value={recipientAddress} onChangeText={setRecipientAddress} placeholder="Enter address" placeholderTextColor={isDark ? '#666' : '#999'} />
+                    <TextInput
+                        style={styles.input}
+                        value={recipientAddress}
+                        onChangeText={setRecipientAddress}
+                        placeholder="Enter address"
+                        placeholderTextColor={isDark ? '#666' : '#999'}
+                        multiline={false}
+                    />
                 </View>
 
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Amount {symbol}</Text>
                     <View style={styles.inputWrapper}>
-                        <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={`0.00`} placeholderTextColor={isDark ? '#666' : '#999'} />
+                        <TextInput
+                            style={styles.input}
+                            value={amount}
+                            onChangeText={setAmount}
+                            keyboardType="decimal-pad"
+                            placeholder={`0.00`}
+                            placeholderTextColor={isDark ? '#666' : '#999'}
+                        />
                         <TouchableOpacity style={styles.maxButton} onPress={handleMaxAmount}>
                             <Text style={styles.maxButtonText}>Max</Text>
                         </TouchableOpacity>
@@ -440,7 +497,7 @@ export default function CreateTransactionPage() {
                 </Animated.View>
                 
                 {(isSuccess || isLoading || isFailed) && (
-                     <Animated.View style={[StyleSheet.absoluteFill, styles.swipeButtonContainer, { justifyContent: 'center', alignItems: 'center', backgroundColor: isSuccess ? '#2ECC71' : isFailed ? '#E74C3C' : 'transparent'}]}>
+                     <Animated.View style={[StyleSheet.absoluteFill, styles.swipeButtonContainer, { width: "100%", justifyContent: 'center', alignItems: 'center', backgroundColor: isSuccess ? '#2ECC71' : isFailed ? '#E74C3C' : 'transparent', marginLeft: -20}]}>
                         {isLoading && <Animated.View style={{transform: [{rotate: loadingRotation.interpolate({inputRange: [0, 1], outputRange: ['0deg', '360deg']})}]}}><MaterialCommunityIcons name="loading" size={32} color="#fff" /></Animated.View>}
                         {isSuccess && <Animated.View style={{transform: [{scale: successScale}]}}><MaterialCommunityIcons name="check" size={32} color="#fff" /></Animated.View>}
                         {isFailed && <MaterialCommunityIcons name="close" size={32} color="#fff" />}

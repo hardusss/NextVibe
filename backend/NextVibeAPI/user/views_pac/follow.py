@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.cache import cache
+
 
 User = get_user_model()
 
@@ -19,15 +21,24 @@ class FollowView(APIView):
         # If user subscribed for this user 
         if follow_id in user.follow_for :
             user2.readers_count -= 1
+            user2.readers.remove(id)
             user2.save()
             user.follows_count -= 1
             user.follow_for.remove(follow_id)
+            # Delete cache
+            cache.delete_pattern((f"readers_{follow_id}_page_*"))
             user.save()
             return Response({"data": "Success"}, status=200)
         
         user.follows_count += 1
         user.follow_for.append(follow_id)
         user2.readers_count += 1
+        # Delete cache 
+        cache.delete(f"readers_{follow_id}_page_0")
+        try:
+            user2.readers.append(id)
+        except:
+            user2.readers = [id]
         user2.save()
         if len(user.follow_for) != user.follows_count: 
             user.follows_count = len(user.follow_for)

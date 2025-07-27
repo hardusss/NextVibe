@@ -35,6 +35,7 @@ class User(AbstractBaseUser):
     readers_count = models.IntegerField(default=0)
     follows_count = models.IntegerField(default=0)
     follow_for = models.JSONField(blank=True, null=True, default=list)
+    readers = models.JSONField(blank=True, null=True, default=list)
     liked_posts = models.JSONField(blank=True, null=True, default=list)
     secret_2fa = models.CharField(max_length=100, null=True, blank=True, default=None)
     is2FA = models.BooleanField(default=False)

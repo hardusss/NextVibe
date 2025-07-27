@@ -1,254 +1,247 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, useColorScheme, Share, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Share, Animated } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { useState, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useState, useCallback, useRef } from 'react';
 import FastImage from 'react-native-fast-image';
-
+import React from 'react';
 
 export default function DepositPage() {
-  const { 
-    address, 
-    icon,
-    name, 
-    symbol
-   }: {
-    address: string, 
-    icon: string, 
-    name: string, 
-    symbol: string
-  } = useLocalSearchParams();
-  const colorScheme = useColorScheme(); 
-  const [minimumDep, setMinimumDep] = useState<number>();
-  const isDark = colorScheme === 'dark';
-  const router = useRouter();
+    const { 
+        address, 
+        icon,
+        name, 
+        symbol
+    }: {
+        address: string, 
+        icon: string, 
+        name: string, 
+        symbol: string
+    } = useLocalSearchParams();
+    const isDark = useColorScheme() === 'dark';
+    const router = useRouter();
 
-  const [toastVisible, setToastVisible] = useState(false);
-  const toastAnimation = useState(new Animated.Value(0))[0];
+    const [minimumDep, setMinimumDep] = useState<number>();
+    const [toastVisible, setToastVisible] = useState(false);
+    const toastAnimation = useRef(new Animated.Value(0)).current;
 
-  useFocusEffect(
-    useCallback(() => {
-      if (symbol === 'TRX') {
-        setMinimumDep(1);
-      } else if (symbol === 'SOL') {
-        setMinimumDep(0.000005);
-      } else if (symbol === 'BTC') {
-        setMinimumDep(0.00000546);
-      }
-    }, [name])
-  )
-  
-  const showToast = () => {
-    setToastVisible((prev) => !prev);
-    Animated.sequence([
-      Animated.timing(toastAnimation, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.delay(2000),
-      Animated.timing(toastAnimation, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      })
-    ]).start(() => setToastVisible(false));
-  };
-
-  const handleCopy = () => {
-    Clipboard.setString(address);
-    showToast();
-  };
-
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? '#000' : '#fff',
-      alignItems: 'center',
-      padding: 20,
-    },
-    qrWrapper: {
-      backgroundColor: isDark ? 'black' : '#f0f0f0',
-      borderColor: "#00CED1",
-      borderWidth: 1,
-      width: 290,
-      alignItems: 'center',
-      padding: 15,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
-      marginBottom: 20,
-    },
-    warningText: {
-      color: isDark ? '#ccc' : '#555',
-      textAlign: 'center',
-      marginTop: 15,
-      fontSize: 14,
-    },
-    trx: {
-      color: isDark ? 'white' : 'black',
-      fontWeight: 'bold',
-    },
-    minAmount: {
-      flexDirection: 'row',
-      backgroundColor: isDark ? 'black' : '#f0f0f0',
-      borderColor: "#00CED1",
-      borderWidth: 1,
-      padding: 10,
-      marginTop: -17,
-      width: 290,
-      borderBottomRightRadius: 16,
-      borderBottomLeftRadius: 16,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 20,
-    },
-    minAmountText: {
-      fontSize: 15,
-      color: isDark ? '#fff' : '#333',
-    },
-    walletTitle: {
-      color: isDark ? '#fff' : '#000',
-      fontWeight: '600',
-      marginBottom: 5,
-      fontSize: 16,
-    },
-    wallet: {
-      color: '#00bfff',
-      textAlign: 'center',
-      marginBottom: 20,
-      fontSize: 15,
-    },
-    buttons: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    button: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? 'black' : '#ddd',
-      paddingVertical: 10,
-      borderColor: "#00CED1",
-      borderWidth: 1,
-      paddingHorizontal: 20,
-      borderRadius: 8,
-      marginHorizontal: 5,
-    },
-    buttonText: {
-      color: '#00CED1',
-      fontWeight: '600',
-    },
-    icon: {
-      width: 16,
-      height: 16,
-      marginHorizontal: 4,
-    },
-    toast: {
-      position: 'absolute',
-      bottom: 40,
-      backgroundColor: isDark ? '#333' : '#333',
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 25,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    toastText: {
-      color: '#fff',
-      fontSize: 14,
-    },
-  });
-
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `My ${name} wallet address: ${address}`,
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <MaterialCommunityIcons name="arrow-left" size={24} color={isDark ? "#fff" : "black"} style={{alignSelf: "flex-start"}} onPress={() => router.push({
-              pathname: "/select-token",
-              params: {
-                from_page: "deposit"
-              }
-            })} />
-      <View style={styles.qrWrapper}>
-        <View style={{ backgroundColor: isDark ? '#fff' : '#fff', padding: 10, borderRadius: 16 }}>
-          <QRCode
-            value={address}
-            size={250}
-            linearGradient={['#00c6ff', '#0072ff']}
-            enableLinearGradient
-            backgroundColor="white"
-          />
-        </View>
-        <View style={{ alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', width: 300 }}>
-          <Text style={styles.warningText}>
-            Send only
-          </Text>
-          <FastImage source={{ uri: icon }} style={styles.icon} />
-          <Text style={styles.trx}> {symbol} </Text>
-          <Text style={styles.warningText}>
-            through network
-          </Text>
-          <FastImage source={{ uri: icon }} style={styles.icon} />
-          <Text style={styles.trx}> {name}</Text>
-          <Text style={styles.warningText}>otherwise the coins will be lost.</Text>
-        </View>
-      </View>
-
-      <View style={styles.minAmount}>
-        <Text style={styles.minAmountText}>Min. sum: </Text>
-        <Text style={[styles.minAmountText, { fontWeight: '600' }]}>{minimumDep} {symbol}</Text>
-      </View>
-
-      <Text style={styles.walletTitle}>{symbol}</Text>
-      <Text style={styles.wallet}>{address}</Text>
-
-      <View style={styles.buttons}>
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: '#00CED1' }]}
-          onPress={handleShare}
-        >
-          <MaterialCommunityIcons name="share" size={24} color="black" />
-          <Text style={[styles.buttonText, {color: "black"}]}>Share</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleCopy}
-        >
-          <MaterialCommunityIcons name="content-copy" size={24} color="#00CED1" />
-          <Text style={styles.buttonText}>Copy</Text>
-        </TouchableOpacity>
-      </View>
-
-      {toastVisible && (
-        <Animated.View 
-          style={[
-            styles.toast, 
-            {
-              opacity: toastAnimation,
-              transform: [{
-                translateY: toastAnimation.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0]
-                })
-              }]
+    useFocusEffect(
+        useCallback(() => {
+            if (symbol === 'TRX') {
+                setMinimumDep(1);
+            } else if (symbol === 'SOL') {
+                setMinimumDep(0.000005);
+            } else if (symbol === 'BTC') {
+                setMinimumDep(0.00000546);
             }
-          ]}
-        >
-          <MaterialCommunityIcons name="check-circle" size={20} color="#00CED1" />
-          <Text style={styles.toastText}>Address copied!</Text>
-        </Animated.View>
-      )}
-    </View>
-  );
+        }, [symbol])
+    );
+    
+    const showToast = (message: string) => {
+        setToastVisible(true);
+        Animated.sequence([
+            Animated.timing(toastAnimation, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.delay(2000),
+            Animated.timing(toastAnimation, { toValue: 0, duration: 300, useNativeDriver: true })
+        ]).start(() => setToastVisible(false));
+    };
+
+    const handleCopy = () => {
+        Clipboard.setString(address);
+        showToast('Address copied!');
+    };
+
+    const handleShare = async () => {
+        try {
+            await Share.share({
+                message: `My ${name} (${symbol}) wallet address: ${address}`,
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: isDark ? '#0A0410' : '#F5F5F7',
+            padding: 20,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            alignSelf: 'flex-start',
+            marginBottom: 20,
+        },
+        title: {
+            color: isDark ? '#FFFFFF' : '#000',
+            fontSize: 22,
+            fontWeight: 'bold',
+            marginLeft: 15,
+        },
+        contentCard: {
+            backgroundColor: isDark ? '#180F2E' : '#FFFFFF',
+            borderRadius: 20,
+            padding: 20,
+            alignItems: 'center',
+            width: '100%',
+        },
+        qrCodeContainer: {
+            backgroundColor: '#FFFFFF',
+            padding: 12,
+            borderRadius: 16,
+            marginBottom: 20,
+        },
+        warningContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(88, 86, 214, 0.1)',
+            borderRadius: 12,
+            paddingVertical: 10,
+            paddingHorizontal: 15,
+            marginBottom: 20,
+        },
+        warningText: {
+            color: isDark ? '#A78BFA' : '#5856D6',
+            fontSize: 13,
+            marginLeft: 10,
+            flex: 1,
+            lineHeight: 18,
+        },
+        addressContainer: {
+            width: '100%',
+            backgroundColor: isDark ? '#0A0410' : '#F5F5F7',
+            borderRadius: 12,
+            padding: 15,
+            alignItems: 'center',
+            marginBottom: 10,
+        },
+        addressText: {
+            color: isDark ? '#FFFFFF' : '#000',
+            fontSize: 14,
+            textAlign: 'center',
+            lineHeight: 20,
+        },
+        minAmountText: {
+            color: isDark ? '#A09CB8' : '#666',
+            fontSize: 13,
+        },
+        buttonContainer: {
+            flexDirection: 'row',
+            marginTop: 20,
+            width: '100%',
+            justifyContent: 'space-between',
+        },
+        button: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 14,
+            borderRadius: 12,
+            flex: 1,
+        },
+        primaryButton: {
+            backgroundColor: '#A78BFA',
+            marginRight: 10,
+        },
+        secondaryButton: {
+            backgroundColor: isDark ? '#2A1B41' : '#E0E0E0',
+        },
+        buttonText: {
+            fontSize: 16,
+            fontWeight: '600',
+            marginLeft: 8,
+        },
+        primaryButtonText: {
+            color: '#FFFFFF',
+        },
+        secondaryButtonText: {
+            color: isDark ? '#A78BFA' : '#5856D6',
+        },
+        toast: {
+            position: 'absolute',
+            bottom: 40,
+            backgroundColor: '#2ECC71',
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            borderRadius: 25,
+            flexDirection: 'row',
+            alignItems: 'center',
+            alignSelf: "center"
+        },
+        toastText: {
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: '600',
+            marginLeft: 8,
+        },
+    });
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.push({ pathname: "/select-token", params: { from_page: "deposit" } })}>
+                    <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? "#fff" : "black"} />
+                </TouchableOpacity>
+                <Text style={styles.title}>Receive {symbol}</Text>
+            </View>
+
+            <View style={styles.contentCard}>
+                <View style={styles.qrCodeContainer}>
+                    <QRCode
+                        value={address}
+                        size={220}
+                        backgroundColor="transparent"
+                    />
+                </View>
+
+                <View style={styles.warningContainer}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={22} color={isDark ? '#A78BFA' : '#5856D6'} />
+                    <Text style={styles.warningText}>
+                        Send only <Text style={{ fontWeight: 'bold' }}>{symbol}</Text> to this address. Sending any other coins may result in permanent loss.
+                    </Text>
+                </View>
+
+                <TouchableOpacity style={styles.addressContainer} onPress={handleCopy} activeOpacity={0.8}>
+                    <Text style={styles.addressText}>{address}</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.minAmountText}>
+                    Minimum deposit: <Text style={{ fontWeight: 'bold' }}>{minimumDep} {symbol}</Text>
+                </Text>
+            </View>
+
+            <View style={styles.buttonContainer}>
+                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleShare} activeOpacity={0.8}>
+                    <MaterialCommunityIcons name="share-variant" size={20} color="#FFFFFF" />
+                    <Text style={[styles.buttonText, styles.primaryButtonText]}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleCopy} activeOpacity={0.8}>
+                    <MaterialCommunityIcons name="content-copy" size={20} color={isDark ? '#A78BFA' : '#5856D6'} />
+                    <Text style={[styles.buttonText, styles.secondaryButtonText]}>Copy</Text>
+                </TouchableOpacity>
+            </View>
+
+            {toastVisible && (
+                <Animated.View 
+                    style={[
+                        styles.toast, 
+                        {
+                            opacity: toastAnimation,
+                            transform: [{
+                                translateY: toastAnimation.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [20, 0]
+                                })
+                            }]
+                        }
+                    ]}
+                >
+                    <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />
+                    <Text style={styles.toastText}>Address copied!</Text>
+                </Animated.View>
+            )}
+        </View>
+    );
 }

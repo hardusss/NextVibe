@@ -11,3 +11,4 @@ from .user2fa import TwoFAView
 from .update import UpdateUserText
 from .update import UpdateUserAvatar
 from .reset_password import UpdatePassword
+from .get_readers import GetReaders

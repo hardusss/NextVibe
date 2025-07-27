@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { View, SafeAreaView, Text, StatusBar, Image, ScrollView, RefreshControl } from "react-native";
+import { View, SafeAreaView, Text, StatusBar, Modal, ScrollView, TouchableOpacity, RefreshControl, Animated } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
@@ -14,7 +14,7 @@ import PostGallery from "./PostsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { useRef } from "react";
 import FastImage from 'react-native-fast-image';
 
 
@@ -41,18 +41,31 @@ const ProfileView = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0); // Add refresh key state
+    const scaleAnim = useRef(new Animated.Value(0)).current;
+    const [visible, setVisible] = useState<boolean>(false);
+    const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
     const [id, setId] = useState<number>();
     const colorScheme = useColorScheme();
     const profileStyle = colorScheme === "dark" ? profileDarkStyles : profileLightStyles;
-
+    
     useEffect(() => {
-        const func = async () => {
-           const i =  await AsyncStorage.getItem("id");
-           const t = await AsyncStorage.getItem("access");
-           console.log(i, t)
-        }
-        func()
-    })
+    if (visible) {
+      setIsVisibleContainer(true);
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 10,
+        bounciness: 8,
+      }).start();
+    } else {
+      Animated.timing(scaleAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+      setTimeout(() => {setIsVisibleContainer(false)}, 130);
+    };
+  }, [visible]);
     const fetchUserData = async () => {
         try {
             const data = await getUserDetail(0);
@@ -124,12 +137,35 @@ const ProfileView = () => {
                         />
                     }
                 >
+                    <Modal transparent visible={isVisibleContainer} animationType="fade">
+                        <TouchableOpacity
+                            style={{flex: 1,
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    backgroundColor: "rgba(0, 0, 0, 0.5)",
+                                }}
+                            activeOpacity={1}
+                            onPress={() => setVisible(false)}
+                        >
+                            <Animated.View style={[{ backgroundColor: "transparent",
+                                                     justifyContent: "center",
+                                                     alignItems: "center",},
+                                                     { transform: [{ scale: scaleAnim }] }]}>
+                            <FastImage
+                                style={{ width: 200, height: 200, borderRadius: 100 }}
+                                source={{ uri: userData.avatar_url as string }}
+                            />
+                            </Animated.View>
+                        </TouchableOpacity>
+                    </Modal>
                     <View style={{flexDirection: "row"}}>
                         <Text style={profileStyle.username}>{userData.username}</Text>
                         {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 8}} /> :  ""}
                     </View>
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
-                        <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
+                        <TouchableOpacity onPress={() => setVisible(true)}>
+                            <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
+                        </TouchableOpacity>
                         <View style={{flexDirection: "row", marginTop: 35, marginLeft: 20, flex: 1, justifyContent: "space-around"}}>
                             <View >
                                 <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.post_count)}</Text>

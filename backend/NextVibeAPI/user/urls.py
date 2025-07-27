@@ -6,7 +6,7 @@ from .views_pac import (
                             FollowView, SearchUsersView,
                             HistorySearchView, TwoFAView,
                             UpdateUserText, UpdateUserAvatar,
-                            UpdatePassword
+                            UpdatePassword, GetReaders
                         )
 
 
@@ -24,4 +24,5 @@ urlpatterns = [
     path("update/user-text/", UpdateUserText.as_view(), name="update_user_text"),
     path("update/user-avatar/", UpdateUserAvatar.as_view(), name="update_user_avatar"),
     path("reset-password/", UpdatePassword.as_view(), name="reset_password"),
+    path("get-readers/", GetReaders.as_view(), name="get_readers")
 ]
