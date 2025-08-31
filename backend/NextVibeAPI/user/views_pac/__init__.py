@@ -12,3 +12,4 @@ from .update import UpdateUserText
 from .update import UpdateUserAvatar
 from .reset_password import UpdatePassword
 from .get_readers import GetReaders
+from .get_follows import GetFollows

@@ -25,8 +25,9 @@ class FollowView(APIView):
             user2.save()
             user.follows_count -= 1
             user.follow_for.remove(follow_id)
-            # Delete cache
-            cache.delete_pattern((f"readers_{follow_id}_page_*"))
+            # Clear cache for both lists
+            cache.delete_pattern(f"readers_{follow_id}_page_*")
+            cache.delete_pattern(f"follows{id}_page_*")
             user.save()
             return Response({"data": "Success"}, status=200)
         
@@ -43,5 +44,8 @@ class FollowView(APIView):
         if len(user.follow_for) != user.follows_count: 
             user.follows_count = len(user.follow_for)
         user.save()
+        
+        cache.delete_pattern(f"readers_{follow_id}_page_*")
+        cache.delete_pattern(f"follows{id}_page_*")
 
         return Response({"message": "Successfully followed"}, status=200)

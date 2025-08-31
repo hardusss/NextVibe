@@ -25,7 +25,9 @@ export default function Layout() {
                         "transaction", "user-profile",
                         "create-wallet", "result-transaction",
                         "transactions", "transaction-detail",
-                        "chat-room", "chats"];
+                        "chat-room", "chats",
+                        "follows-screen"    
+                    ];
     useEffect(() => {
         if (blacklist.includes(currentPage)) {
             return;

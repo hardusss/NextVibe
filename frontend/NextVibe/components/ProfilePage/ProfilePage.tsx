@@ -16,7 +16,7 @@ import { useFocusEffect } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRef } from "react";
 import FastImage from 'react-native-fast-image';
-
+import { useRouter } from 'expo-router';
 
 type UserData = {
     username: string;
@@ -47,6 +47,7 @@ const ProfileView = () => {
     const [id, setId] = useState<number>();
     const colorScheme = useColorScheme();
     const profileStyle = colorScheme === "dark" ? profileDarkStyles : profileLightStyles;
+    const router = useRouter();
     
     useEffect(() => {
     if (visible) {
@@ -160,7 +161,7 @@ const ProfileView = () => {
                     </Modal>
                     <View style={{flexDirection: "row"}}>
                         <Text style={profileStyle.username}>{userData.username}</Text>
-                        {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 8}} /> :  ""}
+                        {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 6}} /> :  ""}
                     </View>
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
                         <TouchableOpacity onPress={() => setVisible(true)}>
@@ -171,16 +172,18 @@ const ProfileView = () => {
                                 <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.post_count)}</Text>
                                 <Text style={profileStyle.text}>Posts</Text>
                             </View>
-
-                            <View>
-                                <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.readers_count)}</Text>
-                                <Text style={profileStyle.text}>Readers</Text>
-                            </View>
-
-                            <View>
-                                <Text style={[profileStyle.text, {fontWeight: "bold"}]} >{formatNumber(userData.follows_count)}</Text>
-                                <Text style={profileStyle.text}>Follows</Text>
-                            </View>
+                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: { userId: id, username: userData.username, activeTab: "Readers" } })}>
+                                <View>
+                                    <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.readers_count)}</Text>
+                                    <Text style={profileStyle.text}>Readers</Text>
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: { userId: id, username: userData.username, activeTab: "Follows" } })}>
+                                <View>
+                                    <Text style={[profileStyle.text, {fontWeight: "bold"}]} >{formatNumber(userData.follows_count)}</Text>
+                                    <Text style={profileStyle.text}>Follows</Text>
+                                </View>
+                            </TouchableOpacity>
                         </View>
                     </View>
                     <View>

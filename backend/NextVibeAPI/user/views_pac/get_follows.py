@@ -6,7 +6,7 @@ from django.core.cache import cache
 from ..models import User
 from django.db.models import Case, When
 
-class GetReaders(APIView):
+class GetFollows(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
@@ -15,11 +15,11 @@ class GetReaders(APIView):
         index = int(request.query_params.get("index") or 0)
 
         # Get cache by key
-        cache_key = f"readers_{user_id}_page_{index or 0}"
+        cache_key = f"follows{user_id}_page_{index or 0}"
 
-        readers = cache.get(cache_key)
-        if readers:
-            return Response({"data": readers, "end": False}, status=200)
+        follows = cache.get(cache_key)
+        if follows:
+            return Response({"data": follows, "end": False}, status=200)
 
         start = index
         end = index + 12
@@ -31,15 +31,16 @@ class GetReaders(APIView):
             # Return 404 if user does not exist
             return Response({"error": "User not found"}, status=404)
 
-        readers_ids = user.readers[::-1]
+        follows_ids = user.follow_for[::-1]
 
-        if not readers_ids:
+        if not follows_ids:
             return Response({"data": [], "end": True}, status=200)
 
-        if start >= len(readers_ids):
+        if start >= len(follows_ids):
             return Response({"data": [], "end": True}, status=200)
 
-        slice_ids = readers_ids[start:end]
+        # Slice users
+        slice_ids = follows_ids[start:end]
 
         preserved_order = Case(
             *[When(user_id=pk, then=pos) for pos, pk in enumerate(slice_ids)]
@@ -52,10 +53,9 @@ class GetReaders(APIView):
             .values("avatar", "username", "user_id")
         )
 
-        is_end = end >= len(readers_ids)
+        is_end = end >= len(follows_ids)
 
+        # Caching
         cache.set(cache_key, readers_qs, timeout=35)
 
         return Response({"data": readers_qs, "end": is_end}, status=200)
-
-           
