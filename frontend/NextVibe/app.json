@@ -59,7 +59,9 @@
       ],
       "expo-image-picker",
       "expo-video",
-      "react-native-vision-camera"
+      "react-native-vision-camera",
+      "expo-font",
+      "react-native-video"
     ],
     "experiments": {
       "typedRoutes": true
