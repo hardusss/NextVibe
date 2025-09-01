@@ -1,5 +1,5 @@
-import PageSettings from "@/components/Settings/PageSettings"
+import PageSettings from "@/components/Settings/PageSettings";
 
-export default function SettingsScreen () {
-    return <PageSettings />
+export default function SettingsScreen() {
+  return <PageSettings />;
 }
