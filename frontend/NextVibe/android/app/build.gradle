@@ -99,6 +99,11 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
+    externalNativeBuild {
+        cmake {
+            arguments "-DCMAKE_CXX_STANDARD=20"
+        }
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -113,7 +118,7 @@ android {
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
+            // see https://reactnative.dev/docs/signed-apk-andsroid.
             signingConfig signingConfigs.debug
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
