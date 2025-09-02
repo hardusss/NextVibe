@@ -1,0 +1,12 @@
+diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewPackage.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewPackage.java
+index 24e55ed..42f5fc8 100644
+--- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewPackage.java
++++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewPackage.java
+@@ -20,6 +20,7 @@ public class RNCWebViewPackage extends TurboReactPackage {
+     public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
+         List<ViewManager> viewManagers = new ArrayList<>();
+         viewManagers.add(new RNCWebViewManager());
++        AppRegistry.registerComponent("RNCWebView", () -> ReactWebViewManager.class);
+         return viewManagers;
+     }
+ 
