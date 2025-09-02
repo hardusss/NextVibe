@@ -101,7 +101,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments "-DCMAKE_CXX_STANDARD=20"
+                arguments "-DCMAKE_CXX_STANDARD=20",  "-DFOLLY_FORCE_EXACT_VERSION=1"
             }
         }
     }
