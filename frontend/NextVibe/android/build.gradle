@@ -1,17 +1,30 @@
 buildscript {
     ext {
         buildToolsVersion = "34.0.0"
-        minSdkVersion = 23
-        compileSdkVersion = 34
-        targetSdkVersion = 34
+        minSdkVersion = 24
+        compileSdkVersion = 35
+        targetSdkVersion = 35
         ndkVersion = "25.1.8937393"
         kotlinVersion = "1.9.24"
     }
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+    }
     dependencies {
         classpath("com.android.tools.build:gradle:8.2.1")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
         classpath('com.google.gms:google-services:4.4.1')
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            force 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24'
+            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+        }
     }
 }
 
@@ -27,5 +40,12 @@ allprojects {
         google()
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            force 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24'
+            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+        }
     }
 }
