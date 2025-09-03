@@ -20,8 +20,8 @@ buildscript {
 
     configurations.all {
         resolutionStrategy {
-            force "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
-            force "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+            force "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24"
+            force "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
         }
     }
 }
