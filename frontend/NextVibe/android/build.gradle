@@ -36,8 +36,8 @@ allprojects {
 
     configurations.all {
         resolutionStrategy {
-            force 'org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion'
-            force 'org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion'
+            force "org.jetbrains.kotlin:kotlin-gradle-plugin:${rootProject.ext.kotlinVersion}"
+            force "org.jetbrains.kotlin:kotlin-stdlib:${rootProject.ext.kotlinVersion}"
         }
     }
 }
