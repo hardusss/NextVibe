@@ -4,7 +4,7 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 35
         targetSdkVersion = 35
-        kotlinVersion = "1.9.24"
+        kotlinVersion = "1.9.0"
     }
     repositories {
         google()
@@ -13,16 +13,15 @@ buildscript {
     }
     dependencies {
         classpath("com.android.tools.build:gradle:8.2.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
         classpath('com.google.gms:google-services:4.4.1')
     }
 
     configurations.all {
         resolutionStrategy {
-            force 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24'
-            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+            force "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+            force "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
         }
     }
 }
