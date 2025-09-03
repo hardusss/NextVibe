@@ -4,7 +4,7 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 35
         targetSdkVersion = 35
-        kotlinVersion = "1.9.0"
+        kotlinVersion = "1.9.24"
     }
     repositories {
         google()
@@ -29,12 +29,6 @@ buildscript {
 
 allprojects {
     repositories {
-        maven {
-            url(new File(['node', '--print', "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), '../android'))
-        }
-        maven {
-            url(new File(['node', '--print', "require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim(), '../dist'))
-        }
         google()
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
@@ -42,8 +36,8 @@ allprojects {
 
     configurations.all {
         resolutionStrategy {
-            force 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24'
-            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+            force 'org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion'
+            force 'org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion'
         }
     }
 }
