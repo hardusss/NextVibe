@@ -8,7 +8,6 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "entryPoint": "expo-router/entry",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.harrddddd.NextVibe",
