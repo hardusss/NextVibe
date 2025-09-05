@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, use, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, StatusBar, Animated, FlatList, Dimensions, RefreshControl, ActivityIndicator } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect, RelativePathString } from "expo-router";
 import getFollows from '@/src/api/get.follows'; 
 import getReaders from '@/src/api/get.readers'; 
 import FastImage from 'react-native-fast-image';
@@ -20,8 +20,9 @@ export default function FollowsScreen() {
     // Get the userId and username from the route params
     const { last_page, activeTab, userId, username } = useLocalSearchParams();
 
-    // Tab State
+    // Tab State and Page state
     const [activeTabState, setActiveTab] = useState(activeTab || 'Readers');
+    const [page, setPage] = useState(last_page || 'profile');
 
     // Animated Indicator
     const indicatorPosition = useRef(new Animated.Value(0)).current;
@@ -43,11 +44,19 @@ export default function FollowsScreen() {
     const [isFollowsEnd, setIsFollowsEnd] = useState(false);
     const [followsRefreshing, setFollowsRefreshing] = useState(false);
 
+    // Set active tab when component mounts or activeTab changes    
     useFocusEffect(
         useCallback(() => {
             setActiveTab(activeTab || 'Readers');
         }, [activeTab])
-    )
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+            setPage(last_page || 'profile');
+        }, [last_page])
+    );
+
     // Fetch Readers
     const fetchReaders = async (isRefresh = false) => {
         if (readersLoading || (!isRefresh && isReadersEnd)) return;
@@ -230,7 +239,7 @@ export default function FollowsScreen() {
                 barStyle={isDark ? "light-content" : "dark-content"}
             />
             <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.push(page as RelativePathString)}>
                     <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#FFFFFF' : '#000'} />
                 </TouchableOpacity>
                 <Text style={styles.nickname}>{username || 'Profile'}</Text>
