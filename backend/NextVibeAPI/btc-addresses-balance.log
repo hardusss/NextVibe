@@ -2383,3 +2383,6 @@
 2025-07-31 20:26:35,930 - INFO - Balance address: tb1q7f4azncczxzh9glkyhyd45eek57qphgmq480te: 0.0
 2025-07-31 20:26:36,500 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 4.899755
 2025-07-31 20:26:37,309 - INFO - Balance: 2000.0 address: TRdicdp5B9N3wBcq4bR5NkAUXWCAzp7d4c
+2025-09-05 15:10:05,252 - INFO - Balance address: tb1q2kvcrlpdg35wxg35aw7es99ludlfyx4ww3vs4z: 0.0
+2025-09-05 15:10:06,138 - INFO - Balance address: JZyMfeVCu7yRgUTWXm9JVr4cbYyLaSk6fNTVnfQ5SEX: 0.0
+2025-09-05 15:10:07,111 - ERROR - Error: account not found on-chain
