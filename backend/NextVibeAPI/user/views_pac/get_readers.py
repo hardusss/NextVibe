@@ -31,6 +31,9 @@ class GetReaders(APIView):
             # Return 404 if user does not exist
             return Response({"error": "User not found"}, status=404)
 
+        if not user.readers:
+            return Response({"data": [], "end": True}, status=200)
+            
         readers_ids = user.readers[::-1]
 
         if not readers_ids:
