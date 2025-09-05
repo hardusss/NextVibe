@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, use, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, StatusBar, Animated, FlatList, Dimensions, RefreshControl, ActivityIndicator } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import getFollows from '@/src/api/get.follows'; 
 import getReaders from '@/src/api/get.readers'; 
 import FastImage from 'react-native-fast-image';
@@ -18,7 +18,7 @@ export default function FollowsScreen() {
     const router = useRouter();
 
     // Get the userId and username from the route params
-    const {activeTab, userId, username} = useLocalSearchParams();
+    const { last_page, activeTab, userId, username } = useLocalSearchParams();
 
     // Tab State
     const [activeTabState, setActiveTab] = useState(activeTab || 'Readers');
@@ -43,6 +43,11 @@ export default function FollowsScreen() {
     const [isFollowsEnd, setIsFollowsEnd] = useState(false);
     const [followsRefreshing, setFollowsRefreshing] = useState(false);
 
+    useFocusEffect(
+        useCallback(() => {
+            setActiveTab(activeTab || 'Readers');
+        }, [activeTab])
+    )
     // Fetch Readers
     const fetchReaders = async (isRefresh = false) => {
         if (readersLoading || (!isRefresh && isReadersEnd)) return;
