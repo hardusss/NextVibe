@@ -31,6 +31,8 @@ class GetFollows(APIView):
             # Return 404 if user does not exist
             return Response({"error": "User not found"}, status=404)
 
+        if not user.follow_for:
+            return Response({"data": [], "end": True}, status=200)
         follows_ids = user.follow_for[::-1]
 
         if not follows_ids:
