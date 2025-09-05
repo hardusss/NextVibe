@@ -18,10 +18,10 @@ export default function FollowsScreen() {
     const router = useRouter();
 
     // Get the userId and username from the route params
-    const {activeTabParam, userId, username} = useLocalSearchParams();
+    const {activeTab, userId, username} = useLocalSearchParams();
 
     // Tab State
-    const [activeTab, setActiveTab] = useState(activeTabParam || 'Readers');
+    const [activeTabState, setActiveTab] = useState(activeTab || 'Readers');
 
     // Animated Indicator
     const indicatorPosition = useRef(new Animated.Value(0)).current;
@@ -88,7 +88,7 @@ export default function FollowsScreen() {
 
     // Pull to Refresh Handler
     const onRefresh = () => {
-        if (activeTab === 'Readers') {
+        if (activeTabState === 'Readers') {
             setReadersRefreshing(true);
             setReadersData([]);
             setReadersIndex(0);
@@ -114,10 +114,10 @@ export default function FollowsScreen() {
 
     useEffect(() => {
         Animated.spring(indicatorPosition, {
-            toValue: activeTab === 'Readers' ? 0 : indicatorWidth,
+            toValue: activeTabState === 'Readers' ? 0 : indicatorWidth,
             useNativeDriver: false,
         }).start();
-    }, [activeTab, indicatorWidth]);
+    }, [activeTabState, indicatorWidth]);
 
     const renderUserItem = ({ item }: { item: UserData }) => (
         <View style={styles.userItem}>
@@ -228,7 +228,7 @@ export default function FollowsScreen() {
                 <View style={styles.tabContainer}>
                     <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTab('Readers')}>
                         <Text style={[styles.tabButtonText, { color: activeTab === 'Readers' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' }]}>
-                            Followers
+                            Readers
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTab('Follows')}>
@@ -243,7 +243,7 @@ export default function FollowsScreen() {
             </View>
 
             <View style={styles.contentContainer}>
-                {activeTab === 'Readers' ? (
+                {activeTabState === 'Readers' ? (
                     <FlatList
                         data={readersData}
                         renderItem={renderUserItem}
