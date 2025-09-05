@@ -172,13 +172,13 @@ const ProfileView = () => {
                                 <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.post_count)}</Text>
                                 <Text style={profileStyle.text}>Posts</Text>
                             </View>
-                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: { userId: id, username: userData.username, activeTab: "Readers" } })}>
+                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: {last_page: "/profile",  userId: id, username: userData.username, activeTab: "Readers" } })}>
                                 <View>
                                     <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.readers_count)}</Text>
                                     <Text style={profileStyle.text}>Readers</Text>
                                 </View>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: { userId: id, username: userData.username, activeTab: "Follows" } })}>
+                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: { last_page: "/profile", userId: id, username: userData.username, activeTab: "Follows" } })}>
                                 <View>
                                     <Text style={[profileStyle.text, {fontWeight: "bold"}]} >{formatNumber(userData.follows_count)}</Text>
                                     <Text style={profileStyle.text}>Follows</Text>
