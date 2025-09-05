@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, StatusBar, Animated, FlatList, Dimensions, RefreshControl, ActivityIndicator } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import getFollows from '@/src/api/get.follows'; // Assuming you have this
-import getReaders from '@/src/api/get.readers'; // Assuming you have this
+import getFollows from '@/src/api/get.follows'; 
+import getReaders from '@/src/api/get.readers'; 
 import FastImage from 'react-native-fast-image';
 import GetApiUrl from '@/src/utils/url_api';
 
@@ -16,11 +16,14 @@ type UserData = {
 export default function FollowsScreen() {
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
-    const params = {userId: 132, username: "Andrew"};
-    const { userId, username } = params;
 
-    const [activeTab, setActiveTab] = useState('Readers');
-    
+    // Get the userId and username from the route params
+    const {activeTabParam, userId, username} = useLocalSearchParams();
+
+    // Tab State
+    const [activeTab, setActiveTab] = useState(activeTabParam || 'Readers');
+
+    // Animated Indicator
     const indicatorPosition = useRef(new Animated.Value(0)).current;
     const screenWidth = Dimensions.get('window').width;
     const tabContainerWidth = screenWidth - 40;
@@ -40,6 +43,7 @@ export default function FollowsScreen() {
     const [isFollowsEnd, setIsFollowsEnd] = useState(false);
     const [followsRefreshing, setFollowsRefreshing] = useState(false);
 
+    // Fetch Readers
     const fetchReaders = async (isRefresh = false) => {
         if (readersLoading || (!isRefresh && isReadersEnd)) return;
         setReadersLoading(true);
@@ -61,6 +65,7 @@ export default function FollowsScreen() {
         }
     };
 
+    // Fetch Follows
     const fetchFollows = async (isRefresh = false) => {
         if (followsLoading || (!isRefresh && isFollowsEnd)) return;
         setFollowsLoading(true);
@@ -81,6 +86,7 @@ export default function FollowsScreen() {
         }
     };
 
+    // Pull to Refresh Handler
     const onRefresh = () => {
         if (activeTab === 'Readers') {
             setReadersRefreshing(true);
