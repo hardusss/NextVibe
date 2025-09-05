@@ -109,9 +109,16 @@ export default function FollowsScreen() {
             fetchReaders(true); // Fetch fresh data on user change
             fetchFollows(true); // Fetch fresh data on user change
         }
-        console.log(readersData)
     }, [userId]);
 
+    useEffect(() => {
+        // Reset indices and end flags when switching tabs
+        if (activeTabState === 'Readers' && readersData.length === 0) {
+            fetchReaders(true);
+        } else if (activeTabState === 'Follows' && followsData.length === 0) {
+            fetchFollows(true);
+        }
+    }, [activeTabState]);
     useEffect(() => {
         Animated.spring(indicatorPosition, {
             toValue: activeTabState === 'Readers' ? 0 : indicatorWidth,
