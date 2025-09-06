@@ -562,7 +562,8 @@ export default function MainPage() {
                         source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.owner__avatar}` }} 
                         style={styles.avatar} 
                     />
-                    <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>                        <View style={styles.usernameContainer}>
+                    <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>
+                        <View style={styles.usernameContainer}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                 <Text style={styles.username}>{item.owner__username}</Text>
                                 {item.owner__official && (

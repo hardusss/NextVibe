@@ -366,7 +366,7 @@ function PageSettingsContent() {
             <BottomSheet isVisible={isVisable2FA} onClose={() => setIsVisable2FA(false)} onSuccess={() => {setTwoFA(true); updateStatus(true)}} onFail={() => {setTwoFA(false); updateStatus(false)}}></BottomSheet>
             <LogoutConfirmationSheet 
                 isVisible={isVisibleLogoutConfirmation} 
-                onClose={() => {setIsVisibleLogoutConfirmation(false); console.log("close")}} 
+                onClose={() => {setIsVisibleLogoutConfirmation(false)}} 
                 onConfirm={handleLogoutConfirm} 
             />
             <ResetPasswordSheet 

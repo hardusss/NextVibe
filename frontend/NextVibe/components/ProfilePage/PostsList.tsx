@@ -133,7 +133,6 @@ const UserPosts = () => {
       const data = await getMenuPosts(+user_id);
       if (data) {
         setPosts(data.data); // Replace instead of concatenate
-        console.log(data.data)
         data.data.forEach((post: PostItem) => fetchUser(post.user_id));
         setHasMore(data.more_posts);
         if (data.liked_posts) {

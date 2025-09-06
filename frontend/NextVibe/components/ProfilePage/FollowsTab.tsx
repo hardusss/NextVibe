@@ -6,6 +6,7 @@ import getFollows from '@/src/api/get.follows';
 import getReaders from '@/src/api/get.readers'; 
 import FastImage from 'react-native-fast-image';
 import GetApiUrl from '@/src/utils/url_api';
+import CreateChat from '@/src/api/create.chat';
 
 type UserData = {
     user_id: number;
@@ -48,7 +49,6 @@ export default function FollowsScreen() {
     
     // Reset all data when userId changes
     const resetAllData = useCallback(() => {
-        console.log('Resetting all data for userId:', userId);
         setReadersData([]);
         setFollowsData([]);
         setReadersIndex(0);
@@ -78,18 +78,45 @@ export default function FollowsScreen() {
             resetAllData();
         }, [resetAllData])
     );
+
+    // Handle Message Button Press
+    const handleCreateChat = async (user_id: number) => {
+        try {
+            const response = await CreateChat(user_id); // Assuming CreateChat returns the new chat ID
+
+            if (response?.data) {
+                router.push({
+                    pathname: "/(tabs)/chat-room",
+                    params: { id: response.data.chat_id, userId: user_id }
+                });
+            }
+        
+        // Handle errors
+        } catch (error: any) {
+
+            const errResponse = error.response?.data;
+            const status = error.response?.status;
+
+            if (errResponse?.error === "Chat already exists" && status === 400) {
+                router.push({
+                    pathname: "/(tabs)/chat-room",
+                    params: { id: errResponse.existing_chat_id, userId: user_id }
+                });
+            }
+        }
+    };
+
+
     
     // Fetch Readers
     const fetchReaders = useCallback(async (isRefresh = false) => {
         if (readersLoading || (!isRefresh && isReadersEnd)) return;
         
-        console.log('Fetching readers - isRefresh:', isRefresh, 'currentIndex:', isRefresh ? 0 : readersIndex);
         setReadersLoading(true);
         const currentIndex = isRefresh ? 0 : readersIndex;
         
         try {
             const data = await getReaders(Number(userId), currentIndex);
-            console.log('Readers response:', data, 'currentIndex:', currentIndex, 'isRefresh:', isRefresh);
             
             if (data.end) {
                 setIsReadersEnd(true);
@@ -99,7 +126,6 @@ export default function FollowsScreen() {
                 setReadersData(data.data || []);
                 setReadersIndex((data.data || []).length);
                 setReadersInitialized(true);
-                console.log('Readers refresh - new index:', (data.data || []).length);
             } else {
                 // Filter duplicates
                 const newItems = (data.data || []).filter((item: UserData) => 
@@ -108,7 +134,6 @@ export default function FollowsScreen() {
                 setReadersData(prev => [...prev, ...newItems]);
                 setReadersIndex(prev => {
                     const newIndex = prev + newItems.length;
-                    console.log('Readers load more - old index:', prev, 'new items:', newItems.length, 'new index:', newIndex);
                     return newIndex;
                 });
             }
@@ -124,13 +149,11 @@ export default function FollowsScreen() {
     const fetchFollows = useCallback(async (isRefresh = false) => {
         if (followsLoading || (!isRefresh && isFollowsEnd)) return;
         
-        console.log('Fetching follows - isRefresh:', isRefresh, 'currentIndex:', isRefresh ? 0 : followsIndex);
         setFollowsLoading(true);
         const currentIndex = isRefresh ? 0 : followsIndex;
         
         try {
             const data = await getFollows(Number(userId), currentIndex);
-            console.log('Follows response:', data, 'currentIndex:', currentIndex, 'isRefresh:', isRefresh);
             
             if (data.end) {
                 setIsFollowsEnd(true);
@@ -140,7 +163,6 @@ export default function FollowsScreen() {
                 setFollowsData(data.data || []);
                 setFollowsIndex((data.data || []).length);
                 setFollowsInitialized(true);
-                console.log('Follows refresh - new index:', (data.data || []).length);
             } else {
                 // Filter duplicates
                 const newItems = (data.data || []).filter((item: UserData) => 
@@ -149,7 +171,6 @@ export default function FollowsScreen() {
                 setFollowsData(prev => [...prev, ...newItems]);
                 setFollowsIndex(prev => {
                     const newIndex = prev + newItems.length;
-                    console.log('Follows load more - old index:', prev, 'new items:', newItems.length, 'new index:', newIndex);
                     return newIndex;
                 });
             }
@@ -181,14 +202,12 @@ export default function FollowsScreen() {
     // Load initial data when screen becomes focused
     useEffect(() => {
         if (userId && activeTabState === 'Readers' && !readersInitialized && !readersLoading) {
-            console.log('Loading initial readers data');
             fetchReaders(true);
         }
     }, [userId, activeTabState, readersInitialized, readersLoading, fetchReaders]);
     
     useEffect(() => {
         if (userId && activeTabState === 'Follows' && !followsInitialized && !followsLoading) {
-            console.log('Loading initial follows data');
             fetchFollows(true);
         }
     }, [userId, activeTabState, followsInitialized, followsLoading, fetchFollows]);
@@ -196,10 +215,8 @@ export default function FollowsScreen() {
     // Load data when switching tabs
     useEffect(() => {
         if (activeTabState === 'Readers' && !readersInitialized && !readersLoading) {
-            console.log('Switching to readers tab - loading data');
             fetchReaders(true);
         } else if (activeTabState === 'Follows' && !followsInitialized && !followsLoading) {
-            console.log('Switching to follows tab - loading data');
             fetchFollows(true);
         }
     }, [activeTabState, readersInitialized, followsInitialized, readersLoading, followsLoading, fetchReaders, fetchFollows]);
@@ -215,20 +232,18 @@ export default function FollowsScreen() {
     // Load more functions
     const loadMoreReaders = useCallback(() => {
         if (!readersLoading && !isReadersEnd && readersInitialized) {
-            console.log('Loading more readers');
             fetchReaders();
         }
     }, [readersLoading, isReadersEnd, readersInitialized, fetchReaders]);
     
     const loadMoreFollows = useCallback(() => {
         if (!followsLoading && !isFollowsEnd && followsInitialized) {
-            console.log('Loading more follows');
             fetchFollows();
         }
     }, [followsLoading, isFollowsEnd, followsInitialized, fetchFollows]);
     
     const renderUserItem = ({ item }: { item: UserData }) => (
-        <View style={styles.userItem}>
+        <TouchableOpacity style={styles.userItem}  onPress={() => router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: `/follows-screen?userId=${userId}` } })}>
             <FastImage 
                 style={styles.avatarPlaceholder} 
                 source={{
@@ -236,10 +251,10 @@ export default function FollowsScreen() {
                 }} 
             />
             <Text style={styles.userName}>{item.username}</Text>
-            <TouchableOpacity style={styles.followButton}>
-                <Text style={styles.followButtonText}>Follow</Text>
+            <TouchableOpacity style={styles.messageButton} onPress={() => handleCreateChat(item.user_id)}>
+                <Text style={styles.messageButtonText}>Message</Text>
             </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
     );
     
     const styles = StyleSheet.create({
@@ -309,15 +324,15 @@ export default function FollowsScreen() {
             fontWeight: '500',
             color: isDark ? '#FFFFFF' : '#000',
         },
-        followButton: {
+        messageButton: {
             backgroundColor: isDark ? '#A78BFA' : '#5856D6',
             paddingHorizontal: 16,
             paddingVertical: 8,
             borderRadius: 8,
         },
-        followButtonText: {
-            color: '#FFFFFF',
-            fontWeight: '600',
+        messageButtonText: {
+            color: isDark ? '#0A0410' : '#F5F5F7',
+            fontWeight: '500',
         },
         footerLoader: {
             paddingVertical: 20,

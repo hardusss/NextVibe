@@ -15,7 +15,6 @@ export default async function getRecomendatePosts () {
     }
 
     catch (error) {
-        console.log(error);
         return null;
     }
 }

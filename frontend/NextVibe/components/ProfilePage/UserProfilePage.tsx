@@ -124,7 +124,6 @@ const UserProfileView = () => {
                 official: data?.official || false,
                 is_subscribed: data?.is_subscribed || false
             });
-            console.log("User data:", data);
         } catch (error) {
             console.error("Failed to fetch user data:", error);
         } finally {

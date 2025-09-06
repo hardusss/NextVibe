@@ -67,7 +67,6 @@ export const sendReadStatus = (chatId: number) => {
 
 export const notifyEnterChat = (chatId: number) => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log("Sending enter chat notification"); 
     ws.send(JSON.stringify({
       type: 'enter_chat',
       chat_id: chatId,

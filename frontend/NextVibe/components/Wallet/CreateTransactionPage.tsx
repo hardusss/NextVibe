@@ -188,7 +188,6 @@ export default function CreateTransactionPage() {
         setIsFailed(false);
         try {
             const response = await fetchMethod(Number(amountRef.current), recipientRef.current);
-            console.log(response)
             if (response && response.startsWith('https')) {
                 setIsSuccess(true);
                 Vibration.vibrate(100);

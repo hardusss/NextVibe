@@ -7,7 +7,6 @@ const getUserDetail = async (id?: number, isProfile? : boolean ) => {
 
     const TOKEN = await AsyncStorage.getItem("access")
     const USER_ID = await AsyncStorage.getItem("id")
-    console.log(TOKEN)
     const response = await axios.get(`${GetApiUrl()}/users/user-detail/${id ? id : USER_ID}/`, {
         headers: {
             "Authorization": `Bearer ${TOKEN}`

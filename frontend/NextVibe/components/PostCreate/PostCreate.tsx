@@ -61,9 +61,6 @@ export default function PostCreate() {
         }, [params.urls]) 
     );
     
-    useEffect(() => {
-        console.log(isAiGenerated)
-    }, [isAiGenerated])
     const isVideo = (uri: string): boolean => {
         return uri.endsWith('.mp4') || uri.endsWith('.mov');
     };

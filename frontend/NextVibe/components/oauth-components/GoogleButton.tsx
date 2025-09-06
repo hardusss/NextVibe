@@ -20,7 +20,6 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
     const signInWithGoogle = async () => {
         try {
             const userInfo = await GoogleSignin.signIn();
-            console.log(userInfo);
             const userData = userInfo.data?.user;
             if (userInfo.type === "success" && page === "register") {
                 GoogleRegister(`${userData?.givenName}${userData?.familyName ? userData?.familyName != null : ""}`, `${userData?.email}`, `${userData?.photo}`, router);
@@ -29,7 +28,6 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
                 GoogleLogin(`${userData?.email}`, router);
             }
         } catch (error: any) {
-            console.log(error.code)
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
                 Toast.show({
                     type: 'info',
