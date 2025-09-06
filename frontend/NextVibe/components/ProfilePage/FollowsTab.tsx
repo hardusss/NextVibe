@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, use, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, StatusBar, Animated, FlatList, Dimensions, RefreshControl, ActivityIndicator } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, useFocusEffect, RelativePathString } from "expo-router";
@@ -16,60 +16,101 @@ type UserData = {
 export default function FollowsScreen() {
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
-
-    // Get the userId and username from the route params
+    
+    // Get params from route
     const { last_page, activeTab, userId, username } = useLocalSearchParams();
-
+    
     // Tab State and Page state
-    const [activeTabState, setActiveTab] = useState(activeTab || 'Readers');
+    const [activeTabState, setActiveTabState] = useState(activeTab || 'Readers');
     const [page, setPage] = useState(last_page || 'profile');
-
+    
     // Animated Indicator
     const indicatorPosition = useRef(new Animated.Value(0)).current;
     const screenWidth = Dimensions.get('window').width;
     const tabContainerWidth = screenWidth - 40;
     const indicatorWidth = tabContainerWidth / 2;
-
-    // State for Followers (Readers)
+    
+    // State for Readers
     const [readersData, setReadersData] = useState<UserData[]>([]);
     const [readersIndex, setReadersIndex] = useState(0);
     const [readersLoading, setReadersLoading] = useState(false);
     const [isReadersEnd, setIsReadersEnd] = useState(false);
     const [readersRefreshing, setReadersRefreshing] = useState(false);
-
+    const [readersInitialized, setReadersInitialized] = useState(false);
+    
     // State for Following
     const [followsData, setFollowsData] = useState<UserData[]>([]);
     const [followsIndex, setFollowsIndex] = useState(0);
     const [followsLoading, setFollowsLoading] = useState(false);
     const [isFollowsEnd, setIsFollowsEnd] = useState(false);
     const [followsRefreshing, setFollowsRefreshing] = useState(false);
-
+    const [followsInitialized, setFollowsInitialized] = useState(false);
+    
+    // Reset all data when userId changes
+    const resetAllData = useCallback(() => {
+        console.log('Resetting all data for userId:', userId);
+        setReadersData([]);
+        setFollowsData([]);
+        setReadersIndex(0);
+        setFollowsIndex(0);
+        setIsReadersEnd(false);
+        setIsFollowsEnd(false);
+        setReadersInitialized(false);
+        setFollowsInitialized(false);
+    }, [userId]);
+    
     // Set active tab when component mounts or activeTab changes    
     useFocusEffect(
         useCallback(() => {
-            setActiveTab(activeTab || 'Readers');
+            setActiveTabState(activeTab || 'Readers');
         }, [activeTab])
     );
-
+    
     useFocusEffect(
         useCallback(() => {
             setPage(last_page || 'profile');
         }, [last_page])
     );
-
+    
+    // Reset data when userId changes
+    useFocusEffect(
+        useCallback(() => {
+            resetAllData();
+        }, [resetAllData])
+    );
+    
     // Fetch Readers
-    const fetchReaders = async (isRefresh = false) => {
+    const fetchReaders = useCallback(async (isRefresh = false) => {
         if (readersLoading || (!isRefresh && isReadersEnd)) return;
+        
+        console.log('Fetching readers - isRefresh:', isRefresh, 'currentIndex:', isRefresh ? 0 : readersIndex);
         setReadersLoading(true);
         const currentIndex = isRefresh ? 0 : readersIndex;
+        
         try {
             const data = await getReaders(Number(userId), currentIndex);
-            console.log(data)
+            console.log('Readers response:', data, 'currentIndex:', currentIndex, 'isRefresh:', isRefresh);
+            
             if (data.end) {
                 setIsReadersEnd(true);
+            }
+            
+            if (isRefresh) {
+                setReadersData(data.data || []);
+                setReadersIndex((data.data || []).length);
+                setReadersInitialized(true);
+                console.log('Readers refresh - new index:', (data.data || []).length);
             } else {
-                setReadersData(prev => isRefresh ? data.data : [...prev, ...data.data.filter((item: any) => !prev.some(existing => existing.user_id === item.user_id))]);
-                setReadersIndex(prev => prev + 12);
+                // Filter duplicates
+                const newItems = (data.data || []).filter((item: UserData) => 
+                    !readersData.some(existing => existing.user_id === item.user_id)
+                );
+                setReadersData(prev => [...prev, ...newItems]);
+                setReadersIndex(prev => {
+                    const newIndex = prev + newItems.length;
+                    console.log('Readers load more - old index:', prev, 'new items:', newItems.length, 'new index:', newIndex);
+                    return newIndex;
+                });
             }
         } catch (error) {
             console.error("Failed to fetch readers:", error);
@@ -77,20 +118,40 @@ export default function FollowsScreen() {
             setReadersLoading(false);
             if (isRefresh) setReadersRefreshing(false);
         }
-    };
-
+    }, [readersLoading, isReadersEnd, readersIndex, readersData, userId]);
+    
     // Fetch Follows
-    const fetchFollows = async (isRefresh = false) => {
+    const fetchFollows = useCallback(async (isRefresh = false) => {
         if (followsLoading || (!isRefresh && isFollowsEnd)) return;
+        
+        console.log('Fetching follows - isRefresh:', isRefresh, 'currentIndex:', isRefresh ? 0 : followsIndex);
         setFollowsLoading(true);
         const currentIndex = isRefresh ? 0 : followsIndex;
+        
         try {
             const data = await getFollows(Number(userId), currentIndex);
+            console.log('Follows response:', data, 'currentIndex:', currentIndex, 'isRefresh:', isRefresh);
+            
             if (data.end) {
                 setIsFollowsEnd(true);
+            }
+            
+            if (isRefresh) {
+                setFollowsData(data.data || []);
+                setFollowsIndex((data.data || []).length);
+                setFollowsInitialized(true);
+                console.log('Follows refresh - new index:', (data.data || []).length);
             } else {
-                setFollowsData(prev => isRefresh ? data.data : [...prev, ...data.data.filter((item: any) => !prev.some(existing => existing.user_id === item.user_id))]);
-                setFollowsIndex(prev => prev + 12);
+                // Filter duplicates
+                const newItems = (data.data || []).filter((item: UserData) => 
+                    !followsData.some(existing => existing.user_id === item.user_id)
+                );
+                setFollowsData(prev => [...prev, ...newItems]);
+                setFollowsIndex(prev => {
+                    const newIndex = prev + newItems.length;
+                    console.log('Follows load more - old index:', prev, 'new items:', newItems.length, 'new index:', newIndex);
+                    return newIndex;
+                });
             }
         } catch (error) {
             console.error("Failed to fetch follows:", error);
@@ -98,10 +159,10 @@ export default function FollowsScreen() {
             setFollowsLoading(false);
             if (isRefresh) setFollowsRefreshing(false);
         }
-    };
-
+    }, [followsLoading, isFollowsEnd, followsIndex, followsData, userId]);
+    
     // Pull to Refresh Handler
-    const onRefresh = () => {
+    const onRefresh = useCallback(() => {
         if (activeTabState === 'Readers') {
             setReadersRefreshing(true);
             setReadersData([]);
@@ -115,41 +176,72 @@ export default function FollowsScreen() {
             setIsFollowsEnd(false);
             fetchFollows(true);
         }
-    };
-
+    }, [activeTabState, fetchReaders, fetchFollows]);
+    
+    // Load initial data when screen becomes focused
     useEffect(() => {
-        // Fetch initial data for both tabs when userId changes
-        if (userId) {
-            fetchReaders(true); // Fetch fresh data on user change
-            fetchFollows(true); // Fetch fresh data on user change
-        }
-    }, [userId]);
-
-    useEffect(() => {
-        // Reset indices and end flags when switching tabs
-        if (activeTabState === 'Readers' && readersData.length === 0) {
+        if (userId && activeTabState === 'Readers' && !readersInitialized && !readersLoading) {
+            console.log('Loading initial readers data');
             fetchReaders(true);
-        } else if (activeTabState === 'Follows' && followsData.length === 0) {
+        }
+    }, [userId, activeTabState, readersInitialized, readersLoading, fetchReaders]);
+    
+    useEffect(() => {
+        if (userId && activeTabState === 'Follows' && !followsInitialized && !followsLoading) {
+            console.log('Loading initial follows data');
             fetchFollows(true);
         }
-    }, [activeTabState]);
+    }, [userId, activeTabState, followsInitialized, followsLoading, fetchFollows]);
+    
+    // Load data when switching tabs
+    useEffect(() => {
+        if (activeTabState === 'Readers' && !readersInitialized && !readersLoading) {
+            console.log('Switching to readers tab - loading data');
+            fetchReaders(true);
+        } else if (activeTabState === 'Follows' && !followsInitialized && !followsLoading) {
+            console.log('Switching to follows tab - loading data');
+            fetchFollows(true);
+        }
+    }, [activeTabState, readersInitialized, followsInitialized, readersLoading, followsLoading, fetchReaders, fetchFollows]);
+    
+    // Animated indicator
     useEffect(() => {
         Animated.spring(indicatorPosition, {
             toValue: activeTabState === 'Readers' ? 0 : indicatorWidth,
             useNativeDriver: false,
         }).start();
     }, [activeTabState, indicatorWidth]);
-
+    
+    // Load more functions
+    const loadMoreReaders = useCallback(() => {
+        if (!readersLoading && !isReadersEnd && readersInitialized) {
+            console.log('Loading more readers');
+            fetchReaders();
+        }
+    }, [readersLoading, isReadersEnd, readersInitialized, fetchReaders]);
+    
+    const loadMoreFollows = useCallback(() => {
+        if (!followsLoading && !isFollowsEnd && followsInitialized) {
+            console.log('Loading more follows');
+            fetchFollows();
+        }
+    }, [followsLoading, isFollowsEnd, followsInitialized, fetchFollows]);
+    
     const renderUserItem = ({ item }: { item: UserData }) => (
         <View style={styles.userItem}>
-            <FastImage style={styles.avatarPlaceholder} source={{uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}`}} />
+            <FastImage 
+                style={styles.avatarPlaceholder} 
+                source={{
+                    uri: item.avatar ? `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` : undefined
+                }} 
+            />
             <Text style={styles.userName}>{item.username}</Text>
             <TouchableOpacity style={styles.followButton}>
                 <Text style={styles.followButtonText}>Follow</Text>
             </TouchableOpacity>
         </View>
     );
-
+    
     const styles = StyleSheet.create({
         container: {
             flex: 1,
@@ -231,7 +323,7 @@ export default function FollowsScreen() {
             paddingVertical: 20,
         }
     });
-
+    
     return (
         <View style={styles.container}>
             <StatusBar 
@@ -244,16 +336,20 @@ export default function FollowsScreen() {
                 </TouchableOpacity>
                 <Text style={styles.nickname}>{username || 'Profile'}</Text>
             </View>
-
+            
             <View style={styles.tabWrapper}>
                 <View style={styles.tabContainer}>
-                    <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTab('Readers')}>
-                        <Text style={[styles.tabButtonText, { color: activeTab === 'Readers' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' }]}>
+                    <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTabState('Readers')}>
+                        <Text style={[styles.tabButtonText, { 
+                            color: activeTabState === 'Readers' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' 
+                        }]}>
                             Readers
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTab('Follows')}>
-                        <Text style={[styles.tabButtonText, { color: activeTab === 'Follows' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' }]}>
+                    <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTabState('Follows')}>
+                        <Text style={[styles.tabButtonText, { 
+                            color: activeTabState === 'Follows' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' 
+                        }]}>
                             Following
                         </Text>
                     </TouchableOpacity>
@@ -262,16 +358,20 @@ export default function FollowsScreen() {
                     <Animated.View style={[styles.indicator, { left: indicatorPosition, width: indicatorWidth }]} />
                 </View>
             </View>
-
+            
             <View style={styles.contentContainer}>
                 {activeTabState === 'Readers' ? (
                     <FlatList
                         data={readersData}
                         renderItem={renderUserItem}
                         keyExtractor={item => item.user_id.toString()}
-                        onEndReached={() => fetchReaders()}
+                        onEndReached={loadMoreReaders}
                         onEndReachedThreshold={0.5}
-                        ListFooterComponent={readersLoading && !readersRefreshing ? <ActivityIndicator style={styles.footerLoader} size="large" color={isDark ? '#A78BFA' : '#5856D6'} /> : null}
+                        ListFooterComponent={
+                            readersLoading && !readersRefreshing ? 
+                            <ActivityIndicator style={styles.footerLoader} size="large" color={isDark ? '#A78BFA' : '#5856D6'} /> 
+                            : null
+                        }
                         refreshControl={
                             <RefreshControl 
                                 refreshing={readersRefreshing} 
@@ -285,9 +385,13 @@ export default function FollowsScreen() {
                         data={followsData}
                         renderItem={renderUserItem}
                         keyExtractor={item => item.user_id.toString()}
-                        onEndReached={() => fetchFollows()}
+                        onEndReached={loadMoreFollows}
                         onEndReachedThreshold={0.5}
-                        ListFooterComponent={followsLoading && !followsRefreshing ? <ActivityIndicator style={styles.footerLoader} size="large" color={isDark ? '#A78BFA' : '#5856D6'} /> : null}
+                        ListFooterComponent={
+                            followsLoading && !followsRefreshing ? 
+                            <ActivityIndicator style={styles.footerLoader} size="large" color={isDark ? '#A78BFA' : '#5856D6'} /> 
+                            : null
+                        }
                         refreshControl={
                             <RefreshControl 
                                 refreshing={followsRefreshing} 
