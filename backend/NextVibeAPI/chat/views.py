@@ -6,6 +6,8 @@ from rest_framework.views import APIView
 import logging
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Prefetch
+from django.db.models import Count
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +29,13 @@ class ChatListView(APIView):
             
             chat_data = []
             for chat in chats:
-                # Отримуємо останнє повідомлення
                 last_message = chat.all_messages[0] if chat.all_messages else None
                 
-                # Отримуємо іншого учасника чату
                 other_user = chat.participants.exclude(user_id=user.user_id).first()
                 
-                # Формуємо дані про повідомлення
+
                 message_data = None
                 if last_message:
-                    # Отримуємо медіа файли для повідомлення
                     media_attachments = MediaAttachment.objects.filter(message=last_message)
                     
                     message_data = {
@@ -181,6 +180,15 @@ class CreateChatView(APIView):
             if not participants.exists():
                 return Response({'error': 'No valid users found'}, status=404)
             
+            
+            existing_chat = Chat.objects.annotate(
+                num_participants=Count('participants')
+            ).filter(num_participants=len(participants))
+            for chat in existing_chat:
+                chat_participants = set(chat.participants.values_list('user_id', flat=True))
+                if chat_participants == set(participants.values_list('user_id', flat=True)):
+                    return Response({'error': 'Chat already exists', "existing_chat_id": chat.id}, status=400)
+
             chat = Chat.objects.create()
             chat.participants.set(participants)
             chat.save()
@@ -230,5 +238,4 @@ class DeleteChatView(APIView):
             chat.delete()
             return Response({'message': 'Chat deleted successfully'}, status=200)
         except Chat.DoesNotExist:
-            print(f"Chat with ID {chat_id} not found for user {request.user.user_id}")
             return Response({'error': 'Chat not found'}, status=404)

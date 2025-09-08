@@ -64,5 +64,4 @@ class GetReaders(APIView):
         response_data = {"data": readers_qs, "end": is_end}
         
         cache.set(cache_key, response_data, timeout=35)
-        print(response_data)
         return Response(response_data, status=200)

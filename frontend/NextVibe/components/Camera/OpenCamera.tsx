@@ -81,7 +81,7 @@ const CameraScreen = () => {
       useNativeDriver: false,
       easing: Easing.linear,
     }).start();
-    recordInterval.current = setInterval(() => {}, 1000);
+  
     // For 'auto', torch is off by default
     let torch: 'on' | 'off' = 'off';
     if (flashMode === 'on') torch = 'on';
