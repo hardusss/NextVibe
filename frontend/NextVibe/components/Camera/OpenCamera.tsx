@@ -81,7 +81,6 @@ const CameraScreen = () => {
       useNativeDriver: false,
       easing: Easing.linear,
     }).start();
-  
     // For 'auto', torch is off by default
     let torch: 'on' | 'off' = 'off';
     if (flashMode === 'on') torch = 'on';

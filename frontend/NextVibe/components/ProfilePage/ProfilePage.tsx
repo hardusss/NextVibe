@@ -50,23 +50,23 @@ const ProfileView = () => {
     const router = useRouter();
     
     useEffect(() => {
-    if (visible) {
-      setIsVisibleContainer(true);
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 10,
-        bounciness: 8,
-      }).start();
-    } else {
-      Animated.timing(scaleAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-      setTimeout(() => {setIsVisibleContainer(false)}, 130);
-    };
-  }, [visible]);
+        if (visible) {
+        setIsVisibleContainer(true);
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            speed: 10,
+            bounciness: 8,
+        }).start();
+        } else {
+        Animated.timing(scaleAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start();
+        setTimeout(() => {setIsVisibleContainer(false)}, 200);
+        };
+    }, [visible]);
     const fetchUserData = async () => {
         try {
             const data = await getUserDetail(0);

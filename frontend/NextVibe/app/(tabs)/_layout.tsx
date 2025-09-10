@@ -51,8 +51,8 @@ export default function Layout() {
   };
 
   return (
-    <View style={{ flex: 1,  }}>
-      <Stack screenOptions={{ headerShown: false, animation: "fade", animationDuration: 300 }} >
+    <View style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false, animation: "none"}} >
         <Stack.Screen name="home" />
         <Stack.Screen name="search" />
         <Stack.Screen name="camera" />
@@ -74,7 +74,6 @@ export default function Layout() {
           borderColor: theme === "dark" ? "rgba(26,26,47,0.95)" : "#D9D9D9",
           backgroundColor: theme === "dark" ? "#1A1A2F" : "#D9D9D9",
           shadowColor: "transparent",
-          
         }}>
           {tabs.map((tab) => (
             <TouchableOpacity key={tab.name} onPress={() => goToTab(tab.name)}>

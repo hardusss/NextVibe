@@ -19,11 +19,10 @@ export default function FollowsScreen() {
     const router = useRouter();
     
     // Get params from route
-    const { last_page, activeTab, userId, username } = useLocalSearchParams();
+    const { activeTab, userId, username } = useLocalSearchParams();
     
     // Tab State and Page state
-    const [activeTabState, setActiveTabState] = useState(activeTab || 'Readers');
-    const [page, setPage] = useState(last_page || 'profile');
+    const [activeTabState, setActiveTabState] = useState(activeTab || 'Readers')
     
     // Animated Indicator
     const indicatorPosition = useRef(new Animated.Value(0)).current;
@@ -64,12 +63,6 @@ export default function FollowsScreen() {
         useCallback(() => {
             setActiveTabState(activeTab || 'Readers');
         }, [activeTab])
-    );
-    
-    useFocusEffect(
-        useCallback(() => {
-            setPage(last_page || 'profile');
-        }, [last_page])
     );
     
     // Reset data when userId changes
@@ -346,7 +339,7 @@ export default function FollowsScreen() {
                 barStyle={isDark ? "light-content" : "dark-content"}
             />
             <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.push(page as RelativePathString)}>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#FFFFFF' : '#000'} />
                 </TouchableOpacity>
                 <Text style={styles.nickname}>{username || 'Profile'}</Text>

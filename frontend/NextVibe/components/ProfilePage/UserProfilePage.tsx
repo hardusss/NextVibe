@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { View, SafeAreaView, Text, StatusBar, Image, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { View, SafeAreaView, Text, StatusBar,Modal, ScrollView, RefreshControl, TouchableOpacity, Animated } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
@@ -11,11 +11,10 @@ import PostGallery from "./PostsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { useFocusEffect } from 'expo-router';
 import getUserDetail from "@/src/api/user.detail";
-import { RelativePathString } from "expo-router";
 import followUser from "@/src/api/follow";
 import CreateChat from "@/src/api/create.chat";
 import FastImage from 'react-native-fast-image';
-
+import RecommendedUsers from "./recommendateProfiles";
 
 type UserData = {
     user_id: number;
@@ -32,17 +31,17 @@ type UserData = {
 const ButtonSubscribe = ({ isSubscribed, onPress, isDark }: { isSubscribed: boolean, onPress: () => void, isDark: boolean }) => (
     <TouchableOpacity 
         style={{
-            backgroundColor: isSubscribed ? (isDark ? '#333' : '#fff') : (isDark ? '#000' : '#fff'),
+            backgroundColor: isSubscribed ? '#2a1a35ff'  : '#400666ff' ,
             padding: 10,
             borderRadius: 8,
             width: '48%',
             borderWidth: 1,
-            borderColor: '#00CED1',
+            borderColor: '#2a1a35ff',
         }}
         onPress={onPress}
     >
         <Text style={{ 
-            color: '#00CED1',
+            color: 'white',
             textAlign: 'center',
             fontWeight: 'bold'
         }}>
@@ -51,7 +50,7 @@ const ButtonSubscribe = ({ isSubscribed, onPress, isDark }: { isSubscribed: bool
     </TouchableOpacity>
 );
 
-const ButtonMessage = ({user}: {user: UserData}) => {
+const ButtonMessage = ({user, isDark}: {user: UserData, isDark: boolean}) => {
     const router = useRouter();
 
     const handleCreateChat = async () => {
@@ -64,23 +63,33 @@ const ButtonMessage = ({user}: {user: UserData}) => {
                     params: { id: response.chat_id, userId: user.user_id }
                 });
             }
-        } catch (error) {
-            console.error("Error creating chat:", error);
+        } catch (error: any) {
+            const errResponse = error.response?.data;
+            const status = error.response?.status;
+
+            if (errResponse?.error === "Chat already exists" && status === 400) {
+                router.push({
+                    pathname: "/(tabs)/chat-room",
+                    params: { id: errResponse.existing_chat_id, userId: user.user_id }
+                });
+            }
         }
     
     }
     return (
         <TouchableOpacity 
             style={{
-                backgroundColor: '#00CED1',
+                backgroundColor:  isDark ? '#0A0410' : '#fff',
                 padding: 10,
                 borderRadius: 8,
                 width: '48%',
-            }}
-            onPress={() => {handleCreateChat()}}
+                borderWidth: 1,
+                borderColor: '#2a1a35ff',
+                }}
+                onPress={() => {handleCreateChat()}}
         >
             <Text style={{ 
-                color: '#fff', 
+                color: '#3e274eff',
                 textAlign: 'center',
                 fontWeight: 'bold'
             }}>
@@ -91,7 +100,7 @@ const ButtonMessage = ({user}: {user: UserData}) => {
 };
 
 const UserProfileView = () => {
-    const { id, last_page } = useLocalSearchParams();
+    const { id } = useLocalSearchParams();
     const router = useRouter();
     const [userData, setUserData] = useState<UserData>({
         user_id: 0,
@@ -107,6 +116,9 @@ const UserProfileView = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [visible, setVisible] = useState<boolean>(false);
+    const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
+    const scaleAnim = useRef(new Animated.Value(0)).current;
     const colorScheme = useColorScheme();
     const profileStyle = colorScheme === "dark" ? profileDarkStyles : profileLightStyles;
 
@@ -147,6 +159,25 @@ const UserProfileView = () => {
         setRefreshing(false);
     }, []);
 
+    useEffect(() => {
+        if (visible) {
+          setIsVisibleContainer(true);
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            speed: 10,
+            bounciness: 8,
+          }).start();
+        } else {
+          Animated.timing(scaleAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+          setTimeout(() => {setIsVisibleContainer(false)}, 200);
+        };
+    }, [visible]);
+
     useFocusEffect(
         useCallback(() => {
             fetchUserData();
@@ -167,17 +198,18 @@ const UserProfileView = () => {
     );
 
     return (
-        <SafeAreaView style={profileStyle.container}>
+        <SafeAreaView style={[profileStyle.container, {overflow: "hidden"}]}>
             <StatusBar
                 animated={true}
-                backgroundColor={colorScheme === 'dark' ? 'black' : '#f0f0f0'} 
+                backgroundColor={colorScheme === 'dark' ? '#0A0410' : '#f0f0f0'} 
             />
             
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{flex: 1, justifyContent: "center", alignItems: "center"}}/>
             ) : (
                 <ScrollView 
-                    contentContainerStyle={{ paddingBottom: 20 }} 
+                    contentContainerStyle={{ paddingBottom: 20, overflow: "hidden"}} 
+                    showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -188,15 +220,36 @@ const UserProfileView = () => {
                         />
                     }
                 >
+                    <Modal transparent visible={isVisibleContainer} animationType="fade">
+                        <TouchableOpacity
+                            style={{flex: 1,
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    backgroundColor: "rgba(0, 0, 0, 0.5)",
+                                }}
+                            activeOpacity={1}
+                            onPress={() => setVisible(false)}
+                        >
+                            <Animated.View style={[{ backgroundColor: "transparent",
+                                                     justifyContent: "center",
+                                                     alignItems: "center",},
+                                                     { transform: [{ scale: scaleAnim }] }]}>
+                            <FastImage
+                                style={{ width: 200, height: 200, borderRadius: 100 }}
+                                source={{ uri: userData.avatar_url as string }}
+                            />
+                            </Animated.View>
+                        </TouchableOpacity>
+                    </Modal>
                     {/* User Info Section */}
-                    <View style={{flexDirection: "row"}}>
+                    <View style={{flexDirection: "row", alignItems: "center"}}>
                         <TouchableOpacity 
                             style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
-                                padding: 10,
+                                paddingRight: 10
                             }}
-                            onPress={() => router.push(last_page as RelativePathString || '/search')}
+                            onPress={() => router.back()}
                         >
                             <MaterialIcons 
                                 name="arrow-back" 
@@ -205,27 +258,32 @@ const UserProfileView = () => {
                             />
                         </TouchableOpacity>
 
-                        <Text style={profileStyle.username}>{userData.username}</Text>
-                        {userData.official && <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 14}} />}
+                        <Text style={[profileStyle.username]}>{userData.username}</Text>
+                        {userData.official && <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{ marginLeft: 2}} />}
                     </View>
 
                     {/* Stats Section */}
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
-                        <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
-                        <View style={{flexDirection: "row", marginTop: 35, flex: 1, justifyContent: "space-around"}}>
-                            {/* Stats items */}
-                            <View>
+                        <TouchableOpacity onPress={() => setVisible(true)}>
+                            <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
+                        </TouchableOpacity>
+                        <View style={{flexDirection: "row", marginTop: 35, marginLeft: 20, flex: 1, justifyContent: "space-around"}}>
+                            <View >
                                 <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.post_count)}</Text>
                                 <Text style={profileStyle.text}>Posts</Text>
                             </View>
-                            <View>
-                                <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.readers_count)}</Text>
-                                <Text style={profileStyle.text}>Readers</Text>
-                            </View>
-                            <View>
-                                <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.follows_count)}</Text>
-                                <Text style={profileStyle.text}>Follows</Text>
-                            </View>
+                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: {  userId: id, username: userData.username, activeTab: "Readers" } })}>
+                                <View>
+                                    <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.readers_count)}</Text>
+                                    <Text style={profileStyle.text}>Readers</Text>
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: { userId: id, username: userData.username, activeTab: "Follows" } })}>
+                                <View>
+                                    <Text style={[profileStyle.text, {fontWeight: "bold"}]} >{formatNumber(userData.follows_count)}</Text>
+                                    <Text style={profileStyle.text}>Follows</Text>
+                                </View>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -237,15 +295,15 @@ const UserProfileView = () => {
                         flexDirection: "row",
                         marginTop: 20,
                         justifyContent: "space-between",
-                        marginBottom: 20
                     }}>
                         <ButtonSubscribe 
                             isSubscribed={userData.is_subscribed} 
                             onPress={handleSubscribe}
                             isDark={colorScheme === 'dark'} 
                         />
-                        <ButtonMessage user={userData}/>
+                        <ButtonMessage user={userData} isDark={colorScheme === 'dark'} />
                     </View>
+                    <RecommendedUsers key={`recommended-${refreshKey}`} />
                     {userData.post_count === 0 ? (
                         <View style={{borderTopWidth: 1, borderColor: "#5A31F4", marginTop: 20}}>
                             <MaterialIcons name="camera-alt" size={60} color="#58a6ff" style={{ marginTop: 14, alignSelf: "center" }} />
