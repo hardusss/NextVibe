@@ -42,7 +42,7 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
             <View style={styles.avatarContainer}>
               <FastImage
                 source={{ 
-                  uri: `${GetApiUrl().slice(0, 25)}${item.avatar}`,
+                  uri: `${GetApiUrl().slice(0, 26)}${item.avatar}`,
                   priority: FastImage.priority.normal,
                   cache: FastImage.cacheControl.immutable
                 }}

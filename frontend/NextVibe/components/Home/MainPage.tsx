@@ -355,7 +355,7 @@ const MediaItemComponent = ({ item, postId, onLike, isLiked }: {
     onLike: (postId: number) => void;
     isLiked: boolean;
 }) => {
-    const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
+    const mediaUrl = `${GetApiUrl().slice(0, 26)}/media/${item.media_url}`;
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
     const heartAnim = useRef(new Animated.Value(0)).current;
@@ -559,7 +559,7 @@ export default function MainPage() {
             <View style={styles.postContainer}>
                 <View style={styles.postHeader}>
                     <FastImage 
-                        source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.owner__avatar}` }} 
+                        source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.owner__avatar}` }} 
                         style={styles.avatar} 
                     />
                     <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>
