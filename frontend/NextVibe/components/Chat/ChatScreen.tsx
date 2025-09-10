@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Text,
   ScrollView,
-  Alert
+  StatusBar
 } from 'react-native';
 import { MaterialIcons, AntDesign, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -230,7 +230,6 @@ export default function ChatScreen() {
     
             notifyEnterChat(+id);
           } else {
-            // Знаходимо тимчасове повідомлення і оновлюємо його з реальними даними
             setMessages(prev => 
               prev.map(msg => 
                 msg.sender_id === userIdState && msg.media.some(m => !m.file_url?.startsWith('/media/'))
@@ -288,8 +287,8 @@ export default function ChatScreen() {
             <Image 
               source={{ 
                 uri: userDetails?.avatar 
-                  ? `${GetApiUrl().slice(0, 26)}${userDetails.avatar}` 
-                  : `${GetApiUrl().slice(0, 26)}/media/images/default.png`
+                  ? `${GetApiUrl().slice(0, 25)}${userDetails.avatar}` 
+                  : `${GetApiUrl().slice(0, 25)}/media/images/default.png`
               }} 
               style={styles.profileImage} 
             />
@@ -330,6 +329,7 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={ styles.container}
     >
+      <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
       <View style={{ flex: 1 }}>
         <View style={styles.navbar}>
           <TouchableOpacity 
@@ -343,8 +343,8 @@ export default function ChatScreen() {
             <Image 
               source={{ 
                 uri: userDetails?.avatar 
-                  ? `${GetApiUrl().slice(0, 26)}${userDetails.avatar}` 
-                  : `${GetApiUrl().slice(0, 26)}/media/images/default.png`
+                  ? `${GetApiUrl().slice(0, 25)}${userDetails.avatar}` 
+                  : `${GetApiUrl().slice(0, 25)}/media/images/default.png`
               }} 
               style={styles.headerAvatar} 
             />
@@ -460,7 +460,7 @@ export default function ChatScreen() {
 const getStyles = (isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: isDark ? '#000' : '#fff'
+    backgroundColor: isDark ? '#0A0410' : '#fff'
   },
   loading: {
     flex: 1,
@@ -475,8 +475,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     padding: 10,
     paddingBottom: Platform.OS === 'ios' ? 25 : 10,
     borderTopWidth: 1,
-    borderTopColor: isDark ? '#333' : '#eee',
-    backgroundColor: isDark ? '#000' : '#fff',
+    borderTopColor: isDark ? '#22083cff' : '#eee',
+    backgroundColor: isDark ? '#0A0410' : '#fff',
   },
   mediaInputRow: {
     width: '100%',
@@ -500,7 +500,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   sendButton: {
     padding: 10,
     borderRadius: 20,
-    backgroundColor: '#00CED1'
+    backgroundColor: '#3B0971'
   },
   sendButtonDisabled: {
     opacity: 0.5
@@ -603,8 +603,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? '#333' : '#eee',
-    backgroundColor: isDark ? '#000' : '#fff',
+    borderBottomColor: isDark ? '#0A0410' : '#eee',
+    backgroundColor: isDark ? '#0A0410' : '#fff',
   },
   backButton: {
     width: 40,
@@ -632,7 +632,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     position: 'absolute',
     bottom: 10,
     right: 20,
-    backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)',
+    backgroundColor: isDark ? '#0A0410' : 'rgba(255,255,255,0.7)',
     padding: 8,
     borderRadius: 16,
     shadowColor: "#000",
