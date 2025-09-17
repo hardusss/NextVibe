@@ -76,11 +76,10 @@ export default function FollowsScreen() {
     const handleCreateChat = async (user_id: number) => {
         try {
             const response = await CreateChat(user_id); // Assuming CreateChat returns the new chat ID
-
-            if (response?.data) {
+            if (response) {
                 router.push({
                     pathname: "/(tabs)/chat-room",
-                    params: { id: response.data.chat_id, userId: user_id }
+                    params: { id: response.chat_id, userId: user_id }
                 });
             }
         

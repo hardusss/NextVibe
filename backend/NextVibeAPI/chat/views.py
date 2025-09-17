@@ -193,7 +193,7 @@ class CreateChatView(APIView):
             chat.participants.set(participants)
             chat.save()
             
-            return Response({'chat_id': chat.id}, status=201)
+            return Response({'chat_id': chat.id}, status=200)
         except Exception as e:
             logger.error(f"Error in CreateChatView: {str(e)}")
             return Response({'error': str(e)}, status=500)

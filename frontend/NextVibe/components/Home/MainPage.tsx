@@ -14,6 +14,7 @@ import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
 import timeAgo from "@/src/utils/formatTime";
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
+import { FeDropShadow } from "react-native-svg";
 
 const { width: screenWidth } = Dimensions.get("window");
 

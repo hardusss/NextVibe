@@ -16,3 +16,5 @@ backend/NextVibeAPI/NextVibeAPI/.env
 ./.vscode
 ./.idea
 .idea
+
+.idea/*
