@@ -31,14 +31,14 @@ interface User {
 }
 
 const darkColors = {
-    background: "black",
-    cardBackground: "black",
-    inputBackground: "black",
+    background: "#0A0410",
+    cardBackground: "#0A0410",
+    inputBackground: "#0A0410",
     primary: "#58a6ff",
     secondary: "#1f6feb",
     textPrimary: "#c9d1d9",
     textSecondary: "#8b949e",
-    border: "#fafafa",
+    border: "#3b0076ff",
     shadow: "#0917b3",
 };
 
@@ -250,7 +250,7 @@ function PageSettingsContent() {
 
                 <TouchableOpacity 
                     style={{
-                        backgroundColor: isSave ? "#1f6feb" : "#262626",
+                        backgroundColor: isSave ? "#3b0076ff" : "#262626",
                         padding: 5,
                         borderRadius: 5,
                         alignItems: "center",
@@ -352,7 +352,7 @@ function PageSettingsContent() {
                             </Switch>
                         </View>
                         <TouchableOpacity style={{marginTop: 15}} onPress={() => setIsVisibleResetPassword(true)}>
-                            <Text style={{color: "#05f0d8", fontWeight: "bold"}}>Reset password</Text>
+                            <Text style={{color: "#7b05f1ff", fontWeight: "bold"}}>Reset password</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={{marginTop: 15}} onPress={handleLogout}>
@@ -419,7 +419,7 @@ const getStyles = (isDark: boolean) => {
         },
         imageContainer: {
             borderWidth: 1,
-            borderColor: "#05f0d8",
+            borderColor: "#8000ffff",
             borderRadius: 55,
             padding: 2
         },
@@ -429,7 +429,7 @@ const getStyles = (isDark: boolean) => {
             borderRadius: 50,
         },
         linkText: {
-            color: "blue",
+            color: "#7b05f1ff",
             fontWeight: "bold",
             marginTop: 10,
         },
@@ -447,7 +447,7 @@ const getStyles = (isDark: boolean) => {
             paddingBottom: 5,
             paddingTop: 5,
             fontSize: 16,
-            borderBottomColor: "#05f0d8",
+            borderBottomColor: "#5700afff",
             borderBottomWidth: 1
         },
         twoFAButton: {
