@@ -1,31 +1,251 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
   FlatList,
   useColorScheme,
   StatusBar,
+  Animated,
+  TouchableWithoutFeedback,
 } from "react-native";
-import { Video } from "expo-av";
+import { Video, ResizeMode } from "expo-av";
 import Icon from "react-native-vector-icons/Ionicons";
 import { MaterialIcons } from "@expo/vector-icons";
 import getMenuPosts from "@/src/api/menu.posts";
 import GetApiUrl from "@/src/utils/url_api";
 import timeAgo from "@/src/utils/formatTime";
 import getUserDetail from "@/src/api/user.detail";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router"; // Added useFocusEffect
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { RelativePathString } from "expo-router";
-import { ResizeMode } from "expo-av";
 import likePost from "@/src/api/like.post";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
 import FastImage from 'react-native-fast-image';
 
+const { width: screenWidth } = Dimensions.get("window");
 
+const darkTheme = {
+    background: "#0A0410",
+    cardBackground: "#0A0410",
+    textPrimary: "#E3E3E3",
+    textSecondary: "#aaa",
+    skeletonBackground: "#1a171f",
+    skeletonHighlight: "#444",
+    accentColor: "#58a6ff",
+    likeColor: "#ff4757",
+    shadowColor: "#000"
+};
+
+const lightTheme = {
+    background: "#f5f5f5",
+    cardBackground: "rgba(255, 255, 255, 0.9)",
+    textPrimary: "#333",
+    textSecondary: "#666",
+    skeletonBackground: "#e0e0e0",
+    skeletonHighlight: "#f5f5f5",
+    accentColor: "#0095f6",
+    likeColor: "#e91e63",
+    shadowColor: "#ccc"
+};
+
+const getStyles = (theme: typeof darkTheme) => {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.background
+        },
+        listContainer: {
+            backgroundColor: theme.background,
+            paddingBottom: 50,
+        },
+        postContainer: {
+            borderRadius: 12,
+            marginBottom: 16,
+            padding: 14,
+            position: "relative",
+        },
+        postHeader: {
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 12
+        },
+        avatar: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            marginRight: 12
+        },
+        userInfo: {
+            flex: 1
+        },
+        usernameContainer: {
+            flexDirection: "row",
+            alignItems: "center"
+        },
+        username: {
+            fontSize: 16,
+            fontWeight: "600",
+            color: theme.textPrimary
+        },
+        location: {
+            fontSize: 14,
+            color: theme.textSecondary,
+            marginTop: 2
+        },
+        mediaPlaceholder: {
+            width: "100%",
+            height: screenWidth,
+            backgroundColor: '#1a1a1a',
+            borderRadius: 8,
+            marginBottom: 12,
+            overflow: "hidden",
+        },
+        mediaImage: {
+            width: "100%",
+            height: "100%",
+        },
+        mediaVideo: {
+            width: "100%",
+            height: "100%",
+        },
+        mediaLoading: {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.3)"
+        },
+        postContent: {
+            marginBottom: 12
+        },
+        postText: {
+            fontSize: 15,
+            color: theme.textPrimary,
+            lineHeight: 20
+        },
+        postFooter: {
+            flexDirection: "row",
+            gap: 10,
+            alignItems: "center"
+        },
+        likesContainer: {
+            flexDirection: "row",
+            alignItems: "center"
+        },
+        likesCount: {
+            marginLeft: 6,
+            color: theme.textPrimary,
+            fontSize: 14
+        },
+        postDate: {
+            color: theme.textSecondary,
+            fontSize: 14,
+            position: "absolute",
+            bottom: 20,
+            right: 15
+        },
+        loadingMore: {
+            paddingVertical: 16,
+            alignItems: "center"
+        },
+        emptyContainer: {
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingVertical: 32
+        },
+        emptyText: {
+            marginTop: 16,
+            fontSize: 16,
+            color: theme.textSecondary
+        },
+        muteButton: {
+            position: "absolute",
+            bottom: 10,
+            right: 10,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            padding: 8,
+            borderRadius: 20,
+        },
+        pageIndicator: {
+            position: "absolute",
+            right: 30,
+            top: 10,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            padding: 5,
+            borderRadius: 10,
+        },
+        pageIndicatorText: {
+            color: "white",
+            fontSize: 12,
+        },
+        fullMedia: {
+            width: screenWidth,
+            height: screenWidth,
+        },
+        post: {
+            width: screenWidth,
+            backgroundColor: theme.background,
+        },
+        mediaContainer: {
+            width: screenWidth,
+            height: screenWidth,
+            backgroundColor: '#1a1a1a',
+            overflow: "hidden",
+        },
+        heartOverlay: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'transparent'
+        },
+        aiBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#05f0d8',
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 12,
+            marginLeft: 8,
+        },
+        aiBadgeText: {
+            color: '#000',
+            fontSize: 10,
+            fontWeight: 'bold',
+            marginLeft: 2,
+        },
+        headerContainer: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 10,
+            paddingVertical: 10,
+            backgroundColor: theme.background
+        },
+        backButton: {
+            marginRight: 10
+        },
+        headerTitle: {
+            fontSize: 28,
+            color: theme.textPrimary,
+            fontWeight: "600"
+        },
+        error: {
+            color: "red",
+            textAlign: "center",
+            marginBottom: 10,
+        },
+    });
+};
 
 interface MediaItem {
   id: number;
@@ -36,6 +256,7 @@ interface MediaItem {
 interface PostItem {
   post_id: number;
   about: string;
+  location: string;
   count_likes: number;
   media: MediaItem[];
   create_at: string;
@@ -50,7 +271,122 @@ interface User {
   official: boolean;
 }
 
-const { width: screenWidth } = Dimensions.get("window");
+const MediaItemComponent = ({ 
+    item, 
+    postId, 
+    onLike, 
+    isLiked, 
+    isVisible 
+}: { 
+    item: MediaItem; 
+    postId: number;
+    onLike: (postId: number) => void;
+    isLiked: boolean;
+    isVisible: boolean;
+}) => {
+    const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
+    const [isMuted, setIsMuted] = useState(true);
+    const [showHeart, setShowHeart] = useState(false);
+    const heartAnim = useRef(new Animated.Value(0)).current;
+    const lastTap = useRef(0);
+    const videoRef = useRef<Video>(null);
+    const colorScheme = useColorScheme();
+    const theme = colorScheme === "dark" ? darkTheme : lightTheme;
+    const styles = getStyles(theme);
+
+    const handleDoublePress = () => {
+        const now = Date.now();
+        if (now - lastTap.current < 300) {
+            animateHeart();
+            if (!isLiked) {
+                onLike(postId);
+            }
+        }
+        lastTap.current = now;
+    };
+
+    const animateHeart = () => {
+        setShowHeart(true);
+        Animated.sequence([
+            Animated.spring(heartAnim, {
+                toValue: 1,
+                friction: 3,
+                useNativeDriver: true
+            }),
+            Animated.delay(500),
+            Animated.timing(heartAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true
+            })
+        ]).start(() => {
+            setShowHeart(false);
+            heartAnim.setValue(0);
+        });
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            if (item.media_url.match(/\.(mp4|webm|ogg|mov|mkv)$/)) {
+                if (isVisible) {
+                    videoRef.current?.playAsync();
+                } else {
+                    videoRef.current?.pauseAsync();
+                    videoRef.current?.setPositionAsync(0);
+                }
+            }
+        }, [isVisible, item.media_url])
+    );
+
+    return (
+        <TouchableWithoutFeedback onPress={handleDoublePress}>
+            <View style={styles.mediaContainer}>
+                {item.media_url.match(/\.(mp4|webm|ogg|mov|mkv)$/) ? (
+                    <>
+                        <Video
+                            ref={videoRef}
+                            source={{ uri: mediaUrl }}
+                            style={styles.fullMedia}
+                            useNativeControls={false}
+                            isLooping
+                            shouldPlay={isVisible}
+                            resizeMode={ResizeMode.COVER}
+                            volume={isMuted ? 0 : 1}
+                        />
+                        <TouchableOpacity 
+                            onPress={() => setIsMuted(prev => !prev)} 
+                            style={styles.muteButton}
+                        >
+                            <MaterialIcons 
+                                name={isMuted ? "volume-off" : "volume-up"} 
+                                size={24} 
+                                color="white" 
+                            />
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <FastImage
+                        source={{ 
+                            uri: mediaUrl,
+                            priority: FastImage.priority.normal,
+                            cache: FastImage.cacheControl.immutable
+                        }}
+                        style={styles.mediaImage}
+                        resizeMode={FastImage.resizeMode.cover}
+                    />
+                )}
+                {showHeart && (
+                    <Animated.View style={[styles.heartOverlay, {
+                        transform: [{ scale: heartAnim }],
+                        opacity: heartAnim
+                    }]}>
+                        <MaterialIcons name="favorite" size={80} color="#ff0000" />
+                    </Animated.View>
+                )}
+            </View>
+        </TouchableWithoutFeedback>
+    );
+};
 
 const UserPosts = () => {
   const router = useRouter();
@@ -77,10 +413,9 @@ const UserPosts = () => {
   const [popupPostId, setPopupPostId] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
-  const [isFetching, setIsFetching] = useState(false); // Add this line
-
-  const styles = getStyles(isDarkMode);
+  const theme = colorScheme === "dark" ? darkTheme : lightTheme;
+  const styles = getStyles(theme);
+  const [isFetching, setIsFetching] = useState(false);
 
   const clearData = useCallback(() => {
     setPosts([]);
@@ -125,14 +460,14 @@ const UserPosts = () => {
   };
 
   const fetchPosts = useCallback(async () => {
-    if (isFetching || !hasMore) return; // Add this check
+    if (isFetching || !hasMore) return;
     setIsFetching(true);
     setLoading(true);
     setError(null);
     try {
       const data = await getMenuPosts(+user_id);
       if (data) {
-        setPosts(data.data); // Replace instead of concatenate
+        setPosts(data.data);
         data.data.forEach((post: PostItem) => fetchUser(post.user_id));
         setHasMore(data.more_posts);
         if (data.liked_posts) {
@@ -178,6 +513,19 @@ const UserPosts = () => {
       ...prevLiked,
       [postId]: !prevLiked[postId],
     }));
+    setPosts(prevPosts => 
+        prevPosts.map(post => {
+            if (post.post_id === postId) {
+                return {
+                    ...post,
+                    count_likes: likedPosts[postId] 
+                        ? post.count_likes - 1 
+                        : post.count_likes + 1
+                };
+            }
+            return post;
+        })
+    );
   };
 
   const toggleExpand = (postId: number) => {
@@ -208,138 +556,158 @@ const UserPosts = () => {
     const user = usersData[item.user_id];
     const isLiked = likedPosts[item.post_id] ?? false;
     const isExpanded = expandedPosts[item.post_id] ?? false;
-    const currentIndex = currentIndices[item.post_id] ?? 0;
-    const truncatedText =
-      item.about.length > 100 ? item.about.slice(0, 100) + "..." : item.about;
+    const needsMoreButton = item.about.length > 100;
+    const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
 
     return (
-      <View key={item.post_id} style={styles.post}>
-        <View style={styles.userInfo}>
+      <View style={styles.postContainer}>
+        <View style={styles.postHeader}>
           {user && (
             <>
-              <FastImage source={{ uri: user.avatar }} style={styles.avatar} />
-              <View style={styles.userMetaInfo}>
-                <View style={styles.usernameRow}>
-                  <Text style={styles.username}>{user.username}</Text>
-                  {user.official && (
-                    <MaterialIcons name="check-circle" size={12} color="#58a6ff" />
-                  )}
+              <FastImage 
+                source={{ uri: user.avatar }} 
+                style={styles.avatar} 
+              />
+              <View style={styles.userInfo}>
+                <View style={styles.usernameContainer}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.username}>{user.username}</Text>
+                    {user.official && (
+                      <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5 }} />
+                    )}
+                  </View>
                   {item.is_ai_generated && (
                     <View style={styles.aiBadge}>
-                      <MaterialIcons name="auto-awesome" size={12} color="#fff" />
-                      <Text style={styles.aiBadgeText}>AI</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <MaterialIcons name="auto-awesome" size={12} color="#fff" />
+                        <Text style={styles.aiBadgeText}>AI</Text>
+                      </View>
                     </View>
                   )}
                 </View>
+                {item.location && (
+                            <Text style={styles.location}>{item.location}</Text>
+                        )}
               </View>
             </>
           )}
         </View>
-
-        {item.media.length === 1 ? (
-          <MediaItemComponent
-            item={item.media[0]}
-            isVisible={index === visibleVideoIndex}
-          />
-        ) : (
-          <View style={{ position: "relative" }}>
-            <FlatList
-              data={item.media}
-              renderItem={({ item: mediaItem }) => (
-                <MediaItemComponent
-                  item={mediaItem}
-                  isVisible={index === visibleVideoIndex}
-                />
-              )}
-              keyExtractor={(mediaItem) => mediaItem.id.toString()}
-              horizontal
-              pagingEnabled
-              nestedScrollEnabled={true}
-              showsHorizontalScrollIndicator={false}
-              onScroll={(event) => handleScroll(event, item.post_id)}
+        
+        <View style={styles.mediaPlaceholder}>
+          {item.media.length === 1 ? (
+            <MediaItemComponent 
+              item={item.media[0]}
+              postId={item.post_id}
+              onLike={toggleLike}
+              isLiked={isLiked}
+              isVisible={index === visibleVideoIndex}
             />
-            <View style={styles.pageIndicator}>
-              <Text style={styles.pageIndicatortText}>
-                {currentIndex + 1}/{item.media.length}
-              </Text>
+          ) : (
+            <View style={{ position: "relative", width: screenWidth }}>
+              <FlatList
+                data={item.media}
+                renderItem={({ item: mediaItem }) => (
+                  <MediaItemComponent 
+                    item={mediaItem} 
+                    postId={item.post_id}
+                    onLike={toggleLike}
+                    isLiked={isLiked}
+                    isVisible={index === visibleVideoIndex}
+                  />
+                )}
+                keyExtractor={mediaItem => mediaItem.id.toString()}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={(event) => {
+                  const offsetX = event.nativeEvent.contentOffset.x;
+                  const index = Math.floor(offsetX / screenWidth);
+                  setCurrentIndices(prev => {
+                    if (prev[item.post_id] !== index) {
+                      return { ...prev, [item.post_id]: index };
+                    }
+                    return prev;
+                  });
+                }}
+                scrollEventThrottle={16}  
+                nestedScrollEnabled={true}                      
+              />
+              <View style={styles.pageIndicator}>
+                <Text style={styles.pageIndicatorText}>
+                  {(currentIndices[item.post_id] || 0) + 1}/{item.media.length}
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
-
-        <View style={styles.actions}>
-          <TouchableOpacity
-            onPress={() => toggleLike(item.post_id)}
-            style={{ flexDirection: "row" }}
-          >
-            <Icon
-              name={isLiked ? "heart" : "heart-outline"}
-              size={24}
-              color={isLiked ? "red" : styles.iconColor.color}
-            />
-            <Text
-              style={{
-                color: isDarkMode ? "white" : "black",
-                fontSize: 16,
-                fontWeight: "bold",
-              }}
-            >
-              {item.count_likes > 0 ? formatNumber(item.count_likes) : ""}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Icon
-              name="chatbubble-outline"
-              size={24}
-              color={styles.iconColor.color}
-              onPress={() => {
-                setPopupPostId(item.post_id);
-                setShowPopup(true);
-              }}
-            />
-          </TouchableOpacity>
+          )}
         </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-          <Text style={styles.text}>
-            {isExpanded ? item.about : truncatedText}
-          </Text>
-          {item.about.length > 100 && (
+        
+        <View style={styles.postContent}>
+          <Text style={styles.postText}>{displayText}</Text>
+          {needsMoreButton && (
             <TouchableOpacity onPress={() => toggleExpand(item.post_id)}>
-              <Text style={styles.readMore}>
+              <Text style={{ color: theme.accentColor, marginTop: 5 }}>
                 {isExpanded ? "Show less" : "Read more"}
               </Text>
             </TouchableOpacity>
           )}
         </View>
-        <Text style={styles.timeAgo}>{timeAgo(item.create_at)}</Text>
+        
+        <View style={styles.postFooter}>
+          <TouchableOpacity onPress={() => toggleLike(item.post_id)} style={styles.likesContainer}>
+            <Icon 
+              name={isLiked ? "heart" : "heart-outline"} 
+              size={24} 
+              color={isLiked ? "red" : theme.textPrimary} 
+            />
+            <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => {
+            setPopupPostId(item.post_id);
+            setShowPopup(true);
+          }}>
+            <Icon name="chatbubble-outline" size={20} color={theme.textPrimary} style={{marginTop: -3}}/>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.postDate}>
+          {timeAgo(item.create_at)}
+        </Text>
       </View>
     );
   };
 
   return (
-    <View style={[styles.container, { flex: 1 }]}>
+    <View style={styles.container}>
+      <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"} />
+      
+      <View style={styles.headerContainer}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.push({ pathname: previous, params: { id: user_id } })}
+        >
+          <MaterialIcons
+            name="keyboard-arrow-left"
+            size={42}
+            color={theme.textPrimary}
+          />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Posts</Text>
+      </View>
+
       {showPopup && (
         <PopupModal
           post_id={popupPostId as number}
           onClose={() => setShowPopup(false)}
         />
       )}
-      <View style={{ flexDirection: "row", marginLeft: -10 }}>
-        <MaterialIcons
-          name="keyboard-arrow-left"
-          style={[styles.text, { fontSize: 42, width: 50 }]}
-          onPress={() =>
-            router.push({ pathname: previous, params: { id: user_id } })
-          }
-        />
-        <Text style={[styles.text, { fontSize: 28 }]}>Posts</Text>
-      </View>
-      <StatusBar animated backgroundColor={isDarkMode ? "black" : "#f0f0f0"} />
+
       {error && <Text style={styles.error}>{error}</Text>}
+      
       <FlatList
         ref={flatListRef}
         data={posts}
         renderItem={renderPostItem}
-        keyExtractor={(item) => item.post_id.toString()}
+        keyExtractor={(item, index) => `${item.post_id}_${index}`}
+        contentContainerStyle={styles.listContainer}
         initialScrollIndex={posts.findIndex(
           (item) => item.post_id === TARGET_ID
         )}
@@ -348,210 +716,25 @@ const UserPosts = () => {
           offset: 500 * index,
           index,
         })}
-        showsVerticalScrollIndicator={false}
         onEndReached={() => fetchPosts()}
-        onEndReachedThreshold={0.5}
-        initialNumToRender={10}
+        onEndReachedThreshold={0.8}
+        initialNumToRender={6}
+        showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{
           itemVisiblePercentThreshold: 50,
         }}
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingBottom: 100,
-        }}
-        style={{ flex: 1 }}
-      />
-    </View>
-  );
-};
-
-const MediaItemComponent = ({
-  item,
-  isVisible,
-}: {
-  item: MediaItem;
-  isVisible: boolean;
-}) => {
-  const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
-  const [isMuted, setIsMuted] = useState(true);
-  const videoRef = useRef<Video>(null);
-  const styles = getStyles(useColorScheme() === "dark");
-
-  const toggleMute = () => {
-    setIsMuted((prev) => !prev);
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      if (item.type === "video") {
-        if (isVisible) {
-          videoRef.current?.playAsync();
-        } else {
-          videoRef.current?.pauseAsync();
-          videoRef.current?.setPositionAsync(0);
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="sentiment-dissatisfied" size={60} color="#58a6ff" />
+              <Text style={styles.emptyText}>No posts found</Text>
+            </View>
+          ) : null
         }
-      }
-    }, [isVisible])
-  );
-
-  return mediaUrl.match(/\.(mp4|webm|ogg|mov|mkv)$/) ? (
-    <View>
-      <Video
-        ref={videoRef}
-        source={{ uri: mediaUrl }}
-        style={styles.fullMedia}
-        useNativeControls={false}
-        isLooping
-        shouldPlay={isVisible}
-        resizeMode={"cover" as ResizeMode}
-        volume={isMuted ? 0 : 1}
       />
-      <TouchableOpacity onPress={() => toggleMute()} style={styles.muteButton}>
-        <MaterialIcons
-          name={isMuted ? "volume-off" : "volume-up"}
-          size={24}
-          color="white"
-        />
-      </TouchableOpacity>
     </View>
-  ) : (
-    <FastImage
-      source={{ uri: mediaUrl }}
-      style={styles.fullMedia}
-      resizeMode="cover"
-    />
   );
 };
-
-const getStyles = (isDarkMode: boolean) =>
-  StyleSheet.create({
-    container: {
-      padding: 10,
-      backgroundColor: isDarkMode ? "black" : "#fff",
-      paddingBottom: 100,
-      flex: 1,
-    },
-    userInfo: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 10,
-    },
-    avatar: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      marginRight: 10,
-    },
-    username: {
-      fontSize: 16,
-      fontWeight: "bold",
-      color: isDarkMode ? "#ddd" : "#333",
-    },
-    post: {
-      width: screenWidth,
-      paddingBottom: 15,
-      borderBottomWidth: 1,
-      borderColor: "#05f0d8",
-      paddingTop: 15,
-      backgroundColor: isDarkMode ? "black" : "#fff",
-      elevation: 3,
-    },
-    fullMedia: {
-      width: screenWidth,
-      height: screenWidth * 1,
-    },
-    text: {
-      width: screenWidth - 10,
-      fontSize: 16,
-      marginBottom: 10,
-      paddingHorizontal: 10,
-      color: isDarkMode ? "#ddd" : "#333",
-    },
-    readMore: {
-      fontSize: 14,
-      color: "#007bff",
-      textAlign: "center",
-      marginBottom: 10,
-      marginLeft: 10,
-    },
-    timeAgo: {
-      fontSize: 14,
-      color: isDarkMode ? "#bbb" : "gray",
-      paddingHorizontal: 10,
-      paddingTop: 5,
-    },
-    actions: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-    },
-    iconColor: {
-      color: isDarkMode ? "#bbb" : "black",
-    },
-    button: {
-      backgroundColor: "#007bff",
-      paddingVertical: 10,
-      paddingHorizontal: 20,
-      borderRadius: 5,
-      marginTop: 15,
-    },
-    buttonText: {
-      color: "white",
-      fontSize: 16,
-    },
-    error: {
-      color: "red",
-      textAlign: "center",
-      marginBottom: 10,
-    },
-    pageIndicator: {
-      position: "absolute",
-      right: "7%",
-      textAlign: "center",
-      marginTop: 5,
-      fontSize: 16,
-      color: "white",
-      backgroundColor: "rgba(0, 0, 0, 0.6)",
-      padding: 5,
-      borderRadius: 10,
-    },
-    pageIndicatortText: {
-      color: "white",
-    },
-    muteButton: {
-      position: "absolute",
-      bottom: 5,
-      right: 25,
-      backgroundColor: "rgba(0, 0, 0, 0.6)",
-      padding: 5,
-      borderRadius: 10,
-    },
-    userMetaInfo: {
-      flex: 1,
-    },
-    usernameRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    aiBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#05f0d8',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 12,
-      marginLeft: 4,
-    },
-    aiBadgeText: {
-      color: '#000',
-      fontSize: 10,
-      fontWeight: 'bold',
-      marginLeft: 2,
-    },
-  });
 
 export default UserPosts;
