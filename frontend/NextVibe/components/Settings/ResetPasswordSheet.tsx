@@ -142,7 +142,7 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
             <TouchableOpacity style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
             <Animated.View style={[styles.container, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
                 <View style={styles.headerContainer}>
-                    <MaterialCommunityIcons name="lock-reset" size={30} color={isDark ? "#05f0d8" : "#007bff"} />
+                    <MaterialCommunityIcons name="lock-reset" size={30} color={isDark ? "#7b05f1ff" : "#007bff"} />
                     <Text style={styles.title}>Reset Password</Text>
                 </View>
                 
@@ -209,7 +209,7 @@ const darkColors = {
     background: 'rgb(31, 31, 32)',
     buttonBackground: '#1f1f1f',
     textColor: '#c9d1d9',
-    accent: '#05f0d8',
+    accent: '#3e0578ff',
     overlay: 'rgba(0, 0, 0, 0.5)',
     inputBackground: '#2d2d2d',
     errorColor: '#ff6b6b'
