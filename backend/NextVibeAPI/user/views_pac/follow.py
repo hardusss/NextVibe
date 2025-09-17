@@ -19,13 +19,19 @@ class FollowView(APIView):
         
         # If user already subscribed to this user (unfollow)
         if follow_id in user.follow_for:
-            user2.readers_count -= 1
-            user2.readers.remove(id)
-            user2.save()
-            
-            user.follows_count -= 1
+            user2.readers_count = max(0, user2.readers_count - 1)
+
+            if user2.readers:
+                try:
+                    user2.readers.remove(id)
+                except ValueError:
+                    pass  
+            else:
+                user2.readers = []
             user.follow_for.remove(follow_id)
+
             user.save()
+            user2.save()
         else:
             # Follow user
             user.follows_count += 1
