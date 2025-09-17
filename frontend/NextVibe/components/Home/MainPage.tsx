@@ -580,9 +580,7 @@ export default function MainPage() {
                                 </View>
                             )}
                         </View>
-                        {item.location && (
-                            <Text style={styles.location}>{item.location}</Text>
-                        )}
+                         
                     </TouchableOpacity>
                 </View>
                 
@@ -658,7 +656,7 @@ export default function MainPage() {
                         setPopupPostId(item.id);
                         setShowPopup(true);
                     }}>
-                        <Icon name="chatbubble-outline" size={24} color={theme.textPrimary} />
+                        <Icon name="chatbubble-outline" size={20} style={{marginTop: -3}} color={theme.textPrimary} />
                     </TouchableOpacity>
                 </View>
                 <Text style={styles.postDate}>
