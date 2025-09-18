@@ -2431,3 +2431,6 @@
 2025-09-08 19:23:52,337 - INFO - Balance address: tb1q2kvcrlpdg35wxg35aw7es99ludlfyx4ww3vs4z: 0.0
 2025-09-08 19:23:52,747 - INFO - Balance address: JZyMfeVCu7yRgUTWXm9JVr4cbYyLaSk6fNTVnfQ5SEX: 0.0
 2025-09-08 19:23:53,385 - ERROR - Error: account not found on-chain
+2025-09-18 15:46:10,931 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc132'.
+2025-09-18 15:46:11,601 - INFO - Balance address: CoRZk3AzGEiLe7pAzXpHWyrkYRVFCDs7zQ6HMDJshR1d: 37.987975
+2025-09-18 15:46:12,256 - INFO - Balance: 3769.732 address: TAVpt1aWS1XTTKSircsaxUBebpEw9TyUq5

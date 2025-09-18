@@ -200,7 +200,7 @@ export default function SearchPage() {
                     keyExtractor={(item) => item.user_id.toString()}
                     renderItem={({ item }) => (
                         <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}  onPress={() => {setSearchHistory(item.user_id); router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: "search" } })}}>
-                            <FastImage source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.avatar}` }} style={styles.avatar} />
+                            <FastImage source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} style={styles.avatar} />
                             <View>
                                 <View style={{ flexDirection: "row" }}>
                                     <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
@@ -230,7 +230,7 @@ export default function SearchPage() {
                     initialNumToRender={2}
                     renderItem={({ item }) => (
                         <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border }]} onPress={() => {setSearchHistory(item.user_id); router.push({ pathname: "/user-profile", params: { id: item.user_id } })}}>
-                            <FastImage source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.avatar}` }} style={styles.avatar} />
+                            <FastImage source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} style={styles.avatar} />
                             <View>
                                 <View style={{ flexDirection: "row" }}>
                                     <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
