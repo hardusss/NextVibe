@@ -97,7 +97,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                             return null;
                         }
                     
-                        const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media[0].media_url}`;
+                        const mediaUrl = `${GetApiUrl().slice(0, 26)}/media/${item.media[0].media_url}`;
                         const isMediaVideo = isVideo(mediaUrl);
                     
                         return (

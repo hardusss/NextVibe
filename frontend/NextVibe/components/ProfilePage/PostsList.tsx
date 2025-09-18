@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -284,7 +284,7 @@ const MediaItemComponent = ({
     isLiked: boolean;
     isVisible: boolean;
 }) => {
-    const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
+    const mediaUrl = `${GetApiUrl().slice(0, 26)}/media/${item.media_url}`;
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
     const heartAnim = useRef(new Animated.Value(0)).current;
@@ -448,7 +448,7 @@ const UserPosts = () => {
           ...prevUsers,
           [userId]: {
             id: data.user_id,
-            avatar: `${GetApiUrl().slice(0, 25)}${data.avatar}`,
+            avatar: `${GetApiUrl().slice(0, 26)}${data.avatar}`,
             official: data.official,
             username: data.username,
           },
@@ -619,9 +619,9 @@ const UserPosts = () => {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                onScroll={(event) => {
+                onMomentumScrollEnd={(event) => {
                   const offsetX = event.nativeEvent.contentOffset.x;
-                  const index = Math.floor(offsetX / screenWidth);
+                  const index = Math.round(offsetX / screenWidth);
                   setCurrentIndices(prev => {
                     if (prev[item.post_id] !== index) {
                       return { ...prev, [item.post_id]: index };
@@ -629,12 +629,12 @@ const UserPosts = () => {
                     return prev;
                   });
                 }}
-                scrollEventThrottle={16}  
-                nestedScrollEnabled={true}                      
+                scrollEventThrottle={16}
+                nestedScrollEnabled={true}
               />
               <View style={styles.pageIndicator}>
                 <Text style={styles.pageIndicatorText}>
-                  {(currentIndices[item.post_id] || 0) + 1}/{item.media.length}
+                  {((currentIndices[item.post_id] ?? 0) + 1)}/{item.media.length}
                 </Text>
               </View>
             </View>

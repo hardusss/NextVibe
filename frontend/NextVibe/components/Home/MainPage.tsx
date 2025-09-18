@@ -356,7 +356,7 @@ const MediaItemComponent = ({ item, postId, onLike, isLiked }: {
     onLike: (postId: number) => void;
     isLiked: boolean;
 }) => {
-    const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
+    const mediaUrl = `${GetApiUrl().slice(0, 26)}/media/${item.media_url}`;
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
     const heartAnim = useRef(new Animated.Value(0)).current;
@@ -560,7 +560,7 @@ export default function MainPage() {
             <View style={styles.postContainer}>
                 <View style={styles.postHeader}>
                     <FastImage 
-                        source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.owner__avatar}` }} 
+                        source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.owner__avatar}` }} 
                         style={styles.avatar} 
                     />
                     <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>
@@ -585,15 +585,8 @@ export default function MainPage() {
                 </View>
                 
                 <View style={styles.mediaPlaceholder}>
-                    {item.media.length === 1 ? (
-                        <MediaItemComponent 
-                            item={item.media[0]}
-                            postId={item.id}
-                            onLike={toggleLike}
-                            isLiked={isLiked}
-                        />
-                    ) : (
-                        <View style={{ position: "relative", width: screenWidth }}>
+                    {item.media.length > 1 ? (
+                        <View style={{ width: screenWidth, height: screenWidth }}>
                             <FlatList
                                 data={item.media}
                                 renderItem={({ item: mediaItem }) => (
@@ -608,27 +601,33 @@ export default function MainPage() {
                                 horizontal
                                 pagingEnabled
                                 showsHorizontalScrollIndicator={false}
-                                onScroll={(event) => {
+                                onMomentumScrollEnd={(event) => {
                                     const offsetX = event.nativeEvent.contentOffset.x;
-                                    const index = Math.floor(offsetX / screenWidth);
+                                    const index = Math.round(offsetX / screenWidth);
                                     setCurrentIndices(prev => {
-                                      if (prev[item.id] !== index) {
-                                        return { ...prev, [item.id]: index };
-                                      }
-                                      return prev;
+                                        if (prev[item.id] !== index) {
+                                            return { ...prev, [item.id]: index };
+                                        }
+                                        return prev;
                                     });
-                                  }}
-                                  
-                                  
-                                scrollEventThrottle={16}  
-                                nestedScrollEnabled={true}                      
+                                }}
+                                scrollEventThrottle={16}
                             />
                             <View style={styles.pageIndicator}>
                                 <Text style={styles.pageIndicatorText}>
-                                    {(currentIndices[item.id] || 0) + 1}/{item.media.length}
+                                    {((currentIndices[item.id] ?? 0) + 1)}/{item.media.length}
                                 </Text>
                             </View>
                         </View>
+                    ) : (
+                        item.media.length === 1 && (
+                            <MediaItemComponent 
+                                item={item.media[0]} 
+                                postId={item.id}
+                                onLike={toggleLike}
+                                isLiked={isLiked}
+                            />
+                        )
                     )}
                 </View>
                 

@@ -99,7 +99,7 @@ export default function MediaGrid({ media }: MediaGridProps) {
           >
             <MediaPreview
               uri={item.file_url?.startsWith('/media/') 
-                ? `${GetApiUrl().slice(0, 25)}${item.file_url}` 
+                ? `${GetApiUrl().slice(0, 26)}${item.file_url}` 
                 : item.file_url || ''}
               type={item.file_url?.includes('.mp4') ? 'video' : 'image'}
               customSize={size}
