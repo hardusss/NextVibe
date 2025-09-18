@@ -84,12 +84,12 @@ const ButtonMessage = ({user, isDark}: {user: UserData, isDark: boolean}) => {
                 borderRadius: 8,
                 width: '48%',
                 borderWidth: 1,
-                borderColor: '#2a1a35ff',
+                borderColor: '#62218eff',
                 }}
                 onPress={() => {handleCreateChat()}}
         >
             <Text style={{ 
-                color: '#3e274eff',
+                color: '#8d11e0ff',
                 textAlign: 'center',
                 fontWeight: 'bold'
             }}>
@@ -129,7 +129,7 @@ const UserProfileView = () => {
                 user_id: data?.user_id || 0,
                 username: data?.username || "",
                 about: data?.about || "",
-                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 26)}${data.avatar}` : null,
+                avatar_url: data?.avatar ? `${GetApiUrl().slice(0, 25)}${data.avatar}` : null,
                 post_count: data?.post_count || 0,
                 readers_count: data?.readers_count || 0,
                 follows_count: data?.follows_count || 0,
