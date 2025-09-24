@@ -2437,3 +2437,24 @@
 2025-09-24 18:29:49,570 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc132'.
 2025-09-24 18:29:50,229 - INFO - Balance address: CoRZk3AzGEiLe7pAzXpHWyrkYRVFCDs7zQ6HMDJshR1d: 37.987975
 2025-09-24 18:29:56,084 - INFO - Balance: 3769.732 address: TAVpt1aWS1XTTKSircsaxUBebpEw9TyUq5
+2025-09-24 18:35:47,680 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc132'.
+2025-09-24 18:35:48,386 - INFO - Balance address: CoRZk3AzGEiLe7pAzXpHWyrkYRVFCDs7zQ6HMDJshR1d: 37.987975
+2025-09-24 18:35:49,401 - INFO - Balance: 3769.732 address: TAVpt1aWS1XTTKSircsaxUBebpEw9TyUq5
+2025-09-24 18:43:09,908 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc132'.
+2025-09-24 18:43:10,744 - INFO - Balance address: CoRZk3AzGEiLe7pAzXpHWyrkYRVFCDs7zQ6HMDJshR1d: 37.987975
+2025-09-24 18:43:21,705 - INFO - Balance: 3769.732 address: TAVpt1aWS1XTTKSircsaxUBebpEw9TyUq5
+2025-09-24 18:43:31,463 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc132'.
+2025-09-24 18:43:32,049 - INFO - Balance address: CoRZk3AzGEiLe7pAzXpHWyrkYRVFCDs7zQ6HMDJshR1d: 37.987975
+2025-09-24 18:43:32,866 - INFO - Balance: 3769.732 address: TAVpt1aWS1XTTKSircsaxUBebpEw9TyUq5
+2025-09-24 18:43:35,290 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc132'.
+2025-09-24 18:43:36,188 - INFO - Balance address: CoRZk3AzGEiLe7pAzXpHWyrkYRVFCDs7zQ6HMDJshR1d: 37.987975
+2025-09-24 18:43:36,859 - INFO - Balance: 3769.732 address: TAVpt1aWS1XTTKSircsaxUBebpEw9TyUq5
+2025-09-24 18:44:31,470 - INFO - Successfully created BTC wallet for user 137 with address tb1qp5x4nw08ht7ha6pdw7vferjv2nr4mcxrs47sha wallet name NextVibeWalletBtc137
+2025-09-24 18:44:31,473 - INFO - Creating wallet with address 9itDtVB7yk9rdCveKjgHdvAqMV5d8VXYsJGSZFqG8DHo and private key 33f440f129b433fd55ba0a428bfdad063a8e87335b8d2c70698e380a1e3a5203819839c82df91c2171986a2ba72268a166919d5f2f0c62c9fc8d2ba59939d506
+2025-09-24 18:44:31,474 - INFO - Successfully created TRX wallet with address TWJXJdYYNybC5Y9jDJVPJDEtuJ1eoWWF8x and private_key 573528f4bf040375d50ff7ebda7a000e9cc6cdaf2e9c46094bc9c31d1de49da2
+2025-09-24 18:44:47,024 - INFO - Balance address: tb1qp5x4nw08ht7ha6pdw7vferjv2nr4mcxrs47sha: 0.0
+2025-09-24 18:44:47,979 - INFO - Balance address: 9itDtVB7yk9rdCveKjgHdvAqMV5d8VXYsJGSZFqG8DHo: 0.0
+2025-09-24 18:44:48,791 - ERROR - Error: account not found on-chain
+2025-09-24 18:44:50,639 - INFO - Balance address: tb1qp5x4nw08ht7ha6pdw7vferjv2nr4mcxrs47sha: 0.0
+2025-09-24 18:44:51,810 - INFO - Balance address: 9itDtVB7yk9rdCveKjgHdvAqMV5d8VXYsJGSZFqG8DHo: 0.0
+2025-09-24 18:44:53,244 - ERROR - Error: account not found on-chain

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, Animated, Dimensions, ActivityIndicator, useColorScheme } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createWallet from '../../src/api/create.wallet';
@@ -86,7 +86,7 @@ export default function CreateWallet() {
 
   return (
     <View style={[styles.container, theme.container]}>
-
+      <StatusBar backgroundColor={isDarkTheme ? "#0A0410" : "#fff"}/>
       <Ionicons name="wallet-outline" size={80} color={theme.accent} style={{ marginBottom: 20 }} />
 
       <View style={styles.progressContainer}>
@@ -117,9 +117,9 @@ export default function CreateWallet() {
 }
 
 const darkTheme = {
-  container: { backgroundColor: '#000' },
-  text: { color: '#00bcd4' },
-  accent: '#00bcd4',
+  container: { backgroundColor: '#0A0410' },
+  text: { color: '#A78BFA' },
+  accent: '#A78BFA',
   circle: '#333',
 };
 

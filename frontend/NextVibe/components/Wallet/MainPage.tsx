@@ -59,13 +59,12 @@ export default function WalletScreen() {
 
   const styles = StyleSheet.create({
     container: {
-        backgroundColor: isDarkMode ? '#0A0410' : '#f2f2f2', // Ваш основний фон
+        backgroundColor: isDarkMode ? '#0A0410' : '#f2f2f2',
         flex: 1,
         padding: 20,
     },
-    // --- Стилі для SKELETON (завантаження) ---
     skeleton: {
-        backgroundColor: isDarkMode ? '#1C112E' : '#ddd', // Колір в тон палітри
+        backgroundColor: isDarkMode ? '#1C112E' : '#ddd',
         borderRadius: 8,
         width: '100%',
         height: 20,
@@ -79,13 +78,13 @@ export default function WalletScreen() {
         marginVertical: 3,
     },
     skeletonCircle: {
-        width: 40, // Зробимо трохи меншим
+        width: 40,
         height: 40,
         borderRadius: 20,
         backgroundColor: isDarkMode ? '#1C112E' : '#ddd',
         marginRight: 15,
     },
-    shimmer: { // Не використовується, але оновимо на всяк випадок
+    shimmer: {
         width: '40%',
         height: 15,
         backgroundColor: isDarkMode ? '#1C112E' : '#ddd',
@@ -101,20 +100,18 @@ export default function WalletScreen() {
     headerButton: {
         padding: 8,
     },
-    // --- Баланс ---
     balanceText: {
-        color: isDarkMode ? '#A09CB8' : '#555', // М'який лавандовий
-        fontSize: 16, // Трохи менший для кращої ієрархії
+        color: isDarkMode ? '#A09CB8' : '#555',
+        fontSize: 16,
         textAlign: 'center',
     },
     totalBalance: {
-        color: isDarkMode ? '#FFFFFF' : '#000', // Чистий білий
-        fontSize: 42, // Збільшимо для акценту
+        color: isDarkMode ? '#FFFFFF' : '#000',
+        fontSize: 42,
         fontWeight: 'bold',
         textAlign: 'center',
         marginVertical: 10,
     },
-    // --- Головні кнопки дій ---
     buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -127,24 +124,23 @@ circleButton: {
     width: 82,
     height: 64,
     borderRadius: 16,
-    backgroundColor: isDarkMode ? '#180F2E' : '#e0e0e0', // Фон як у карток
+    backgroundColor: isDarkMode ? '#180F2E' : '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
-    borderWidth: 1.5, // Додаємо рамку
-    borderColor: isDarkMode ? '#A78BFA' : '#ccc', // Колір "неонового кільця"
+    borderWidth: 1.5,
+    borderColor: isDarkMode ? '#A78BFA' : '#ccc',
 },
 iconColor: {
-    color: isDarkMode ? '#A78BFA' : '#333', // Іконка тепер має колір акценту
+    color: isDarkMode ? '#A78BFA' : '#333',
 },
 circleText: {
     color: isDarkMode ? '#A09CB8' : '#555',
     fontSize: 14,
     fontWeight: '500',
 },
-    // --- Список токенів ---
     tokenItem: {
-        backgroundColor: isDarkMode ? '#180F2E' : '#fff', // Фон для карток
+        backgroundColor: isDarkMode ? '#180F2E' : '#fff',
         borderRadius: 16,
         padding: 15,
         flexDirection: 'row',
@@ -152,7 +148,7 @@ circleText: {
         marginBottom: 16,
     },
     tokenIcon: {
-        width: 40, // Трохи збільшимо іконку токена
+        width: 40,
         height: 40,
         marginRight: 15,
     },
@@ -180,9 +176,8 @@ circleText: {
         color: isDarkMode ? '#A09CB8' : '#555',
         fontSize: 12,
     },
-    // --- Кнопка Історії ---
     historyButton: {
-        backgroundColor: isDarkMode ? '#180F2E' : '#fff', // Фон для карток
+        backgroundColor: isDarkMode ? '#180F2E' : '#fff',
         borderRadius: 16,
         padding: 16,
         flexDirection: 'row',
