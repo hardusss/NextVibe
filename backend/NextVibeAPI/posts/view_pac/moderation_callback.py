@@ -17,9 +17,10 @@ class ModerationCallbackView(APIView):
 
         # Get moderation results
         text_passed = data.get("text", {}).get("passed", False)
+        categories = data.get("text", {}).get("details", {}).get("categories", [])
         files_passed = all(f.get("passed", False) for f in data.get("files", []))
         post_passed = text_passed and files_passed
-
+        post.categories = categories
         post.is_approved = post_passed
         post.moderation_status = "approved" if post_passed else "denied"
         post.save()
