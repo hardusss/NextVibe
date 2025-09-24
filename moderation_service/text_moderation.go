@@ -1,0 +1,174 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"strings"
+)
+
+// ModerateText checks text content using Sightengine API
+func ModerateText(text string) FileResult {
+	if text == "" {
+		return FileResult{
+			Filename: "text",
+			Passed:   false,
+			Errors: []ModerationError{
+				{
+					Type:    "validation",
+					Message: "Empty text provided",
+				},
+			},
+			Details: map[string]interface{}{},
+		}
+	}
+
+	var lastErr error
+	rateLimitCount := 0
+	for attempt := 0; attempt < 5; attempt++ {
+		apiUser, apiSecret := GetRandomSightengineCredentials()
+		var b bytes.Buffer
+		w := multipart.NewWriter(&b)
+		w.WriteField("text", text)
+		w.WriteField("models", "nudity,wad,offensive,profanity")
+		w.WriteField("mode", "rules")
+		w.WriteField("lang", "en")
+		w.WriteField("api_user", apiUser)
+		w.WriteField("api_secret", apiSecret)
+		w.Close()
+
+		req, err := http.NewRequest("POST", "https://api.sightengine.com/1.0/text/check.json", &b)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		req.Header.Set("Content-Type", w.FormDataContentType())
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		fmt.Printf("Response status: %d\n", resp.StatusCode)
+		fmt.Printf("Response body: %s\n", string(body))
+
+		var result map[string]interface{}
+		err = json.Unmarshal(body, &result)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		if errMsg, ok := result["error"].(string); ok && (strings.Contains(errMsg, "rate limit") || strings.Contains(errMsg, "limit")) {
+			lastErr = fmt.Errorf("rate limit: %s", errMsg)
+			rateLimitCount++
+			if rateLimitCount > 3 {
+				return FileResult{
+					Filename: "text",
+					Passed:   true,
+					Errors: []ModerationError{
+						{
+							Type:    "rate_limit",
+							Message: "Rate limit exceeded, auto-passing content",
+						},
+					},
+					Details: map[string]interface{}{
+						"auto_passed": true,
+						"reason":      "rate limit",
+					},
+				}
+			}
+			continue
+		}
+
+		modResult := EvaluateTextFlexible(result, ModerationModerate)
+		passed := modResult.Passed
+
+		// Collect all moderation errors
+		var errors []ModerationError
+
+		// Check for nudity
+		if nudity, ok := result["nudity"].(map[string]interface{}); ok {
+			if safe, ok := nudity["safe"].(float64); ok && safe < 0.7 {
+				errors = append(errors, ModerationError{
+					Type:       "nudity",
+					Message:    "Content contains inappropriate references",
+					Confidence: 1 - safe,
+				})
+			}
+		}
+
+		// Check for weapon, alcohol, drugs
+		if wad, ok := result["weapon_alcohol_drugs"].(map[string]interface{}); ok {
+			if safe, ok := wad["safe"].(float64); ok && safe < 0.7 {
+				errors = append(errors, ModerationError{
+					Type:       "prohibited_content",
+					Message:    "Content contains references to weapons, alcohol, or drugs",
+					Confidence: 1 - safe,
+				})
+			}
+		}
+
+		// Check for offensive content
+		if offensive, ok := result["offensive"].(map[string]interface{}); ok {
+			if safe, ok := offensive["safe"].(float64); ok && safe < 0.7 {
+				errors = append(errors, ModerationError{
+					Type:       "offensive",
+					Message:    "Content contains offensive material",
+					Confidence: 1 - safe,
+				})
+			}
+		}
+
+		// Check for profanity
+		if profanity, ok := result["profanity"].(map[string]interface{}); ok {
+			if safe, ok := profanity["safe"].(float64); ok && safe < 0.7 {
+				errors = append(errors, ModerationError{
+					Type:       "profanity",
+					Message:    "Content contains profanity",
+					Confidence: 1 - safe,
+				})
+			}
+		}
+
+		// Detect categories for the text
+		categories := DetectCategories(text)
+
+		// Add categories to the result details
+		result["categories"] = categories
+
+		return FileResult{
+			Filename: "text",
+			Passed:   passed,
+			Errors:   errors,
+			Details:  result,
+		}
+	}
+
+	return FileResult{
+		Filename: "text",
+		Passed:   false,
+		Errors: []ModerationError{
+			{
+				Type:    "system",
+				Message: "All API keys exceeded rate limit",
+			},
+		},
+		Details: map[string]interface{}{
+			"error":      "All keys exceeded rate limit",
+			"last_error": lastErr.Error(),
+		},
+	}
+}
