@@ -4,6 +4,7 @@ from ..serializers_pac import PostSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 
+
 User = get_user_model()
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -16,3 +17,4 @@ class PostViewSet(viewsets.ModelViewSet):
         user = User.objects.get(user_id=self.request.user.user_id)
         user.post_count += 1
         user.save()
+        

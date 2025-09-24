@@ -8,6 +8,8 @@ class Post(models.Model):
     create_at = models.DateTimeField(auto_now_add=True)
     location = models.CharField(default=None, null=True, blank=True, max_length=255)
     is_ai_generated = models.BooleanField(default=False)
+    is_approved = models.BooleanField(default=False)  
+    moderation_status = models.CharField(max_length=20, default="pending")
 
     def __str__(self):
         return f"Post by {self.owner.username} with id {self.id}"

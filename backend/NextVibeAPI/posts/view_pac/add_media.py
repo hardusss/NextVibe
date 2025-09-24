@@ -4,13 +4,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..serializers_pac import PostsMediaSerializer
+from ..tasks import send_post_for_moderation
+
 
 class AddMediaToPostView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, *args, **kwargs) -> Response:
         post = request.data.get("post", None)
-        
         if 'media' not in request.FILES:
             return Response({"error": "No media files provided."}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -22,5 +23,6 @@ class AddMediaToPostView(APIView):
             else:
                 
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        print("Sending post for moderation:", post)
+        send_post_for_moderation.delay(post) 
         return Response({"message": "Media files added successfully."}, status=status.HTTP_201_CREATED)

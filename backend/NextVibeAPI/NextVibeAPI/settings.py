@@ -58,6 +58,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
 ]
 
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
