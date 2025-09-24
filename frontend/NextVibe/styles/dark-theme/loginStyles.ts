@@ -1,15 +1,15 @@
 import { StyleSheet } from 'react-native';
 
 const colors = {
-    cardBackground: '#0a0c1a',
+    cardBackground: '#0A0410',
     background: '#0A0410',
     inputBackground: '#0A0410',
-    primary: '#58a6ff',
+    primary: '#A78BFA',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
     textSecondary: '#8b949e',
-    border: '#05f0d8',
-    shadow: '#0917b3',
+    border: '#391b78ff',
+    shadow: '#A78BFA',
 };
 
 const loginDarkStyles = StyleSheet.create({
@@ -115,7 +115,7 @@ const loginDarkStyles = StyleSheet.create({
         marginTop: 20,
     },
     bottomLink: {
-        color: colors.border,
+        color: "#A78BFA",
         fontSize: 14,
         textDecorationLine: 'underline',
     },

@@ -44,7 +44,7 @@ export default function LoginView() {
 
             <View style={{ marginTop: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialIcons name="email" size={20} color="rgb(3, 113, 102)" style={{ marginRight: 10, paddingBottom: 10 }} />
+                    <MaterialIcons name="email" size={20} color="#A78BFA" style={{ marginRight: 10, paddingBottom: 10 }} />
                     <Text style={loginStyes.inputLabel}>Email</Text>
                 </View>
                 <TextInput
@@ -58,7 +58,7 @@ export default function LoginView() {
 
             <View style={{ marginTop: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialIcons name="password" size={20} color="rgb(3, 113, 102)" style={{ marginRight: 10, paddingBottom: 10 }} />
+                    <MaterialIcons name="password" size={20} color="#A78BFA" style={{ marginRight: 10, paddingBottom: 10 }} />
                     <Text style={loginStyes.inputLabel}>Password</Text>
                 </View>
                 <View>
@@ -74,14 +74,14 @@ export default function LoginView() {
                         <MaterialIcons
                             name={hidePassword ? 'visibility' : 'visibility-off'}
                             size={24}
-                            color={colorScheme === 'dark' ? '#fff' : '#000'}
+                            color={colorScheme === 'dark' ? '#A78BFA' : '#000'}
                         />
                     </TouchableOpacity>
                 </View>
             </View>
             
             <TouchableOpacity style={loginStyes.loginButton} onPress={() => {Login(email, password, router)}}>
-                <Text style={loginStyes.loginButtonText}>Login</Text>
+                <Text style={[loginStyes.loginButtonText, { color: colorScheme === 'dark' ? '#fff' : '#000' }]}>Login</Text>
             </TouchableOpacity>
 
             <View style={loginStyes.hrcontainer}>

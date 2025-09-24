@@ -2,15 +2,15 @@ import { BackHandler, StyleSheet } from 'react-native';
 
 
 const colors = {
+    cardBackground: '#0A0410',
     background: '#0A0410',
-    cardBackground: 'white',
     inputBackground: '#0A0410',
-    primary: '#58a6ff',
+    primary: '#A78BFA',
     secondary: '#1f6feb',
     textPrimary: '#c9d1d9',
     textSecondary: '#8b949e',
-    border: '#05f0d8',
-    shadow: '#0917b3',
+    border: '#391b78ff',
+    shadow: '#A78BFA',
 };
 
 const registerDarkStyles = StyleSheet.create({
@@ -65,12 +65,12 @@ const registerDarkStyles = StyleSheet.create({
         marginTop: 15,
     },
     privacyPolicyText: {
-        color: colors.border,
+        color: colors.primary,
         textDecorationLine: 'underline',
         fontSize: 14,
     },
     registerButton: {
-        backgroundColor: "#05f0d8",
+        backgroundColor: colors.border,
         borderRadius: 10,
         paddingVertical: 15,
         alignItems: 'center',
@@ -79,7 +79,7 @@ const registerDarkStyles = StyleSheet.create({
         elevation: 7,
     },
     registerButtonText: {
-        color: "black",
+        color: "#fff",
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -103,7 +103,7 @@ const registerDarkStyles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.cardBackground,
+        backgroundColor: "#fff",
         paddingVertical: 12,
         borderRadius: 8,
     },
@@ -112,23 +112,7 @@ const registerDarkStyles = StyleSheet.create({
         color: "black",
         fontWeight: 'bold',
     },
-    googleButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#232a34',
-        paddingVertical: 12,
-        paddingHorizontal: 25,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#3a4a5b', 
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.5,
-        shadowRadius: 8,
-        elevation: 5,
-        marginTop: 15,
-    },
+   
     icon: {
         width: 24,
         height: 24,
@@ -148,7 +132,7 @@ const registerDarkStyles = StyleSheet.create({
         marginTop: 20,
     },
     bottomLink: {
-        color: colors.border,
+        color: colors.primary,
         fontSize: 14,
         textDecorationLine: 'underline',
     },

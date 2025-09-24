@@ -67,7 +67,7 @@ export default function RegisterView() {
 
                 <View>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <MaterialIcons name="person" size={20} color="rgb(3, 113, 102)" style={{ marginRight: 10, paddingBottom: 10 }} />
+                        <MaterialIcons name="person" size={20} color="#A78BFA" style={{ marginRight: 10, paddingBottom: 10 }} />
                         <Text style={registerStyles.inputLabel}>Username</Text>
                     </View>
                     <TextInput
@@ -81,7 +81,7 @@ export default function RegisterView() {
 
                 <View style={{ marginTop: 20 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <MaterialIcons name="email" size={20} color="rgb(3, 113, 102)" style={{ marginRight: 10, paddingBottom: 10 }} />
+                        <MaterialIcons name="email" size={20} color="#A78BFA" style={{ marginRight: 10, paddingBottom: 10 }} />
                         <Text style={registerStyles.inputLabel}>Email</Text>
                     </View>
                     <TextInput
@@ -95,7 +95,7 @@ export default function RegisterView() {
 
                 <View style={{ marginTop: 20 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <MaterialIcons name="password" size={20} color="rgb(3, 113, 102)" style={{ marginRight: 10, paddingBottom: 10 }} />
+                        <MaterialIcons name="password" size={20} color="#A78BFA" style={{ marginRight: 10, paddingBottom: 10 }} />
                         <Text style={registerStyles.inputLabel}>Password</Text>
                     </View>
                     <View>
@@ -111,7 +111,7 @@ export default function RegisterView() {
                             <MaterialIcons
                                 name={passwordIcon as keyof typeof MaterialIcons.glyphMap}
                                 size={24}
-                                color={colorScheme === 'dark' ? '#fff' : '#000'}
+                                color={colorScheme === 'dark' ? '#A78BFA' : '#000'}
                             />
                         </TouchableOpacity>
                     </View>
