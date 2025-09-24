@@ -6,6 +6,7 @@ import {
     TouchableOpacity, 
     StyleSheet, 
     Dimensions, 
+    Text
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator } from "../CustomActivityIndicator";
@@ -14,7 +15,6 @@ import getMenuPosts from "@/src/api/menu.posts";
 import GetApiUrl from "@/src/utils/url_api";
 import { useRouter } from "expo-router";
 import { ResizeMode } from "expo-av";
-
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 
@@ -29,6 +29,7 @@ interface Post {
     post_id: number;
     media: { media_url: string }[];
     is_ai_generated: boolean;
+    moderation_status: string;
 }
 
 const PostGallery = ({id, previous}: {id: number, previous: string}) => {
@@ -103,8 +104,13 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                         return (
                             <TouchableOpacity 
                                 style={styles.postContainer} 
-                                onPress={() => router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}})}
+                                onPress={() => item.moderation_status === "approved" ? router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}}) : null}
                             >
+                                {item.moderation_status === "pending" && (
+                                    <View style={styles.moderationStatus}>
+                                        <Text style={{ color: "white", fontSize: 9 }}>Post on Moderation</Text>
+                                    </View>
+                                )}
                                 {isMediaVideo ? (
                                     <View style={styles.videoContainer}>
                                         <Video 
@@ -161,6 +167,17 @@ const styles = StyleSheet.create({
         
         margin: 2,
         position: "relative",
+    },
+    moderationStatus: {
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        backgroundColor: "rgba(6, 6, 6, 0.6)",
+        zIndex: 9999,
+        padding: 3,
+        borderRadius: 5,
+        justifyContent: "center",
+        alignItems: "center",
     },
     media: {
         width: "100%",
