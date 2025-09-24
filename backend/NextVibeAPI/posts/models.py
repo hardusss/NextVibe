@@ -10,6 +10,7 @@ class Post(models.Model):
     is_ai_generated = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)  
     moderation_status = models.CharField(max_length=20, default="pending")
+    categories = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"Post by {self.owner.username} with id {self.id}"
