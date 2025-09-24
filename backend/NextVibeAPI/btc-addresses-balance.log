@@ -2434,3 +2434,6 @@
 2025-09-18 15:46:10,931 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc132'.
 2025-09-18 15:46:11,601 - INFO - Balance address: CoRZk3AzGEiLe7pAzXpHWyrkYRVFCDs7zQ6HMDJshR1d: 37.987975
 2025-09-18 15:46:12,256 - INFO - Balance: 3769.732 address: TAVpt1aWS1XTTKSircsaxUBebpEw9TyUq5
+2025-09-24 18:29:49,570 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc132'.
+2025-09-24 18:29:50,229 - INFO - Balance address: CoRZk3AzGEiLe7pAzXpHWyrkYRVFCDs7zQ6HMDJshR1d: 37.987975
+2025-09-24 18:29:56,084 - INFO - Balance: 3769.732 address: TAVpt1aWS1XTTKSircsaxUBebpEw9TyUq5

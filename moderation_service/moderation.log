@@ -431,3 +431,46 @@
 2025/09/21 22:14:01 main.go:116: File image0_ehTuODI.jpg moderation passed=true
 2025/09/21 22:14:01 main.go:131: Post ID 7 passed moderation
 2025/09/21 22:14:01 main.go:157: Callback sent to backend, status code: 200
+2025/09/24 19:23:02 main.go:172: Moderation service running on http://localhost:8080
+2025/09/24 19:29:58 main.go:75: Received moderation request for post ID 54
+2025/09/24 19:29:58 helpers.go:125: Using SIGHTENGINE_USER=64529326, SIGHTENGINE_SECRET=JdaoFRxzStTVLN2bhQWVLjnrF7UhE6hx
+2025/09/24 19:29:59 helpers.go:223: Text moderation: passed=false, action=block, severity=60
+2025/09/24 19:29:59 main.go:79: Text moderation result: passed=false
+2025/09/24 19:29:59 helpers.go:125: Using SIGHTENGINE_USER=1705451817, SIGHTENGINE_SECRET=MmxhSgHxVGfjqyyq9UzL82JWdsk3JRtK
+2025/09/24 19:30:00 main.go:116: File 854982-hd_1280_720_25fps.mp4 moderation passed=true
+2025/09/24 19:30:00 main.go:133: Post ID 54 failed moderation
+2025/09/24 19:30:00 main.go:157: Callback sent to backend, status code: 404
+2025/09/24 19:43:52 main.go:75: Received moderation request for post ID 8
+2025/09/24 19:43:52 helpers.go:125: Using SIGHTENGINE_USER=1316397818, SIGHTENGINE_SECRET=rAnygmzCbKqN3aCUifhBQwbK2RoW25mG
+2025/09/24 19:43:53 helpers.go:223: Text moderation: passed=true, action=allow, severity=0
+2025/09/24 19:43:53 main.go:79: Text moderation result: passed=true
+2025/09/24 19:43:53 helpers.go:125: Using SIGHTENGINE_USER=64529326, SIGHTENGINE_SECRET=JdaoFRxzStTVLN2bhQWVLjnrF7UhE6hx
+2025/09/24 19:43:53 main.go:116: File image0_BtNAfSj.jpg moderation passed=true
+2025/09/24 19:43:53 main.go:131: Post ID 8 passed moderation
+2025/09/24 19:43:53 main.go:157: Callback sent to backend, status code: 200
+2025/09/24 21:23:02 main.go:75: Received moderation request for post ID 54
+2025/09/24 21:23:02 helpers.go:125: Using SIGHTENGINE_USER=36901041, SIGHTENGINE_SECRET=n7qegCs46EKZGKbHVVqvWNKtv7x4Wt2H
+2025/09/24 21:23:03 helpers.go:223: Text moderation: passed=false, action=block, severity=60
+2025/09/24 21:23:03 main.go:79: Text moderation result: passed=false
+2025/09/24 21:23:03 helpers.go:125: Using SIGHTENGINE_USER=1705451817, SIGHTENGINE_SECRET=MmxhSgHxVGfjqyyq9UzL82JWdsk3JRtK
+2025/09/24 21:23:05 main.go:116: File 854982-hd_1280_720_25fps.mp4 moderation passed=true
+2025/09/24 21:23:05 main.go:133: Post ID 54 failed moderation
+2025/09/24 21:23:05 main.go:157: Callback sent to backend, status code: 500
+2025/09/24 21:28:51 main.go:75: Received moderation request for post ID 9
+2025/09/24 21:28:51 helpers.go:125: Using SIGHTENGINE_USER=1995678318, SIGHTENGINE_SECRET=XUKsuTXY8kjNy5SRhz9t7qNuG7nTUqUy
+2025/09/24 21:28:52 helpers.go:223: Text moderation: passed=true, action=allow, severity=0
+2025/09/24 21:28:52 main.go:79: Text moderation result: passed=true
+2025/09/24 21:28:52 helpers.go:125: Using SIGHTENGINE_USER=216982646, SIGHTENGINE_SECRET=iD5qgddYhzNrS8jV3RERMzjCzPYYiqn5
+2025/09/24 21:28:54 main.go:116: File image0_9lkdNVs.jpg moderation passed=true
+2025/09/24 21:28:54 helpers.go:125: Using SIGHTENGINE_USER=216982646, SIGHTENGINE_SECRET=iD5qgddYhzNrS8jV3RERMzjCzPYYiqn5
+2025/09/24 21:28:54 main.go:116: File image1_6cYqlnP.jpg moderation passed=true
+2025/09/24 21:28:54 main.go:131: Post ID 9 passed moderation
+2025/09/24 21:28:54 main.go:157: Callback sent to backend, status code: 200
+2025/09/24 21:31:53 main.go:75: Received moderation request for post ID 10
+2025/09/24 21:31:53 helpers.go:125: Using SIGHTENGINE_USER=216982646, SIGHTENGINE_SECRET=iD5qgddYhzNrS8jV3RERMzjCzPYYiqn5
+2025/09/24 21:31:58 helpers.go:223: Text moderation: passed=true, action=allow, severity=0
+2025/09/24 21:31:58 main.go:79: Text moderation result: passed=true
+2025/09/24 21:31:58 helpers.go:125: Using SIGHTENGINE_USER=36901041, SIGHTENGINE_SECRET=n7qegCs46EKZGKbHVVqvWNKtv7x4Wt2H
+2025/09/24 21:31:59 main.go:116: File image0_iHpBAiI.jpg moderation passed=true
+2025/09/24 21:31:59 main.go:131: Post ID 10 passed moderation
+2025/09/24 21:31:59 main.go:157: Callback sent to backend, status code: 200
