@@ -1,6 +1,6 @@
 # **🚀 NextVibe**
 
-A new #1 Web3 Soical Media with Social2Earn mechanism, NFTs, AI and Crypto.
+A new #1 Web3 Social Media with Social2Earn mechanism, NFTs, AI and Crypto.
 
 ## **📋 Table of Contents**
 
@@ -10,6 +10,8 @@ A new #1 Web3 Soical Media with Social2Earn mechanism, NFTs, AI and Crypto.
 - [Frontend Setup](#frontend-setup)
 - [Moderation Service](#moderation-service)
 - [Chat Service (FastAPI)](#chat-service-fastapi)
+- [Redis Setup](#redis-setup)
+- [Celery Setup](#celery-setup)
 - [Database Setup](#database-setup)
 - [Running the Application](#running-the-application)
 
@@ -25,6 +27,8 @@ Make sure you have the following installed on your system:
 - **Go** (latest version)
 - **MySQL**
 - **MySQL Workbench**
+- **Redis**
+- **Celery**
 
 ## **🚀 Getting Started**
 
@@ -62,7 +66,13 @@ pip install -r modules.txt
 
 > ⚠️ **Note**: If errors occur when starting the server, install any additional libraries that are listed in the error messages.
 
-### **Step 4: Configure Database Environment**
+### **Step 4: Install Redis and Celery**
+```bash
+# Install Redis and Celery
+pip install redis celery
+```
+
+### **Step 5: Configure Database Environment**
 
 Create `.env` file in `NextVibe/backend/NextVibeAPI/`:
 
@@ -74,7 +84,7 @@ DB_HOST=localhost
 DB_PORT=3306
 ```
 
-### **Step 5: Configure Posts Service Environment**
+### **Step 6: Configure Posts Service Environment**
 
 Create `.env` file in `NextVibe/backend/posts/src/`:
 
@@ -84,7 +94,7 @@ REPLICATE_API_TOKEN=r8_TioXtphu5tAlcBlKRFGr1ZDhLIczUgk1HVyDx
 
 > ⚠️ **Warning**: Please do not make too many image creation requests as limits may apply.
 
-### **Step 6: Start Django Server**
+### **Step 7: Start Django Server**
 ```bash
 python manage.py runserver 0.0.0.0:8000
 ```
@@ -220,6 +230,79 @@ DB_PORT=3306
 uvicorn main:app --host 0.0.0.0 --port 8081 --reload
 ```
 
+## **🔥 Redis Setup**
+
+### **Step 1: Install Redis**
+
+**Windows:**
+1. Download Redis from [https://redis.io/download](https://redis.io/download) or use Windows Subsystem for Linux (WSL)
+2. Alternatively, use Redis through Docker:
+```bash
+docker run -d -p 6379:6379 redis:latest
+```
+
+**macOS:**
+```bash
+# Using Homebrew
+brew install redis
+
+# Start Redis service
+brew services start redis
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+# Install Redis
+sudo apt update
+sudo apt install redis-server
+
+# Start Redis service
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
+```
+
+### **Step 2: Verify Redis Installation**
+```bash
+# Test Redis connection
+redis-cli ping
+# Should return: PONG
+```
+
+### **Step 3: Start Redis Server**
+```bash
+# Start Redis server (if not running as service)
+redis-server
+```
+
+## **⚡ Celery Setup**
+
+### **Step 1: Navigate to Backend API Directory**
+```bash
+cd NextVibe/backend/NextVibeAPI
+```
+
+### **Step 2: Ensure Virtual Environment is Active**
+```bash
+# Activate virtual environment if not already active
+# Windows:
+../.venv/Scripts/activate
+
+# macOS/Linux:
+source ../.venv/bin/activate
+```
+
+### **Step 3: Install Celery (if not already installed)**
+```bash
+pip install celery redis
+```
+
+### **Step 4: Start Celery Worker**
+```bash
+celery -A NextVibeAPI worker -l info
+```
+
+> 📝 **Note**: Keep this terminal window open while running the application to process background tasks.
+
 ## **🗄️ Database Setup (MySQL)**
 
 ### **Step 1: Download Database File**
@@ -242,17 +325,20 @@ Create a new database named `nextvibe`.
 
 To run the complete NextVibe application, you need to start all services in the following order:
 
-1. **Database**: Ensure MySQL is running with the `nextvibe` database
-2. **Backend**: `python manage.py runserver 0.0.0.0:8000`
-3. **Chat Service**: `uvicorn main:app --host 0.0.0.0 --port 8081 --reload`
-4. **Moderation Service**: `go run .`
-5. **Frontend**: `npx expo start`
+1. **Redis**: `redis-server` (or ensure Redis service is running)
+2. **Database**: Ensure MySQL is running with the `nextvibe` database
+3. **Backend**: `python manage.py runserver 0.0.0.0:8000`
+4. **Celery Worker**: `celery -A NextVibeAPI worker -l info` (in NextVibe/backend/NextVibeAPI/)
+5. **Chat Service**: `uvicorn main:app --host 0.0.0.0 --port 8081 --reload`
+6. **Moderation Service**: `go run .`
+7. **Frontend**: `npx expo start`
 
 ## **🔗 Service Endpoints**
 
 - **Backend API**: `http://ur_ip(on frontend or localhost(127.0.0.1) in Postman for testing):8000`
 - **Chat Service**: `http://ur_ip(on frontend or localhost(127.0.0.1) in Postman for testing):8081`
 - **Moderation Service**: `http://localhost:8080`
+- **Redis**: `localhost:6379` (default port)
 - **Frontend**: Expo development server (scan QR code or press 'a' for Android)
 
 ## **📝 Important Notes**
@@ -260,9 +346,12 @@ To run the complete NextVibe application, you need to start all services in the 
 - Make sure all environment variables are properly configured before starting the services
 - Configure your IP address in `NextVibe/frontend/NextVibe/src/utils/url_api.ts` for proper API connectivity
 - The Replicate API token has usage limits, so avoid excessive image generation requests
-- Ensure all required ports (8000, 8080, 8081) are available on your system
+- Ensure all required ports (6379, 8000, 8080, 8081) are available on your system
 - For mobile development, make sure your Android emulator is running or your physical device is connected
+- Redis must be running before starting the Django backend and Celery worker
+- Keep the Celery worker terminal open to process background tasks
 
 ## **🤝 Contributing**
 
 Please read the contributing guidelines before making any changes to the codebase.
+
