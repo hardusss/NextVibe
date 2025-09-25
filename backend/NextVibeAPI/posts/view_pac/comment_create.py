@@ -43,7 +43,13 @@ class CommentReplyView(APIView):
         reply = CommentReplySerializer(data=request.data)
         if reply.is_valid():
             reply.save()
-            return Response(reply.data, status=status.HTTP_201_CREATED)
+            user = User.objects.get(user_id=reply.data["owner"])
+            user_data: dict = {
+                "username": user.username,
+                "avatar": str(user.avatar),
+                "official": user.official
+            }
+            return Response(dict({"user": user_data}, **reply.data), status=status.HTTP_201_CREATED)
         return Response(reply.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, *args, **kwargs):

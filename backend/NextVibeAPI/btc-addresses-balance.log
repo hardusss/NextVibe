@@ -2458,3 +2458,6 @@
 2025-09-24 18:44:50,639 - INFO - Balance address: tb1qp5x4nw08ht7ha6pdw7vferjv2nr4mcxrs47sha: 0.0
 2025-09-24 18:44:51,810 - INFO - Balance address: 9itDtVB7yk9rdCveKjgHdvAqMV5d8VXYsJGSZFqG8DHo: 0.0
 2025-09-24 18:44:53,244 - ERROR - Error: account not found on-chain
+2025-09-25 08:07:46,057 - ERROR - Error: Unable to find wallet 'NextVibeWalletBtc134'.
+2025-09-25 08:07:47,348 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 4.899755
+2025-09-25 08:07:48,394 - INFO - Balance: 2000.0 address: TRdicdp5B9N3wBcq4bR5NkAUXWCAzp7d4c

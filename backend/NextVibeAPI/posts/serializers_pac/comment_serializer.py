@@ -27,9 +27,9 @@ class CommentSerializer(serializers.ModelSerializer):
         return instance
 
 class CommentReplySerializer(serializers.ModelSerializer):
-    
+    reply_id = serializers.IntegerField(source="id", read_only=True)
     class Meta:
-        fields = ("id", "owner", "comment", "content", "create_at", "count_likes")
+        fields = ("reply_id", "owner", "comment", "content", "create_at", "count_likes")
         model = CommentReply
     
     def get_owner(self, obj):

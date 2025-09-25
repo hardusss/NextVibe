@@ -8,6 +8,8 @@ import timeAgo from '@/src/utils/formatTime';
 import { ActivityIndicator } from '../CustomActivityIndicator';
 import getUserDetail from '@/src/api/user.detail';
 import createComment from '@/src/api/create.comment';
+import createCommentReply from '@/src/api/comment.reply';
+
 import FastImage from 'react-native-fast-image';
 
 const { height, width } = Dimensions.get('window');
@@ -18,22 +20,20 @@ interface User {
   official: boolean;
 }
 
-interface Reply {
+interface BaseComment {
   user: User;
   user_id: number;
-  reply_id: number;
   content: string;
   create_at: string;
   count_likes: number;
 }
 
-interface Comment {
-  user: User;
-  user_id: number;
+interface Reply extends BaseComment {
+  reply_id: number;
+}
+
+interface Comment extends BaseComment {
   id: number;
-  content: string;
-  create_at: string;
-  count_likes: number;
   replies: Reply[];
 }
 
@@ -51,7 +51,6 @@ interface PopupModalProps {
   post_id: number;
   onClose: () => void;
 }
-
 const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(height)).current;
@@ -60,7 +59,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserData>();
   const [owner, setOwner] = useState<string | null>(null);
-  const [likedComments, setLikedComments] = useState<{ [key: number]: boolean }>({});
+  const [likedComments, setLikedComments] = useState<{ comments: { [key: number]: boolean }, replies: { [key: number]: boolean } }>({ comments: {}, replies: {} });
   const [replyingTo, setReplyingTo] = useState<Comment | Reply | null>(null);
   const [commentText, setCommentText] = useState<string>('');
   const [expandedTexts, setExpandedTexts] = useState<{ [key: string]: boolean }>({});
@@ -93,6 +92,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
           if (Array.isArray(data)) {
             setOwner(data[0].author);
             setComments(data.slice(1));
+            console.log(data);
           } else {
             console.error("Data is not array!", data);
             setComments([]);
@@ -121,22 +121,100 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
     }));
   };
 
-  const toggleLike = (commentId: number) => {
-    setLikedComments((prev) => ({
-      ...prev,
-      [commentId]: !prev[commentId],
-    }));
+  const isLiked = (item: Comment | Reply): boolean => {
+    if ('reply_id' in item) {
+      return likedComments.replies[item.reply_id] || false;
+    } else {
+      return likedComments.comments[item.id] || false;
+    }
+  };
+
+  const toggleLike = (item: Comment | Reply) => {
+    setLikedComments((prev) => {
+      if ('reply_id' in item) {
+        return {
+          ...prev,
+          replies: {
+            ...prev.replies,
+            [item.reply_id]: !prev.replies[item.reply_id]
+          }
+        };
+      } else {
+        return {
+          ...prev,
+          comments: {
+            ...prev.comments,
+            [item.id]: !prev.comments[item.id]
+          }
+        };
+      }
+    });
   };
 
   const handleReply = (commentOrReply: Comment | Reply) => {
     setReplyingTo(commentOrReply);
   };
 
+  const findParentComment = (replyId: number): Comment | null => {
+    for (const comment of comments) {
+      if (comment.replies.some(reply => reply.reply_id === replyId)) {
+        return comment;
+      }
+    }
+    return null;
+  };
+
+  const handleSendReply = async () => {
+    if (!replyingTo || !commentText) return;
+
+    const content = commentText;
+    
+    const commentId = 'id' in replyingTo 
+      ? replyingTo.id 
+      : (findParentComment(replyingTo.reply_id)?.id || replyingTo.reply_id);
+
+    const response = await createCommentReply(content, commentId);
+    if (response) {
+      setComments(prevComments => {
+        return prevComments.map(comment => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              replies: comment.replies ? [...comment.replies, response] : [response]
+            };
+          }
+          return comment;
+        });
+      });
+      
+      setExpandedComments(prev => ({
+        ...prev,
+        [commentId]: true
+      }));
+    }
+  };
+
+  const handleSendComment = async () => {
+    if (!commentText) return;
+    
+    const content = commentText;
+    if (replyingTo === null) {
+      const response = await createComment(commentText, post_id);
+      setCommentText("");
+      setComments((prev) => [response, ...prev]);
+    } else {
+      await handleSendReply();
+      setCommentText("");
+      setReplyingTo(null);
+    }
+  };
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return gestureState.dy > 0;
+        const isTopArea = evt.nativeEvent.locationY < 50;
+        return isTopArea && gestureState.dy > 0;
       },
       onPanResponderMove: (evt, gestureState) => {
         if (gestureState.dy > 0 && gestureState.dy <= height) {
@@ -184,7 +262,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
       <View style={styles.userInfo}>
         <FastImage
           source={{ 
-            uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}`,
+            uri: `${GetApiUrl().slice(0, 26)}/media/${item.user.avatar}`,
             priority: FastImage.priority.normal,
             cache: FastImage.cacheControl.immutable
           }}
@@ -207,14 +285,14 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
               </TouchableOpacity>
             </View>
             <View>
-              <TouchableOpacity onPress={() => toggleLike(item.id)}>
+              <TouchableOpacity onPress={() => toggleLike(item)}>
                 <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
                   <Text style={{color: "gray", fontWeight: "800", fontSize: 18, marginTop: -3}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
                   <MaterialIcons 
-                    name={likedComments[item.id] ? 'favorite' : 'favorite-border'} 
+                    name={isLiked(item) ? 'favorite' : 'favorite-border'} 
                     size={18} 
-                    color={likedComments[item.id] ? "#40E0D0" : "#FFF"} 
-                    style={likedComments[item.id] ? styles.neonShadow : null}
+                    color={isLiked(item) ? "#40E0D0" : "#FFF"} 
+                    style={isLiked(item) ? styles.neonShadow : null}
                   /> 
                 </View>
               </TouchableOpacity>
@@ -225,7 +303,8 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
               data={item.replies}
               renderItem={renderReply}
               keyExtractor={(reply) => reply.reply_id.toString()}
-              
+              scrollEnabled={false}
+              nestedScrollEnabled={true}
             />
           )}
           {item.replies && item.replies.length > 0 && (
@@ -244,7 +323,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   const renderReply = ({ item }: { item: Reply }) => (
     <View style={styles.replyContainer}>
       <View style={styles.userInfo}>
-        <FastImage source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}` }} style={styles.avatar} />
+        <FastImage source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.user.avatar}` }} style={styles.avatar} />
         <View style={styles.commentContent}>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{item.user.username}</Text>
@@ -261,14 +340,14 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
               </TouchableOpacity>
             </View>
             <View>
-              <TouchableOpacity onPress={() => toggleLike(item.reply_id)}>
+              <TouchableOpacity onPress={() => toggleLike(item)}>
                 <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
                   <Text style={{color: "gray", fontWeight: "800", fontSize: 18, marginTop: -3}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
                   <MaterialIcons 
-                    name={likedComments[item.reply_id] ? 'favorite' : 'favorite-border'} 
+                    name={isLiked(item) ? 'favorite' : 'favorite-border'} 
                     size={18} 
-                    color={likedComments[item.reply_id] ? "#40E0D0" : "#FFF"} 
-                    style={likedComments[item.reply_id] ? styles.neonShadow : null}
+                    color={isLiked(item) ? "#40E0D0" : "#FFF"} 
+                    style={isLiked(item) ? styles.neonShadow : null}
                   /> 
                 </View>
               </TouchableOpacity>
@@ -312,10 +391,16 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
                 data={comments}
                 renderItem={renderComment}
                 initialNumToRender={10}
-                
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
+                scrollEnabled={true}
+                nestedScrollEnabled={true}
+                contentContainerStyle={{ paddingBottom: 250 }}
                 keyExtractor={(item) => item.id.toString()}
+                scrollEventThrottle={16}
+                bounces={true}
+                overScrollMode="always"
+                directionalLockEnabled={true}
+                alwaysBounceVertical={true}
               />
             )}
             {replyingTo ? (
@@ -327,13 +412,9 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
               </View>
             ): ""}
             <View style={styles.inputContainer}>
-              <FastImage source={{uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
+              <FastImage source={{uri: `${GetApiUrl().slice(0, 26)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
               <TextInput value={commentText} autoFocus returnKeyType='send' style={styles.input} placeholder={`Add a comment for ${owner}...`} placeholderTextColor="#888" onChange={(e) => setCommentText(e.nativeEvent.text)} />
-              <TouchableOpacity style={styles.sendButton} onPress={ async () => {
-                const response = await createComment(commentText, post_id);
-                setCommentText("");
-                setComments((prev) => [response, ...prev]);
-                }}>
+              <TouchableOpacity style={styles.sendButton} onPress={handleSendComment} disabled={!commentText.trim()}>
                 <MaterialIcons name="arrow-upward" size={22} color={"white"}/>
               </TouchableOpacity>
             </View>
@@ -391,7 +472,9 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: height * 0.8
+    height: height * 0.8,
+    position: 'relative',
+    overflow: 'hidden'
   },
   header: {
     alignItems: 'center',
@@ -418,7 +501,7 @@ const styles = StyleSheet.create({
   },
   replyContainer: {
     marginTop: 20,
-    marginLeft: 20,
+    marginLeft: 0,
     marginVertical: 5,
   },
   userInfo: {
