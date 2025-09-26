@@ -96,7 +96,7 @@ const RecommendedUsers = () => {
                         return (
                             <TouchableOpacity style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.border, borderWidth: 1 }]} onPress={ () => router.push({ pathname: "/user-profile", params: { id: item.id, last_page: "profile" } })} > 
                                 <FastImage 
-                                    source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.avatar}` }} 
+                                    source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} 
                                     style={styles.avatar} 
                                 />
                                 <View style={styles.userInfo}>
