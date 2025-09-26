@@ -284,7 +284,7 @@ const MediaItemComponent = ({
     isLiked: boolean;
     isVisible: boolean;
 }) => {
-    const mediaUrl = `${GetApiUrl().slice(0, 26)}/media/${item.media_url}`;
+    const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
     const heartAnim = useRef(new Animated.Value(0)).current;
@@ -448,7 +448,7 @@ const UserPosts = () => {
           ...prevUsers,
           [userId]: {
             id: data.user_id,
-            avatar: `${GetApiUrl().slice(0, 26)}${data.avatar}`,
+            avatar: `${GetApiUrl().slice(0, 25)}${data.avatar}`,
             official: data.official,
             username: data.username,
           },

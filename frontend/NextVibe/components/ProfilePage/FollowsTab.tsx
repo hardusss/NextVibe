@@ -239,7 +239,7 @@ export default function FollowsScreen() {
             <FastImage 
                 style={styles.avatarPlaceholder} 
                 source={{
-                    uri: item.avatar ? `${GetApiUrl().slice(0, 26)}/media/${item.avatar}` : undefined
+                    uri: item.avatar ? `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` : undefined
                 }} 
             />
             <Text style={styles.userName}>{item.username}</Text>
