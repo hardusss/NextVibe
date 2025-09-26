@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { 
     View, 
-    Image, 
     FlatList, 
     TouchableOpacity, 
     StyleSheet, 
@@ -17,7 +16,7 @@ import { useRouter } from "expo-router";
 import { ResizeMode } from "expo-av";
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-
+import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -107,9 +106,12 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                 onPress={() => item.moderation_status === "approved" ? router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}}) : null}
                             >
                                 {item.moderation_status === "pending" && (
-                                    <View style={styles.moderationStatus}>
+                                    <BlurView style={styles.moderationStatus} 
+                                    blurType="dark"   
+                                    blurAmount={10}    
+                                    reducedTransparencyFallbackColor="rgba(6, 6, 6, 0.6)">
                                         <Text style={{ color: "white", fontSize: 9 }}>Post on Moderation</Text>
-                                    </View>
+                                    </BlurView>
                                 )}
                                 {isMediaVideo ? (
                                     <View style={styles.videoContainer}>

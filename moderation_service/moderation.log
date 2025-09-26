@@ -544,3 +544,17 @@
 2025/09/26 10:42:22 main.go:118: File 854982-hd_1280_720_25fps.mp4 moderation passed=true
 2025/09/26 10:42:22 main.go:133: Post ID 54 passed moderation
 2025/09/26 10:42:22 main.go:159: Callback sent to backend, status code: 404
+2025/09/26 10:46:01 main.go:77: Received moderation request for post ID 17
+2025/09/26 10:46:01 main.go:81: Text moderation result: passed=true
+2025/09/26 10:46:01 helpers.go:134: Using SIGHTENGINE_USER=64529326, SIGHTENGINE_SECRET=JdaoFRxzStTVLN2bhQWVLjnrF7UhE6hx
+2025/09/26 10:46:04 main.go:118: File image0_hvBeX8G.jpg moderation passed=true
+2025/09/26 10:46:04 main.go:133: Post ID 17 passed moderation
+2025/09/26 10:46:04 main.go:159: Callback sent to backend, status code: 200
+2025/09/26 11:15:12 main.go:77: Received moderation request for post ID 18
+2025/09/26 11:15:12 helpers.go:134: Using SIGHTENGINE_USER=216982646, SIGHTENGINE_SECRET=iD5qgddYhzNrS8jV3RERMzjCzPYYiqn5
+2025/09/26 11:15:13 helpers.go:232: Text moderation: passed=true, action=allow, severity=0
+2025/09/26 11:15:13 main.go:81: Text moderation result: passed=true
+2025/09/26 11:15:13 helpers.go:134: Using SIGHTENGINE_USER=1739177191, SIGHTENGINE_SECRET=vnXvzpKYUsMSNtV7JifLu566CUwvFJmy
+2025/09/26 11:15:16 main.go:118: File image0_sI3WYwY.jpg moderation passed=true
+2025/09/26 11:15:16 main.go:133: Post ID 18 passed moderation
+2025/09/26 11:15:16 main.go:159: Callback sent to backend, status code: 200
