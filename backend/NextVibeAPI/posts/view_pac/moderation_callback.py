@@ -17,7 +17,7 @@ class ModerationCallbackView(APIView):
 
         # Get moderation results
         text_passed = data.get("text", {}).get("passed", False)
-        categories = data.get("text", {}).get("details", {}).get("categories", [])
+        categories = data.get("text", {}).get("details", {}).get("categories", ["universal"])
         files_passed = all(f.get("passed", False) for f in data.get("files", []))
         post_passed = text_passed and files_passed
         post.categories = categories
