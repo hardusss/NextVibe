@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"bytes"
+
 	"github.com/joho/godotenv"
 )
 
@@ -28,6 +29,7 @@ type ModerationError struct {
 type FileResult struct {
 	Filename string                 `json:"filename"`
 	Passed   bool                   `json:"passed"`
+	Category string                 `json:"category"`
 	Errors   []ModerationError      `json:"errors"`
 	Details  map[string]interface{} `json:"details"`
 }

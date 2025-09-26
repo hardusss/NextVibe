@@ -1,12 +1,21 @@
 package main
 
 import (
+	cryptorand "crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"strings"
 )
+
+// GenerateRandomString generates a random string of the specified length
+func GenerateRandomString(length int) string {
+	b := make([]byte, length)
+	cryptorand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)[:length]
+}
 
 // Internal helpers for package-level use
 func isImage(ext string) bool {

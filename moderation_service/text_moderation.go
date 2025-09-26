@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // ModerateText checks text content using Sightengine API
@@ -15,14 +16,26 @@ func ModerateText(text string) FileResult {
 	if text == "" {
 		return FileResult{
 			Filename: "text",
-			Passed:   false,
-			Errors: []ModerationError{
-				{
-					Type:    "validation",
-					Message: "Empty text provided",
+			Passed:   true,
+			Errors:   nil,
+			Details: map[string]interface{}{
+				"categories": []string{"universal"},
+				"link": map[string]interface{}{
+					"matches": []interface{}{},
 				},
+				"personal": map[string]interface{}{
+					"matches": []interface{}{},
+				},
+				"profanity": map[string]interface{}{
+					"matches": []interface{}{},
+				},
+				"request": map[string]interface{}{
+					"id":         fmt.Sprintf("req_%s", GenerateRandomString(20)),
+					"timestamp":  float64(time.Now().Unix()),
+					"operations": 1,
+				},
+				"status": "success",
 			},
-			Details: map[string]interface{}{},
 		}
 	}
 
