@@ -25,7 +25,7 @@
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
-        "RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -71,8 +71,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "9b956bb0-c755-4464-b51d-a43a43fc150e"
+        "projectId": "4c7d8842-f989-419d-b3ec-49ceece00b6e"
       }
-    }
+    },
+    "owner": "nextvibe"
   }
 }
