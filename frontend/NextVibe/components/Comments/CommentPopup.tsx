@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, TextInput, Animated, Dimensions, PanResponder, FlatList, StyleSheet, Image } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import getComments from '@/src/api/get.comments';
@@ -9,6 +9,7 @@ import { ActivityIndicator } from '../CustomActivityIndicator';
 import getUserDetail from '@/src/api/user.detail';
 import createComment from '@/src/api/create.comment';
 import createCommentReply from '@/src/api/comment.reply';
+import commentLike from '@/src/api/comment.like';
 
 import FastImage from 'react-native-fast-image';
 
@@ -44,7 +45,9 @@ interface UserData {
   post_count: number;
   readers_count: number;
   follows_count: number;
-  official: boolean
+  official: boolean;
+  liked_comments: number[];
+  liked_comment_replies: number[];
 };
 
 interface PopupModalProps {
@@ -107,6 +110,10 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
       const getUser = async () => {
         const user = await getUserDetail();
         setUser(user);
+        setLikedComments({ 
+          comments: user.liked_comments.reduce((acc: any, id: number) => ({ ...acc, [id]: true }), {}),
+          replies: user.liked_comment_replies.reduce((acc: any, id: number) => ({ ...acc, [id]: true }), {})
+        })
       };
       getUser();
       getData();
@@ -114,11 +121,17 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
     }, [post_id])
   );
 
+  useEffect(() => {console.log(likedComments)}, [likedComments])
+
   const toggleReplies = (commentId: number) => {
     setExpandedComments((prev) => ({
       ...prev,
       [commentId]: !prev[commentId],
     }));
+  };
+
+  const handleCommentLike = async (commentId: number, isReply: boolean) => {
+    await commentLike(commentId, isReply);
   };
 
   const isLiked = (item: Comment | Reply): boolean => {
@@ -129,7 +142,15 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
     }
   };
 
-  const toggleLike = (item: Comment | Reply) => {
+
+  const toggleLike = async (item: Comment | Reply) => {
+    // Call the API to toggle like
+    await handleCommentLike('reply_id' in item ? item.reply_id : item.id, 'reply_id' in item);
+    
+    // Get the current like state before updating
+    const isCurrentlyLiked = isLiked(item);
+    
+    // Update like status in local state
     setLikedComments((prev) => {
       if ('reply_id' in item) {
         return {
@@ -149,6 +170,32 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
         };
       }
     });
+
+    // Update comment/reply like count
+    setComments((prevComments) => 
+      prevComments.map((comment) => {
+        if ('reply_id' in item) {
+          // If it's a reply being liked
+          if (comment.replies.some(r => r.reply_id === item.reply_id)) {
+            return {
+              ...comment,
+              replies: comment.replies.map(reply => 
+                reply.reply_id === item.reply_id
+                  ? { ...reply, count_likes: reply.count_likes + (isCurrentlyLiked ? -1 : 1) }
+                  : reply
+              )
+            };
+          }
+        } else if (comment.id === item.id) {
+          // If it's a main comment being liked
+          return {
+            ...comment,
+            count_likes: comment.count_likes + (isCurrentlyLiked ? -1 : 1)
+          };
+        }
+        return comment;
+      })
+    );
   };
 
   const handleReply = (commentOrReply: Comment | Reply) => {
@@ -287,7 +334,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
             <View>
               <TouchableOpacity onPress={() => toggleLike(item)}>
                 <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
-                  <Text style={{color: "gray", fontWeight: "800", fontSize: 18, marginTop: -3}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
+                  <Text style={{color: "gray", fontSize: 12}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
                   <MaterialIcons 
                     name={isLiked(item) ? 'favorite' : 'favorite-border'} 
                     size={18} 
@@ -342,7 +389,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
             <View>
               <TouchableOpacity onPress={() => toggleLike(item)}>
                 <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
-                  <Text style={{color: "gray", fontWeight: "800", fontSize: 18, marginTop: -3}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
+                  <Text style={{color: "gray", fontSize: 12}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
                   <MaterialIcons 
                     name={isLiked(item) ? 'favorite' : 'favorite-border'} 
                     size={18} 
@@ -377,7 +424,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
           >
             <View style={styles.header}>
               <View style={styles.bar} />
-              <Text style={styles.headerText}>Comments: {comments.length}</Text>
+              <Text style={styles.headerText}>Comments: {comments.reduce((total, comment) => total + 1 + (comment.replies?.length || 0), 0)}</Text>
               <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
                 <AntDesign name="close" size={24} color="#FFF" />
               </TouchableOpacity>
