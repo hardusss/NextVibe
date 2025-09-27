@@ -19,7 +19,7 @@ class LikeCommentView(APIView):
     """
     permission_classes = [IsAuthenticated] # checks if the user is authorized
 
-    def put(self, request, comment_id: int, is_reply: bool = False) -> Response:
+    def put(self, request, comment_id: int) -> Response:
         """
         Args:
             request: a required parameter for drf dunction api view
@@ -29,6 +29,7 @@ class LikeCommentView(APIView):
         Returns:
             Response: A data (success or not) and status
         """
+        is_reply = request.query_params.get("is_reply").lower() == 'true'
         try:
             user = User.objects.get(user_id=request.user.user_id)
         except User.DoesNotExist:
