@@ -38,6 +38,7 @@ class User(AbstractBaseUser):
     readers = models.JSONField(blank=True, null=True, default=list)
     liked_posts = models.JSONField(blank=True, null=True, default=list)
     liked_comments = models.JSONField(blank=True, null=True, default=list)
+    liked_comment_replies = models.JSONField(blank=True, null=True, default=list)
     secret_2fa = models.CharField(max_length=100, null=True, blank=True, default=None)
     is2FA = models.BooleanField(default=False)
     official = models.BooleanField(default=False, null=True)
