@@ -558,3 +558,10 @@
 2025/09/26 11:15:16 main.go:118: File image0_sI3WYwY.jpg moderation passed=true
 2025/09/26 11:15:16 main.go:133: Post ID 18 passed moderation
 2025/09/26 11:15:16 main.go:159: Callback sent to backend, status code: 200
+2025/09/27 21:31:02 main.go:174: Moderation service running on http://localhost:8080
+2025/09/28 00:00:42 main.go:77: Received moderation request for post ID 19
+2025/09/28 00:00:42 main.go:81: Text moderation result: passed=true
+2025/09/28 00:00:42 helpers.go:134: Using SIGHTENGINE_USER=1673586046, SIGHTENGINE_SECRET=XdKwkH8tAZ2AaywSRVQ5oYvwMeYgmZvP
+2025/09/28 00:00:45 main.go:118: File image0_Jth1Ka4.jpg moderation passed=true
+2025/09/28 00:00:45 main.go:133: Post ID 19 passed moderation
+2025/09/28 00:00:45 main.go:159: Callback sent to backend, status code: 200
