@@ -8,3 +8,4 @@ from .generate_image_view import GenerateImage
 from .get_recomend import RecomendationsView
 from .get_media import GetMediaView
 from .moderation_callback import ModerationCallbackView
+from .comment_like import LikeCommentView
