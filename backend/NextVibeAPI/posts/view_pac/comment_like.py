@@ -19,11 +19,10 @@ class LikeCommentView(APIView):
     """
     permission_classes = [IsAuthenticated] # checks if the user is authorized
 
-    def put(self, request, post_id: int, comment_id: int, is_reply: bool = False) -> Response:
+    def put(self, request, comment_id: int, is_reply: bool = False) -> Response:
         """
         Args:
             request: a required parameter for drf dunction api view
-            post_id (int): post_id it is a pk of Post model
             comment_id (int): comment_id it is a pk of Comment or CommentReply model
             is_reply (bool): indicates if the like is for a reply instead of a comment
 
@@ -40,7 +39,7 @@ class LikeCommentView(APIView):
                 comment = CommentReply.objects.get(id=comment_id)
                 liked_field = 'liked_comment_replies'
             else:
-                comment = Comment.objects.get(id=comment_id, post__id=post_id)
+                comment = Comment.objects.get(id=comment_id)
                 liked_field = 'liked_comments'
         except (Comment.DoesNotExist, CommentReply.DoesNotExist):
             return Response(
