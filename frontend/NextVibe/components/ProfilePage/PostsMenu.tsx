@@ -106,11 +106,20 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                 onPress={() => item.moderation_status === "approved" ? router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}}) : null}
                             >
                                 {item.moderation_status === "pending" && (
-                                    <BlurView style={styles.moderationStatus} 
+                                    <BlurView 
+                                    style={styles.moderationStatus} 
                                     blurType="dark"   
                                     blurAmount={10}    
-                                    reducedTransparencyFallbackColor="rgba(6, 6, 6, 0.6)">
-                                        <Text style={{ color: "white", fontSize: 9 }}>Post on Moderation</Text>
+                                    >
+                                        <Text style={{ color: "white", fontSize: 9, textAlign: "center",     
+                                            textAlignVertical: "center", 
+                                            includeFontPadding: false,  
+                                            fontWeight: "500",           
+                                            lineHeight: 12,          
+                                            letterSpacing: 0.5,       
+                                            }}>
+                                                Post on Moderation
+                                            </Text>
                                     </BlurView>
                                 )}
                                 {isMediaVideo ? (
@@ -169,6 +178,8 @@ const styles = StyleSheet.create({
         
         margin: 2,
         position: "relative",
+        overflow: "hidden", 
+        borderRadius: 10, 
     },
     moderationStatus: {
         position: "absolute",
