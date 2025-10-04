@@ -24,6 +24,7 @@ def send_post_for_moderation(post_id):
         result = resp.json()
         post.is_approved = result.get("passed", False)
         post.moderation_status = "approved" if result.get("passed") else "denied"
+        post.categories = list(result.get("text", {}).get("details", {}).get("categories", ["universal"]))
         post.save()
     except Exception as e:
         print("Error:", e)

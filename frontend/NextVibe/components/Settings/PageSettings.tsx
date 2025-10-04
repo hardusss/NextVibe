@@ -77,7 +77,7 @@ function PageSettingsContent() {
     const handleLogoutConfirm = () => {
         AsyncStorage.clear()
         setIsVisibleLogoutConfirmation(false) 
-        router.push("/register")
+        router.replace("/register")
     }
 
     const handleLogout = () => {
