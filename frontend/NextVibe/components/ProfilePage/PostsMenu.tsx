@@ -39,6 +39,8 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
     const [hasMore, setHasMore] = useState(true); 
     const [index, setIndex] = useState(0);
 
+    const POSTS_PER_PAGE = 9;
+
     const fetchPosts = async (shouldLoadMore = false) => {
         if (loadingMore || !hasMore) return;
     
@@ -46,18 +48,24 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         else setLoading(true);
     
         try {
-            const response = await getMenuPosts(id);
+            const response = await getMenuPosts(id, index, POSTS_PER_PAGE);
             const newPosts = response.data;
     
-            setHasMore(newPosts.more_posts)
+            setHasMore(response.more_posts);
     
             setPosts((prevPosts) => {
-                const uniquePosts = new Map(prevPosts.map(post => [post.post_id, post]));
-                newPosts.forEach((post: any) => uniquePosts.set(post.post_id, post));
-                return Array.from(uniquePosts.values());
+                if (shouldLoadMore) {
+                    // Append new posts
+                    const uniquePosts = new Map(prevPosts.map(post => [post.post_id, post]));
+                    newPosts.forEach((post: any) => uniquePosts.set(post.post_id, post));
+                    return Array.from(uniquePosts.values());
+                } else {
+                    // Replace all posts
+                    return newPosts;
+                }
             });
             
-            setIndex((prevIndex: number) => prevIndex + newPosts.length);
+            setIndex((prevIndex) => shouldLoadMore ? prevIndex + POSTS_PER_PAGE : POSTS_PER_PAGE);
         } catch (error) {
             console.error("❌ Error fetching posts:", error);
         }
@@ -89,7 +97,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                     numColumns={3}
                     nestedScrollEnabled={true}
                     scrollEnabled={false}
-                    initialNumToRender={10}
+                    initialNumToRender={3}
                     contentContainerStyle={{ flexGrow: 1,  paddingBottom: 250 }}
                     renderItem={({ item }) => {
                         if (!Array.isArray(item.media) || item.media.length === 0 || !item.media[0]?.media_url) {
@@ -158,7 +166,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                         );
                     }}
                     onEndReached={() => fetchPosts(true)} 
-                    onEndReachedThreshold={0.5}
+                    onEndReachedThreshold={1}
                     ListFooterComponent={
                         loadingMore ? <ActivityIndicator size="small" color="#0000ff" style={{ marginVertical: 10 }} /> : null
                     }

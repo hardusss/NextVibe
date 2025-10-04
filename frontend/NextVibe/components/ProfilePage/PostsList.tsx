@@ -465,7 +465,7 @@ const UserPosts = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getMenuPosts(+user_id);
+      const data = await getMenuPosts(+user_id, 0, 100);
       if (data) {
         setPosts(data.data);
         data.data.forEach((post: PostItem) => fetchUser(post.user_id));
@@ -500,12 +500,6 @@ const UserPosts = () => {
       }
     }, [TARGET_ID, posts])
   );
-
-  const handleScroll = (event: any, postId: number) => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.floor(contentOffsetX / screenWidth);
-    setCurrentIndices((prevIndices) => ({ ...prevIndices, [postId]: index }));
-  };
 
   const toggleLike = (postId: number) => {
     likePost(postId);

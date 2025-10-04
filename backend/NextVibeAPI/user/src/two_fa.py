@@ -36,7 +36,7 @@ class TwoFA:
         qr = qrcode.make(otp_auth_url)
 
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  
-        media_folder = os.path.join(base_dir, "Media", "qrcodes")
+        media_folder = os.path.join(base_dir, "media", "qrcodes")
         
         # Create foleder if not created
         os.makedirs(media_folder, exist_ok=True)
