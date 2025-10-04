@@ -582,3 +582,4 @@
 2025/09/30 20:37:19 main.go:118: File image0_wZq3Zdi.jpg moderation passed=true
 2025/09/30 20:37:19 main.go:133: Post ID 21 passed moderation
 2025/09/30 20:37:19 main.go:159: Callback sent to backend, status code: 200
+2025/10/04 14:24:35 main.go:174: Moderation service running on http://localhost:8080
