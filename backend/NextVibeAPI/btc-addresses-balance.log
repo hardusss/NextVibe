@@ -2494,3 +2494,7 @@
 2025-09-30 17:32:20,616 - INFO - Balance address: 4LULNuT2ESikZMZ83K4erJEYQEH2i6A6scoBywRip4Rj: 4.899755
 2025-09-30 17:32:21,298 - INFO - Balance: 2000.0 address: TRdicdp5B9N3wBcq4bR5NkAUXWCAzp7d4c
 2025-09-30 17:32:21,488 - INFO - Balance: 2000.0 address: TRdicdp5B9N3wBcq4bR5NkAUXWCAzp7d4c
+2025-10-05 13:15:10,607 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:15:11,920 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 5.0
+2025-10-05 13:15:12,940 - INFO - Balance: 2000.0 address: TQapDUU3Ltxt8EwMQABHyMx1Y5d9YfhZDJ
+2025-10-05 13:15:29,743 - INFO - Successfully connected to RPC node: https://devnet.helius-rpc.com/?api-key=b350b993-1ca8-4557-95aa-9e96897cce14
