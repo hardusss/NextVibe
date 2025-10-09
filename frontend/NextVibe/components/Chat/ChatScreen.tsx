@@ -333,7 +333,7 @@ export default function ChatScreen() {
       <View style={{ flex: 1 }}>
         <View style={styles.navbar}>
           <TouchableOpacity 
-            onPress={() => router.push('/chats')}
+            onPress={() => router.back()}
             style={styles.backButton}
           >
             <AntDesign name="arrowleft" size={24} color={isDark ? '#fff' : '#000'} />

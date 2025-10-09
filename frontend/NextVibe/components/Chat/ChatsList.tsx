@@ -115,7 +115,7 @@ export default function ChatsList() {
       <Header
         title="Chats"
         leftIcon="arrow-back"
-        onLeftPress={() => router.push('/home')}
+        onLeftPress={() => router.back()}
       />
       <SearchBar
         placeholder="Search messages..."
