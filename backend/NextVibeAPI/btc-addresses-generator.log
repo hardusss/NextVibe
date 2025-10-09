@@ -406,3 +406,30 @@
 2025-09-04 21:04:45,225 - INFO - Balance address: tb1q2kvcrlpdg35wxg35aw7es99ludlfyx4ww3vs4z: 0.0
 2025-09-04 21:04:45,723 - INFO - Balance address: JZyMfeVCu7yRgUTWXm9JVr4cbYyLaSk6fNTVnfQ5SEX: 0.0
 2025-09-04 21:04:46,510 - ERROR - Error: account not found on-chain
+2025-10-05 13:09:43,578 - INFO - Successfully created BTC wallet for user 138 with address tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6 wallet name NextVibeWalletBtc138
+2025-10-05 13:09:43,585 - INFO - Creating wallet with address EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5 and private key 8dc7d746785069242f1ecd27f8b39146c352c9ce1a657b68e5ec44b633f387a2c4c711991fef423bc72f1c6e117379be6ad4cc462a7f693e68d5994b8a4b6806
+2025-10-05 13:09:43,586 - INFO - Successfully created TRX wallet with address TQapDUU3Ltxt8EwMQABHyMx1Y5d9YfhZDJ and private_key 214d27d6c33835b93862ecdc8d2685117bab04635867dec2f2d32f2db6520aae
+2025-10-05 13:09:48,526 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:09:49,406 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 0.0
+2025-10-05 13:09:50,268 - ERROR - Error: account not found on-chain
+2025-10-05 13:11:28,732 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:11:29,312 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 0.0
+2025-10-05 13:11:30,218 - ERROR - Error: account not found on-chain
+2025-10-05 13:12:41,346 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:12:42,248 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 5.0
+2025-10-05 13:12:43,010 - ERROR - Error: account not found on-chain
+2025-10-05 13:13:39,806 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:13:40,510 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 5.0
+2025-10-05 13:13:41,392 - INFO - Balance: 2000.0 address: TQapDUU3Ltxt8EwMQABHyMx1Y5d9YfhZDJ
+2025-10-05 13:13:53,285 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:13:53,676 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:13:54,181 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 5.0
+2025-10-05 13:13:54,185 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 5.0
+2025-10-05 13:13:54,838 - INFO - Balance: 2000.0 address: TQapDUU3Ltxt8EwMQABHyMx1Y5d9YfhZDJ
+2025-10-05 13:13:54,846 - INFO - Balance: 2000.0 address: TQapDUU3Ltxt8EwMQABHyMx1Y5d9YfhZDJ
+2025-10-05 13:14:07,448 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:14:08,232 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 5.0
+2025-10-05 13:14:08,890 - INFO - Balance address: tb1qfdqpgua92t8jzgccm7kv4v9cpcyvrkd8khute6: 0.0
+2025-10-05 13:14:08,995 - INFO - Balance: 2000.0 address: TQapDUU3Ltxt8EwMQABHyMx1Y5d9YfhZDJ
+2025-10-05 13:14:09,963 - INFO - Balance address: EF8y3BfizVCh7eFWkrtURodRGkigYDnNFpMxpiy5kPn5: 5.0
+2025-10-05 13:14:10,999 - INFO - Balance: 2000.0 address: TQapDUU3Ltxt8EwMQABHyMx1Y5d9YfhZDJ

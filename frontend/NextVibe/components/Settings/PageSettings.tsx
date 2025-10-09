@@ -77,7 +77,7 @@ function PageSettingsContent() {
     const handleLogoutConfirm = () => {
         AsyncStorage.clear()
         setIsVisibleLogoutConfirmation(false) 
-        router.push("/register")
+        router.replace("/register")
     }
 
     const handleLogout = () => {
@@ -243,7 +243,7 @@ function PageSettingsContent() {
         <Animated.View style={[styles.container, { opacity: fadeAnim, position: "relative" }]}> 
             <StatusBar backgroundColor={isDark ? darkColors.background : lightColors.background} />
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.push("/profile")}>
+                <TouchableOpacity onPress={() => router.back()}>
                     <MaterialCommunityIcons name="arrow-left" style={styles.icon} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Settings Profile</Text>
