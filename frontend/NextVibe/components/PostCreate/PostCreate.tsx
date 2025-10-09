@@ -305,7 +305,7 @@ export default function PostCreate() {
                     setAiPrompt("");
                     setLocation("");
                     setPostText("");
-                    router.push("/camera")
+                    router.back()
                     }}>
                     <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>

@@ -422,7 +422,7 @@ export default function CreateTransactionPage() {
                 )}
 
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.push("/select-token")}>
+                    <TouchableOpacity onPress={() => router.back()}>
                         <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#fff' : '#000'} />
                     </TouchableOpacity>
                     <Text style={styles.title}>Send {symbol}</Text>

@@ -15,14 +15,19 @@ class PostMenuView(APIView):
 
     def get(self, request, id: int) -> Response:
         index: int = int(request.query_params.get("index", 0))
+        limit: int = int(request.query_params.get("limit", 9))  # Default to 9 posts per page
         who_send_request: int = int(request.user.user_id)
         
-        posts = Post.objects.filter(owner__user_id=id).order_by("-id")[int(index):]
+        posts = Post.objects.filter(owner__user_id=id).order_by("-id")[index:index + limit]
+        total_posts = Post.objects.filter(owner__user_id=id).count()
         data = []
+
+        user_id_for_post = None
         for post in posts:
             media = PostsMedia.objects.filter(post=post)
             media_data = [{"id": m.id, "media_url": str(m.file)} for m in media] if media.exists() else None
-            
+            if not user_id_for_post:
+                user_id_for_post = post.owner.user_id
             data.append({
                 "user_id": post.owner.user_id,
                 "post_id": post.id,
@@ -36,8 +41,16 @@ class PostMenuView(APIView):
             })
             
         user = User.objects.get(user_id=who_send_request)
+        user_owner_posts = User.objects.get(user_id=user_id_for_post)
         return Response({
+            "user": {
+                "id": user_owner_posts.user_id,
+                "username": user_owner_posts.username,
+                "avatar": str(user_owner_posts.avatar),
+                "official": user_owner_posts.official
+            },
             "data": data,
-            "more_posts": len(data) > 0,
+            "more_posts": (index + limit) < total_posts,
+            "total_posts": total_posts,
             "liked_posts": user.liked_posts
         }, status=status.HTTP_200_OK)

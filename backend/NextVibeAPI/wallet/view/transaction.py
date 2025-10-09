@@ -5,12 +5,17 @@ from testnet.wallets.trx.transaction import TrxTransaction
 
 from ..models import UserWallet
 from ..src.sorted_transactions import get_all_transactions_sorted
+from ..src.wallet_encryption import DecryptAEAD
 
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 class BtcTransactionView(APIView):
     permission_classes = [IsAuthenticated]
@@ -40,11 +45,17 @@ class SolTransactionView(APIView):
         
         user = get_user_model().objects.get(user_id=request.user.user_id)
         wallet = UserWallet.objects.get(user=user)
-
         sol_wallet = wallet.sol_wallet
+
+        decryptor = DecryptAEAD(key=os.getenv("KEY"))
+        private_key = decryptor.decrypt(
+            encrypted_data=sol_wallet.private_key,
+            user_id=request.user.user_id,
+            token="SOL"
+        )
         sol_model = SolanaTransaction()
         
-        transaction = sol_model.send_transaction(sol_wallet.private_key, to_address, amount)
+        transaction = sol_model.send_transaction(private_key, to_address, amount)
         return Response(transaction, status=status.HTTP_200_OK)
     
 class TrxTrasactionView(APIView):
@@ -58,9 +69,16 @@ class TrxTrasactionView(APIView):
         
         user = get_user_model().objects.get(user_id=request.user.user_id)
         wallet = UserWallet.objects.get(user=user)
-
         trx_wallet = wallet.trx_wallet
-        trx_transaction = TrxTransaction(sender_private_key=trx_wallet.private_key, recipient_address=to_address, amount=amount)
+
+        decryptor = DecryptAEAD(key=os.getenv("KEY"))
+        private_key = decryptor.decrypt(
+            encrypted_data=trx_wallet.private_key,
+            user_id=request.user.user_id,
+            token="SOL"
+        )
+
+        trx_transaction = TrxTransaction(sender_private_key=private_key, recipient_address=to_address, amount=amount)
         transaction = trx_transaction.send()
 
         return Response(transaction, status=status.HTTP_200_OK)
