@@ -181,7 +181,7 @@ export default function DepositPage() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.push({ pathname: "/select-token", params: { from_page: "deposit" } })}>
+                <TouchableOpacity onPress={() => router.back()}>
                     <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? "#fff" : "black"} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Receive {symbol}</Text>

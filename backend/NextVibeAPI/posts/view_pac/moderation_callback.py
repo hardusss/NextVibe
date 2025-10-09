@@ -25,4 +25,4 @@ class ModerationCallbackView(APIView):
         post.moderation_status = "approved" if post_passed else "denied"
         post.save()
 
-        return Response({"status": "ok"})
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)

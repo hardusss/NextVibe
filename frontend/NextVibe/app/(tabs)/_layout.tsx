@@ -47,7 +47,7 @@ export default function Layout() {
   }, [currentPage]);
 
   const goToTab = (tab: string) => {
-    router.replace(tab as RelativePathString); 
+    router.push(tab as RelativePathString); 
   };
 
   return (

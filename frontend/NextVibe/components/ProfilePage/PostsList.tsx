@@ -396,7 +396,7 @@ const UserPosts = () => {
   const TARGET_ID = Number(useLocalSearchParams().id);
   const previous = useLocalSearchParams().previous as RelativePathString;
   const [posts, setPosts] = useState<PostItem[]>([]);
-  const [usersData, setUsersData] = useState<{ [key: number]: User }>({});
+  const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentIndices, setCurrentIndices] = useState<{
@@ -419,7 +419,7 @@ const UserPosts = () => {
 
   const clearData = useCallback(() => {
     setPosts([]);
-    setUsersData({});
+    setUserData(null);
     setCurrentIndices({});
     setLikedPosts({});
     setExpandedPosts({});
@@ -438,37 +438,16 @@ const UserPosts = () => {
     }, [user_id, clearData])
   );
 
-  const fetchUser = async (userId: number) => {
-    if (usersData[userId]) return;
-
-    try {
-      const data = await getUserDetail(userId);
-      if (data) {
-        setUsersData((prevUsers) => ({
-          ...prevUsers,
-          [userId]: {
-            id: data.user_id,
-            avatar: `${GetApiUrl().slice(0, 25)}${data.avatar}`,
-            official: data.official,
-            username: data.username,
-          },
-        }));
-      }
-    } catch (err) {
-      console.error(`Error fetching user ${userId}:`, err);
-    }
-  };
-
   const fetchPosts = useCallback(async () => {
     if (isFetching || !hasMore) return;
     setIsFetching(true);
     setLoading(true);
     setError(null);
     try {
-      const data = await getMenuPosts(+user_id);
+      const data = await getMenuPosts(+user_id, 0, 100);
       if (data) {
         setPosts(data.data);
-        data.data.forEach((post: PostItem) => fetchUser(post.user_id));
+        setUserData(data.user)
         setHasMore(data.more_posts);
         if (data.liked_posts) {
           const newLikedPosts = data.liked_posts.reduce(
@@ -500,12 +479,6 @@ const UserPosts = () => {
       }
     }, [TARGET_ID, posts])
   );
-
-  const handleScroll = (event: any, postId: number) => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.floor(contentOffsetX / screenWidth);
-    setCurrentIndices((prevIndices) => ({ ...prevIndices, [postId]: index }));
-  };
 
   const toggleLike = (postId: number) => {
     likePost(postId);
@@ -553,7 +526,6 @@ const UserPosts = () => {
     item: PostItem;
     index: number;
   }) => {
-    const user = usersData[item.user_id];
     const isLiked = likedPosts[item.post_id] ?? false;
     const isExpanded = expandedPosts[item.post_id] ?? false;
     const needsMoreButton = item.about.length > 100;
@@ -562,17 +534,17 @@ const UserPosts = () => {
     return (
       <View style={styles.postContainer}>
         <View style={styles.postHeader}>
-          {user && (
+          {userData && (
             <>
               <FastImage 
-                source={{ uri: user.avatar }} 
+                source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${userData.avatar}` }} 
                 style={styles.avatar} 
               />
               <View style={styles.userInfo}>
                 <View style={styles.usernameContainer}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.username}>{user.username}</Text>
-                    {user.official && (
+                    <Text style={styles.username}>{userData?.username}</Text>
+                    {userData?.official && (
                       <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5 }} />
                     )}
                   </View>
@@ -682,7 +654,7 @@ const UserPosts = () => {
       <View style={styles.headerContainer}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.push({ pathname: previous, params: { id: user_id } })}
+          onPress={() => router.back()}
         >
           <MaterialIcons
             name="keyboard-arrow-left"

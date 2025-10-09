@@ -7,7 +7,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 interface MediaAttachment {
   id: number;
   file_url: string | null;
-  isTemp?: boolean;  // Додаємо опціональне поле isTemp
+  isTemp?: boolean;  
 }
 
 interface Message {

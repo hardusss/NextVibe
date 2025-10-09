@@ -304,7 +304,7 @@ const UserProfileView = () => {
                         <ButtonMessage user={userData} isDark={colorScheme === 'dark'} />
                     </View>
                     <RecommendedUsers key={`recommended-${refreshKey}`} />
-                    {userData.post_count === 0 ? (
+                    {+userData.post_count < 1 ? (
                         <View style={{borderTopWidth: 1, borderColor: "#5A31F4", marginTop: 20}}>
                             <MaterialIcons name="camera-alt" size={60} color="#58a6ff" style={{ marginTop: 14, alignSelf: "center" }} />
                             <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10, color: colorScheme === "dark" ? "#fff" : "black", alignSelf: "center" }}>
