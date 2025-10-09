@@ -201,7 +201,7 @@ circleText: {
     >
       <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/>  
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton} onPress={() => router.push({ pathname: "/profile" })}>
+        <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={28} color={isDarkMode ? '#fafafa' : '#000'} />
         </TouchableOpacity>
       </View>
