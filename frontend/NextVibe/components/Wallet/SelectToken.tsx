@@ -192,7 +192,7 @@ export default function SelectTokenPage() {
 
      
       <View style={styles.titleWrapper}>
-        <TouchableOpacity onPress={() => router.push("/wallet")}>
+        <TouchableOpacity onPress={() => router.back()}>
           <MaterialCommunityIcons name="arrow-left" size={28} style={styles.backIcon} />
         </TouchableOpacity>
         <Text style={styles.title}>CRYPTO {from_page === "deposit" ? "DEPOSIT" : "SEND"}</Text>

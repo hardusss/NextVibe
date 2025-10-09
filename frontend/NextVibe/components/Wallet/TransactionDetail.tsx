@@ -199,7 +199,7 @@ export default function TransactionDetail() {
 
             <View style={{padding: 20, paddingBottom: 0}}>
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.backButton} onPress={() => router.push("/transactions")}>
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                         <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#FFFFFF' : '#000'} />
                     </TouchableOpacity>
                     <Text style={styles.title}>Transaction Details</Text>
