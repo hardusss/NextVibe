@@ -21,10 +21,13 @@ class PostMenuView(APIView):
         posts = Post.objects.filter(owner__user_id=id).order_by("-id")[index:index + limit]
         total_posts = Post.objects.filter(owner__user_id=id).count()
         data = []
+
+        user_id_for_post = None
         for post in posts:
             media = PostsMedia.objects.filter(post=post)
             media_data = [{"id": m.id, "media_url": str(m.file)} for m in media] if media.exists() else None
-            
+            if not user_id_for_post:
+                user_id_for_post = post.owner.user_id
             data.append({
                 "user_id": post.owner.user_id,
                 "post_id": post.id,
@@ -38,7 +41,14 @@ class PostMenuView(APIView):
             })
             
         user = User.objects.get(user_id=who_send_request)
+        user_owner_posts = User.objects.get(user_id=user_id_for_post)
         return Response({
+            "user": {
+                "id": user_owner_posts.user_id,
+                "username": user_owner_posts.username,
+                "avatar": str(user_owner_posts.avatar),
+                "official": user_owner_posts.official
+            },
             "data": data,
             "more_posts": (index + limit) < total_posts,
             "total_posts": total_posts,

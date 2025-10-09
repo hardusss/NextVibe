@@ -17,7 +17,12 @@ class RequestTimingMiddleware(MiddlewareMixin):
         method = request.method
         path = request.get_full_path()
         status = response.status_code
-        size = len(response.content) if response.content else 0
+        if hasattr(response, 'content'):
+            size = len(response.content)
+        elif hasattr(response, 'streaming_content'):
+            size = 0
+        else:
+            size = 0
 
         log_line = f'[{timestamp}] "{method} {path}" {status} {size} ({duration:.2f}s)'
         print(log_line) 
