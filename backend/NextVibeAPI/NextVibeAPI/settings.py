@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'NextVibeAPI.middleware.RequestTimingMiddleware', 
 ]
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
