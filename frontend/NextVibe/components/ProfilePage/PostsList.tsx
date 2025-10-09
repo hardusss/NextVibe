@@ -676,7 +676,7 @@ const UserPosts = () => {
       <View style={styles.headerContainer}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.push({ pathname: previous, params: { id: user_id } })}
+          onPress={() => router.back()}
         >
           <MaterialIcons
             name="keyboard-arrow-left"

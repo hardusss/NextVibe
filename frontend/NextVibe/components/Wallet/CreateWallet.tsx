@@ -28,7 +28,7 @@ export default function CreateWallet() {
     try {
       const wallet = await AsyncStorage.getItem('wallet');
       if (wallet === 'true') {
-        router.push('/wallet');
+        router.replace('/wallet');
       } else {
         setCheckingWallet(false);
         startWalletCreation();
@@ -42,7 +42,7 @@ export default function CreateWallet() {
 
   const startWalletCreation = async () => {
     if (await AsyncStorage.getItem('wallet') === 'true') {
-      router.push('/wallet');
+      router.replace('/wallet');
 
     }
     try {
@@ -61,7 +61,7 @@ export default function CreateWallet() {
         }
       }
       await AsyncStorage.setItem('wallet', 'true');
-      router.push('/wallet');
+      router.replace('/wallet');
     } catch (error) {
       console.error('Error creating wallet:', error);
     }
