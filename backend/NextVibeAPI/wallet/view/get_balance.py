@@ -7,12 +7,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from django.core.cache import cache
 
 from ..models import UserWallet
 from ..src.get_tokens_price import get_tokens_prices
 
 import asyncio
 from functools import partial
+from decimal import Decimal
+
 
 User = get_user_model()
 
@@ -33,6 +36,11 @@ async def get_all_balances(add_and_tokens: dict):
     balances = await asyncio.gather(*tasks)
     return balances
 
+async def get_balances_and_prices(for_balances):
+    prices_task = asyncio.create_task(get_tokens_prices())
+    balances_task = asyncio.create_task(get_all_balances(for_balances))
+    prices, balances = await asyncio.gather(prices_task, balances_task)
+    return prices, balances
 
 
 class GetBalanceWallet(APIView):
@@ -40,6 +48,11 @@ class GetBalanceWallet(APIView):
 
     def get(self, request) -> Response:
         user = User.objects.get(user_id=request.user.user_id)
+
+        data = cache.get(f"balance_wallet_testnet_{user.user_id}")
+        if data:
+            return Response(data, status=status.HTTP_200_OK)
+        
         wallet = UserWallet.objects.get(user=user)
 
         btc_wallet = wallet.btc_wallet
@@ -52,13 +65,12 @@ class GetBalanceWallet(APIView):
             trx_wallet.address: TrxAddressBalance
         }
 
-        prices = asyncio.run(get_tokens_prices())
-        balances = asyncio.run(get_all_balances(for_balances))
+        prices, balances = asyncio.run(get_balances_and_prices(for_balances))
         btc_balance, sol_balance, trx_balance = balances
 
-        btc_usdt = btc_balance * prices["bitcoin"]
-        sol_usdt = sol_balance * prices["solana"]
-        trx_usdt = trx_balance * prices["tron"]
+        btc_usdt = Decimal(str(btc_balance)) * Decimal(str(prices["bitcoin"]))
+        sol_usdt = Decimal(str(sol_balance)) * Decimal(str(prices["solana"]))
+        trx_usdt = Decimal(str(trx_balance)) * Decimal(str(prices["tron"]))
 
         total = round(btc_usdt + sol_usdt + trx_usdt, 2)
         data = [
@@ -93,4 +105,6 @@ class GetBalanceWallet(APIView):
                 },
             }
         ]
+        cache.set(f"balance_wallet_testnet_{user.user_id}", data, timeout=30)
+        
         return Response(data, status=status.HTTP_200_OK)
