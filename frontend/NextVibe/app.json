@@ -54,14 +54,18 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0A0410"
+          "backgroundColor": "#0A0410",
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
         }
       ],
       "expo-image-picker",
       "expo-video",
       "react-native-vision-camera",
       "expo-font",
-      "react-native-video"
+      "react-native-video",
+      "expo-audio",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true
