@@ -1,6 +1,8 @@
 from celery import shared_task
 import requests
 from .models import Post
+from io import BytesIO
+
 
 GO_MODERATION_URL = "http://127.0.0.1:8080/moderation"
 
@@ -10,8 +12,16 @@ def send_post_for_moderation(post_id):
     post = Post.objects.get(id=post_id)
 
     files = []
+
     for m in post.media.all():
-        files.append(('files', (m.file.name, m.file.open(), 'application/octet-stream')))
+        url_str = m.file.url if hasattr(m.file, "url") else str(m.file)
+        response = requests.get(url_str)
+        if response.status_code == 200:
+            file_bytes = BytesIO(response.content)
+            filename = str(url_str).split("/")[-1]
+            files.append(('media', (filename, file_bytes, 'image/jpeg')))
+        else:
+            print("Cannot download file:", url_str)
 
     data = {
         "id": str(post.id),

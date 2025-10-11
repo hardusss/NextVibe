@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Animated, Easing, Image, Modal } from "react-native";
 import { Camera, useCameraDevice, useCameraFormat } from "react-native-vision-camera";
-import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Feather, Ionicons } from "@expo/vector-icons";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useFocusEffect } from "expo-router";
@@ -11,7 +11,8 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const CameraScreen = () => {
   const router = useRouter();
   const [cameraSide, setCameraSide] = useState<"front" | "back">("back");
-  const [hasPermission, setHasPermission] = useState<boolean>(false);
+  const [cameraPermission, setCameraPermission] = useState<boolean>(false);
+  const [microphonePermission, setMicrophonePermission] = useState<boolean>(false);
   const [flashMode, setFlashMode] = useState<'off' | 'on' | 'auto'>('off');
   const [showFlashModal, setShowFlashModal] = useState(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -49,15 +50,53 @@ const CameraScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      const requestPermission = async () => {
-        const cameraPermission = await Camera.requestCameraPermission();
-        setHasPermission(cameraPermission === "granted");
+      const checkPermissions = async () => {
+        const cameraResult = await Camera.requestCameraPermission();
+        const microphoneResult = await Camera.requestMicrophonePermission();
+        
+        setCameraPermission(cameraResult === "granted");
+        setMicrophonePermission(microphoneResult === "granted");
       };
-      requestPermission();
+      checkPermissions();
     }, [])
   );
 
+  const requestPermissions = async () => {
+    const cameraResult = await Camera.requestCameraPermission();
+    const microphoneResult = await Camera.requestMicrophonePermission();
+    
+    setCameraPermission(cameraResult === "granted");
+    setMicrophonePermission(microphoneResult === "granted");
+  };
+
   if (!device) return <Text>Camera not found!</Text>;
+
+  if (!cameraPermission || !microphonePermission) {
+    return (
+      <View style={styles.permissionContainer}>
+        <Text style={styles.permissionText}>
+          {!cameraPermission && !microphonePermission 
+            ? "Camera and Microphone permissions are required"
+            : !cameraPermission 
+            ? "Camera permission is required"
+            : "Microphone permission is required"
+          }
+        </Text>
+        <TouchableOpacity 
+          style={styles.permissionButton} 
+          onPress={requestPermissions}
+        >
+          <Text style={styles.permissionButtonText}>Grant Permissions</Text>
+          {!cameraPermission && (
+            <Ionicons name="camera-outline" size={24} color="white" style={styles.permissionIcon} />
+          )}
+          {!microphonePermission && (
+            <Ionicons name="mic-outline" size={24} color="white" style={styles.permissionIcon} />
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const handleTakePhoto = async () => {
     let flash: 'on' | 'off' | undefined = undefined;
@@ -113,7 +152,7 @@ const CameraScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: '#0A0410' }]}> 
       <StatusBar backgroundColor={'#0A0410'} />
-      {hasPermission ? (
+      {cameraPermission && microphonePermission ? (
         <View style={styles.cameraContainer}>
           <Camera
             ref={cameraRef}
@@ -126,6 +165,7 @@ const CameraScreen = () => {
             video={true}
             zoom={zoom}
             enableZoomGesture={true}
+            audio={true}
           />
           <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
             <MaterialCommunityIcons name="close" color="white" size={28} />
@@ -332,6 +372,37 @@ const styles = StyleSheet.create({
   flashOptionText: {
     color: 'white',
     fontSize: 18,
+    marginLeft: 8,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A0410',
+    padding: 20,
+  },
+  permissionText: {
+    color: 'white',
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  permissionButton: {
+    flexDirection: 'row',
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  permissionButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  permissionIcon: {
     marginLeft: 8,
   }
 });

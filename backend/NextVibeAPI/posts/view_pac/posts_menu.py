@@ -19,6 +19,15 @@ class PostMenuView(APIView):
         who_send_request: int = int(request.user.user_id)
         
         posts = Post.objects.filter(owner__user_id=id).order_by("-id")[index:index + limit]
+        if not posts.exists():
+            return Response({
+                "user": None,
+                "data": [],
+                "more_posts": False,
+                "total_posts": 0,
+                "liked_posts": []
+            }, status=status.HTTP_200_OK)
+
         total_posts = Post.objects.filter(owner__user_id=id).count()
         data = []
 
