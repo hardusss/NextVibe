@@ -1,5 +1,5 @@
 from django.db import models
-
+from cloudinary.models import CloudinaryField
 
 class Post(models.Model):
     owner = models.ForeignKey("user.User", on_delete=models.CASCADE)
@@ -17,7 +17,7 @@ class Post(models.Model):
 
 class PostsMedia(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="media")
-    file = models.FileField(upload_to="post_media/")
+    file = CloudinaryField(resource_type="auto")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

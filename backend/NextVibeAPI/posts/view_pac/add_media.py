@@ -21,7 +21,6 @@ class AddMediaToPostView(APIView):
             if serializer.is_valid():
                 serializer.save()
             else:
-                
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         print("Sending post for moderation:", post)
         send_post_for_moderation.delay(post) 
