@@ -11,6 +11,25 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+# Cloudinary
+import cloudinary
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUD_NAME"),
+    api_key=os.getenv("API_KEY"),
+    api_secret=os.getenv("API_SECRET")
+)
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv("CLOUD_NAME"),
+    'API_KEY': os.getenv("API_KEY"),
+    'API_SECRET': os.getenv("API_SECRET"),
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,6 +63,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 MIDDLEWARE = [
@@ -119,9 +140,7 @@ WSGI_APPLICATION = 'NextVibeAPI.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',

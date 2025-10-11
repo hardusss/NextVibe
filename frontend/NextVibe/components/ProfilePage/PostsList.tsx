@@ -10,14 +10,14 @@ import {
   StatusBar,
   Animated,
   TouchableWithoutFeedback,
+  ActivityIndicator,
 } from "react-native";
-import { Video, ResizeMode } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import Icon from "react-native-vector-icons/Ionicons";
 import { MaterialIcons } from "@expo/vector-icons";
 import getMenuPosts from "@/src/api/menu.posts";
 import GetApiUrl from "@/src/utils/url_api";
 import timeAgo from "@/src/utils/formatTime";
-import getUserDetail from "@/src/api/user.detail";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { RelativePathString } from "expo-router";
 import likePost from "@/src/api/like.post";
@@ -119,7 +119,8 @@ const getStyles = (theme: typeof darkTheme) => {
             bottom: 0,
             justifyContent: "center",
             alignItems: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.3)"
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+            zIndex: 10
         },
         postContent: {
             marginBottom: 12
@@ -167,11 +168,12 @@ const getStyles = (theme: typeof darkTheme) => {
         },
         muteButton: {
             position: "absolute",
-            bottom: 10,
-            right: 10,
+            bottom: 20,
+            right: 40,
             backgroundColor: "rgba(0, 0, 0, 0.6)",
             padding: 8,
             borderRadius: 20,
+            zIndex: 20
         },
         pageIndicator: {
             position: "absolute",
@@ -207,7 +209,8 @@ const getStyles = (theme: typeof darkTheme) => {
             bottom: 0,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: 'transparent'
+            backgroundColor: 'transparent',
+            zIndex: 15
         },
         aiBadge: {
             flexDirection: 'row',
@@ -244,6 +247,12 @@ const getStyles = (theme: typeof darkTheme) => {
             textAlign: "center",
             marginBottom: 10,
         },
+        previewImage: {
+            position: "absolute",
+            width: "100%",
+            height: "100%",
+            zIndex: 5
+        }
     });
 };
 
@@ -271,6 +280,26 @@ interface User {
   official: boolean;
 }
 
+const getCloudinaryTransformations = (url: string) => {
+    if (!url.includes('cloudinary.com')) {
+        return { preview: url, hd: url };
+    }
+
+    // Low quality first frame as JPEG
+    const previewUrl = url.replace(
+        '/video/upload/',
+        '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
+    );
+
+    // Optimized HD with adaptive codec and bitrate
+    const hdUrl = url.replace(
+        '/video/upload/',
+        '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
+    );
+
+    return { preview: previewUrl, hd: hdUrl };
+};
+
 const MediaItemComponent = ({ 
     item, 
     postId, 
@@ -284,15 +313,25 @@ const MediaItemComponent = ({
     isLiked: boolean;
     isVisible: boolean;
 }) => {
-    const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
+    const mediaUrl = item.media_url;
+    const isVideo = item.media_url.includes("/video/");
+    
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
+    const [isLoading, setIsLoading] = useState(isVideo);
+    const [showPreview, setShowPreview] = useState(isVideo);
     const heartAnim = useRef(new Animated.Value(0)).current;
     const lastTap = useRef(0);
-    const videoRef = useRef<Video>(null);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
+
+    const { preview, hd } = isVideo ? getCloudinaryTransformations(mediaUrl) : { preview: mediaUrl, hd: mediaUrl };
+    
+    const player = useVideoPlayer(isVideo ? hd : '', player => {
+        player.loop = true;
+        player.muted = isMuted;
+    });
 
     const handleDoublePress = () => {
         const now = Date.now();
@@ -325,34 +364,79 @@ const MediaItemComponent = ({
         });
     };
 
-    useFocusEffect(
-        useCallback(() => {
-            if (item.media_url.match(/\.(mp4|webm|ogg|mov|mkv)$/)) {
+    React.useEffect(() => {
+        if (!isVideo) return;
+
+        const subscription = player.addListener('statusChange', (status) => {
+            if (status.status === 'readyToPlay') {
+                setIsLoading(false);
+                setTimeout(() => setShowPreview(false), 150);
+            }
+            else if (status.status === 'loading') {
+                // Показуємо loading тільки якщо відео видиме
                 if (isVisible) {
-                    videoRef.current?.playAsync();
-                } else {
-                    videoRef.current?.pauseAsync();
-                    videoRef.current?.setPositionAsync(0);
+                    setIsLoading(true);
                 }
             }
-        }, [isVisible, item.media_url])
+            else if (status.status === 'idle') {
+                setIsLoading(false);
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, [isVideo, isVisible]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (isVideo) {
+                if (isVisible) {
+                    player.play();
+                } else {
+                    player.pause();
+                    player.currentTime = 0;
+                    setShowPreview(true);
+                }
+            }
+        }, [isVisible, isVideo])
     );
+
+    React.useEffect(() => {
+        if (isVideo) {
+            player.muted = isMuted;
+        }
+    }, [isMuted, isVideo]);
 
     return (
         <TouchableWithoutFeedback onPress={handleDoublePress}>
             <View style={styles.mediaContainer}>
-                {item.media_url.match(/\.(mp4|webm|ogg|mov|mkv)$/) ? (
+                {isVideo ? (
                     <>
-                        <Video
-                            ref={videoRef}
-                            source={{ uri: mediaUrl }}
+                        {showPreview && (
+                            <FastImage
+                                source={{ 
+                                    uri: preview,
+                                    priority: FastImage.priority.high,
+                                }}
+                                style={styles.previewImage}
+                                resizeMode={FastImage.resizeMode.cover}
+                            />
+                        )}
+                        <VideoView
                             style={styles.fullMedia}
-                            useNativeControls={false}
-                            isLooping
-                            shouldPlay={isVisible}
-                            resizeMode={ResizeMode.COVER}
-                            volume={isMuted ? 0 : 1}
+                            player={player}
+                            allowsFullscreen={false}
+                            allowsPictureInPicture={false}
+                            nativeControls={false}
+                            contentFit="cover"
                         />
+                        {isLoading && isVisible && (
+                            <View style={styles.mediaLoading}>
+                                <ActivityIndicator size="large" color="#ffffff" />
+                            </View>
+                        )}
+                        
                         <TouchableOpacity 
                             onPress={() => setIsMuted(prev => !prev)} 
                             style={styles.muteButton}

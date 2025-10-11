@@ -11,7 +11,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { Video } from "expo-av";
 import getMenuPosts from "@/src/api/menu.posts";
-import GetApiUrl from "@/src/utils/url_api";
 import { useRouter } from "expo-router";
 import { ResizeMode } from "expo-av";
 import { useFocusEffect } from 'expo-router';
@@ -82,8 +81,12 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         }, [])
     );
 
-    const isVideo = (url: string) => {
-        return url.endsWith(".mp4") || url.endsWith(".mov") || url.endsWith(".avi");
+    const isVideo = (url: string) => url.includes("/video/");
+    const getPreviewUrl = (url: string) => {
+        if (isVideo(url)) {
+            return url.replace("/video/upload/", "/video/upload/so_0,du_1/");
+        }
+        return url;
     };
 
     return (
@@ -105,7 +108,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                             return null;
                         }
                     
-                        const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media[0].media_url}`;
+                        const mediaUrl = item.media[0].media_url;
                         const isMediaVideo = isVideo(mediaUrl);
                     
                         return (
@@ -133,7 +136,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                 {isMediaVideo ? (
                                     <View style={styles.videoContainer}>
                                         <Video 
-                                            source={{ uri: mediaUrl }}
+                                            source={{ uri: getPreviewUrl(mediaUrl) }}
                                             style={styles.media}
                                             shouldPlay={false}
                                             isLooping={false}
