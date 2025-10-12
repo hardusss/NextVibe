@@ -858,3 +858,76 @@
 2025/10/12 00:35:36 main.go:81: Text moderation result: passed=true
 2025/10/12 00:35:36 main.go:133: Post ID 93 passed moderation
 2025/10/12 00:35:36 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 15:17:17 main.go:174: Moderation service running on http://localhost:8080
+2025/10/12 15:23:11 main.go:77: Received moderation request for post ID 94
+2025/10/12 15:23:11 helpers.go:134: Using SIGHTENGINE_USER=36901041, SIGHTENGINE_SECRET=n7qegCs46EKZGKbHVVqvWNKtv7x4Wt2H
+2025/10/12 15:23:11 helpers.go:232: Text moderation: passed=true, action=allow, severity=0
+2025/10/12 15:23:11 main.go:81: Text moderation result: passed=true
+2025/10/12 15:23:11 main.go:133: Post ID 94 passed moderation
+2025/10/12 15:23:11 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 15:24:24 main.go:77: Received moderation request for post ID 95
+2025/10/12 15:24:24 helpers.go:134: Using SIGHTENGINE_USER=1496669676, SIGHTENGINE_SECRET=DKboAbSx5FTA7y22oZiKkotW4G624QH9
+2025/10/12 15:24:24 helpers.go:232: Text moderation: passed=true, action=allow, severity=0
+2025/10/12 15:24:24 main.go:81: Text moderation result: passed=true
+2025/10/12 15:24:24 main.go:133: Post ID 95 passed moderation
+2025/10/12 15:24:24 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 15:33:36 main.go:77: Received moderation request for post ID 96
+2025/10/12 15:33:36 helpers.go:134: Using SIGHTENGINE_USER=1739177191, SIGHTENGINE_SECRET=vnXvzpKYUsMSNtV7JifLu566CUwvFJmy
+2025/10/12 15:33:36 helpers.go:232: Text moderation: passed=true, action=allow, severity=0
+2025/10/12 15:33:36 main.go:81: Text moderation result: passed=true
+2025/10/12 15:33:36 main.go:133: Post ID 96 passed moderation
+2025/10/12 15:33:36 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 15:33:52 main.go:77: Received moderation request for post ID 97
+2025/10/12 15:33:52 main.go:81: Text moderation result: passed=true
+2025/10/12 15:33:52 main.go:133: Post ID 97 passed moderation
+2025/10/12 15:33:52 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 15:36:34 main.go:77: Received moderation request for post ID 98
+2025/10/12 15:36:34 main.go:81: Text moderation result: passed=true
+2025/10/12 15:36:34 main.go:133: Post ID 98 passed moderation
+2025/10/12 15:36:34 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 15:37:55 main.go:77: Received moderation request for post ID 99
+2025/10/12 15:37:55 main.go:81: Text moderation result: passed=true
+2025/10/12 15:37:55 main.go:133: Post ID 99 passed moderation
+2025/10/12 15:37:55 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 15:53:20 main.go:77: Received moderation request for post ID 100
+2025/10/12 15:53:20 main.go:81: Text moderation result: passed=true
+2025/10/12 15:53:20 main.go:133: Post ID 100 passed moderation
+2025/10/12 15:53:20 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 15:53:48 main.go:77: Received moderation request for post ID 101
+2025/10/12 15:53:48 main.go:81: Text moderation result: passed=true
+2025/10/12 15:53:48 main.go:133: Post ID 101 passed moderation
+2025/10/12 15:53:48 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 16:00:49 main.go:77: Received moderation request for post ID 102
+2025/10/12 16:00:49 helpers.go:134: Using SIGHTENGINE_USER=1673586046, SIGHTENGINE_SECRET=XdKwkH8tAZ2AaywSRVQ5oYvwMeYgmZvP
+2025/10/12 16:00:49 helpers.go:232: Text moderation: passed=true, action=allow, severity=0
+2025/10/12 16:00:49 main.go:81: Text moderation result: passed=true
+2025/10/12 16:00:49 main.go:133: Post ID 102 passed moderation
+2025/10/12 16:00:49 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 16:01:16 main.go:77: Received moderation request for post ID 103
+2025/10/12 16:01:16 main.go:81: Text moderation result: passed=true
+2025/10/12 16:01:16 main.go:133: Post ID 103 passed moderation
+2025/10/12 16:01:16 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 16:01:45 main.go:77: Received moderation request for post ID 104
+2025/10/12 16:01:45 main.go:81: Text moderation result: passed=true
+2025/10/12 16:01:45 main.go:133: Post ID 104 passed moderation
+2025/10/12 16:01:45 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 17:01:46 main.go:77: Received moderation request for post ID 107
+2025/10/12 17:01:46 helpers.go:134: Using SIGHTENGINE_USER=36901041, SIGHTENGINE_SECRET=n7qegCs46EKZGKbHVVqvWNKtv7x4Wt2H
+2025/10/12 17:01:46 helpers.go:232: Text moderation: passed=true, action=allow, severity=0
+2025/10/12 17:01:46 main.go:81: Text moderation result: passed=true
+2025/10/12 17:01:46 main.go:133: Post ID 107 passed moderation
+2025/10/12 17:01:46 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 17:20:22 main.go:77: Received moderation request for post ID 109
+2025/10/12 17:20:22 main.go:81: Text moderation result: passed=true
+2025/10/12 17:20:22 main.go:133: Post ID 109 passed moderation
+2025/10/12 17:20:22 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 17:20:41 main.go:77: Received moderation request for post ID 110
+2025/10/12 17:20:41 main.go:81: Text moderation result: passed=true
+2025/10/12 17:20:41 main.go:133: Post ID 110 passed moderation
+2025/10/12 17:20:41 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 17:22:28 main.go:77: Received moderation request for post ID 111
+2025/10/12 17:22:28 main.go:81: Text moderation result: passed=true
+2025/10/12 17:22:28 main.go:133: Post ID 111 passed moderation
+2025/10/12 17:22:28 main.go:159: Callback sent to backend, status code: 200
+2025/10/12 18:34:16 main.go:174: Moderation service running on http://localhost:8080
+2025/10/12 21:21:28 main.go:174: Moderation service running on http://localhost:8080

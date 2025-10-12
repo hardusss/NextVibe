@@ -133,7 +133,7 @@ export default function PostCreate() {
         setLocation("");
         setPostText("");
         setIsAiGenerated(false);
-        router.push("/profile");
+        router.replace("/profile");
     };
 
     const handleSaveDraft = () => {

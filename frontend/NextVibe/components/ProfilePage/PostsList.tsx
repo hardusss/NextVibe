@@ -285,13 +285,11 @@ const getCloudinaryTransformations = (url: string) => {
         return { preview: url, hd: url };
     }
 
-    // Low quality first frame as JPEG
     const previewUrl = url.replace(
         '/video/upload/',
         '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
     );
 
-    // Optimized HD with adaptive codec and bitrate
     const hdUrl = url.replace(
         '/video/upload/',
         '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
@@ -373,7 +371,6 @@ const MediaItemComponent = ({
                 setTimeout(() => setShowPreview(false), 150);
             }
             else if (status.status === 'loading') {
-                // Показуємо loading тільки якщо відео видиме
                 if (isVisible) {
                     setIsLoading(true);
                 }
@@ -388,19 +385,18 @@ const MediaItemComponent = ({
         };
     }, [isVideo, isVisible]);
 
-    useFocusEffect(
-        useCallback(() => {
-            if (isVideo) {
-                if (isVisible) {
-                    player.play();
-                } else {
-                    player.pause();
-                    player.currentTime = 0;
-                    setShowPreview(true);
-                }
-            }
-        }, [isVisible, isVideo])
-    );
+    // КЛЮЧОВЕ ВИПРАВЛЕННЯ: використовуємо useEffect замість useFocusEffect
+    React.useEffect(() => {
+        if (!isVideo) return;
+
+        if (isVisible) {
+            player.play();
+        } else {
+            player.pause();
+            player.currentTime = 0;
+            setShowPreview(true);
+        }
+    }, [isVisible, isVideo]);
 
     React.useEffect(() => {
         if (isVideo) {
@@ -490,9 +486,8 @@ const UserPosts = () => {
   const [expandedPosts, setExpandedPosts] = useState<{
     [key: number]: boolean;
   }>({});
-  const [visibleVideoIndex, setVisibleVideoIndex] = useState<number | null>(
-    null
-  );
+  // ВИПРАВЛЕННЯ: використовуємо post_id замість index
+  const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [popupPostId, setPopupPostId] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
@@ -507,7 +502,7 @@ const UserPosts = () => {
     setCurrentIndices({});
     setLikedPosts({});
     setExpandedPosts({});
-    setVisibleVideoIndex(null);
+    setVisiblePostId(null);
     setIndex(0);
     setHasMore(true);
   }, []);
@@ -595,10 +590,15 @@ const UserPosts = () => {
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: any[] }) => {
       if (viewableItems.length > 0) {
-        const visibleItem = viewableItems[0];
-        setVisibleVideoIndex(visibleItem.index);
+        const mostVisibleItem = viewableItems.reduce((prev, current) => {
+          return (current.isViewable && (!prev || current.index < prev.index)) ? current : prev;
+        }, null);
+        
+        if (mostVisibleItem && mostVisibleItem.item) {
+          setVisiblePostId(mostVisibleItem.item.post_id);
+        }
       } else {
-        setVisibleVideoIndex(null);
+        setVisiblePostId(null);
       }
     }
   ).current;
@@ -614,6 +614,7 @@ const UserPosts = () => {
     const isExpanded = expandedPosts[item.post_id] ?? false;
     const needsMoreButton = item.about.length > 100;
     const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
+    const isVisible = visiblePostId === item.post_id;
 
     return (
       <View style={styles.postContainer}>
@@ -642,8 +643,8 @@ const UserPosts = () => {
                   )}
                 </View>
                 {item.location && (
-                            <Text style={styles.location}>{item.location}</Text>
-                        )}
+                  <Text style={styles.location}>{item.location}</Text>
+                )}
               </View>
             </>
           )}
@@ -656,7 +657,7 @@ const UserPosts = () => {
               postId={item.post_id}
               onLike={toggleLike}
               isLiked={isLiked}
-              isVisible={index === visibleVideoIndex}
+              isVisible={isVisible}
             />
           ) : (
             <View style={{ position: "relative", width: screenWidth }}>
@@ -668,7 +669,7 @@ const UserPosts = () => {
                     postId={item.post_id}
                     onLike={toggleLike}
                     isLiked={isLiked}
-                    isVisible={index === visibleVideoIndex}
+                    isVisible={isVisible}
                   />
                 )}
                 keyExtractor={mediaItem => mediaItem.id.toString()}
@@ -775,10 +776,14 @@ const UserPosts = () => {
         onEndReached={() => fetchPosts()}
         onEndReachedThreshold={0.8}
         initialNumToRender={6}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        removeClippedSubviews={true}
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{
-          itemVisiblePercentThreshold: 50,
+          itemVisiblePercentThreshold: 70,
+          minimumViewTime: 100,
         }}
         ListEmptyComponent={
           !loading ? (
