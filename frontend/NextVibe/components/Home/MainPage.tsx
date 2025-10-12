@@ -1,15 +1,15 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar, Dimensions, useColorScheme, Animated, RefreshControl, TouchableWithoutFeedback } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar, Dimensions, useColorScheme, Animated, RefreshControl, TouchableWithoutFeedback, ActivityIndicator } from "react-native";
 import Header from "./Header";
 import { useEffect, useState, useCallback, useRef } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
-import { ActivityIndicator } from "../CustomActivityIndicator";
+import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
 import { MaterialIcons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import formatNumber from "@/src/utils/formatNumber";
 import GetApiUrl from "@/src/utils/url_api";
 import PopupModal from "../Comments/CommentPopup";
-import { Video, ResizeMode } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
 import timeAgo from "@/src/utils/formatTime";
@@ -110,7 +110,8 @@ const getStyles = (theme: typeof darkTheme) => {
         bottom: 0,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "rgba(0, 0, 0, 0.3)"
+        backgroundColor: "rgba(0, 0, 0, 0.3)",
+        zIndex: 10
     },
     
     postContent: {
@@ -217,11 +218,12 @@ const getStyles = (theme: typeof darkTheme) => {
     },
     muteButton: {
         position: "absolute",
-        bottom: 10,
-        right: 10,
+        bottom: 20,
+        right: 40,
         backgroundColor: "rgba(0, 0, 0, 0.6)",
         padding: 8,
         borderRadius: 20,
+        zIndex: 20
     },
     pageIndicator: {
         position: "absolute",
@@ -257,7 +259,8 @@ const getStyles = (theme: typeof darkTheme) => {
         bottom: 0,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'transparent'
+        backgroundColor: 'transparent',
+        zIndex: 15
     },
     aiBadge: {
         flexDirection: 'row',
@@ -274,6 +277,12 @@ const getStyles = (theme: typeof darkTheme) => {
         fontWeight: 'bold',
         marginLeft: 2,
     },
+    previewImage: {
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        zIndex: 5
+    }
 });
 }
 
@@ -350,19 +359,59 @@ interface LikedPosts {
     [key: number]: boolean;
 }
 
-const MediaItemComponent = ({ item, postId, onLike, isLiked }: { 
+const getCloudinaryTransformations = (url: string) => {
+    if (!url.includes('cloudinary.com')) {
+        return { preview: url, hd: url };
+    }
+
+    const previewUrl = url.replace(
+        '/video/upload/',
+        '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
+    );
+
+    const hdUrl = url.replace(
+        '/video/upload/',
+        '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
+    );
+
+    return { preview: previewUrl, hd: hdUrl };
+};
+
+const MediaItemComponent = ({ 
+    item, 
+    postId, 
+    onLike, 
+    isLiked,
+    isVisible 
+}: { 
     item: MediaItem; 
     postId: number;
     onLike: (postId: number) => void;
     isLiked: boolean;
+    isVisible: boolean;
 }) => {
-    const mediaUrl = `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
+    const mediaUrl = item.media_url.startsWith('http') 
+        ? item.media_url 
+        : `${GetApiUrl().slice(0, 25)}/media/${item.media_url}`;
+    
+    const isVideo = item.media_url.includes("/video/") || item.media_url.match(/\.(mp4|webm|ogg|mov|mkv)$/);
+    
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
+    const [isLoading, setIsLoading] = useState<boolean>(isVideo as boolean);
+    const [showPreview, setShowPreview] = useState<boolean>(isVideo as boolean);
     const heartAnim = useRef(new Animated.Value(0)).current;
     const lastTap = useRef(0);
-    const videoRef = useRef<Video>(null);
-    const styles = getStyles(useColorScheme() === "dark" ? darkTheme : lightTheme);
+    const colorScheme = useColorScheme();
+    const theme = colorScheme === "dark" ? darkTheme : lightTheme;
+    const styles = getStyles(theme);
+
+    const { preview, hd } = isVideo ? getCloudinaryTransformations(mediaUrl) : { preview: mediaUrl, hd: mediaUrl };
+    
+    const player = useVideoPlayer(isVideo ? hd : '', player => {
+        player.loop = true;
+        player.muted = isMuted;
+    });
 
     const handleDoublePress = () => {
         const now = Date.now();
@@ -395,21 +444,76 @@ const MediaItemComponent = ({ item, postId, onLike, isLiked }: {
         });
     };
 
+    useEffect(() => {
+        if (!isVideo) return;
+
+        const subscription = player.addListener('statusChange', (status) => {
+            if (status.status === 'readyToPlay') {
+                setIsLoading(false);
+                setTimeout(() => setShowPreview(false), 150);
+            }
+            else if (status.status === 'loading') {
+                if (isVisible) {
+                    setIsLoading(true);
+                }
+            }
+            else if (status.status === 'idle') {
+                setIsLoading(false);
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, [isVideo, isVisible]);
+
+    useEffect(() => {
+        if (!isVideo) return;
+
+        if (isVisible) {
+            player.play();
+        } else {
+            player.pause();
+            player.currentTime = 0;
+            setShowPreview(true);
+        }
+    }, [isVisible, isVideo]);
+
+    useEffect(() => {
+        if (isVideo) {
+            player.muted = isMuted;
+        }
+    }, [isMuted, isVideo]);
+
     return (
         <TouchableWithoutFeedback onPress={handleDoublePress}>
             <View style={styles.mediaContainer}>
-                {item.media_url.match(/\.(mp4|webm|ogg|mov|mkv)$/) ? (
+                {isVideo ? (
                     <>
-                        <Video
-                            ref={videoRef}
-                            source={{ uri: mediaUrl }}
+                        {showPreview && (
+                            <FastImage
+                                source={{ 
+                                    uri: preview,
+                                    priority: FastImage.priority.high,
+                                }}
+                                style={styles.previewImage}
+                                resizeMode={FastImage.resizeMode.cover}
+                            />
+                        )}
+                        <VideoView
                             style={styles.fullMedia}
-                            useNativeControls={false}
-                            isLooping
-                            shouldPlay={false}
-                            resizeMode={ResizeMode.COVER}
-                            volume={isMuted ? 0 : 1}
+                            player={player}
+                            allowsFullscreen={false}
+                            allowsPictureInPicture={false}
+                            nativeControls={false}
+                            contentFit="cover"
                         />
+                        {isLoading && isVisible && (
+                            <View style={styles.mediaLoading}>
+                                <ActivityIndicator size="large" color="#ffffff" />
+                            </View>
+                        )}
+                        
                         <TouchableOpacity 
                             onPress={() => setIsMuted(prev => !prev)} 
                             style={styles.muteButton}
@@ -455,6 +559,7 @@ export default function MainPage() {
     const [showPopup, setShowPopup] = useState(false);
     const [popupPostId, setPopupPostId] = useState<number | null>(null);
     const [expandedPosts, setExpandedPosts] = useState<{[key: string]: boolean}>({});
+    const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);    
@@ -464,11 +569,13 @@ export default function MainPage() {
     const [refreshing, setRefreshing] = useState(false);
     const [currentIndices, setCurrentIndices] = useState<{
         [key: number]: number;
-      }>({});
+    }>({});
+    
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         fetchPosts().then(() => setRefreshing(false));
     }, []);
+    
     const fetchPosts = async (loadMore = false) => {
         if (loadingMore || (!hasMore && loadMore)) return;
 
@@ -551,11 +658,39 @@ export default function MainPage() {
             [postId]: !prev[postId]
         }));
     };
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 70,
+        minimumViewTime: 100,
+    }).current;
+
+    const onViewableItemsChangedRef = useRef(
+        ({ viewableItems }: { viewableItems: any[] }) => {
+            if (viewableItems.length > 0) {
+                const mostVisibleItem = viewableItems.reduce((prev, current) => {
+                    return (current.isViewable && (!prev || current.index < prev.index)) ? current : prev;
+                }, null);
+                
+                if (mostVisibleItem && mostVisibleItem.item) {
+                    setVisiblePostId(mostVisibleItem.item.id);
+                }
+            } else {
+                setVisiblePostId(null);
+            }
+        }
+    );
+
     
-    const renderItem = ({ item, index }: { item: Post; index: number }) => {        const isLiked = likedPosts[item.id] ?? false;
+    const renderItem = ({ item, index }: { item: Post; index: number }) => {
+        const isLiked = likedPosts[item.id] ?? false;
         const isExpanded = expandedPosts[item.id] ?? false;
-        const needsMoreButton = item.about.length > 100;
+        const needsMoreButton = item.about?.length > 100;
         const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
+        const isVisible = visiblePostId === item.id;
+        
+        const mediaItems = item.media || [];
+        const hasMedia = mediaItems.length > 0;
+        
         return (
             <View style={styles.postContainer}>
                 <View style={styles.postHeader}>
@@ -584,52 +719,57 @@ export default function MainPage() {
                     </TouchableOpacity>
                 </View>
                 
-                <View style={styles.mediaPlaceholder}>
-                    {item.media.length > 1 ? (
-                        <View style={{ width: screenWidth, height: screenWidth }}>
-                            <FlatList
-                                data={item.media}
-                                renderItem={({ item: mediaItem }) => (
-                                    <MediaItemComponent 
-                                        item={mediaItem} 
-                                        postId={item.id}
-                                        onLike={toggleLike}
-                                        isLiked={isLiked}
-                                    />
-                                )}
-                                keyExtractor={mediaItem => mediaItem.id.toString()}
-                                horizontal
-                                pagingEnabled
-                                showsHorizontalScrollIndicator={false}
-                                onMomentumScrollEnd={(event) => {
-                                    const offsetX = event.nativeEvent.contentOffset.x;
-                                    const index = Math.round(offsetX / screenWidth);
-                                    setCurrentIndices(prev => {
-                                        if (prev[item.id] !== index) {
-                                            return { ...prev, [item.id]: index };
-                                        }
-                                        return prev;
-                                    });
-                                }}
-                                scrollEventThrottle={16}
-                            />
-                            <View style={styles.pageIndicator}>
-                                <Text style={styles.pageIndicatorText}>
-                                    {((currentIndices[item.id] ?? 0) + 1)}/{item.media.length}
-                                </Text>
+                {hasMedia && (
+                    <View style={styles.mediaPlaceholder}>
+                        {mediaItems.length > 1 ? (
+                            <View style={{ width: screenWidth, height: screenWidth, position: "relative" }}>
+                                <FlatList
+                                    data={mediaItems}
+                                    renderItem={({ item: mediaItem }) => (
+                                        <MediaItemComponent 
+                                            item={mediaItem} 
+                                            postId={item.id}
+                                            onLike={toggleLike}
+                                            isLiked={isLiked}
+                                            isVisible={isVisible}
+                                        />
+                                    )}
+                                    keyExtractor={mediaItem => mediaItem.id.toString()}
+                                    horizontal
+                                    pagingEnabled
+                                    showsHorizontalScrollIndicator={false}
+                                    onMomentumScrollEnd={(event) => {
+                                        const offsetX = event.nativeEvent.contentOffset.x;
+                                        const index = Math.round(offsetX / screenWidth);
+                                        setCurrentIndices(prev => {
+                                            if (prev[item.id] !== index) {
+                                                return { ...prev, [item.id]: index };
+                                            }
+                                            return prev;
+                                        });
+                                    }}
+                                    scrollEventThrottle={16}
+                                    nestedScrollEnabled={true}
+                                />
+                                <View style={styles.pageIndicator}>
+                                    <Text style={styles.pageIndicatorText}>
+                                        {((currentIndices[item.id] ?? 0) + 1)}/{mediaItems.length}
+                                    </Text>
+                                </View>
                             </View>
-                        </View>
-                    ) : (
-                        item.media.length === 1 && (
-                            <MediaItemComponent 
-                                item={item.media[0]} 
-                                postId={item.id}
-                                onLike={toggleLike}
-                                isLiked={isLiked}
-                            />
-                        )
-                    )}
-                </View>
+                        ) : (
+                            mediaItems.length === 1 && (
+                                <MediaItemComponent 
+                                    item={mediaItems[0]} 
+                                    postId={item.id}
+                                    onLike={toggleLike}
+                                    isLiked={isLiked}
+                                    isVisible={isVisible}
+                                />
+                            )
+                        )}
+                    </View>
+                )}
                 
                 <View style={styles.postContent}>
                     <Text style={styles.postText}>{displayText}</Text>
@@ -678,6 +818,8 @@ export default function MainPage() {
                     keyExtractor={(item) => `skeleton-${item}_${Math.random()}`}
                     renderItem={() => <PostSkeleton />}
                     contentContainerStyle={styles.listContainer}
+                    onViewableItemsChanged={onViewableItemsChangedRef.current}
+                    viewabilityConfig={viewabilityConfig}
                 />
             ) : (
                 <FlatList
@@ -689,14 +831,20 @@ export default function MainPage() {
                     onEndReached={() => fetchPosts(true)}
                     onEndReachedThreshold={0.8}
                     initialNumToRender={6}
+                    maxToRenderPerBatch={3}
+                    windowSize={5}
+                    removeClippedSubviews={true}
                     showsVerticalScrollIndicator={false}
+                    onViewableItemsChanged={onViewableItemsChangedRef.current}
+                    viewabilityConfig={viewabilityConfig}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                     }
+
                     ListFooterComponent={
                         loadingMore ? (
                             <View style={styles.loadingMore}>
-                                <ActivityIndicator size="small" color="#58a6ff" />
+                                <CustomActivityIndicator size="small" color="#58a6ff" />
                             </View>
                         ) : null
                     }
@@ -713,4 +861,3 @@ export default function MainPage() {
         </View>
     );
 }
-

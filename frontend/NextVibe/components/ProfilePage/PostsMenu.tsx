@@ -9,10 +9,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator } from "../CustomActivityIndicator";
-import { Video } from "expo-av";
 import getMenuPosts from "@/src/api/menu.posts";
 import { useRouter } from "expo-router";
-import { ResizeMode } from "expo-av";
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { BlurView } from "@react-native-community/blur";
@@ -25,7 +23,7 @@ const imageSize = (screenWidth - padding * 2) / 3;
 
 interface Post {
     post_id: number;
-    media: { media_url: string }[];
+    media: { media_url: string }[] | null;
     is_ai_generated: boolean;
     moderation_status: string;
 }
@@ -84,7 +82,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
     const isVideo = (url: string) => url.includes("/video/");
     const getPreviewUrl = (url: string) => {
         if (isVideo(url)) {
-            return url.replace("/video/upload/", "/video/upload/so_0,du_1/");
+            return url.replace("/video/upload/", "/video/upload/so_0,du_1,q_10,f_jpg/");
         }
         return url;
     };
@@ -101,70 +99,75 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                     nestedScrollEnabled={true}
                     scrollEnabled={false}
                     initialNumToRender={3}
-                    contentContainerStyle={{ flexGrow: 1,  paddingBottom: 250 }}
+                    contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
                     renderItem={({ item }) => {
-                        if (!Array.isArray(item.media) || item.media.length === 0 || !item.media[0]?.media_url) {
-                            console.warn("❌ Media URL is missing for post:", item);
-                            return null;
-                        }
-                    
-                        const mediaUrl = item.media[0].media_url;
-                        const isMediaVideo = isVideo(mediaUrl);
+                        const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
+                        const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
+                        const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
                     
                         return (
                             <TouchableOpacity 
                                 style={styles.postContainer} 
-                                onPress={() => item.moderation_status === "approved" ? router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}}) : null}
+                                onPress={() => item.moderation_status === "approved" && hasMedia ? router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}}) : null}
+                                activeOpacity={item.moderation_status === "approved" && hasMedia ? 0.7 : 1}
                             >
-                                {item.moderation_status === "pending" && (
-                                    <BlurView 
-                                    style={styles.moderationStatus} 
-                                    blurType="dark"   
-                                    blurAmount={10}    
-                                    >
-                                        <Text style={{ color: "white", fontSize: 9, textAlign: "center",     
-                                            textAlignVertical: "center", 
-                                            includeFontPadding: false,  
-                                            fontWeight: "500",           
-                                            lineHeight: 12,          
-                                            letterSpacing: 0.5,       
-                                            }}>
-                                                Post on Moderation
-                                            </Text>
-                                    </BlurView>
-                                )}
-                                {isMediaVideo ? (
-                                    <View style={styles.videoContainer}>
-                                        <Video 
-                                            source={{ uri: getPreviewUrl(mediaUrl) }}
-                                            style={styles.media}
-                                            shouldPlay={false}
-                                            isLooping={false}
-                                            useNativeControls={false} 
-                                            resizeMode={"cover" as ResizeMode}
+                                {hasMedia ? (
+                                    isMediaVideo ? (
+                                        <View style={styles.videoContainer}>
+                                            <FastImage 
+                                                source={{ uri: getPreviewUrl(mediaUrl!) }}
+                                                style={styles.media}
+                                                resizeMode={FastImage.resizeMode.cover}
+                                            />
+                                        </View>
+                                    ) : (
+                                        <FastImage 
+                                            source={{ uri: mediaUrl! }}
+                                            style={[styles.media]}
+                                            resizeMode={FastImage.resizeMode.cover}
+                                            onError={() => console.error("❌ Failed to load image:", mediaUrl)}
                                         />
-                                    </View>
+                                    )
                                 ) : (
-                                    <FastImage 
-                                        source={{ uri: mediaUrl }}
-                                        style={[styles.media]}
-                                        resizeMode={FastImage.resizeMode.cover}
-                                        onError={() => console.error("❌ Failed to load image:", mediaUrl)}
-                                    />
+                                    <View style={styles.placeholderContainer}>
+                                        <Ionicons name="images-outline" size={40} color="#666" />
+                                    </View>
                                 )}
                     
-                                <View style={styles.iconContainer}>
-                                    <View style={styles.iconRow}>
-                                        <Ionicons 
-                                            name={isMediaVideo ? "videocam" : "image"} 
-                                            size={20} 
-                                            color="white" 
-                                        />
-                                        {item.is_ai_generated && (
-                                            <MaterialIcons name="auto-awesome" size={20} color="#05f0d8" />
-                                        )}
+                                {item.moderation_status === "pending" && (
+                                    <BlurView 
+                                        style={styles.moderationStatus} 
+                                        blurType="dark"   
+                                        blurAmount={10}    
+                                    >
+                                        <View style={styles.moderationContent}>
+                                            <MaterialIcons name="timer" size={28} color="white" style={{
+                                                alignSelf: "center",
+                                                textAlign: "center",
+                                                verticalAlign: "middle",
+                                                paddingBottom: "20%",
+                                            }}/>
+                                            <Text style={styles.moderationText}>
+                                                Post on Moderation
+                                            </Text>
+                                        </View>
+                                    </BlurView>
+                                )}
+
+                                {hasMedia && item.moderation_status === "approved" && (
+                                    <View style={styles.iconContainer}>
+                                        <View style={styles.iconRow}>
+                                            <Ionicons 
+                                                name={isMediaVideo ? "videocam" : "image"} 
+                                                size={20} 
+                                                color="white" 
+                                            />
+                                            {item.is_ai_generated && (
+                                                <MaterialIcons name="auto-awesome" size={20} color="#05f0d8" />
+                                            )}
+                                        </View>
                                     </View>
-                                </View>
+                                )}
                             </TouchableOpacity>
                         );
                     }}
@@ -186,22 +189,49 @@ const styles = StyleSheet.create({
     postContainer: {
         width: imageSize,
         height: imageSize,
-        
         margin: 2,
         position: "relative",
         overflow: "hidden", 
-        borderRadius: 10, 
+        borderRadius: 10,
+        backgroundColor: "#1a1a1a",
+    },
+    placeholderContainer: {
+        width: "100%",
+        height: "100%",
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#2a2a2a",
+        borderRadius: 10,
     },
     moderationStatus: {
         position: "absolute",
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(6, 6, 6, 0.6)",
         zIndex: 9999,
-        padding: 3,
-        borderRadius: 5,
+        borderRadius: 10,
+        overflow: "hidden",
         justifyContent: "center",
         alignItems: "center",
+    },
+    moderationContent: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 12,
+    },
+    moderationText: {
+        paddingTop: "20%",
+        color: "white",
+        fontSize: 11,
+        textAlign: "center",
+        fontWeight: "600",
+        lineHeight: 14,
+        letterSpacing: 0.5,
+        textShadowColor: "rgba(0, 0, 0, 0.75)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+        alignSelf: "center",
+        verticalAlign: "middle"
     },
     media: {
         width: "100%",
@@ -210,6 +240,8 @@ const styles = StyleSheet.create({
     },
     videoContainer: {
         position: "relative",
+        width: "100%",
+        height: "100%",
     },
     iconContainer: {
         position: "absolute",
