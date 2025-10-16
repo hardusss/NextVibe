@@ -48,11 +48,14 @@ class SolTransactionView(APIView):
         sol_wallet = wallet.sol_wallet
 
         decryptor = DecryptAEAD(key=os.getenv("KEY"))
-        private_key = decryptor.decrypt(
-            encrypted_data=sol_wallet.private_key,
-            user_id=request.user.user_id,
-            token="SOL"
-        )
+        try:
+            private_key = decryptor.decrypt(
+                encrypted_data=sol_wallet.private_key,
+                user_id=request.user.user_id,
+                token="SOL"
+            )
+        except: 
+            private_key=sol_wallet.private_key
         sol_model = SolanaTransaction()
         
         transaction = sol_model.send_transaction(private_key, to_address, amount)
