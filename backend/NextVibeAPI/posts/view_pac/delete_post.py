@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import Post
 
-class DeletePost(APIView):
+class DeletePostView(APIView):
     permission_classes = [IsAuthenticated]
     def delete(self, request) -> Response:
         post_id: int = request.query_params.get("postId", 0)
