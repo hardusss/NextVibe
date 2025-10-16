@@ -14,16 +14,17 @@ import {
 } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import Icon from "react-native-vector-icons/Ionicons";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import getMenuPosts from "@/src/api/menu.posts";
 import GetApiUrl from "@/src/utils/url_api";
 import timeAgo from "@/src/utils/formatTime";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
-import { RelativePathString } from "expo-router";
 import likePost from "@/src/api/like.post";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
 import FastImage from 'react-native-fast-image';
+import DropDown from "./DropDown";
+
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -68,6 +69,7 @@ const getStyles = (theme: typeof darkTheme) => {
             position: "relative",
         },
         postHeader: {
+            position: "relative",
             flexDirection: "row",
             alignItems: "center",
             marginBottom: 12
@@ -385,7 +387,6 @@ const MediaItemComponent = ({
         };
     }, [isVideo, isVisible]);
 
-    // КЛЮЧОВЕ ВИПРАВЛЕННЯ: використовуємо useEffect замість useFocusEffect
     React.useEffect(() => {
         if (!isVideo) return;
 
@@ -471,10 +472,9 @@ const MediaItemComponent = ({
 const UserPosts = () => {
   const router = useRouter();
   let user_id = useLocalSearchParams().user_id;
-  const [index, setIndex] = useState(0);
+  const [_, setIndex] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const TARGET_ID = Number(useLocalSearchParams().id);
-  const previous = useLocalSearchParams().previous as RelativePathString;
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -486,7 +486,6 @@ const UserPosts = () => {
   const [expandedPosts, setExpandedPosts] = useState<{
     [key: number]: boolean;
   }>({});
-  // ВИПРАВЛЕННЯ: використовуємо post_id замість index
   const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [popupPostId, setPopupPostId] = useState<number | null>(null);
@@ -495,6 +494,7 @@ const UserPosts = () => {
   const theme = colorScheme === "dark" ? darkTheme : lightTheme;
   const styles = getStyles(theme);
   const [isFetching, setIsFetching] = useState(false);
+  const [dropdownVisible, setDropdownVisible] = useState<{ [key: number]: boolean }>({});
 
   const clearData = useCallback(() => {
     setPosts([]);
@@ -506,6 +506,14 @@ const UserPosts = () => {
     setIndex(0);
     setHasMore(true);
   }, []);
+
+  const handlePostDeleted = (postId: number) => {
+    setPosts(prevPosts => prevPosts.filter(post => post.post_id !== postId));
+    setDropdownVisible(prev => ({ ...prev, [postId]: false }));
+  };
+  const closeAllDropdowns = () => {
+      setDropdownVisible({});
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -605,7 +613,6 @@ const UserPosts = () => {
 
   const renderPostItem = ({
     item,
-    index,
   }: {
     item: PostItem;
     index: number;
@@ -646,6 +653,41 @@ const UserPosts = () => {
                   <Text style={styles.location}>{item.location}</Text>
                 )}
               </View>
+             <View style={{position: "relative"}}>
+              <TouchableOpacity 
+                style={{position: "absolute", right: 10, zIndex: 10}}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setDropdownVisible(prev => {
+                    const newState = { ...prev };
+                    Object.keys(newState).forEach(key => {
+                      if (Number(key) !== item.post_id) {
+                        newState[Number(key)] = false;
+                      }
+                    });
+                    newState[item.post_id] = !prev[item.post_id];
+                    return newState;
+                  });
+                }}
+              >
+                <MaterialCommunityIcons 
+                  name="dots-vertical" 
+                  color={theme.textPrimary} 
+                  size={24}
+                />
+              </TouchableOpacity>
+
+              <DropDown
+                isVisible={dropdownVisible[item.post_id] || false}
+                isOwner={userData?.id === item.user_id}
+                postId={item.post_id}
+                onClose={() => setDropdownVisible(prev => ({
+                  ...prev,
+                  [item.post_id]: false
+                }))}
+                onPostDeleted={() => handlePostDeleted(item.post_id)}
+              />
+            </View>
             </>
           )}
         </View>
