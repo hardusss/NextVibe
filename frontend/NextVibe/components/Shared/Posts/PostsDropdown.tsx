@@ -1,239 +1,26 @@
-// DropDown.tsx
-import { View, useColorScheme, Text, TouchableOpacity, StyleSheet, Animated, Modal } from "react-native";
+import { View, useColorScheme, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect, useRef } from "react";
 import deletePost from "@/src/api/delete.post";
-
-// Web3 Toast Component
-function Web3Toast({ message, visible, onHide }: { message: string, visible: boolean, onHide: () => void }) {
-  const isDark = useColorScheme() === "dark";
-  const slideAnim = useRef(new Animated.Value(-100)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 50,
-          friction: 7,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      const timer = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(slideAnim, {
-            toValue: -100,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacityAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]).start(() => onHide());
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [visible]);
-
-  if (!visible) return null;
-
-  return (
-    <Animated.View
-      style={[
-        styles.toastContainer,
-        {
-          transform: [{ translateY: slideAnim }],
-          opacity: opacityAnim,
-          backgroundColor: isDark ? "rgba(15, 8, 25, 0.98)" : "rgba(255, 255, 255, 0.98)",
-          shadowColor: "#8B5CF6",
-        },
-      ]}
-    >
-      <LinearGradient
-        colors={['#8B5CF6', '#6366F1', '#EC4899']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.toastBorder}
-      />
-      <View style={styles.toastContent}>
-        <View style={[
-          styles.toastIconContainer,
-          {
-            backgroundColor: isDark ? "#8B5CF620" : "#8B5CF615",
-          }
-        ]}>
-          <MaterialCommunityIcons
-            name="check-circle"
-            size={20}
-            color="#A78BFA"
-          />
-        </View>
-        <Text style={[
-          styles.toastText,
-          { color: isDark ? "#F3F4F6" : "#1F2937" }
-        ]}>
-          {message}
-        </Text>
-      </View>
-    </Animated.View>
-  );
-}
-
-// Confirmation Dialog
-function ConfirmDialog({ 
-  visible, 
-  onConfirm, 
-  onCancel 
-}: { 
-  visible: boolean, 
-  onConfirm: () => void, 
-  onCancel: () => void 
-}) {
-  const isDark = useColorScheme() === "dark";
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 8,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      scaleAnim.setValue(0);
-      opacityAnim.setValue(0);
-    }
-  }, [visible]);
-
-  if (!visible) return null;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onCancel}
-    >
-      <View style={styles.confirmBackdrop}>
-        <Animated.View
-          style={[
-            styles.confirmDialog,
-            {
-              backgroundColor: isDark ? "rgba(15, 8, 25, 0.98)" : "rgba(255, 255, 255, 0.98)",
-              opacity: opacityAnim,
-              transform: [{ scale: scaleAnim }]
-            }
-          ]}
-        >
-          <LinearGradient
-            colors={['#EF4444', '#DC2626']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.confirmBorder}
-          />
-
-          <View style={styles.confirmContent}>
-            <View style={[
-              styles.confirmIconContainer,
-              { backgroundColor: isDark ? "#EF444420" : "#EF444415" }
-            ]}>
-              <MaterialCommunityIcons
-                name="alert-circle"
-                size={32}
-                color="#FCA5A5"
-              />
-            </View>
-
-            <Text style={[
-              styles.confirmTitle,
-              { color: isDark ? "#F3F4F6" : "#1F2937" }
-            ]}>
-              Delete Post?
-            </Text>
-
-            <Text style={[
-              styles.confirmMessage,
-              { color: isDark ? "#D1D5DB" : "#6B7280" }
-            ]}>
-              Are you sure you want to delete this post? This action cannot be undone.
-            </Text>
-
-            <View style={styles.confirmButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmButton,
-                  styles.cancelButton,
-                  { backgroundColor: isDark ? "#374151" : "#E5E7EB" }
-                ]}
-                onPress={onCancel}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.buttonText,
-                  { color: isDark ? "#F3F4F6" : "#1F2937" }
-                ]}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.confirmButton, styles.deleteButton]}
-                onPress={onConfirm}
-                activeOpacity={0.7}
-              >
-                <LinearGradient
-                  colors={['#EF4444', '#DC2626']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.deleteButtonGradient}
-                >
-                  <Text style={styles.deleteButtonText}>Delete</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-}
+import ConfirmDialog from "../Toasts/ConfirmDialog";
 
 export default function DropDown({
   isVisible,
   isOwner,
   postId,
   onClose,
-  onPostDeleted
+  onPostDeleted,
+  onPostDeletedFail
 }: {
   isVisible: boolean,
   isOwner: boolean,
   postId: number,
   onClose: () => void,
-  onPostDeleted?: () => void
+  onPostDeleted?: () => void,
+  onPostDeletedFail?: () => void
 }) {
   const isDark = useColorScheme() === "dark";
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -281,20 +68,25 @@ export default function DropDown({
     setShowConfirm(false);
     
     try {
-      const response = await deletePost(postId);
-      
-      setTimeout(() => {
-        setToastMessage(response.data || "Post deleted successfully");
-        setToastVisible(true);
-        
+      const response =  await deletePost(postId);
+      if (response.data !== "Post deleted"){
+        setTimeout(() => {
+            if (onPostDeletedFail){
+                onPostDeletedFail()
+            }
+        }, 200);
+        return
+      }
+      setTimeout(() => {  
         setTimeout(() => {
           onPostDeleted?.();
         }, 500);
       }, 200);
     } catch (error) {
       setTimeout(() => {
-        setToastMessage("Failed to delete post");
-        setToastVisible(true);
+        if (onPostDeletedFail){
+            onPostDeletedFail()
+        }
       }, 200);
     }
   };
@@ -326,12 +118,7 @@ export default function DropDown({
         visible={showConfirm}
         onConfirm={handleConfirmDelete}
         onCancel={() => setShowConfirm(false)}
-      />
-      <Web3Toast
-        message={toastMessage}
-        visible={toastVisible}
-        onHide={() => setToastVisible(false)}
-      />
+      /> 
     </>
   );
 
@@ -430,11 +217,6 @@ export default function DropDown({
         onCancel={() => setShowConfirm(false)}
       />
 
-      <Web3Toast
-        message={toastMessage}
-        visible={toastVisible}
-        onHide={() => setToastVisible(false)}
-      />
     </>
   );
 }

@@ -23,7 +23,9 @@ import likePost from "@/src/api/like.post";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
 import FastImage from 'react-native-fast-image';
-import DropDown from "./DropDown";
+import DropDown from "../Shared/Posts/PostsDropdown";
+import Web3Toast from "../Shared/Toasts/Web3Toast";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -495,7 +497,14 @@ const UserPosts = () => {
   const styles = getStyles(theme);
   const [isFetching, setIsFetching] = useState(false);
   const [dropdownVisible, setDropdownVisible] = useState<{ [key: number]: boolean }>({});
+  const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
+  const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
+  const [userID, setUserID] = useState<number>(0);
 
+  const getUserID = async () => {
+    const id = await AsyncStorage.getItem("id")
+    setUserID(id ? +id : 0)
+  }
   const clearData = useCallback(() => {
     setPosts([]);
     setUserData(null);
@@ -508,6 +517,8 @@ const UserPosts = () => {
   }, []);
 
   const handlePostDeleted = (postId: number) => {
+    setToastMessage("Post successfully deleted")
+    setIsToastVisible(true);
     setPosts(prevPosts => prevPosts.filter(post => post.post_id !== postId));
     setDropdownVisible(prev => ({ ...prev, [postId]: false }));
   };
@@ -519,6 +530,7 @@ const UserPosts = () => {
     useCallback(() => {
       clearData();
       fetchPosts();
+      getUserID();
       return () => {
         clearData();
       };
@@ -655,7 +667,7 @@ const UserPosts = () => {
               </View>
              <View style={{position: "relative"}}>
               <TouchableOpacity 
-                style={{position: "absolute", right: 10, zIndex: 10}}
+                style={{position: "absolute", right: -2, top: -10, zIndex: 10}}
                 onPress={(e) => {
                   e.stopPropagation();
                   setDropdownVisible(prev => {
@@ -679,13 +691,17 @@ const UserPosts = () => {
 
               <DropDown
                 isVisible={dropdownVisible[item.post_id] || false}
-                isOwner={userData?.id === item.user_id}
+                isOwner={userID === item.user_id}
                 postId={item.post_id}
                 onClose={() => setDropdownVisible(prev => ({
                   ...prev,
                   [item.post_id]: false
                 }))}
                 onPostDeleted={() => handlePostDeleted(item.post_id)}
+                onPostDeletedFail={() => {
+                  setToastMessage("Error deleting post")
+                  setIsToastVisible(true);
+                }}
               />
             </View>
             </>
@@ -777,7 +793,11 @@ const UserPosts = () => {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"} />
-      
+      <Web3Toast
+        message={toastMessage}
+        visible={isToastVisible}
+        onHide={() => setIsToastVisible(false)}
+      />
       <View style={styles.headerContainer}>
         <TouchableOpacity 
           style={styles.backButton}

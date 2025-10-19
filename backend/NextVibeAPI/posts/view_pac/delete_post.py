@@ -14,12 +14,16 @@ class DeletePostView(APIView):
         if post_id == 0:
             return Response({"error": "Post not foud, check post id"}, status=status.HTTP_404_NOT_FOUND)
         
-        post = Post.objects.get(id=post_id)
+        try:
+            post = Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not foud, check post id"}, status=status.HTTP_404_NOT_FOUND)
+        
         if post and post.owner.user_id == request.user.user_id:
             try:
                 post.delete()
                 return Response({"data": "Post deleted"}, status=status.HTTP_200_OK)
             except Exception as ex:
-                return Response({"error":f"Can't delete the post. Error: {ex}"})
+                return Response({"error": f"Can't delete the post. Error: {ex}"}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"data": "You can't delete post another user"})
+            return Response({"data": "You can't delete post another user"}, status=status.HTTP_400_BAD_REQUEST)
