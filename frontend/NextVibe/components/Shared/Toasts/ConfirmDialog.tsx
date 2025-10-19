@@ -6,11 +6,25 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 export default function ConfirmDialog({ 
   visible, 
   onConfirm, 
-  onCancel 
+  onCancel,
+  title = 'Delete Post?',
+  message = 'Are you sure you want to delete this post? This action cannot be undone.',
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
+  confirmGradient = ['#EF4444', '#DC2626'],
+  iconName = 'alert-circle',
+  iconColor = '#FCA5A5'
 }: { 
   visible: boolean, 
   onConfirm: () => void, 
-  onCancel: () => void 
+  onCancel: () => void,
+  title?: string,
+  message?: string,
+  confirmLabel?: string,
+  cancelLabel?: string,
+  confirmGradient?: readonly string[],
+  iconName?: string,
+  iconColor?: string,
 }) {
   const isDark = useColorScheme() === "dark";
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -58,7 +72,7 @@ export default function ConfirmDialog({
           ]}
         >
           <LinearGradient
-            colors={['#EF4444', '#DC2626']}
+            colors={confirmGradient as any}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.confirmBorder}
@@ -69,26 +83,26 @@ export default function ConfirmDialog({
               styles.confirmIconContainer,
               { backgroundColor: isDark ? "#EF444420" : "#EF444415" }
             ]}>
-              <MaterialCommunityIcons
-                name="alert-circle"
-                size={32}
-                color="#FCA5A5"
-              />
+                <MaterialCommunityIcons
+                  name={iconName as any}
+                  size={32}
+                  color={iconColor}
+                />
             </View>
 
-            <Text style={[
-              styles.confirmTitle,
-              { color: isDark ? "#F3F4F6" : "#1F2937" }
-            ]}>
-              Delete Post?
-            </Text>
+              <Text style={[
+                styles.confirmTitle,
+                { color: isDark ? "#F3F4F6" : "#1F2937" }
+              ]}>
+                {title}
+              </Text>
 
-            <Text style={[
-              styles.confirmMessage,
-              { color: isDark ? "#D1D5DB" : "#6B7280" }
-            ]}>
-              Are you sure you want to delete this post? This action cannot be undone.
-            </Text>
+              <Text style={[
+                styles.confirmMessage,
+                { color: isDark ? "#D1D5DB" : "#6B7280" }
+              ]}>
+                {message}
+              </Text>
 
             <View style={styles.confirmButtons}>
               <TouchableOpacity
@@ -104,7 +118,7 @@ export default function ConfirmDialog({
                   styles.buttonText,
                   { color: isDark ? "#F3F4F6" : "#1F2937" }
                 ]}>
-                  Cancel
+                  {cancelLabel}
                 </Text>
               </TouchableOpacity>
 
@@ -114,12 +128,12 @@ export default function ConfirmDialog({
                 activeOpacity={0.7}
               >
                 <LinearGradient
-                  colors={['#EF4444', '#DC2626']}
+                  colors={confirmGradient as any}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.deleteButtonGradient}
                 >
-                  <Text style={styles.deleteButtonText}>Delete</Text>
+                  <Text style={styles.deleteButtonText}>{confirmLabel}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -144,7 +158,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.3)",
+    borderColor: "rgba(98, 16, 232, 0.3)",
   },
   confirmBorder: {
     height: 3,
