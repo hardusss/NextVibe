@@ -1,10 +1,8 @@
-// DropDown.tsx
-import { View, useColorScheme, Text, TouchableOpacity, StyleSheet, Animated, Modal } from "react-native";
+import { View, useColorScheme, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect, useRef } from "react";
 import deletePost from "@/src/api/delete.post";
-import Web3Toast from "../Toasts/Web3Toast";
 import ConfirmDialog from "../Toasts/ConfirmDialog";
 
 export default function DropDown({
@@ -12,17 +10,17 @@ export default function DropDown({
   isOwner,
   postId,
   onClose,
-  onPostDeleted
+  onPostDeleted,
+  onPostDeletedFail
 }: {
   isVisible: boolean,
   isOwner: boolean,
   postId: number,
   onClose: () => void,
-  onPostDeleted?: () => void
+  onPostDeleted?: () => void,
+  onPostDeletedFail?: () => void
 }) {
   const isDark = useColorScheme() === "dark";
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -70,20 +68,25 @@ export default function DropDown({
     setShowConfirm(false);
     
     try {
-      const response = await deletePost(postId);
-      
-      setTimeout(() => {
-        setToastMessage(response.data || "Post deleted successfully");
-        setToastVisible(true);
-        
+      const response =  await deletePost(postId);
+      if (response.data !== "Post deleted"){
+        setTimeout(() => {
+            if (onPostDeletedFail){
+                onPostDeletedFail()
+            }
+        }, 200);
+        return
+      }
+      setTimeout(() => {  
         setTimeout(() => {
           onPostDeleted?.();
         }, 500);
       }, 200);
     } catch (error) {
       setTimeout(() => {
-        setToastMessage("Failed to delete post");
-        setToastVisible(true);
+        if (onPostDeletedFail){
+            onPostDeletedFail()
+        }
       }, 200);
     }
   };
@@ -115,12 +118,7 @@ export default function DropDown({
         visible={showConfirm}
         onConfirm={handleConfirmDelete}
         onCancel={() => setShowConfirm(false)}
-      />
-      <Web3Toast
-        message={toastMessage}
-        visible={toastVisible}
-        onHide={() => setToastVisible(false)}
-      />
+      /> 
     </>
   );
 
@@ -219,11 +217,6 @@ export default function DropDown({
         onCancel={() => setShowConfirm(false)}
       />
 
-      <Web3Toast
-        message={toastMessage}
-        visible={toastVisible}
-        onHide={() => setToastVisible(false)}
-      />
     </>
   );
 }
