@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect, useRef } from "react";
 import deletePost from "@/src/api/delete.post";
 import ConfirmDialog from "../Toasts/ConfirmDialog";
+import ReportPostModal from "@/components/Shared/Posts/ReportPostModal";
 
 export default function DropDown({
   isVisible,
@@ -11,7 +12,8 @@ export default function DropDown({
   postId,
   onClose,
   onPostDeleted,
-  onPostDeletedFail
+  onPostDeletedFail,
+  onReportResult
 }: {
   isVisible: boolean,
   isOwner: boolean,
@@ -19,9 +21,11 @@ export default function DropDown({
   onClose: () => void,
   onPostDeleted?: () => void,
   onPostDeletedFail?: () => void
+  onReportResult?: (reported: boolean, message?: string) => void
 }) {
   const isDark = useColorScheme() === "dark";
   const [showConfirm, setShowConfirm] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
   
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -99,8 +103,9 @@ export default function DropDown({
       iconColor: "#A78BFA",
       onClick: () => {
         onClose();
+        setTimeout(() => setReportModalVisible(true), 200);
       },
-      show: true,
+      show: !isOwner,
     },
     {
       label: "Delete",
@@ -119,6 +124,17 @@ export default function DropDown({
         onConfirm={handleConfirmDelete}
         onCancel={() => setShowConfirm(false)}
       /> 
+
+        <ReportPostModal
+          postId={postId}
+          visible={reportModalVisible}
+          onClose={(reported?: boolean, message?: string) => {
+            setReportModalVisible(false);
+            if (onReportResult) {
+              onReportResult(!!reported, message);
+            }
+          }}
+        />
     </>
   );
 
