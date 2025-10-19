@@ -289,6 +289,9 @@ const getCloudinaryTransformations = (url: string) => {
         return { preview: url, hd: url };
     }
 
+    // Toast state at PostsList level
+    // ...existing code...
+
     const previewUrl = url.replace(
         '/video/upload/',
         '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
@@ -701,6 +704,19 @@ const UserPosts = () => {
                 onPostDeletedFail={() => {
                   setToastMessage("Error deleting post")
                   setIsToastVisible(true);
+                }}
+                onReportResult={(reported?: boolean, message?: string) => {
+                  // Wait a short moment for the modal to close before showing toast
+                  setDropdownVisible(prev => ({ ...prev, [item.post_id]: false }));
+                  setTimeout(() => {
+                    if (message) {
+                      setToastMessage(message);
+                      setIsToastVisible(true);
+                    } else if (reported) {
+                      setToastMessage('Report submitted');
+                      setIsToastVisible(true);
+                    }
+                  }, 260);
                 }}
               />
             </View>
