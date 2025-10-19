@@ -131,47 +131,6 @@ export default function ConfirmDialog({
 }
 
 const styles = StyleSheet.create({
-  toastContainer: {
-    position: "absolute",
-    top: 60,
-    left: 20,
-    right: 20,
-    zIndex: 999999999,
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.3)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  toastBorder: {
-    height: 3,
-    width: "100%",
-  },
-  toastContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    gap: 12,
-  },
-  toastIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.3)",
-  },
-  toastText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  // Confirm Dialog Styles
   confirmBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
