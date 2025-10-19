@@ -23,7 +23,29 @@ class PostsMedia(models.Model):
     def __str__(self):
         return f"Media for Post {self.post.id}"
     
+class PostReport:
+    class ReportType(models.TextChoices):
+        SPAM = 'spam', 'Spam'
+        NUDITY = 'nudity', 'Nudity / Sexual Content'
+        VIOLENCE = 'violence', 'Violence / Threats'
+        HATE_SPEECH = 'hate_speech', 'Hate Speech'
+        SCAM = 'scam', 'Scam / Fraud'
+        ILLEGAL = 'illegal_activity', 'Illegal Activity'
+        OTHER = 'other', 'Other'
 
+    class Meta:
+        unique_together = ('post', 'reporter')
+
+    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    reporter = models.ForeignKey("user.User", on_delete=models.CASCADE)
+    report_type = models.CharField(
+        max_length=20,
+        choices=ReportType.choices,
+        default=ReportType.SPAM
+    )
+    description = models.TextField(null=True, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
 class Comment(models.Model):
     owner = models.ForeignKey("user.User", on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
