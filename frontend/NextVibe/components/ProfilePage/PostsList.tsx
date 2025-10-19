@@ -288,10 +288,7 @@ const getCloudinaryTransformations = (url: string) => {
     if (!url.includes('cloudinary.com')) {
         return { preview: url, hd: url };
     }
-
-    // Toast state at PostsList level
-    // ...existing code...
-
+    
     const previewUrl = url.replace(
         '/video/upload/',
         '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
