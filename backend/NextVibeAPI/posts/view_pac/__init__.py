@@ -10,3 +10,4 @@ from .get_media import GetMediaView
 from .moderation_callback import ModerationCallbackView
 from .comment_like import LikeCommentView
 from .delete_post import DeletePostView
+from .send_post_report import SendReportForPostView
