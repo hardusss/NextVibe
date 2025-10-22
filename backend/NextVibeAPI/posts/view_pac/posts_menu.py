@@ -47,6 +47,7 @@ class PostMenuView(APIView):
                 "is_ai_generated": post.is_ai_generated,
                 "location": post.location,
                 "moderation_status": post.moderation_status, 
+                "is_comments_enabled": post.is_comments_enabled
             })
             
         user = User.objects.get(user_id=who_send_request)
