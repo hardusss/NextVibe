@@ -15,6 +15,8 @@ from rest_framework.permissions import IsAuthenticated
 from dotenv import load_dotenv
 import os
 
+import asyncio
+
 load_dotenv()
 
 class BtcTransactionView(APIView):
@@ -97,6 +99,12 @@ class AllTransactionsView(APIView):
         sol_wallet = wallet.sol_wallet
         trx_wallet = wallet.trx_wallet
         
-        sorted_transactions = get_all_transactions_sorted(btc_wallet.address, sol_wallet.address, trx_wallet.address)
+        sorted_transactions = asyncio.run(
+            get_all_transactions_sorted(
+                btc_wallet.address, 
+                sol_wallet.address, 
+                trx_wallet.address
+            )
+        )
         
         return Response(sorted_transactions, status=status.HTTP_200_OK)
