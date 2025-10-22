@@ -350,6 +350,7 @@ interface Post {
     create_at: string;
     location: string;
     count_likes: number;
+    is_comments_enabled: boolean,
     owner__user_id: number;
     owner__username: string;
     owner__avatar: string;
@@ -561,6 +562,7 @@ export default function MainPage() {
     const [likedPosts, setLikedPosts] = useState<LikedPosts>({});
     const [showPopup, setShowPopup] = useState(false);
     const [popupPostId, setPopupPostId] = useState<number | null>(null);
+    const [popupCommentsEnabled, setPopupCommentsEnabled] = useState<boolean>(true);
     const [expandedPosts, setExpandedPosts] = useState<{[key: string]: boolean}>({});
     const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
     const colorScheme = useColorScheme();
@@ -866,6 +868,7 @@ export default function MainPage() {
                         <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => {
+                        setPopupCommentsEnabled(item.is_comments_enabled)
                         setPopupPostId(item.id);
                         setShowPopup(true);
                     }}>
@@ -888,7 +891,7 @@ export default function MainPage() {
                     onHide={() => setIsToastVisible(false)}
                   />
             <Header isVisible={isVisibleButtonMessage}/>
-            {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)}/>}
+            {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)} isCommentsEnabled={popupCommentsEnabled}/>}
             
             {loading ? (
                 <FlatList
