@@ -14,7 +14,10 @@ import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
 import timeAgo from "@/src/utils/formatTime";
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
-
+import DropDown from "../Shared/Posts/PostsDropdown";
+import Web3Toast from "../Shared/Toasts/Web3Toast";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -347,6 +350,7 @@ interface Post {
     create_at: string;
     location: string;
     count_likes: number;
+    is_comments_enabled: boolean,
     owner__user_id: number;
     owner__username: string;
     owner__avatar: string;
@@ -558,6 +562,7 @@ export default function MainPage() {
     const [likedPosts, setLikedPosts] = useState<LikedPosts>({});
     const [showPopup, setShowPopup] = useState(false);
     const [popupPostId, setPopupPostId] = useState<number | null>(null);
+    const [popupCommentsEnabled, setPopupCommentsEnabled] = useState<boolean>(true);
     const [expandedPosts, setExpandedPosts] = useState<{[key: string]: boolean}>({});
     const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
     const colorScheme = useColorScheme();
@@ -570,7 +575,16 @@ export default function MainPage() {
     const [currentIndices, setCurrentIndices] = useState<{
         [key: number]: number;
     }>({});
+    const [dropdownVisible, setDropdownVisible] = useState<{ [key: number]: boolean }>({});
+    const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
+    const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
+    const [userID, setUserID] = useState<number>(0);
     
+    const getUserID = async () => {
+        const id = await AsyncStorage.getItem("id")
+        setUserID(id ? +id : 0)
+    };
+
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         fetchPosts().then(() => setRefreshing(false));
@@ -610,6 +624,7 @@ export default function MainPage() {
         if (Platform.OS === 'android') {
             UIManager.setLayoutAnimationEnabledExperimental?.(true);
         }
+        getUserID();
         fetchPosts();
     }, []);
     
@@ -650,6 +665,13 @@ export default function MainPage() {
         }
 
         lastOffset.current = currentOffset;
+    };
+
+    const handlePostDeleted = (postId: number) => {
+        setToastMessage("Post successfully deleted")
+        setIsToastVisible(true);
+        setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+        setDropdownVisible(prev => ({ ...prev, [postId]: false }));
     };
 
     const toggleExpandText = (postId: number) => {
@@ -715,8 +737,62 @@ export default function MainPage() {
                                 </View>
                             )}
                         </View>
-                         
+                         {item.location && (
+                            <Text style={styles.location}>{item.location}</Text>
+                        )}
                     </TouchableOpacity>
+                      <View style={{position: "relative"}}>
+                        <TouchableOpacity 
+                            style={{position: "absolute", right: -2, top: -10, zIndex: 10}}
+                            onPress={(e) => {
+                            e.stopPropagation();
+                            setDropdownVisible(prev => {
+                                const newState = { ...prev };
+                                Object.keys(newState).forEach(key => {
+                                if (Number(key) !== item.id) {
+                                    newState[Number(key)] = false;
+                                }
+                                });
+                                newState[item.id] = !prev[item.id];
+                                return newState;
+                            });
+                            }}
+                        >
+                            <MaterialCommunityIcons 
+                            name="dots-vertical" 
+                            color={theme.textPrimary} 
+                            size={24}
+                            />
+                        </TouchableOpacity>
+
+                        <DropDown
+                            isVisible={dropdownVisible[item.id] || false}
+                            isOwner={userID === item.owner__user_id}
+                            postId={item.id}
+                            onClose={() => setDropdownVisible(prev => ({
+                            ...prev,
+                            [item.id]: false
+                            }))}
+                            onPostDeleted={() => handlePostDeleted(item.id)}
+                            onPostDeletedFail={() => {
+                            setToastMessage("Error deleting post")
+                            setIsToastVisible(true);
+                            }}
+                            onReportResult={(reported?: boolean, message?: string) => {
+                            // Wait a short moment for the modal to close before showing toast
+                            setDropdownVisible(prev => ({ ...prev, [item.id]: false }));
+                            setTimeout(() => {
+                                if (message) {
+                                setToastMessage(message);
+                                setIsToastVisible(true);
+                                } else if (reported) {
+                                setToastMessage('Report submitted');
+                                setIsToastVisible(true);
+                                }
+                            }, 260);
+                            }}
+                        />
+                    </View>
                 </View>
                 
                 {hasMedia && (
@@ -792,6 +868,7 @@ export default function MainPage() {
                         <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => {
+                        setPopupCommentsEnabled(item.is_comments_enabled)
                         setPopupPostId(item.id);
                         setShowPopup(true);
                     }}>
@@ -808,8 +885,13 @@ export default function MainPage() {
     return (
         <View style={styles.container}>
             <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"}></StatusBar>
+            <Web3Toast
+                    message={toastMessage}
+                    visible={isToastVisible}
+                    onHide={() => setIsToastVisible(false)}
+                  />
             <Header isVisible={isVisibleButtonMessage}/>
-            {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)}/>}
+            {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)} isCommentsEnabled={popupCommentsEnabled}/>}
             
             {loading ? (
                 <FlatList

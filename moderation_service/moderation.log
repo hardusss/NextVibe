@@ -938,3 +938,10 @@
 2025/10/15 19:54:20 main.go:81: Text moderation result: passed=true
 2025/10/15 19:54:20 main.go:133: Post ID 112 passed moderation
 2025/10/15 19:54:20 main.go:159: Callback sent to backend, status code: 200
+2025/10/19 12:33:07 main.go:174: Moderation service running on http://localhost:8080
+2025/10/19 14:55:12 main.go:174: Moderation service running on http://localhost:8080
+2025/10/22 13:21:06 main.go:174: Moderation service running on http://localhost:8080
+2025/10/22 13:44:37 main.go:77: Received moderation request for post ID 113
+2025/10/22 13:44:37 main.go:81: Text moderation result: passed=true
+2025/10/22 13:44:37 main.go:133: Post ID 113 passed moderation
+2025/10/22 13:44:37 main.go:159: Callback sent to backend, status code: 200

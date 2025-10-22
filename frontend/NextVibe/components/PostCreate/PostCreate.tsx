@@ -127,7 +127,7 @@ export default function PostCreate() {
     };
 
     const handlePublish = () => {
-        createPost(postText, mediaUrls, location, isAiGenerated);
+        createPost(postText, mediaUrls, location, isAiGenerated, enableComments);
         setMediaUrls([]);
         setAiPrompt("");
         setLocation("");

@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GetApiUrl from "../utils/url_api";
 
-export default async function createPost(content: string, mediaUrls: string[], location?: string, isAiGenerated: boolean = false) {
+export default async function createPost(content: string, mediaUrls: string[], location?: string, isAiGenerated: boolean = false, isCommentsEnabled: boolean = true) {
     try {
         const TOKEN = await AsyncStorage.getItem("access");
         const OWNER_ID = await AsyncStorage.getItem("id");
@@ -23,7 +23,8 @@ export default async function createPost(content: string, mediaUrls: string[], l
                 about: content,
                 owner: OWNER_ID,
                 location: location || null,
-                is_ai_generated: isAiGenerated
+                is_ai_generated: isAiGenerated,
+                isCommentsEnabled
             })
         });
 

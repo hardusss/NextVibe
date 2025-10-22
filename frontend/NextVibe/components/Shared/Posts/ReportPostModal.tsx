@@ -55,7 +55,7 @@ export default function ReportPostModal({ postId, visible, onClose }: { postId: 
       setLoading(false);
       const status = (res && (res as any).status) || ((res && (res as any).status_code) as number) || null;
       // Display messages from backend: prefer response.data on success, response.error on failure
-      const successMessage = res && (res as any).data.data ? (typeof (res as any).data === 'string' ? (res as any).data : ((res as any).data.message || (res as any).data.detail || JSON.stringify((res as any).data))) : null;
+      const successMessage = res && (res as any).data ? (typeof (res as any).data === 'string' ? (res as any).data : ((res as any).data.message || (res as any).data.detail || JSON.stringify((res as any).data))) : null;
       const errorMessage = res && (res as any).error ? ((res as any).error && (res as any).error.message) || (res as any).error : null;
 
       if (status === 200 || status === 201 || successMessage) {
