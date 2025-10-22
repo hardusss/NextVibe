@@ -52,9 +52,10 @@ interface UserData {
 
 interface PopupModalProps {
   post_id: number;
+  isCommentsEnabled?: boolean;
   onClose: () => void;
 }
-const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
+const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const [comments, setComments] = useState<Comment[]>([]);
@@ -94,8 +95,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
           const data = await getComments(post_id);
           if (Array.isArray(data)) {
             setOwner(data[0].author);
-            setComments(data.slice(1));
-            console.log(data);
+            setComments(data.slice(1));;
           } else {
             console.error("Data is not array!", data);
             setComments([]);
@@ -120,8 +120,6 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
       openModal();
     }, [post_id])
   );
-
-  useEffect(() => {console.log(likedComments)}, [likedComments])
 
   const toggleReplies = (commentId: number) => {
     setExpandedComments((prev) => ({
@@ -199,6 +197,7 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
   };
 
   const handleReply = (commentOrReply: Comment | Reply) => {
+    if (!isCommentsEnabled) return;
     setReplyingTo(commentOrReply);
   };
 
@@ -243,8 +242,8 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
 
   const handleSendComment = async () => {
     if (!commentText) return;
+    if (!isCommentsEnabled) return;
     
-    const content = commentText;
     if (replyingTo === null) {
       const response = await createComment(commentText, post_id);
       setCommentText("");
@@ -431,8 +430,12 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
             </View>
             {loading ? (
               <ActivityIndicator size="large" color="#0000ff" />
+            ) : !isCommentsEnabled ? (
+              <View style={styles.disabledCommentsContainer}>
+                <Text style={styles.disabledCommentsText}>The author has disabled comments. {isCommentsEnabled}</Text>
+              </View>
             ) : comments.length === 0 ? (
-              <Text style={styles.noCommentsText}>No comments available</Text>
+              <Text style={styles.noCommentsText}>No comments available {isCommentsEnabled}</Text>
             ) : (
               <FlatList
                 data={comments}
@@ -458,13 +461,16 @@ const PopupModal = ({ post_id, onClose }: PopupModalProps) => {
                 </TouchableOpacity>
               </View>
             ): ""}
-            <View style={styles.inputContainer}>
-              <FastImage source={{uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
-              <TextInput value={commentText} autoFocus returnKeyType='send' style={styles.input} placeholder={`Add a comment for ${owner}...`} placeholderTextColor="#888" onChange={(e) => setCommentText(e.nativeEvent.text)} />
-              <TouchableOpacity style={styles.sendButton} onPress={handleSendComment} disabled={!commentText.trim()}>
-                <MaterialIcons name="arrow-upward" size={22} color={"white"}/>
-              </TouchableOpacity>
-            </View>
+            {isCommentsEnabled ? (
+                <View style={styles.inputContainer}>
+                  <FastImage source={{uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
+                  <TextInput value={commentText} autoFocus returnKeyType='send' style={styles.input} placeholder={isCommentsEnabled ? `Add a comment for ${owner}...` : 'Comments are disabled by the author'} placeholderTextColor="#888" editable={isCommentsEnabled} onChange={(e) => setCommentText(e.nativeEvent.text)} />
+                  <TouchableOpacity style={styles.sendButton} onPress={handleSendComment} disabled={!commentText.trim() || !isCommentsEnabled}>
+                    <MaterialIcons name="arrow-upward" size={22} color={"white"}/>
+                  </TouchableOpacity>
+              </View>
+            ) : null}
+            
           </Animated.View>
         </View>
       </Modal>
@@ -620,6 +626,16 @@ const styles = StyleSheet.create({
     color: '#40E0D0',
     marginTop: 5,
     fontSize: 14,
+    fontWeight: '600',
+  },
+  disabledCommentsContainer: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledCommentsText: {
+    color: '#FFF',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

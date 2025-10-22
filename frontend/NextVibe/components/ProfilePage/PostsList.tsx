@@ -275,6 +275,7 @@ interface PostItem {
   create_at: string;
   user_id: number;
   is_ai_generated: boolean;
+  is_comments_enabled: boolean,
 }
 
 interface User {
@@ -500,6 +501,7 @@ const UserPosts = () => {
   const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
   const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
   const [userID, setUserID] = useState<number>(0);
+  const [popupCommentsEnabled, setPopupCommentsEnabled] = useState<boolean>(true);
 
   const getUserID = async () => {
     const id = await AsyncStorage.getItem("id")
@@ -790,6 +792,8 @@ const UserPosts = () => {
             <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => {
+            
+            setPopupCommentsEnabled(item.is_comments_enabled)
             setPopupPostId(item.post_id);
             setShowPopup(true);
           }}>
@@ -829,6 +833,7 @@ const UserPosts = () => {
         <PopupModal
           post_id={popupPostId as number}
           onClose={() => setShowPopup(false)}
+          isCommentsEnabled={popupCommentsEnabled}
         />
       )}
 
