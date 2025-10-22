@@ -8,14 +8,16 @@ from ..src.sorted_transactions import get_all_transactions_sorted
 from ..src.wallet_encryption import DecryptAEAD
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+
 from dotenv import load_dotenv
 import os
-
 import asyncio
+
 
 load_dotenv()
 
@@ -94,6 +96,11 @@ class AllTransactionsView(APIView):
     def get(self, request) -> Response:
         
         user = get_user_model().objects.get(user_id=request.user.user_id)
+        sorted_transactions = cache.get(f"transactions_{user.user_id}", None)
+        if sorted_transactions:
+            return Response(sorted_transactions, status=status.HTTP_200_OK)
+        del sorted_transactions
+        
         wallet = UserWallet.objects.get(user=user)
         btc_wallet = wallet.btc_wallet
         sol_wallet = wallet.sol_wallet
@@ -106,5 +113,6 @@ class AllTransactionsView(APIView):
                 trx_wallet.address
             )
         )
+        cache.set(f"transactions_{user.user_id}", sorted_transactions, timeout=45)
         
         return Response(sorted_transactions, status=status.HTTP_200_OK)
