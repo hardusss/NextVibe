@@ -2,7 +2,8 @@ from django.urls import path
 from .view import (
     CreateWallet, GetBalanceWallet,
     BtcTransactionView, SolTransactionView,
-    TrxTrasactionView, AllTransactionsView
+    TrxTrasactionView, EthTrasactionView,
+    AllTransactionsView
     )
 
 
@@ -13,4 +14,5 @@ urlpatterns = [
     path("transaction/btc/", BtcTransactionView.as_view(), name="transaction_btc"),
     path("transaction/sol/", SolTransactionView.as_view(), name="transaction_sol"),
     path("transaction/trx/", TrxTrasactionView.as_view(), name="transaction_trx"),
+    path("transaction/eth/", EthTrasactionView.as_view(), name="transaction_eth"),
 ]

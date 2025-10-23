@@ -61,6 +61,36 @@ export async function sendSolTransaction(
   }
 }
 
+export async function sendEthTransaction(
+  amount: number,
+  address: string
+) {
+  try {
+    const token = await AsyncStorage.getItem("access");
+    const url = `${GetApiUrl()}/wallets/transaction/eth/`;
+    const response = await axios.post(
+      url,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          amount,
+          to_address: address,
+        },
+      }
+    );
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      return "Error sending transaction";
+    }
+  } catch (error: any) {
+    return error.response.data;
+  }
+}
+
 export async function sendTrxTransaction(amount: number, address: string) {
   try {
     const token = await AsyncStorage.getItem("access");

@@ -2,7 +2,7 @@ import httpx
 from typing import List, Dict
 from django.core.cache import cache
 
-async def get_tokens_prices(tokens: List[str] = ["bitcoin", "solana", "tron"], vs_currencies: str = "usd") -> Dict[str, float] | None:
+async def get_tokens_prices(tokens: List[str] = ["solana", "tron", "ethereum"], vs_currencies: str = "usd") -> Dict[str, float] | None:
     
     data = cache.get("prices")
     if data:

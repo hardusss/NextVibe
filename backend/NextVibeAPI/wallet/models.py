@@ -17,6 +17,13 @@ class SolWallet(models.Model):
     def __str__(self):
         return f"Sol wallet {self.address}"
 
+class EthWallet(models.Model):
+    address = models.CharField(max_length=255)
+    private_key = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"Eth wallet {self.address}"
+    
 class TrxWallet(models.Model):
     address = models.CharField(max_length=255)
     public_key = models.CharField(max_length=255)
@@ -31,6 +38,7 @@ class UserWallet(models.Model):
     btc_wallet = models.ForeignKey(BtcWallet, on_delete=models.CASCADE, null=True, blank=True)
     sol_wallet = models.ForeignKey(SolWallet, on_delete=models.CASCADE, null=True, blank=True)
     trx_wallet = models.ForeignKey(TrxWallet, on_delete=models.CASCADE, null=True, blank=True)
+    eth_wallet = models.ForeignKey(EthWallet, on_delete=models.CASCADE, null=True, blank=True)
 
     @property
     def btc_address(self):
@@ -43,6 +51,10 @@ class UserWallet(models.Model):
     @property
     def trx_address(self):
         return self.trx_wallet.address if self.trx_wallet else None
+    
+    @property
+    def eth_address(self):
+        return self.eth_wallet.address if self.eth_wallet else None
     
     def __str__(self):
         return f"Wallet {self.user.username}"

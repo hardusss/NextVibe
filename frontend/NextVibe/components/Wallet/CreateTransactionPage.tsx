@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TextInput, useColorScheme, Animated, PanRespond
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { sendSolTransaction, sendBtcTransaction, sendTrxTransaction } from '@/src/api/transactions';
+import { sendSolTransaction, sendBtcTransaction, sendTrxTransaction, sendEthTransaction } from '@/src/api/transactions';
 import React from 'react';
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,10 +15,11 @@ const formatValue = (value: any, decimals: number) => {
     return num.toFixed(decimals);
 };
 
-const handlers: Record<'SOL' | 'TRX' | 'BTC', (amount: number, address: string) => Promise<any>> = {
+const handlers: Record<'SOL' | 'TRX' | 'BTC' | "ETH", (amount: number, address: string) => Promise<any>> = {
   SOL: sendSolTransaction,
   TRX: sendTrxTransaction,
   BTC: sendBtcTransaction,
+  ETH: sendEthTransaction
 };
 
 

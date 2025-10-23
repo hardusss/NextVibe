@@ -1,6 +1,7 @@
 from testnet.wallets.btc.balance import BtcAddressBalance
 from testnet.wallets.sol.balance import SolAddressBalance
 from testnet.wallets.trx.balance import TrxAddressBalance
+from testnet.wallets.eth.balance import EthAddressBalance
 
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
@@ -55,35 +56,35 @@ class GetBalanceWallet(APIView):
         
         wallet = UserWallet.objects.get(user=user)
 
-        btc_wallet = wallet.btc_wallet
         sol_wallet = wallet.sol_wallet
         trx_wallet = wallet.trx_wallet
+        eth_wallet = wallet.eth_wallet
 
         for_balances = {
-            btc_wallet.wallet_name: BtcAddressBalance,
             sol_wallet.address: SolAddressBalance,
-            trx_wallet.address: TrxAddressBalance
+            trx_wallet.address: TrxAddressBalance,
+            eth_wallet.address: EthAddressBalance
         }
 
         prices, balances = asyncio.run(get_balances_and_prices(for_balances))
-        btc_balance, sol_balance, trx_balance = balances
+        sol_balance, trx_balance, eth_balance = balances
 
-        btc_usdt = Decimal(str(btc_balance)) * Decimal(str(prices["bitcoin"]))
         sol_usdt = Decimal(str(sol_balance)) * Decimal(str(prices["solana"]))
         trx_usdt = Decimal(str(trx_balance)) * Decimal(str(prices["tron"]))
+        eth_usdt = Decimal(str(eth_balance)) * Decimal(str(prices["ethereum"]))
 
-        total = round(btc_usdt + sol_usdt + trx_usdt, 2)
+        total = round(eth_usdt + sol_usdt + trx_usdt, 2)
         data = [
             total,
             {
-                "btc": {
-                    "address": btc_wallet.address,
-                    "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968260.png",
-                    "amount": convert_scientific_to_decimal(btc_balance),
-                    "usdt": btc_usdt,
-                    "name": "Bitcoin",
-                    "symbol": "BTC",
-                    "price": prices["bitcoin"]
+                "eth": {
+                    "address": eth_wallet.address,
+                    "icon": "https://cdn-icons-png.flaticon.com/512/14446/14446159.png",
+                    "amount": convert_scientific_to_decimal(eth_balance),
+                    "usdt": eth_usdt,
+                    "name": "Ethereum",
+                    "symbol": "ETH",
+                    "price": prices["ethereum"]
                 },
                 "sol": {
                     "address": sol_wallet.address,
