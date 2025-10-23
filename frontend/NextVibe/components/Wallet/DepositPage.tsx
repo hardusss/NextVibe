@@ -34,6 +34,8 @@ export default function DepositPage() {
                 setMinimumDep(0.000005);
             } else if (symbol === 'BTC') {
                 setMinimumDep(0.00000546);
+            } else if (symbol === 'ETH') {
+                setMinimumDep(0.000001);
             }
         }, [symbol])
     );
