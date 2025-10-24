@@ -27,7 +27,7 @@ export default function CreateWallet() {
   const checkWallet = async () => {
     try {
       const wallet = await AsyncStorage.getItem('wallet');
-      if (wallet === 'truep') {
+      if (wallet === 'true') {
         router.replace('/wallet');
       } else {
         setCheckingWallet(false);
@@ -41,7 +41,7 @@ export default function CreateWallet() {
   };
 
   const startWalletCreation = async () => {
-    if (await AsyncStorage.getItem('wallet') === 'truep') {
+    if (await AsyncStorage.getItem('wallet') === 'true') {
       router.replace('/wallet');
 
     }
