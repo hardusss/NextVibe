@@ -14,8 +14,8 @@ export default async function generateImage(promt: string) {
                 promt: promt
             } 
         });
-        const image_url = await response.data.image_url
-        return `${image_url}`;
+
+        return response.data;
     } catch (error) {
         
     }
