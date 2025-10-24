@@ -6,7 +6,7 @@ import formatNumberWithCommas from '@/src/utils/formatedNumberUs';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import FastImage from 'react-native-fast-image';
-
+import Web3Toast from '../Shared/Toasts/Web3Toast';
 
 
 type Token = {
@@ -26,6 +26,7 @@ export default function WalletScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [totalBalance, setTotalBalance] = useState<string | null>(null);
+  const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
   
   const fetchBalance = async () => {
     setLoading(true);
@@ -199,6 +200,7 @@ circleText: {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDarkMode ? '#fff' : '#000'} />
       }
     >
+      <Web3Toast message='Coming Soon...' visible={isToastVisible} onHide={() => setIsToastVisible(false)}/>
       <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/>  
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
@@ -236,7 +238,7 @@ circleText: {
           </TouchableOpacity>
         </View>
         <View style={styles.circleWrapper}>
-          <TouchableOpacity style={styles.circleButton}>
+          <TouchableOpacity style={styles.circleButton} onPress={() => setIsToastVisible(true)}>
             <Ionicons name="repeat-outline" size={22} style={styles.iconColor} />
              <Text style={styles.circleText}>Swap</Text>
           </TouchableOpacity>
