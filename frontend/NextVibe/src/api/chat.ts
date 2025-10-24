@@ -5,7 +5,7 @@ import GetApiUrl from '../utils/url_api';
 let ws: WebSocket | null = null;
 
 export const connectWebSocket = (userId: number, onMessage: (data: any) => void) => {
-  const wsUrl = GetApiUrl().replace('http', 'ws').replace(':8000', ':8001').replace('/api/v1', '');
+  const wsUrl = GetApiUrl().replace('http', 'ws').replace(':8000', ':8081').replace('/api/v1', '');
   ws = new WebSocket(`${wsUrl}/ws/${userId}`);
   
   ws.onopen = () => {};
