@@ -8,15 +8,15 @@ import datetime
 from .user_model import User 
 
 chat_participants = Table(
-    'chat_participants',
+    'chat_chat_participants',
     Base.metadata,
-    Column('chat_id', Integer, ForeignKey('chat.id', ondelete='CASCADE'), primary_key=True),
-    Column('user_id', Integer, ForeignKey('user.user_id', ondelete='CASCADE'), primary_key=True),
+    Column('chat_id', Integer, ForeignKey('chat_chat.id', ondelete='CASCADE'), primary_key=True),
+    Column('user_id', Integer, ForeignKey('user_user.user_id', ondelete='CASCADE'), primary_key=True),
     Column('last_read_at', DateTime, nullable=True)
 )
 
 class Chat(Base):
-    __tablename__ = 'chat'
+    __tablename__ = 'chat_chat'
 
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -37,8 +37,8 @@ class Message(Base):
     __tablename__ = 'chat_message'
 
     id = Column(Integer, primary_key=True, index=True)
-    chat_id = Column(Integer, ForeignKey('chat.id', ondelete='CASCADE'))  # Corrected to match 'chat.id'
-    sender_id = Column(Integer, ForeignKey('user.user_id', ondelete='CASCADE'))  # Corrected to match 'user.user_id'
+    chat_id = Column(Integer, ForeignKey('chat_chat.id', ondelete='CASCADE'))  # Corrected to match 'chat.id'
+    sender_id = Column(Integer, ForeignKey('user_user.user_id', ondelete='CASCADE'))  # Corrected to match 'user.user_id'
     text = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     is_read = Column(Boolean, default=False)

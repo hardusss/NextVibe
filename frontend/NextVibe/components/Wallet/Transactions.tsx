@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator, RefreshControl, StatusBar, useColorScheme } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -11,10 +11,16 @@ interface Transaction {
     icon: string;
     timestamp: number;
     to_address: string;
+    from_address: string;
     tx_id: string;
     blockchain: string;
     usdValue: string;
     tx_url: string;
+}
+interface Prices {
+    ETH: number,
+    TRX: number,
+    SOL: number
 }
 
 const groupTransactionsByDate = (transactions: Transaction[]) => {
@@ -77,13 +83,19 @@ export default function TransactionsScreen() {
     const [loading, setLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [prices, setPrices] = useState<Prices>({
+        ETH: 3500,
+        SOL: 170,
+        TRX: 0.3
+    });
 
     const fetchTransactions = async () => {
         try {
             setLoading(true);
             setError(null);
             const data = await getTransactions();
-            setTransactions(data);
+            setTransactions(data.transactions);
+            setPrices(data.prices)
         } catch (err) {
             setError('Error loading transactions');
             console.error('Error fetching transactions:', err);
@@ -122,7 +134,7 @@ export default function TransactionsScreen() {
                             icon: item.icon,
                             timestamp: item.timestamp,
                             to_address: item.to_address,
-                            from_address: '', // This should be passed from API if available
+                            from_address: item.from_address || '', 
                             blockchain: item.blockchain || 'CRYPTO',
                             usdValue: item.usdValue || '',
                             tx_url: item.tx_url || ''
@@ -156,11 +168,12 @@ export default function TransactionsScreen() {
                     <Text style={[styles.transactionAmount, { 
                         color: isIncoming ? '#2ECC71' : isDarkMode ? '#FF6B6B' : '#E74C3C'
                     }]}>
-                        {isIncoming ? '+' : '-'}{item.amount}
+                        {isIncoming ? '+' : '-'}{item.amount} {item.blockchain}
                     </Text>
                     <Text style={styles.transactionUsdAmount}>
-                        ${item.usdValue}
+                       $ {item.amount * prices[item.blockchain as keyof Prices]}
                     </Text>
+
                 </View>
             </TouchableOpacity>
         );

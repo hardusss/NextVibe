@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Animated, Dimensions } from "react-native";
+import { Pressable, StyleSheet, Animated, Dimensions, useColorScheme } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,6 +9,7 @@ const screenWidth = Dimensions.get("window").width;
 const ButtonWallet = () => {
   const router = useRouter();
   const [scale] = useState(new Animated.Value(1));
+  const isDark = useColorScheme() === "dark" 
 
   const handlePressIn = () => {
     Animated.spring(scale, {
@@ -38,12 +39,14 @@ const ButtonWallet = () => {
         <Pressable
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          style={styles.innerButton}
+          style={[styles.innerButton, {
+            backgroundColor: isDark ?  "rgb(20, 0, 29)" : "#fafafa"
+          }]}
         >
           <Svg height="36" width="100%" style={{ backgroundColor: "transparent" }}>
             <Defs>
               <SvgGradient id="grad" x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0" stopColor="#1DEFEF" />
+                <Stop offset="0" stopColor={isDark ? "#1DEFEF" : "#199f9fff"} />
                 <Stop offset="1" stopColor="#DE0FE9" />
               </SvgGradient>
             </Defs>
@@ -92,8 +95,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,   
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgb(20, 0, 29)",
-    
   },
 });
 

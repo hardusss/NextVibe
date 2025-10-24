@@ -34,8 +34,8 @@ const darkTheme = {
 };
 
 const lightTheme = {
-    background: "#f5f5f5",
-    cardBackground: "rgba(255, 255, 255, 0.9)",
+    background: "white",
+    cardBackground: "rgba(255, 255, 255, 1)",
     textPrimary: "#333",
     textSecondary: "#666",
     skeletonBackground: "#e0e0e0",

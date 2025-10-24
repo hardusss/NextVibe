@@ -3,6 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..src.generate_image import generate
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 
 class GenerateImage(APIView):
     """
@@ -46,9 +50,17 @@ class GenerateImage(APIView):
                 "error": "promt is empty"
             }
         """
-        promt: str = request.query_params.get("promt")
-        if promt is not None and promt.strip() != "":
-            image_url = generate(promt=promt)
-            return Response({"image_url": image_url}, status=status.HTTP_201_CREATED)
+        user = User.objects.get(user_id=request.user.user_id)
+        if user.count_generations_ai >= 1:
+            promt: str = request.query_params.get("promt")
+            if promt is not None and promt.strip() != "":
+                try:
+                    image_url = generate(promt=promt)
+                except:
+                    return Response({"error": "Failed to generate photo. Please try again or check your prompt."}, status=200)
+                user.count_generations_ai -= 1
+                return Response({"image_url": image_url}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"error": "Unfortunately, you have run out of photo generation attempts."}, status=200)
         
-        return Response({"error": "promt is empty"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "promt is empty"}, status=status.HTTP_200_OK)

@@ -6,7 +6,7 @@ from testnet.wallets.eth.transaction import EthTransaction
 from ..models import UserWallet
 from ..src.sorted_transactions import get_all_transactions_sorted
 from ..src.wallet_encryption import DecryptAEAD
-
+from ..src.get_tokens_price import get_tokens_prices
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.views import APIView
@@ -144,7 +144,15 @@ class AllTransactionsView(APIView):
                 trx_wallet.address
             )
         )
-        print("Trans", sorted_transactions)
-        cache.set(f"transactions_{user.user_id}", sorted_transactions, timeout=45)
+        prices = asyncio.run(get_tokens_prices())
         
-        return Response(sorted_transactions, status=status.HTTP_200_OK)
+        data = {
+            "transactions": sorted_transactions,
+            "prices": {
+                "ETH": prices["ethereum"],
+                "TRX": prices["tron"],
+                "SOL": prices["solana"]
+            }
+        }
+        cache.set(f"transactions_{user.user_id}", data, timeout=45)
+        return Response(data, status=status.HTTP_200_OK)

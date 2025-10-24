@@ -63,7 +63,6 @@ export default function ChatScreen() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
   const [selectedMedia, setSelectedMedia] = useState<any[]>([]);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [isMediaPickerVisible, setIsMediaPickerVisible] = useState(false);
@@ -93,7 +92,7 @@ export default function ChatScreen() {
         setMessages(newMessages);
       }
       
-      setHasMore(newMessages.length === 6);
+      setHasMore(newMessages.length > 0);
       if (newMessages.length > 0) {
         setLastMessageId(newMessages[newMessages.length - 1].message_id);
       }
@@ -376,9 +375,10 @@ export default function ChatScreen() {
               )}
               keyExtractor={item => item.message_id.toString()}
               onEndReached={() => fetchMessages(true)}
-              onEndReachedThreshold={0.7}
+              onEndReachedThreshold={0.6}
               style={styles.messagesList}
               contentContainerStyle={{ flexGrow: 1 }}
+              showsVerticalScrollIndicator={false}
             />
             {readStatus.timestamp && readStatus.readerId !== userIdState && (
               <View style={styles.readStatusContainer}>
@@ -469,7 +469,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   messagesList: {
     flex: 1,
-    padding: 10
+    paddingVertical: 0,
+    padding: 10,
   },
   inputContainer: {
     padding: 10,

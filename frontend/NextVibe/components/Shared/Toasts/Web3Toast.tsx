@@ -91,7 +91,7 @@ export default function Web3Toast({ message, visible, onHide }: { message: strin
 const styles = StyleSheet.create({
   toastContainer: {
     position: "absolute",
-    top: 60,
+    top: 10,
     left: 20,
     right: 20,
     zIndex: 999999999,

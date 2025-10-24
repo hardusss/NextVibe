@@ -151,6 +151,7 @@ export default function TransactionDetail() {
         label: {
             color: isDark ? '#A09CB8' : '#666',
             fontSize: 14,
+            paddingRight: 15
         },
         valueContainer: {
             flexDirection: 'row',
@@ -231,7 +232,7 @@ export default function TransactionDetail() {
                         <Text style={styles.value}>{formatDate(timestamp)}</Text>
                     </View>
 
-                    {from_address && !isIncoming && (
+                    {from_address && isIncoming && (
                         <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(from_address as string, 'From Address')}>
                             <Text style={styles.label}>From</Text>
                             <View style={styles.valueContainer}>

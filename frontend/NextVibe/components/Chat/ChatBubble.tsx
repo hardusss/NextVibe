@@ -25,7 +25,7 @@ interface Props {
 
 function formatMessageTime(isoDate: string): string {
   const date = new Date(isoDate);
-  const localDate = new Date(date.getTime() + (3 * 60 * 60 * 1000)); 
+  const localDate = new Date(date.getTime()); 
   const hours = localDate.getHours().toString().padStart(2, '0');
   const minutes = localDate.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;

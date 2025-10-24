@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Animated, Dimensions } from "react-native";
+import { Pressable, StyleSheet, Animated, Dimensions, useColorScheme } from "react-native";
 import { useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from "react-native-svg";
@@ -10,6 +10,8 @@ const screenWidth = Dimensions.get("window").width;
 
 const ButtonAI = ({onClick, isGenerating}: {onClick: () => void, isGenerating: boolean}) => {
   const [scale] = useState(new Animated.Value(1));
+
+  const isDark = useColorScheme() === "dark";
 
   const handlePressIn = () => {
     if (isGenerating) return;
@@ -41,7 +43,9 @@ const ButtonAI = ({onClick, isGenerating}: {onClick: () => void, isGenerating: b
         <Pressable
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          style={styles.innerButton}
+          style={[styles.innerButton, {
+            backgroundColor: isDark ? "rgb(20, 0, 29)" : "#fafafa"
+          }]}
         >
           <Svg height="36" width="100%" style={{ backgroundColor: "transparent" }}>
             <Defs>
@@ -79,12 +83,13 @@ const styles = StyleSheet.create({
     width: (screenWidth * 0.92) ,
     alignItems: "center",
     position: "relative",
+    marginBottom: 65
     
   },
   gradientBorder: {        
     borderRadius: 10,  
     overflow: "hidden",
-    height: 60,
+    height: 53,
     position: "absolute",
     left: 0,
     width: (screenWidth * 0.92) ,
@@ -94,7 +99,7 @@ const styles = StyleSheet.create({
     width: (screenWidth * 0.92) - 4,
     left: 2,
     top: 2.2,
-    height: 53,
+    height: 48,
     position: "absolute",
     borderRadius: 8,   
     alignItems: "center",

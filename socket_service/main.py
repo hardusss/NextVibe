@@ -1,17 +1,17 @@
-from src import get_chat_messages, save_message
 from fastapi import FastAPI, WebSocket
 from sqlalchemy.orm import Session
-from fastapi import Depends
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 import json, os, base64
 from db import SessionLocal
 from datetime import datetime
 from src.models import Message, MediaAttachment
+from src.messages import router as messages_router
 
 app = FastAPI()
 manager = ConnectionManager()  
 
+app.include_router(messages_router, prefix="/api/v1", tags=["Messages"])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,11 +26,7 @@ def get_db():
         yield db
     finally:
         db.close()
-        
-@app.get("/messages/{chat_id}")
-async def read_chat_messages(chat_id: int, db: Session = Depends(get_db)):
-    messages = get_chat_messages(chat_id, db)
-    return messages
+
 
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: int):

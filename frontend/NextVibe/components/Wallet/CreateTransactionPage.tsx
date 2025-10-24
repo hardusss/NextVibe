@@ -490,7 +490,7 @@ export default function CreateTransactionPage() {
                     hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
                     <LinearGradient
-                        colors={isDark ? ['#A78BFA', '#5856D6'] : ['#8E8E93', '#BDBDC2']}
+                        colors={['#A78BFA', '#5856D6']}
                         style={styles.swipeButtonGradient}
                     />
                     <MaterialCommunityIcons name="chevron-double-right" size={30} color="#fff" />
