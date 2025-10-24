@@ -31,5 +31,4 @@ async def get_all_transactions_sorted(user_eth_address, user_sol_address, user_t
     sorted_transactions = sorted(
         all_transactions, key=lambda tx: parse_timestamp(tx.get("timestamp")), reverse=True
     )
-
     return sorted_transactions
