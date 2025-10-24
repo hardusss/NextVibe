@@ -4,6 +4,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import Post
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class DeletePostView(APIView):
     permission_classes = [IsAuthenticated]
@@ -21,6 +24,12 @@ class DeletePostView(APIView):
         
         if post and post.owner.user_id == request.user.user_id:
             try:
+                user = User.objects.get(user_id=request.user.user_id)
+                if user.post_count > 0:
+                    user.post_count -= 1
+                else:
+                    user.post_count = 0
+                user.save()
                 post.delete()
                 return Response({"data": "Post deleted"}, status=status.HTTP_200_OK)
             except Exception as ex:
