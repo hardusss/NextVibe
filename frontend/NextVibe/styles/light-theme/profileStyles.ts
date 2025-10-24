@@ -21,14 +21,14 @@ const profileLightStyles = StyleSheet.create({
     },
     username: {
         color: colors.textPrimary,
-        fontSize: 36
+        fontSize: 22
     },
     avatar: {
         width: 110,
         height: 110,
         borderRadius: 60,
         objectFit: "cover",
-        marginLeft: 5
+        marginLeft: 10
     },
     text: {
         color: colors.textPrimary,
