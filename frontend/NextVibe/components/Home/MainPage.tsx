@@ -579,6 +579,7 @@ export default function MainPage() {
     const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
     const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
     const [userID, setUserID] = useState<number>(0);
+    const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     
     const getUserID = async () => {
         const id = await AsyncStorage.getItem("id")
@@ -669,6 +670,7 @@ export default function MainPage() {
 
     const handlePostDeleted = (postId: number) => {
         setToastMessage("Post successfully deleted")
+        setToastSuccess(true);
         setIsToastVisible(true);
         setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
         setDropdownVisible(prev => ({ ...prev, [postId]: false }));
@@ -775,19 +777,22 @@ export default function MainPage() {
                             }))}
                             onPostDeleted={() => handlePostDeleted(item.id)}
                             onPostDeletedFail={() => {
-                            setToastMessage("Error deleting post")
-                            setIsToastVisible(true);
+                                setToastMessage("Error deleting post");
+                                setToastSuccess(false);
+                                setIsToastVisible(true);
                             }}
                             onReportResult={(reported?: boolean, message?: string) => {
                             // Wait a short moment for the modal to close before showing toast
                             setDropdownVisible(prev => ({ ...prev, [item.id]: false }));
                             setTimeout(() => {
                                 if (message) {
-                                setToastMessage(message);
-                                setIsToastVisible(true);
+                                    setToastMessage(message);
+                                    setToastSuccess(false);
+                                    setIsToastVisible(true);
                                 } else if (reported) {
-                                setToastMessage('Report submitted');
-                                setIsToastVisible(true);
+                                    setToastSuccess(true);
+                                    setToastMessage('Report submitted');
+                                    setIsToastVisible(true);
                                 }
                             }, 260);
                             }}
@@ -889,6 +894,7 @@ export default function MainPage() {
                     message={toastMessage}
                     visible={isToastVisible}
                     onHide={() => setIsToastVisible(false)}
+                    isSuccess={toastSuccess}
                   />
             <Header isVisible={isVisibleButtonMessage}/>
             {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)} isCommentsEnabled={popupCommentsEnabled}/>}
