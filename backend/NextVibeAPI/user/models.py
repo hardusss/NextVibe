@@ -42,6 +42,7 @@ class User(AbstractBaseUser):
     secret_2fa = models.CharField(max_length=100, null=True, blank=True, default=None)
     is2FA = models.BooleanField(default=False)
     official = models.BooleanField(default=False, null=True)
+    count_generations_ai = models.IntegerField(default=1, null=True, blank=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
