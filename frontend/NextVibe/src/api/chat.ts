@@ -108,10 +108,11 @@ export const getOnlineUsers = async () => {
 
 export const getMessages = async (chatId: number, lastMessageId?: number) => {
   const token = await AsyncStorage.getItem('access');
+  const user_id = await AsyncStorage.getItem("id")
   try {
     const url = lastMessageId 
-      ? `${GetApiUrl()}/chat/messages/${chatId}/?last_message_id=${lastMessageId}`
-      : `${GetApiUrl()}/chat/messages/${chatId}/`;
+      ? `${GetApiUrl().replace(":8000", ":8081")}/messages/${chatId}?last_message_id=${lastMessageId}&user_id=${user_id}`
+      : `${GetApiUrl().replace(":8000", ":8081")}/messages/${chatId}?user_id=${user_id}`;
       
     const response = await axios.get(url, {
       headers: {
