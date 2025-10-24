@@ -11,29 +11,32 @@ import { useCallback } from 'react';
 import FastImage from 'react-native-fast-image';
 import ButtonAI from './GenerateAIButton';
 
+const lightColors = {
+    background: '#FAFAFA',
+    cardBackground: '#FFFFFF',
+    inputBackground: '#F5F5F5',
+    primary: '#6366F1',
+    secondary: '#818CF8',
+    textPrimary: '#1F2937',
+    textSecondary: '#6B7280',
+    border: '#E5E7EB',
+    shadow: '#000000',
+    accent: '#8B5CF6',
+    success: '#10B981',
+};
 
 const darkColors = {
     background: '#0A0410',
-    cardBackground: 'black', 
-    inputBackground: 'rgba(235, 238, 242, 0.17)',
-    primary: '#58a6ff',
-    secondary: '#1f6feb',
-    textPrimary: '#c9d1d9',
-    textSecondary: '#8b949e',
-    border: 'white',
-    shadow: '#0917b3',
-};
-
-const lightColors = {
-    background: '#ffffff',
-    cardBackground: '#f5f5f5',
-    inputBackground: '#ffffff',
-    primary: '#007bff',
-    secondary: '#0056b3',
-    textPrimary: '#000000',
-    textSecondary: '#666666',
-    border: '#cccccc',
+    cardBackground: '#1a0f2e',
+    inputBackground: '#2a1f3d',
+    primary: '#A78BFA',
+    secondary: '#8B5CF6',
+    textPrimary: '#F9FAFB',
+    textSecondary: '#C4B5FD',
+    border: '#4C3B6D',
     shadow: '#000000',
+    accent: '#A78BFA',
+    success: '#34D399',
 };
 
 const {width, height} = Dimensions.get("window")
@@ -75,16 +78,12 @@ export default function PostCreate() {
         if (isVideo(item)) {
             return (
                 <View style={themedStyles.mediaContainer}>
-                    <View style={{
-                        backgroundColor: "black",
-                        position: "absolute",
-                        right: 0,
-                        top: 0,
-                        width: 20,
-                        height: 20
-                    }}>
-                        <MaterialIcons name="close" color="white"/>
-                    </View>
+                    <TouchableOpacity 
+                        onPress={() => handleDeleteImage(item)} 
+                        style={themedStyles.deleteButton}
+                    >
+                        <MaterialIcons name="close" color="white" size={20}/>
+                    </TouchableOpacity>
                     <Video
                         source={{ uri: item.startsWith('file://') ||  item.startsWith('https://')? item : `file://${item}` }}
                         style={themedStyles.media}
@@ -98,19 +97,11 @@ export default function PostCreate() {
         } else {
             return (
                 <View style={themedStyles.mediaContainer}>
-                    <TouchableOpacity onPress={() => handleDeleteImage(item)} style={{
-                        backgroundColor: "rgba(0, 0, 0, 0.6)",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        borderRadius: 50,
-                        position: "absolute",
-                        right: 10,
-                        top: 10,
-                        width: 40,
-                        height: 40,
-                        zIndex: 9990
-                    }}>
-                        <MaterialIcons name="close" color="white" size={30}/>
+                    <TouchableOpacity 
+                        onPress={() => handleDeleteImage(item)} 
+                        style={themedStyles.deleteButton}
+                    >
+                        <MaterialIcons name="close" color="white" size={20}/>
                     </TouchableOpacity>
                     <FastImage
                         source={{ 
@@ -154,202 +145,365 @@ export default function PostCreate() {
         setIsGenerating(false);
     };
 
-
-
     const themedStyles = StyleSheet.create({
         container: {
             flex: 1,
-            padding: 16,
             backgroundColor: colors.background,
         },
         header: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 10,
-            marginBottom: 20,
-        },
-        headerText: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: colors.textPrimary,
-        },
-        flatListContent: {
-            justifyContent: 'center', 
-            alignItems: 'center',
-        },
-        mediaContainer: {
-            width: width * 0.75,
-            height: height * 0.4,
-            position: "relative",
-            marginRight: 10,
-            borderRadius: 10,
-            overflow: 'hidden',
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+            backgroundColor: colors.background,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
             shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 4,
+            shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.05,
+            shadowRadius: 3,
+            elevation: 3,
+        },
+        backButton: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : colors.inputBackground,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12,
+        },
+        headerText: {
+            fontSize: 22,
+            fontWeight: '700',
+            color: colors.textPrimary,
+            letterSpacing: 0.3,
+        },
+        contentContainer: {
+            marginTop: -15,
+            padding: 16,
+        },
+        flatListContent: {
+            paddingVertical: 8,
+            width: mediaUrls.length === 1 ? "100%" : "auto"
+        },
+        mediaContainer: {
+            width: width * 0.65,
+            height: height * 0.3,
+            position: "relative",
+            marginRight: 12,
+            borderRadius: 16,
+            overflow: 'hidden',
+            backgroundColor: colors.inputBackground,
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.1,
+            shadowRadius: 8,
+            elevation: 5,
         },
         media: {
             width: '100%',
             height: '100%',
         },
+        deleteButton: {
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9990,
+        },
+        inputCard: {
+            backgroundColor: colors.cardBackground,
+            borderRadius: 16,
+            padding: 12,
+            marginBottom: 12,
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.05,
+            shadowRadius: 6,
+            elevation: 2,
+        },
         textArea: {
-            height: 100,
+            minHeight: 80,
             borderColor: colors.border,
             borderWidth: 1,
-            borderRadius: 10,
-            padding: 10,
-            marginVertical: 10,
+            borderRadius: 12,
+            padding: 14,
             textAlignVertical: 'top',
             fontSize: 16,
             backgroundColor: colors.inputBackground,
             color: colors.textPrimary,
+            lineHeight: 18,
+            resizeMode: "none"
         },
         input: {
-            height: 50,
+            height: 22,
             borderColor: colors.border,
             borderWidth: 1,
-            borderRadius: 10,
-            padding: 10,
-            marginVertical: 10,
+            borderRadius: 12,
+            paddingHorizontal: 14,
             fontSize: 16,
             backgroundColor: colors.inputBackground,
+            color: colors.textPrimary,
+        },
+        inputWithIcon: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 12,
+            backgroundColor: colors.inputBackground,
+            paddingHorizontal: 14,
+            height: 42,
+        },
+        inputIcon: {
+            marginRight: 10,
+        },
+        inputField: {
+            flex: 1,
+            fontSize: 16,
             color: colors.textPrimary,
         },
         switchContainer: {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginVertical: 10,
+            backgroundColor: colors.cardBackground,
+            borderRadius: 12,
+            padding: 12,
+            marginBottom: 12,
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.05,
+            shadowRadius: 6,
+            elevation: 2,
         },
         switchLabel: {
             fontSize: 16,
+            fontWeight: '600',
             color: colors.textPrimary,
         },
+        
         footer: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginTop: 80,
-            paddingBottom: 20,
+            padding: 16,
+            paddingBottom: 32,
+            backgroundColor: colors.background,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
         },
         button: {
-            flex: 1,
-            padding: 15,
-            borderRadius: 10,
+            padding: 16,
+            borderRadius: 14,
             alignItems: 'center',
-            marginHorizontal: 5,
             shadowColor: colors.shadow,
-            shadowOffset: { width: 0, height: 2 },
+            shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.2,
-            shadowRadius: 4,
+            shadowRadius: 8,
+            elevation: 4,
         },
         publishButton: {
-            backgroundColor: darkColors.background,
-            borderWidth: 1,
-            borderColor: "white"
+            backgroundColor: colors.primary,
         },
         buttonText: {
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: colors.textPrimary,
+            fontSize: 17,
+            fontWeight: '700',
+            color: '#FFFFFF',
+            letterSpacing: 0.5,
         },
         modalContainer: {
             flex: 1,
             justifyContent: 'flex-end',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
         },
         modalContent: {
             width: '100%',
-            padding: 20,
-            backgroundColor: darkColors.background,
+            padding: 24,
+            backgroundColor: colors.cardBackground,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 12,
+            elevation: 10,
         },
         modalHeader: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: 20,
-            backgroundColor: darkColors.background,
+        },
+        modalTitle: {
+            fontSize: 20,
+            fontWeight: '700',
+            color: colors.textPrimary,
+        },
+        modalCloseButton: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : colors.inputBackground,
+            justifyContent: 'center',
+            alignItems: 'center',
         },
         modalInputContainer: {
-            backgroundColor: darkColors.background,
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 10,
+            gap: 12,
         },
         modalInput: {
             flex: 1,
-            height: 50,
+            height: 52,
             borderColor: colors.border,
             borderWidth: 1,
-            borderRadius: 10,
-            padding: 10,
+            borderRadius: 12,
+            paddingHorizontal: 14,
             fontSize: 16,
             backgroundColor: colors.inputBackground,
             color: colors.textPrimary,
         },
         modalButton: {
-            padding: 10,
-            borderRadius: 10,
+            width: 52,
+            height: 52,
+            borderRadius: 12,
             backgroundColor: colors.primary,
             justifyContent: 'center',
             alignItems: 'center',
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 4,
+        },
+        sectionTitle: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: colors.textSecondary,
+            marginLeft: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
         },
     });
 
     return (
-        <ScrollView style={themedStyles.container}>
-            <StatusBar backgroundColor={colors.background}></StatusBar>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <StatusBar 
+                backgroundColor={colors.background}
+                barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+            />
+            
             <View style={themedStyles.header}>
-                <TouchableOpacity onPress={() => {
-                    setMediaUrls([]);
-                    setAiPrompt("");
-                    setLocation("");
-                    setPostText("");
-                    router.back()
-                    }}>
+                <TouchableOpacity 
+                    style={themedStyles.backButton}
+                    onPress={() => {
+                        setMediaUrls([]);
+                        setAiPrompt("");
+                        setLocation("");
+                        setPostText("");
+                        router.back()
+                    }}
+                >
                     <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={themedStyles.headerText}>New Post</Text>
             </View>
 
-            <View style={{ alignItems: "center" }}>
-                <FlatList
-                    data={mediaUrls}
-                    renderItem={renderMedia}
-                    keyExtractor={(item, index) => index.toString()}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={themedStyles.flatListContent}
-                />
-            </View>    
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+                <View style={themedStyles.contentContainer}>
+                    {mediaUrls.length > 0 && (
+                        <View style={{ marginBottom: 5 }}>
+                            <Text style={themedStyles.sectionTitle}>Media</Text>
+                            <FlatList
+                                data={mediaUrls}
+                                renderItem={renderMedia}
+                                keyExtractor={(item, index) => index.toString()}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={[
+                                    themedStyles.flatListContent,
+                                    mediaUrls.length === 1 && { justifyContent: 'center' },
+                                    
+                                ]}
+                            />
+                        </View>
+                    )}
 
-            <TextInput
-                style={themedStyles.textArea}
-                multiline
-                placeholder="Enter about post..."
-                placeholderTextColor={colors.textSecondary}
-                value={postText}
-                onChangeText={setPostText}
-            />
+                    <View>
+                        <Text style={themedStyles.sectionTitle}>Description</Text>
+                        <View style={themedStyles.inputCard}>
+                            <TextInput
+                                style={[themedStyles.textArea, { maxHeight: 80 }]}
+                                multiline
+                                scrollEnabled={true}
+                                textAlignVertical="top"
+                                placeholder="What's on your mind?"
+                                placeholderTextColor={colors.textSecondary}
+                                value={postText}
+                                onChangeText={setPostText}
+                            />
 
-            <TextInput
-                style={themedStyles.input}
-                placeholder="Add location..."
-                placeholderTextColor={colors.textSecondary}
-                value={location}
-                onChangeText={setLocation}
-            />
+                        </View>
+                    </View>
 
-            <View style={themedStyles.switchContainer}>
-                <Text style={themedStyles.switchLabel}>Enable Comments</Text>
-                <Switch
-                    value={enableComments}
-                    onValueChange={setEnableComments}
-                    trackColor={{ false: '#767577', true: "#05f0d8" }}
-                    thumbColor={enableComments ? '#05f0d8' : '#f4f3f4'}
-                />
-            </View>
-            <ButtonAI onClick={() =>{ setIsModalVisible(true)} } isGenerating={isGenerating}/>
+                    <View>
+                        <View style={themedStyles.inputCard}>
+                            <View style={themedStyles.inputWithIcon}>
+                                <Ionicons 
+                                    name="location-outline" 
+                                    size={20} 
+                                    color={colors.textSecondary} 
+                                    style={themedStyles.inputIcon}
+                                />
+                                <TextInput
+                                    style={themedStyles.inputField}
+                                    placeholder="Add location..."
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={location}
+                                    onChangeText={setLocation}
+                                />
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={themedStyles.switchContainer}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons 
+                                name="chatbubble-outline" 
+                                size={20} 
+                                color={colors.textPrimary} 
+                                style={{ marginRight: 10 }}
+                            />
+                            <Text style={themedStyles.switchLabel}>Enable Comments</Text>
+                        </View>
+                        <Switch
+                            value={enableComments}
+                            onValueChange={setEnableComments}
+                            trackColor={{ 
+                                false: colorScheme === 'dark' ? '#4B5563' : '#D1D5DB', 
+                                true: colors.secondary 
+                            }}
+                            thumbColor={enableComments ? colors.primary : '#F3F4F6'}
+                            ios_backgroundColor={colorScheme === 'dark' ? '#4B5563' : '#D1D5DB'}
+                        />
+                    </View>
+
+                    <ButtonAI onClick={() => setIsModalVisible(true)} isGenerating={isGenerating}/>
+                </View>
+
+                <View style={themedStyles.footer}>
+                    <TouchableOpacity 
+                        style={[themedStyles.button, themedStyles.publishButton]} 
+                        onPress={handlePublish}
+                    >
+                        <Text style={themedStyles.buttonText}>Publish Post</Text>
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
 
             <Modal
                 visible={isModalVisible}
@@ -361,17 +515,25 @@ export default function PostCreate() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={themedStyles.modalContainer}
                 >
+                    <TouchableOpacity 
+                        style={{ flex: 1 }} 
+                        activeOpacity={1} 
+                        onPress={() => setIsModalVisible(false)}
+                    />
                     <View style={themedStyles.modalContent}>
                         <View style={themedStyles.modalHeader}>
-                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.textPrimary }}>Generate with AI</Text>
-                            <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+                            <Text style={themedStyles.modalTitle}>Generate with AI</Text>
+                            <TouchableOpacity 
+                                style={themedStyles.modalCloseButton}
+                                onPress={() => setIsModalVisible(false)}
+                            >
                                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
                             </TouchableOpacity>
                         </View>
                         <View style={themedStyles.modalInputContainer}>
                             <TextInput
                                 style={themedStyles.modalInput}
-                                placeholder="Enter your prompt..."
+                                placeholder="Describe your image..."
                                 placeholderTextColor={colors.textSecondary}
                                 value={aiPrompt}
                                 onChangeText={setAiPrompt}
@@ -380,22 +542,42 @@ export default function PostCreate() {
                                 style={themedStyles.modalButton} 
                                 onPress={handleGenerateWithAI}
                             >
-                                <Ionicons name="arrow-forward" size={24} color={colors.textPrimary} />
+                                <Ionicons name="sparkles" size={24} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "flex-start",
+                                gap: 8,
+                                marginTop: 8,
+                                backgroundColor: "rgba(255, 165, 0, 0.1)",
+                                borderRadius: 12,
+                                padding: 10,
+                                borderLeftWidth: 3,
+                                borderLeftColor: "orange",
+                            }}
+                            >
+                            <Ionicons name="alert-circle-outline" size={22} color="orange" style={{ marginTop: 2 }} />
+                            <Text
+                                style={{
+                                color: useColorScheme() === "dark" ? "#fafafa" : "black",
+                                fontSize: 13.5,
+                                lineHeight: 18,
+                                flex: 1,
+                                fontWeight: "400",
+                                }}
+                            >
+                                <Text style={{ fontWeight: "700" }}>Beta:</Text> Only 1 generation is available for now. New
+                                generations will be added later — follow our social media.{"\n"}
+                                <Text style={{ fontWeight: "700" }}>Prompt must be in English</Text>, otherwise the generation
+                                will fail.
+                            </Text>
+                        </View>
+
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
-
-            <View style={themedStyles.footer}>
-                <TouchableOpacity style={[themedStyles.button, { backgroundColor: "rgb(48, 28, 60)" }]} onPress={handleSaveDraft}>
-                    <Text style={[themedStyles.buttonText, {color: "white"}]}>Save as Draft</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[themedStyles.button, themedStyles.publishButton]} onPress={handlePublish}>
-                    <Text style={[themedStyles.buttonText, {color: "white"}]}>Publish</Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+        </View>
     );
 }

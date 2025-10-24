@@ -21,10 +21,10 @@ const profileDarkStyles = StyleSheet.create({
     },
     username: {
         color: colors.textPrimary,
-        fontSize: 28
+        fontSize: 22
         },
     avatar: {
-        marginLeft: 5,
+        marginLeft: 10,
         width: 100,
         height: 100,
         borderRadius: 60,
@@ -37,7 +37,8 @@ const profileDarkStyles = StyleSheet.create({
     about: {
         color: colors.textPrimary,
         fontWeight: 600,
-        marginTop: 20
+        marginTop: 20,
+        marginLeft: 5,
     }
 })
 

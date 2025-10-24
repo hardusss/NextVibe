@@ -3,7 +3,7 @@ from .base import Base
 import datetime
 
 class User(Base):
-    __tablename__ = 'user'
+    __tablename__ = 'user_user'
 
     user_id = Column(Integer, primary_key=True, index=True)
     avatar = Column(String, default='images/default.png') 
