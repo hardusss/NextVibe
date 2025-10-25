@@ -502,7 +502,7 @@ const UserPosts = () => {
   const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
   const [userID, setUserID] = useState<number>(0);
   const [popupCommentsEnabled, setPopupCommentsEnabled] = useState<boolean>(true);
-
+  const [toastSuccess, setToastSuccess] = useState<boolean>(false);
   const getUserID = async () => {
     const id = await AsyncStorage.getItem("id")
     setUserID(id ? +id : 0)
@@ -520,6 +520,7 @@ const UserPosts = () => {
 
   const handlePostDeleted = (postId: number) => {
     setToastMessage("Post successfully deleted")
+    setToastSuccess(true)
     setIsToastVisible(true);
     setPosts(prevPosts => prevPosts.filter(post => post.post_id !== postId));
     setDropdownVisible(prev => ({ ...prev, [postId]: false }));
@@ -702,6 +703,7 @@ const UserPosts = () => {
                 onPostDeleted={() => handlePostDeleted(item.post_id)}
                 onPostDeletedFail={() => {
                   setToastMessage("Error deleting post")
+                  setToastSuccess(false);
                   setIsToastVisible(true);
                 }}
                 onReportResult={(reported?: boolean, message?: string) => {
@@ -710,8 +712,10 @@ const UserPosts = () => {
                   setTimeout(() => {
                     if (message) {
                       setToastMessage(message);
+                      setToastSuccess(false)
                       setIsToastVisible(true);
                     } else if (reported) {
+                      setToastSuccess(true);
                       setToastMessage('Report submitted');
                       setIsToastVisible(true);
                     }
@@ -814,6 +818,7 @@ const UserPosts = () => {
         message={toastMessage}
         visible={isToastVisible}
         onHide={() => setIsToastVisible(false)}
+        isSuccess={toastSuccess}
       />
       <View style={styles.headerContainer}>
         <TouchableOpacity 

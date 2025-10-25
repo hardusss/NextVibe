@@ -10,6 +10,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import FastImage from 'react-native-fast-image';
 import ButtonAI from './GenerateAIButton';
+import Web3Toast from '../Shared/Toasts/Web3Toast';
 
 const lightColors = {
     background: '#FAFAFA',
@@ -52,6 +53,9 @@ export default function PostCreate() {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [aiPrompt, setAiPrompt] = useState('');
     const [isAiGenerated, setIsAiGenerated] = useState(false);
+    const [isVisibleToast, setIsVisibleToast] = useState<boolean>(false);
+    const [toastMessage, setToastMessage] = useState<string>("");
+    const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? darkColors : lightColors;
 
@@ -139,8 +143,16 @@ export default function PostCreate() {
         setIsGenerating(true);
         setIsModalVisible(false); 
         const generatedImage = await generateImage(aiPrompt);
-        setMediaUrls(prev => [generatedImage as string, ...prev]);
-        setPostText(aiPrompt);
+        if (generatedImage.image_url) {
+            setToastMessage("Photo generated successfully🥳")
+            setToastSuccess(true)
+            setIsVisibleToast(true);
+            setMediaUrls(prev => [generatedImage.image_url as string, ...prev]);
+        } else {
+            setToastSuccess(false)
+            setToastMessage(generatedImage.error);
+            setIsVisibleToast(true);
+        }
         setIsAiGenerated(true);
         setIsGenerating(false);
     };
@@ -371,10 +383,10 @@ export default function PostCreate() {
             width: 52,
             height: 52,
             borderRadius: 12,
-            backgroundColor: colors.primary,
+            backgroundColor: aiPrompt.length === 0 ? "#2e2e2eff" : colors.primary,
             justifyContent: 'center',
             alignItems: 'center',
-            shadowColor: colors.primary,
+            shadowColor: aiPrompt.length === 0 ? "#2e2e2eff" : colors.primary,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,
@@ -392,6 +404,7 @@ export default function PostCreate() {
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <Web3Toast message={toastMessage} visible={isVisibleToast} onHide={() => {setIsVisibleToast(false)}} isSuccess={toastSuccess}/>
             <StatusBar 
                 backgroundColor={colors.background}
                 barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
@@ -541,6 +554,7 @@ export default function PostCreate() {
                             <TouchableOpacity 
                                 style={themedStyles.modalButton} 
                                 onPress={handleGenerateWithAI}
+                                disabled={aiPrompt.length ===  0}
                             >
                                 <Ionicons name="sparkles" size={24} color="#FFFFFF" />
                             </TouchableOpacity>
@@ -570,7 +584,7 @@ export default function PostCreate() {
                             >
                                 <Text style={{ fontWeight: "700" }}>Beta:</Text> Only 1 generation is available for now. New
                                 generations will be added later — follow our social media.{"\n"}
-                                <Text style={{ fontWeight: "700" }}>Prompt must be in English</Text>, otherwise the generation
+                                 <Text style={{ fontWeight: "700" }}>Prompt must be in English</Text>, otherwise the generation
                                 will fail.
                             </Text>
                         </View>

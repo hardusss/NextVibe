@@ -59,8 +59,9 @@ class GenerateImage(APIView):
                 except:
                     return Response({"error": "Failed to generate photo. Please try again or check your prompt."}, status=200)
                 user.count_generations_ai -= 1
+                user.save()
                 return Response({"image_url": image_url}, status=status.HTTP_201_CREATED)
         else:
             return Response({"error": "Unfortunately, you have run out of photo generation attempts."}, status=200)
         
-        return Response({"error": "promt is empty"}, status=status.HTTP_200_OK)
+        return Response({"error": "Promt is empty"}, status=status.HTTP_200_OK)

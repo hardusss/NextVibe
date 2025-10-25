@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 
-export default function Web3Toast({ message, visible, onHide }: { message: string, visible: boolean, onHide: () => void }) {
+export default function Web3Toast({ message, visible, onHide, isSuccess }: { message: string, visible: boolean, onHide: () => void, isSuccess: boolean }) {
   const isDark = useColorScheme() === "dark";
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -72,7 +72,7 @@ export default function Web3Toast({ message, visible, onHide }: { message: strin
           }
         ]}>
           <MaterialCommunityIcons
-            name="check-circle"
+            name={isSuccess ? "check-circle" : "information-outline"}
             size={20}
             color="#A78BFA"
           />
