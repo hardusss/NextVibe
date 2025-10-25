@@ -200,7 +200,7 @@ circleText: {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDarkMode ? '#fff' : '#000'} />
       }
     >
-      <Web3Toast message='Coming Soon...' visible={isToastVisible} onHide={() => setIsToastVisible(false)}/>
+      <Web3Toast message='Coming Soon...' visible={isToastVisible} onHide={() => setIsToastVisible(false)} isSuccess={false}/>
       <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/>  
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
