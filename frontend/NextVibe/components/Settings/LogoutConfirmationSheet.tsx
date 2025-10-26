@@ -57,7 +57,7 @@ const LogoutConfirmationSheet = ({ isVisible, onClose, onConfirm }: Props) => {
                             >
                                 <Text style={[
                                     styles.buttonText,
-                                    { color: isDark ? '#ffffff' : '#000000' }
+                                    { color: "#ffffff"}
                                 ]}>
                                     Cancel
                                 </Text>
