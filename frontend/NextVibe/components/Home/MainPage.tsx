@@ -18,8 +18,10 @@ import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Pressable } from "react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
+const ESTIMATED_POST_HEIGHT = screenWidth + 200
 
 const darkTheme = {
     background: "#0A0410",
@@ -409,6 +411,8 @@ const MediaItemComponent = ({
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
+    const tapCount = useRef<number>(0);
+    const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { preview, hd } = isVideo ? getCloudinaryTransformations(mediaUrl) : { preview: mediaUrl, hd: mediaUrl };
     
@@ -418,14 +422,23 @@ const MediaItemComponent = ({
     });
 
     const handleDoublePress = () => {
-        const now = Date.now();
-        if (now - lastTap.current < 300) {
+        tapCount.current += 1;
+
+        if (tapTimer.current) {
+            clearTimeout(tapTimer.current);
+        }
+
+        if (tapCount.current === 2) {
             animateHeart();
             if (!isLiked) {
                 onLike(postId);
             }
+            tapCount.current = 0;
+        } else {
+            tapTimer.current = setTimeout(() => {
+                tapCount.current = 0;
+            }, 300);
         }
-        lastTap.current = now;
     };
 
     const animateHeart = () => {
@@ -447,6 +460,14 @@ const MediaItemComponent = ({
             heartAnim.setValue(0);
         });
     };
+
+    useEffect(() => {
+            return () => {
+                if (tapTimer.current) {
+                    clearTimeout(tapTimer.current);
+                }
+            };
+        }, []);
 
     useEffect(() => {
         if (!isVideo) return;
@@ -489,67 +510,75 @@ const MediaItemComponent = ({
         }
     }, [isMuted, isVideo]);
 
-    return (
-        <TouchableWithoutFeedback onPress={handleDoublePress}>
-            <View style={styles.mediaContainer}>
-                {isVideo ? (
-                    <>
-                        {showPreview && (
-                            <FastImage
-                                source={{ 
-                                    uri: preview,
-                                    priority: FastImage.priority.high,
-                                }}
-                                style={styles.previewImage}
-                                resizeMode={FastImage.resizeMode.cover}
-                            />
-                        )}
-                        <VideoView
-                            style={styles.fullMedia}
-                            player={player}
-                            allowsFullscreen={false}
-                            allowsPictureInPicture={false}
-                            nativeControls={false}
-                            contentFit="cover"
+        return (
+        <Pressable 
+            onPress={handleDoublePress}
+            style={styles.mediaContainer}
+        >
+            {isVideo ? (
+                <>
+                    {showPreview && (
+                        <FastImage
+                            source={{ 
+                                uri: preview,
+                                priority: FastImage.priority.high,
+                            }}
+                            style={styles.previewImage}
+                            resizeMode={FastImage.resizeMode.cover}
                         />
-                        {isLoading && isVisible && (
-                            <View style={styles.mediaLoading}>
-                                <ActivityIndicator size="large" color="#ffffff" />
-                            </View>
-                        )}
-                        
-                        <TouchableOpacity 
-                            onPress={() => setIsMuted(prev => !prev)} 
-                            style={styles.muteButton}
-                        >
-                            <MaterialIcons 
-                                name={isMuted ? "volume-off" : "volume-up"} 
-                                size={24} 
-                                color="white" 
-                            />
-                        </TouchableOpacity>
-                    </>
-                ) : (
-                    <FastImage
-                        source={{ 
-                            uri: mediaUrl,
-                            priority: FastImage.priority.normal,
-                            cache: FastImage.cacheControl.immutable
-                        }}
-                        style={styles.mediaImage}
-                        resizeMode={FastImage.resizeMode.cover}
+                    )}
+                    <VideoView
+                        style={styles.fullMedia}
+                        player={player}
+                        allowsFullscreen={false}
+                        allowsPictureInPicture={false}
+                        nativeControls={false}
+                        contentFit="cover"
                     />
-                )}
-                {showHeart && (
-                    <Animated.View style={[styles.heartOverlay, {
+                    {isLoading && isVisible && (
+                        <View style={styles.mediaLoading}>
+                            <ActivityIndicator size="large" color="#ffffff" />
+                        </View>
+                    )}
+                    
+                    {/* Кнопка звуку */}
+                    <Pressable 
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            setIsMuted(prev => !prev);
+                        }} 
+                        style={styles.muteButton}
+                    >
+                        <MaterialIcons 
+                            name={isMuted ? "volume-off" : "volume-up"} 
+                            size={24} 
+                            color="white" 
+                        />
+                    </Pressable>
+                </>
+            ) : (
+                <FastImage
+                    source={{ 
+                        uri: mediaUrl,
+                        priority: FastImage.priority.normal,
+                        cache: FastImage.cacheControl.immutable
+                    }}
+                    style={styles.mediaImage}
+                    resizeMode={FastImage.resizeMode.cover}
+                />
+            )}
+            {showHeart && (
+                <Animated.View 
+                    style={[styles.heartOverlay, {
                         transform: [{ scale: heartAnim }],
-                        opacity: heartAnim
-                    }]}>
-                        <MaterialIcons name="favorite" size={80} color="#ff0000" />
-                    </Animated.View>
-                )}
-            </View>
-        </TouchableWithoutFeedback>
+                        opacity: heartAnim,
+                    }]}
+                    pointerEvents="none"
+                >
+                    <MaterialIcons name="favorite" size={80} color="#ff0000" />
+                </Animated.View>
+            )}
+        </Pressable>
     );
 };
 
@@ -803,16 +832,16 @@ export default function MainPage() {
                 {hasMedia && (
                     <View style={styles.mediaPlaceholder}>
                         {mediaItems.length > 1 ? (
-                            <View style={{ width: screenWidth, height: screenWidth, position: "relative" }}>
+                            <View style={{ width: screenWidth, height: screenWidth, position: "relative" }} pointerEvents="box-none">
                                 <FlatList
                                     data={mediaItems}
-                                    renderItem={({ item: mediaItem }) => (
+                                    renderItem={({ item: mediaItem, index: mediaIndex }) => (
                                         <MediaItemComponent 
                                             item={mediaItem} 
                                             postId={item.id}
                                             onLike={toggleLike}
                                             isLiked={isLiked}
-                                            isVisible={isVisible}
+                                            isVisible={isVisible && (currentIndices[item.id] ?? 0) === mediaIndex}
                                         />
                                     )}
                                     keyExtractor={mediaItem => mediaItem.id.toString()}
