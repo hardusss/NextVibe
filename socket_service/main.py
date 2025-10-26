@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
-import json, os, base64
+import json, os, base64, redis
 from db import SessionLocal
 from datetime import datetime
 from src.models import Message, MediaAttachment
@@ -10,6 +10,8 @@ from src.messages import router as messages_router
 
 app = FastAPI()
 manager = ConnectionManager()  
+
+r = redis.Redis(host='localhost', port=6379, db=0)
 
 app.include_router(messages_router, prefix="/api/v1", tags=["Messages"])
 app.add_middleware(
@@ -38,7 +40,9 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
             print(data)
             if data.get("type") == "enter_chat":
                 chat_id = data.get("chat_id")
-                # Знаходимо всі непрочитані повідомлення в чаті від іншого користувача
+                keys = r.keys(f"chat:{chat_id}:*")
+                if keys:
+                    r.delete(*keys)
                 unread_messages = (
                     db.query(Message)
                     .filter(Message.chat_id == chat_id)
@@ -48,12 +52,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
                 )
                 
                 if unread_messages:
-                    # Позначаємо всі як прочитані
                     for msg in unread_messages:
                         msg.is_read = True
                     db.commit()
                     
-                    # Відправляємо статус прочитання
                     response_data = {
                         "type": "messages_read",
                         "chat_id": chat_id,
@@ -64,7 +66,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
 
             elif data.get("type") == "read_status":
                 chat_id = data.get("chat_id")
-                # Відправляємо всім у чаті оновлення статусу
                 response_data = {
                     "type": "messages_read",
                     "chat_id": chat_id,
