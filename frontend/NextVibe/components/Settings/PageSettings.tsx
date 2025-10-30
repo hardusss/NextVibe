@@ -19,6 +19,7 @@ import ResetPasswordSheet from "./ResetPasswordSheet";
 import resetAvatar from "@/src/api/reset.avatar";
 import { PopupProvider, usePopup } from "../Popup";
 import updateUser from "@/src/api/update.user";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 interface User {
     username: string;
@@ -74,8 +75,16 @@ function PageSettingsContent() {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+    useEffect(() => {
+            GoogleSignin.configure({
+               webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
+               offlineAccess: true,
+            });
+    }, []);
+
     const handleLogoutConfirm = () => {
         AsyncStorage.clear()
+        GoogleSignin.signOut()
         setIsVisibleLogoutConfirmation(false) 
         router.replace("/register")
     }
