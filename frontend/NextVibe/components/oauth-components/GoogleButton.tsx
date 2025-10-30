@@ -22,7 +22,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
             const userInfo = await GoogleSignin.signIn();
             const userData = userInfo.data?.user;
             if (userInfo.type === "success" && page === "register") {
-                GoogleRegister(`${userData?.givenName}${userData?.familyName ? userData?.familyName != null : ""}`, `${userData?.email}`, `${userData?.photo}`, router);
+                GoogleRegister(`${userData?.givenName} ${userData?.familyName != null ? userData?.familyName : ""}`, `${userData?.email}`, `${userData?.photo}`, router);
             }
             if (userInfo.type === "success" && page === "login") {
                 GoogleLogin(`${userData?.email}`, router);

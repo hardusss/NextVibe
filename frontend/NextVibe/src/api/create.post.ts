@@ -24,7 +24,7 @@ export default async function createPost(content: string, mediaUrls: string[], l
                 owner: OWNER_ID,
                 location: location || null,
                 is_ai_generated: isAiGenerated,
-                isCommentsEnabled
+                is_comments_enabled: isCommentsEnabled
             })
         });
 

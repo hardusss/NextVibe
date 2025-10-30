@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, Image, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Video } from 'expo-av';
@@ -56,6 +56,8 @@ export default function PostCreate() {
     const [isVisibleToast, setIsVisibleToast] = useState<boolean>(false);
     const [toastMessage, setToastMessage] = useState<string>("");
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
+    const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
+    const videoRefs = useRef<{ [key: number]: Video | null }>({});
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? darkColors : lightColors;
 
@@ -78,7 +80,31 @@ export default function PostCreate() {
         }
     };
 
-    const renderMedia = ({ item }: { item: string }) => {
+    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+        if (viewableItems.length > 0) {
+            const newIndex = viewableItems[0].index;
+            setActiveVideoIndex(newIndex);
+            
+            // Зупиняємо всі відео
+            Object.keys(videoRefs.current).forEach(async (key) => {
+                const index = parseInt(key);
+                if (videoRefs.current[index] && index !== newIndex) {
+                    await videoRefs.current[index]?.pauseAsync();
+                }
+            });
+            
+            // Програємо активне відео
+            if (videoRefs.current[newIndex] && isVideo(mediaUrls[newIndex])) {
+                videoRefs.current[newIndex]?.playAsync();
+            }
+        }
+    }).current;
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 50,
+    }).current;
+
+    const renderMedia = ({ item, index }: { item: string; index: number }) => {
         if (isVideo(item)) {
             return (
                 <View style={themedStyles.mediaContainer}>
@@ -89,12 +115,15 @@ export default function PostCreate() {
                         <MaterialIcons name="close" color="white" size={20}/>
                     </TouchableOpacity>
                     <Video
+                        ref={(ref) => {
+                            videoRefs.current[index] = ref;
+                        }}
                         source={{ uri: item.startsWith('file://') ||  item.startsWith('https://')? item : `file://${item}` }}
                         style={themedStyles.media}
                         useNativeControls={false}
                         isLooping
                         resizeMode={ResizeMode.COVER}
-                        shouldPlay={true}
+                        shouldPlay={index === activeVideoIndex}
                     />
                 </View>
             );
@@ -122,6 +151,12 @@ export default function PostCreate() {
     };
 
     const handlePublish = () => {
+        if (mediaUrls.length > 3){
+            setToastMessage("Error. A post can contain a maximum of 3 media files!");
+            setToastSuccess(false)
+            setIsVisibleToast(true);
+            return;
+        }
         createPost(postText, mediaUrls, location, isAiGenerated, enableComments);
         setMediaUrls([]);
         setAiPrompt("");
@@ -129,14 +164,6 @@ export default function PostCreate() {
         setPostText("");
         setIsAiGenerated(false);
         router.replace("/profile");
-    };
-
-    const handleSaveDraft = () => {
-        setMediaUrls([]);
-        setAiPrompt("");
-        setLocation("");
-        setPostText("");
-        router.back();
     };
 
     const handleGenerateWithAI = async () => {
@@ -440,8 +467,9 @@ export default function PostCreate() {
                                 contentContainerStyle={[
                                     themedStyles.flatListContent,
                                     mediaUrls.length === 1 && { justifyContent: 'center' },
-                                    
                                 ]}
+                                onViewableItemsChanged={onViewableItemsChanged}
+                                viewabilityConfig={viewabilityConfig}
                             />
                         </View>
                     )}
