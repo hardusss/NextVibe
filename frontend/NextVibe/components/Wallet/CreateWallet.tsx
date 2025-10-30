@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createWallet from '../../src/api/create.wallet';
 import { Ionicons } from '@expo/vector-icons';
+import walletInit from '@/src/api/wallet.initializer';
 
 const steps = [
   'Checking existing wallet',
@@ -28,6 +29,7 @@ export default function CreateWallet() {
     try {
       const wallet = await AsyncStorage.getItem('wallet');
       if (wallet === 'true') {
+        await walletInit();
         router.replace('/wallet');
       } else {
         setCheckingWallet(false);
