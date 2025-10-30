@@ -5,6 +5,7 @@ import { MaterialCommunityIcons, Feather, Ionicons } from "@expo/vector-icons";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useFocusEffect } from "expo-router";
+import Web3Toast from "../Shared/Toasts/Web3Toast";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -19,30 +20,40 @@ const CameraScreen = () => {
   const [mediaURLS, setMediaURLS] = useState<string[]>([]);
   const [zoom, setZoom] = useState<number>(1);
   const [lastPhoto, setLastPhoto] = useState<string | null>(null);
-  let recordInterval = useRef<NodeJS.Timeout | null>(null);
+  const [showToast, setShowToast] = useState<boolean>(false);
+  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraRef = useRef<Camera>(null);
   const device = useCameraDevice(cameraSide);
   const format = useCameraFormat(device, [
-    { videoResolution: { width: 1920, height: 1080 }, photoResolution: { width: 1920, height: 1080 } }
+    { videoResolution: { width: 1920, height: 1080 } },
+    { videoResolution: { width: 1280, height: 720 } }, 
   ]);
   const progressAnim = useRef(new Animated.Value(0)).current;
-
+  const VIDEO_LENGHT = 30000
 
   const openGallery = async () => {
-    const image = await ImagePicker.launchImageLibraryAsync({
+    const medias = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
       aspect: [4, 3],
       quality: 1,
       allowsMultipleSelection: true,
+      videoMaxDuration: 30
     });
-    image.assets?.forEach(item => {
-      setMediaURLS((prev) => [...prev, item.uri])
-    })
+    
+    if (!medias.canceled) {
+      const selected = medias.assets || [];
+      if (selected.length > 3) {
+        setShowToast(true);
+        return;
+      };
+      setMediaURLS((prev) => [...prev, ...selected.map((item) => item.uri)]);
+    };
   };
 
   useFocusEffect(
     useCallback(() => {
       if (mediaURLS.length === 0) return;
+      if (mediaURLS.length > 3) return;
       router.push({ pathname: "/create-post", params: {urls: JSON.stringify(mediaURLS)} });
       setMediaURLS([]);
     }, [mediaURLS])
@@ -114,21 +125,44 @@ const CameraScreen = () => {
   const startRecording = async () => {
     if (isRecording) return;
     setIsRecording(true);
+    
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 60000,
+      duration: VIDEO_LENGHT,
       useNativeDriver: false,
       easing: Easing.linear,
     }).start();
+
+    stopTimeoutRef.current = setTimeout(async () => {
+      await cameraRef.current?.stopRecording();
+    }, VIDEO_LENGHT);
+
     // For 'auto', torch is off by default
     let torch: 'on' | 'off' = 'off';
     if (flashMode === 'on') torch = 'on';
+    
     await cameraRef.current?.startRecording({
-      flash: undefined, // not used for video
+      flash: undefined,
       onRecordingFinished: (video) => {
-        setMediaURLS((prev) => [...prev, video.path])
+        if (stopTimeoutRef.current) {
+          clearTimeout(stopTimeoutRef.current);
+          stopTimeoutRef.current = null;
+        }
+        setIsRecording(false);
+        progressAnim.setValue(0);
+        setMediaURLS((prev) => {
+          const newURLs = [...prev, video.path];
+          router.push({ pathname: "/create-post", params: { urls: JSON.stringify(newURLs) } });
+          return [];
+        });
       },
       onRecordingError: (error) => {
+        if (stopTimeoutRef.current) {
+          clearTimeout(stopTimeoutRef.current);
+          stopTimeoutRef.current = null;
+        }
+        setIsRecording(false);
+        progressAnim.setValue(0);
         Alert.alert("Error", error.message);
       },
       ...(torch === 'on' ? { torch: 'on' } : { torch: 'off' })
@@ -152,6 +186,7 @@ const CameraScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: '#0A0410' }]}> 
       <StatusBar backgroundColor={'#0A0410'} />
+      <Web3Toast message="Error. You can only select 3 media files!" visible={showToast} onHide={() => setShowToast(false)} isSuccess={false}/>
       {cameraPermission && microphonePermission ? (
         <View style={styles.cameraContainer}>
           <Camera
