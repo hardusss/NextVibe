@@ -3,11 +3,12 @@ from .view import (
     CreateWallet, GetBalanceWallet,
     BtcTransactionView, SolTransactionView,
     TrxTrasactionView, EthTrasactionView,
-    AllTransactionsView
+    AllTransactionsView, WalletInitializer
     )
 
 
 urlpatterns = [
+    path("wallet-init/", WalletInitializer.as_view(), name="wallet_init"),
     path("create/", CreateWallet.as_view(), name="create_wallet"),
     path("get-balance/", GetBalanceWallet.as_view(), name="balance_wallet"),
     path("transactions/", AllTransactionsView.as_view(), name="all_transactions"),
