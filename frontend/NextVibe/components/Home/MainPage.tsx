@@ -717,9 +717,6 @@ export default function MainPage() {
 
     
     const renderItem = ({ item, index }: { item: Post; index: number }) => {
-        if (item.moderation_status !== "approved"){
-            return <></>
-        }
         const isLiked = likedPosts[item.id] ?? false;
         const isExpanded = expandedPosts[item.id] ?? false;
         const needsMoreButton = item.about?.length > 100;
@@ -728,7 +725,6 @@ export default function MainPage() {
         
         const mediaItems = item.media || [];
         const hasMedia = mediaItems.length > 0;
-        
         return (
             <View style={styles.postContainer}>
                 <View style={styles.postHeader}>
@@ -924,7 +920,7 @@ export default function MainPage() {
                 />
             ) : (
                 <FlatList
-                    data={posts}
+                    data={posts.filter(p => p.moderation_status === "approved")}
                     onScrollBeginDrag={() => setDropdownVisible({})}   
                     onMomentumScrollBegin={() => setDropdownVisible({})}
                     keyExtractor={(item, index) => `${item.id}_${index}`}
