@@ -39,7 +39,7 @@ class Recomendations:
         else:            posts = base_queryset.filter(owner__user_id__in=self.users)
         
         posts = posts.values(
-            "id", "about", "create_at", "location", "count_likes", "is_ai_generated",
+            "id", "about", "create_at", "location", "count_likes", "is_ai_generated", "moderation_status",
             "owner__user_id", "owner__username", "owner__avatar", "owner__official"
         )
         data = []
@@ -58,6 +58,7 @@ class Recomendations:
                 "media": media_data,
                 "create_at": post["create_at"],
                 "is_ai_generated": post["is_ai_generated"],
+                "moderation_status": post["moderation_status"]
             })
         return sample(data, min(len(posts), 6))  
 
