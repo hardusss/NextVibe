@@ -3,7 +3,8 @@ from .view import (
     CreateWallet, GetBalanceWallet,
     BtcTransactionView, SolTransactionView,
     TrxTrasactionView, EthTrasactionView,
-    AllTransactionsView, WalletInitializer
+    AllTransactionsView, WalletInitializer,
+    GetTransactionFee
     )
 
 
@@ -16,4 +17,5 @@ urlpatterns = [
     path("transaction/sol/", SolTransactionView.as_view(), name="transaction_sol"),
     path("transaction/trx/", TrxTrasactionView.as_view(), name="transaction_trx"),
     path("transaction/eth/", EthTrasactionView.as_view(), name="transaction_eth"),
+    path("fee/", GetTransactionFee.as_view(), name="fee")
 ]
