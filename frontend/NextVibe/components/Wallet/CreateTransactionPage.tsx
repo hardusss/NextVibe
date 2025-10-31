@@ -7,6 +7,8 @@ import React from 'react';
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Keyboard } from 'react-native';
+import getTransactionFee from '@/src/api/get.fee';
+
 const formatValue = (value: any, decimals: number) => {
     const num = Number(value);
     if (isNaN(num)) {
@@ -22,6 +24,10 @@ const handlers: Record<'SOL' | 'TRX' | 'BTC' | "ETH", (amount: number, address: 
   ETH: sendEthTransaction
 };
 
+type Fee = {
+    fee: string | number;
+    fee_usd: string | number;
+}
 
 export default function CreateTransactionPage() {
     const { symbol, balance, icon, name, usdt, address } = useLocalSearchParams();
@@ -34,6 +40,7 @@ export default function CreateTransactionPage() {
     const [isFailed, setIsFailed] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [refreshing, setRefreshing] = useState(false);
+    const [fee, setFee] = useState<Fee>({fee: 0.0, fee_usd: 0.0});
     const recipientRef = useRef('');
     const amountRef = useRef('');
     const symbolRef = useRef(symbol);
@@ -65,7 +72,12 @@ export default function CreateTransactionPage() {
         };
     }, [pan.x]);
 
+    const getFee = async (symbol: string) => {
+        setFee(await getTransactionFee(symbol));
+    };
+
     useEffect(() => {
+        getFee(symbolRef.current as string)
         symbolRef.current = symbol;
         usdtRef.current = usdt;
         balanceRef.current = balance;
@@ -345,8 +357,6 @@ export default function CreateTransactionPage() {
             padding: 16,
             color: isDark ? '#FFFFFF' : '#000',
             fontSize: 16,
-            borderWidth: 1,
-            borderColor: isDark ? '#2A1B41' : '#E0E0E0',
         },
         maxButton: {
             position: 'absolute',
@@ -406,6 +416,90 @@ export default function CreateTransactionPage() {
             fontSize: 14,
             fontWeight: '600',
             textAlign: 'center',
+        },
+        feeCard: {
+            backgroundColor: isDark ? '#180F2E' : '#FFFFFF',
+            borderRadius: 16,
+            overflow: 'hidden',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 4,
+        },
+        feeHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 16,
+            paddingBottom: 12,
+        },
+        feeIconContainer: {
+            marginRight: 10,
+        },
+        feeIconGradient: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        feeTitle: {
+            color: isDark ? '#FFFFFF' : '#000',
+            fontSize: 16,
+            fontWeight: '600',
+        },
+        feeDetailsContainer: {
+            paddingHorizontal: 16,
+            paddingBottom: 16,
+        },
+        feeRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingVertical: 8,
+        },
+        feeLabel: {
+            color: isDark ? '#A09CB8' : '#666',
+            fontSize: 14,
+            fontWeight: '500',
+        },
+        feeValueContainer: {
+            flexDirection: 'row',
+            alignItems: 'baseline',
+        },
+        feeValue: {
+            color: isDark ? '#FFFFFF' : '#000',
+            fontSize: 18,
+            fontWeight: '700',
+            marginHorizontal: 4,
+        },
+        feeSymbol: {
+            color: isDark ? '#A78BFA' : '#5856D6',
+            fontSize: 18,
+            fontWeight: '600',
+        },
+        feeSymbolUsd: {
+            color: isDark ? '#A09CB8' : '#666',
+            fontSize: 20,
+            fontWeight: '600',
+        },
+        divider: {
+            height: 1,
+            backgroundColor: isDark ? 'rgba(160, 156, 184, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+            marginVertical: 4,
+        },
+        feeFooter: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: isDark ? '#0F0920' : '#F8F8F8',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            gap: 8,
+        },
+        feeFooterText: {
+            color: isDark ? '#A09CB8' : '#666',
+            fontSize: 12,
+            flex: 1,
         },
     });
 
@@ -472,6 +566,54 @@ export default function CreateTransactionPage() {
                             <Text style={styles.maxButtonText}>Max</Text>
                         </TouchableOpacity>
                     </View>
+                </View>
+
+                
+                <View style={styles.inputContainer}>
+                <View style={styles.feeCard}>
+                    <View style={styles.feeHeader}>
+                    <View style={styles.feeIconContainer}>
+                        <LinearGradient
+                        colors={['#A78BFA', '#5856D6']}
+                        style={styles.feeIconGradient}
+                        >
+                        <MaterialCommunityIcons name="flash" size={16} color="#fff" />
+                        </LinearGradient>
+                    </View>
+                    <Text style={styles.feeTitle}>Network Fee</Text>
+                    </View>
+
+                    <View style={styles.feeDetailsContainer}>
+                    <View style={styles.feeRow}>
+                        <Text style={styles.feeLabel}>Amount</Text>
+                        <View style={styles.feeValueContainer}>
+                        <Text style={styles.feeValue}>{fee.fee}</Text>
+                        <Text style={styles.feeSymbol}>{symbol}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.feeRow}>
+                        <Text style={styles.feeLabel}>USD Value</Text>
+                        <View style={styles.feeValueContainer}>
+                        <Text style={styles.feeSymbolUsd}>$</Text>
+                        <Text style={styles.feeValue}>{fee.fee_usd}</Text>
+                        </View>
+                    </View>
+                    </View>
+
+                    <View style={styles.feeFooter}>
+                    <MaterialCommunityIcons 
+                        name="information-outline" 
+                        size={14} 
+                        color={isDark ? '#A09CB8' : '#666'} 
+                    />
+                    <Text style={styles.feeFooterText}>
+                        Network fee may vary based on congestion
+                    </Text>
+                    </View>
+                </View>
                 </View>
 
             </ScrollView>
