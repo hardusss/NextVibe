@@ -28,7 +28,6 @@ export const WebSocketProvider = ({
 
   const disconnect = () => {
     if (wsRef.current) {
-      console.log("🔌 Closing socket...");
       wsRef.current.close();
       wsRef.current = null;
     }
