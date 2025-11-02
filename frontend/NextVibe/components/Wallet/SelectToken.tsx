@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from 'react';
 import {
   ScrollView,
   View,
@@ -8,12 +8,14 @@ import {
   StyleSheet,
   StatusBar,
   TouchableOpacity,
-} from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import getBalanceWallet from "@/src/api/wallet.balance";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { useFocusEffect } from "expo-router";
-import FastImage from "react-native-fast-image";
+} from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import getBalanceWallet from '@/src/api/wallet.balance';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import FastImage from 'react-native-fast-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 interface Tokens {
   address: string;
@@ -29,13 +31,16 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
     container: {
       flex: 1,
       backgroundColor: themeColors.background,
+    },
+    scrollContentContainer: {
       paddingHorizontal: 16,
+      paddingBottom: 30, 
     },
     titleWrapper: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       marginBottom: 24,
-      marginTop: 16,
+      marginTop: 16, 
     },
     backIcon: {
       color: themeColors.text,
@@ -44,19 +49,23 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
     title: {
       color: themeColors.text,
       fontSize: 22,
-      fontWeight: "700",
+      fontWeight: '700',
       letterSpacing: 0.5,
     },
     searchBox: {
-      backgroundColor: themeColors.searchBg,
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       borderRadius: 16,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
       marginBottom: 24,
       borderWidth: 1,
       borderColor: themeColors.border,
+      overflow: 'hidden', 
+    },
+    searchBoxContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
     },
     searchInput: {
       flex: 1,
@@ -65,24 +74,25 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
       marginLeft: 12,
     },
     tokenItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: themeColors.card,
-      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       borderRadius: 18,
       marginBottom: 14,
       borderWidth: 1,
       borderColor: themeColors.border,
-      shadowColor: "#000000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: isDarkTheme ? 0.2 : 0.05,
-      shadowRadius: 8,
-      elevation: 5,
+      overflow: 'hidden', 
+    },
+    tokenItemContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: "space-between",
+      padding: 16,
+      width: "100%",
     },
     tokenInfo: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     tokenImage: {
       width: 44,
@@ -91,11 +101,11 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
       marginRight: 16,
     },
     tokenTextWrapper: {
-      justifyContent: "center",
+      justifyContent: 'center',
     },
     tokenName: {
       color: themeColors.text,
-      fontWeight: "700",
+      fontWeight: '700',
       fontSize: 17,
     },
     tokenSymbol: {
@@ -107,14 +117,17 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
     },
     noTokensText: {
       color: themeColors.textSecondary,
-      textAlign: "center",
+      textAlign: 'center',
       marginTop: 32,
       fontSize: 16,
     },
+
     skeletonRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: themeColors.card,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDarkTheme
+        ? 'rgba(255, 255, 255, 0.05)'
+        : 'rgba(255, 255, 255, 0.7)',
       padding: 16,
       borderRadius: 18,
       marginBottom: 14,
@@ -130,7 +143,7 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
     },
     skeletonTextBlock: {
       flex: 1,
-      justifyContent: "center",
+      justifyContent: 'center',
     },
     skeletonLineShort: {
       width: 80,
@@ -145,30 +158,36 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
       backgroundColor: themeColors.skeletonHighlight,
       borderRadius: 8,
     },
+    blurViewAbsolute: {
+      ...StyleSheet.absoluteFillObject,
+    },
   });
 
 export default function SelectTokenPage() {
   const [tokens, setTokens] = useState<Tokens[]>([]);
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const { from_page }: { from_page: string } = useLocalSearchParams();
-  const isDarkTheme = useColorScheme() === "dark";
+  const isDarkTheme = useColorScheme() === 'dark';
   const router = useRouter();
 
+
   const themeColors = {
-    background: isDarkTheme ? "#0A0410" : "#F9FAFB",
-    card: isDarkTheme ? "#160A25" : "#FFFFFF",
-    text: isDarkTheme ? "#F1F5F9" : "#1E293B",
-    textSecondary: isDarkTheme ? "#94A3B8" : "#64748B",
-    border: isDarkTheme ? "#2C1D42" : "#E2E8F0",
-    searchBg: isDarkTheme ? "#1C112E" : "#F1F5F9",
-    searchPlaceholder: isDarkTheme ? "#64748B" : "#94A3B8",
-    skeletonHighlight: isDarkTheme ? "#281842" : "#E2E8F0",
+    background: 'transparent', 
+    text: isDarkTheme ? '#F1F5F9' : '#1E293B',
+    textSecondary: isDarkTheme ? '#94A3B8' : '#64748B',
+    border: isDarkTheme 
+      ? 'rgba(255, 255, 255, 0.15)'
+      : 'rgba(220, 220, 220, 0.5)',
+    searchPlaceholder: isDarkTheme ? '#64748B' : '#94A3B8',
+    skeletonHighlight: isDarkTheme
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'rgba(0, 0, 0, 0.08)',
   };
 
   const styles = useMemo(
     () => getStyles(isDarkTheme, themeColors),
-    [isDarkTheme]
+    [isDarkTheme],
   );
 
   const fetchBalance = async () => {
@@ -182,9 +201,9 @@ export default function SelectTokenPage() {
           name: value.name,
           symbol: value.symbol,
           icon: value.icon,
-          amount: value.amount,
-          usdt: value.usdt,
-        })
+          amount: value.amount || 0, 
+          usdt: value.usdt || 0,
+        }),
       );
       allTokens.push(...tokensArray);
     });
@@ -195,19 +214,19 @@ export default function SelectTokenPage() {
   useFocusEffect(
     useCallback(() => {
       fetchBalance();
-    }, [])
+    }, []),
   );
 
   const filteredTokens = tokens.filter(
     (token) =>
       token.name.toLowerCase().includes(search.toLowerCase()) ||
-      token.symbol.toLowerCase().includes(search.toLowerCase())
+      token.symbol.toLowerCase().includes(search.toLowerCase()),
   );
 
   const Redirect = (token: Tokens) => {
-    if (from_page === "deposit") {
+    if (from_page === 'deposit') {
       router.push({
-        pathname: "/deposit",
+        pathname: '/deposit',
         params: {
           address: token.address,
           icon: token.icon,
@@ -217,7 +236,7 @@ export default function SelectTokenPage() {
       });
     } else {
       router.push({
-        pathname: "/transaction",
+        pathname: '/transaction',
         params: {
           address: token.address,
           icon: token.icon,
@@ -231,78 +250,97 @@ export default function SelectTokenPage() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <StatusBar
-        backgroundColor={themeColors.background}
-        barStyle={isDarkTheme ? "light-content" : "dark-content"}
-      />
+    <LinearGradient
+      colors={
+        isDarkTheme
+          ? ['#0A0410', '#1a0a2e', '#0A0410']
+          : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']
+      }
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContentContainer} 
+      >
+        <StatusBar backgroundColor={isDarkTheme ? "#0A0410" : "#fff"}/>  
 
-      <View style={styles.titleWrapper}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={28}
-            style={styles.backIcon}
+        <View style={styles.titleWrapper}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={28}
+              style={styles.backIcon}
+            />
+          </TouchableOpacity>
+          <Text style={styles.title}>
+            CRYPTO {from_page === 'deposit' ? 'DEPOSIT' : 'SEND'}
+          </Text>
+        </View>
+
+        <View style={styles.searchBox}>
+          <BlurView
+            intensity={isDarkTheme ? 30 : 90}
+            tint={isDarkTheme ? 'dark' : 'light'}
+            style={styles.blurViewAbsolute}
           />
-        </TouchableOpacity>
-        <Text style={styles.title}>
-          CRYPTO {from_page === "deposit" ? "DEPOSIT" : "SEND"}
-        </Text>
-      </View>
+          <View style={styles.searchBoxContent}>
+            <MaterialCommunityIcons
+              name="magnify"
+              size={24}
+              color={themeColors.textSecondary}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search token..."
+              placeholderTextColor={themeColors.searchPlaceholder}
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
+        </View>
 
-      <View style={styles.searchBox}>
-        <MaterialCommunityIcons
-          name="magnify"
-          size={24}
-          color={themeColors.textSecondary}
-        />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search token..."
-          placeholderTextColor={themeColors.searchPlaceholder}
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      {loading
-        ? [...Array(3)].map((_, index) => (
-            <View key={index} style={styles.skeletonRow}>
-              <View style={styles.skeletonCircle} />
-              <View style={styles.skeletonTextBlock}>
-                <View style={styles.skeletonLineShort} />
-                <View style={styles.skeletonLineLong} />
-              </View>
-            </View>
-          ))
-        : filteredTokens.length > 0
-        ? filteredTokens.map((token, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.tokenItem}
-              onPress={() => Redirect(token)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.tokenInfo}>
-                <FastImage
-                  source={{ uri: token.icon }}
-                  style={styles.tokenImage}
-                />
-                <View style={styles.tokenTextWrapper}>
-                  <Text style={styles.tokenName}>{token.symbol}</Text>
-                  <Text style={styles.tokenSymbol}>{token.name}</Text>
+        {loading
+          ? [...Array(3)].map((_, index) => (
+              <View key={index} style={styles.skeletonRow}>
+                <View style={styles.skeletonCircle} />
+                <View style={styles.skeletonTextBlock}>
+                  <View style={styles.skeletonLineShort} />
+                  <View style={styles.skeletonLineLong} />
                 </View>
               </View>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={28}
-                style={styles.arrowIcon}
-              />
-            </TouchableOpacity>
-          ))
-        : (
-          <Text style={styles.noTokensText}>No tokens found</Text>
-        )}
-    </ScrollView>
+            ))
+          : filteredTokens.length > 0
+          ? filteredTokens.map((token, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.tokenItem}
+                onPress={() => Redirect(token)}
+                activeOpacity={0.8}
+              >
+                <BlurView
+                  intensity={isDarkTheme ? 30 : 90}
+                  tint={isDarkTheme ? 'dark' : 'light'}
+                  style={styles.blurViewAbsolute}
+                />
+                <View style={styles.tokenItemContent}>
+                  <View style={styles.tokenInfo}>
+                    <FastImage
+                      source={{ uri: token.icon }}
+                      style={styles.tokenImage}
+                    />
+                    <View style={styles.tokenTextWrapper}>
+                      <Text style={styles.tokenName}>{token.symbol}</Text>
+                      <Text style={styles.tokenSymbol}>{token.name}</Text>
+                    </View>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={28} style={styles.arrowIcon} />
+                </View>
+              </TouchableOpacity>
+            ))
+          : (
+            <Text style={styles.noTokensText}>No tokens found</Text>
+          )}
+      </ScrollView>
+    </LinearGradient>
   );
 }
