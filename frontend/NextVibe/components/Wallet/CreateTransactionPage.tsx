@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, useColorScheme, Animated, PanResponder, Dimensions, TouchableOpacity, ScrollView, RefreshControl, Vibration } from 'react-native';
+import { View, Text, StyleSheet, TextInput, useColorScheme, Animated, PanResponder, Dimensions, TouchableOpacity, ScrollView, RefreshControl, Vibration, Keyboard, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -6,8 +6,8 @@ import { sendSolTransaction, sendBtcTransaction, sendTrxTransaction, sendEthTran
 import React from 'react';
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Keyboard } from 'react-native';
 import getTransactionFee from '@/src/api/get.fee';
+import { BlurView } from 'expo-blur';
 
 const formatValue = (value: any, decimals: number) => {
     const num = Number(value);
@@ -254,7 +254,7 @@ export default function CreateTransactionPage() {
         ? symbolRef.current[0]
         : symbolRef.current;
 
-        const method = handlers[currentSymbol as 'SOL' | 'TRX' | 'BTC'];
+        const method = handlers[currentSymbol as 'SOL' | 'TRX' | 'BTC' | 'ETH'];
         await validateAndSend(method);
 
     
@@ -280,7 +280,7 @@ export default function CreateTransactionPage() {
     const styles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: isDark ? '#0A0410' : '#F5F5F7',
+            backgroundColor: 'transparent',
             paddingHorizontal: 20,
         },
         header: {
@@ -296,10 +296,15 @@ export default function CreateTransactionPage() {
             marginLeft: 15,
         },
         tokenInfoContainer: {
-            backgroundColor: isDark ? '#180F2E' : '#FFFFFF',
             borderRadius: 16,
             padding: 15,
             marginBottom: 24,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
+        },
+        blurViewAbsolute: {
+            ...StyleSheet.absoluteFillObject,
         },
         tokenRow: {
             flexDirection: 'row',
@@ -350,13 +355,16 @@ export default function CreateTransactionPage() {
         },
         inputWrapper: {
             position: 'relative',
+            borderRadius: 12,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
         },
         input: {
-            backgroundColor: isDark ? '#180F2E' : '#FFFFFF',
-            borderRadius: 12,
             padding: 16,
             color: isDark ? '#FFFFFF' : '#000',
             fontSize: 16,
+            backgroundColor: 'transparent',
         },
         maxButton: {
             position: 'absolute',
@@ -377,10 +385,12 @@ export default function CreateTransactionPage() {
             left: 20,
             right: 20,
             height: 64,
-            backgroundColor: isDark ? '#180F2E' : '#E0E0E0',
             borderRadius: 32,
             justifyContent: 'center',
             alignItems: 'center',
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
         },
         swipeText: {
             color: isDark ? '#A09CB8' : '#666',
@@ -418,14 +428,10 @@ export default function CreateTransactionPage() {
             textAlign: 'center',
         },
         feeCard: {
-            backgroundColor: isDark ? '#180F2E' : '#FFFFFF',
             borderRadius: 16,
             overflow: 'hidden',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 4,
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
         },
         feeHeader: {
             flexDirection: 'row',
@@ -491,7 +497,7 @@ export default function CreateTransactionPage() {
         feeFooter: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: isDark ? '#0F0920' : '#F8F8F8',
+            backgroundColor: isDark ? 'rgba(15, 9, 32, 0.8)' : 'rgba(248, 248, 248, 0.8)',
             paddingHorizontal: 16,
             paddingVertical: 12,
             gap: 8,
@@ -504,148 +510,188 @@ export default function CreateTransactionPage() {
     });
 
     return (
-        <View style={styles.container}>
-            <ScrollView
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? "#fff" : "#000"} />}
-                contentContainerStyle={{ paddingBottom: 120 }}
-                keyboardShouldPersistTaps="handled"
-            >
-                {errorMessage !== '' && (
-                    <Animated.View style={[styles.errorContainer, { opacity: errorAnimation, transform: [{ translateY: errorAnimation.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] }]}>
-                        <Text style={styles.errorText}>{errorMessage}</Text>
-                    </Animated.View>
-                )}
+        <LinearGradient
+            colors={
+                isDark
+                ? ['#0A0410', '#1a0a2e', '#0A0410']
+                : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']
+            }
+            style={{flex: 1}}
+        >
+            <View style={styles.container}>
+                <StatusBar
+                    backgroundColor={isDark ? "#0A0410" : "#F5F5F7"}
+                    barStyle={isDark ? "light-content" : "dark-content"}
+                />
+                <ScrollView
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? "#fff" : "#000"} />}
+                    contentContainerStyle={{ paddingBottom: 120 }}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {errorMessage !== '' && (
+                        <Animated.View style={[styles.errorContainer, { opacity: errorAnimation, transform: [{ translateY: errorAnimation.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] }]}>
+                            <Text style={styles.errorText}>{errorMessage}</Text>
+                        </Animated.View>
+                    )}
 
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#fff' : '#000'} />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>Send {symbol}</Text>
-                </View>
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={() => router.back()}>
+                            <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#fff' : '#000'} />
+                        </TouchableOpacity>
+                        <Text style={styles.title}>Send {symbol}</Text>
+                    </View>
 
-                <View style={styles.tokenInfoContainer}>
-                    <View style={styles.tokenRow}>
-                        <FastImage source={{ uri: icon as string }} style={styles.tokenIcon} />
-                        <View style={styles.tokenDetails}>
-                            <Text style={styles.tokenName}>{name}</Text>
-                            <TouchableOpacity style={styles.switchButton} onPress={() => router.push("/select-token")}>
-                                <Text style={styles.switchButtonText}>Switch token</Text>
+                    <View style={styles.tokenInfoContainer}>
+                        <BlurView
+                        intensity={isDark ? 30 : 90}
+                        tint={isDark ? 'dark' : 'light'}
+                        style={styles.blurViewAbsolute}
+                        />
+                        <View style={styles.tokenRow}>
+                            <FastImage source={{ uri: icon as string }} style={styles.tokenIcon} />
+                            <View style={styles.tokenDetails}>
+                                <Text style={styles.tokenName}>{name}</Text>
+                                <TouchableOpacity style={styles.switchButton} onPress={() => router.push("/select-token")}>
+                                    <Text style={styles.switchButtonText}>Switch token</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.balanceContainer}>
+                                <Text style={styles.balanceText}>${formatValue(usdt, 2)}</Text>
+                                <Text style={styles.tokensAvailable}>{formatValue(balance, 5)} {symbol}</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.label}>Recipient Address</Text>
+                        <View style={styles.inputWrapper}>
+                            <BlurView
+                            intensity={isDark ? 30 : 90}
+                            tint={isDark ? 'dark' : 'light'}
+                            style={styles.blurViewAbsolute}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                value={recipientAddress}
+                                onChangeText={setRecipientAddress}
+                                placeholder="Enter address"
+                                placeholderTextColor={isDark ? '#666' : '#999'}
+                                multiline={false}
+                            />
+                        </View>
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.label}>Amount {symbol}</Text>
+                        <View style={styles.inputWrapper}>
+                            <BlurView
+                            intensity={isDark ? 30 : 90}
+                            tint={isDark ? 'dark' : 'light'}
+                            style={styles.blurViewAbsolute}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                value={amount}
+                                onChangeText={setAmount}
+                                keyboardType="decimal-pad"
+                                placeholder={`0.00`}
+                                placeholderTextColor={isDark ? '#666' : '#999'}
+                            />
+                            <TouchableOpacity style={styles.maxButton} onPress={handleMaxAmount}>
+                                <Text style={styles.maxButtonText}>Max</Text>
                             </TouchableOpacity>
                         </View>
-                        <View style={styles.balanceContainer}>
-                            <Text style={styles.balanceText}>${formatValue(usdt, 2)}</Text>
-                            <Text style={styles.tokensAvailable}>{formatValue(balance, 5)} {symbol}</Text>
-                        </View>
                     </View>
-                </View>
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Recipient Address</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={recipientAddress}
-                        onChangeText={setRecipientAddress}
-                        placeholder="Enter address"
-                        placeholderTextColor={isDark ? '#666' : '#999'}
-                        multiline={false}
-                    />
-                </View>
-
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Amount {symbol}</Text>
-                    <View style={styles.inputWrapper}>
-                        <TextInput
-                            style={styles.input}
-                            value={amount}
-                            onChangeText={setAmount}
-                            keyboardType="decimal-pad"
-                            placeholder={`0.00`}
-                            placeholderTextColor={isDark ? '#666' : '#999'}
+                    
+                    <View style={styles.inputContainer}>
+                    <View style={styles.feeCard}>
+                        <BlurView
+                        intensity={isDark ? 30 : 90}
+                        tint={isDark ? 'dark' : 'light'}
+                        style={[styles.blurViewAbsolute, { borderRadius: 16 }]}
                         />
-                        <TouchableOpacity style={styles.maxButton} onPress={handleMaxAmount}>
-                            <Text style={styles.maxButtonText}>Max</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                        <View style={styles.feeHeader}>
+                        <View style={styles.feeIconContainer}>
+                            <LinearGradient
+                            colors={['#A78BFA', '#5856D6']}
+                            style={styles.feeIconGradient}
+                            >
+                            <MaterialCommunityIcons name="flash" size={16} color="#fff" />
+                            </LinearGradient>
+                        </View>
+                        <Text style={styles.feeTitle}>Network Fee</Text>
+                        </View>
 
-                
-                <View style={styles.inputContainer}>
-                <View style={styles.feeCard}>
-                    <View style={styles.feeHeader}>
-                    <View style={styles.feeIconContainer}>
+                        <View style={styles.feeDetailsContainer}>
+                        <View style={styles.feeRow}>
+                            <Text style={styles.feeLabel}>Amount</Text>
+                            <View style={styles.feeValueContainer}>
+                            <Text style={styles.feeValue}>{fee.fee}</Text>
+                            <Text style={styles.feeSymbol}>{symbol}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={styles.feeRow}>
+                            <Text style={styles.feeLabel}>USD Value</Text>
+                            <View style={styles.feeValueContainer}>
+                            <Text style={styles.feeSymbolUsd}>$</Text>
+                            <Text style={styles.feeValue}>{fee.fee_usd}</Text>
+                            </View>
+                        </View>
+                        </View>
+
+                        <View style={styles.feeFooter}>
+                        <MaterialCommunityIcons 
+                            name="information-outline" 
+                            size={14} 
+                            color={isDark ? '#A09CB8' : '#666'} 
+                        />
+                        <Text style={styles.feeFooterText}>
+                            Network fee may vary based on congestion
+                        </Text>
+                        </View>
+                    </View>
+                    </View>
+
+                </ScrollView>
+
+                <View style={styles.swipeButtonContainer}>
+                    <BlurView
+                    intensity={isDark ? 30 : 90}
+                    tint={isDark ? 'dark' : 'light'}
+                    style={[styles.blurViewAbsolute, { borderRadius: 32 }]}
+                    />
+                    <Animated.Text style={[styles.swipeText, { opacity: isSuccess || isLoading || isFailed ? 0 : textOpacity }]}>
+                        Swipe to send
+                    </Animated.Text>
+                    <Animated.Text style={[styles.swipeText, { opacity: breathingAnim, position: 'absolute' }]}>
+                        {isLoading ? 'Processing...' : isFailed ? 'Failed' : ''}
+                    </Animated.Text>
+
+                    <Animated.View
+                        style={[styles.swipeButton, { transform: [{ translateX: pan.x }] }]}
+                        {...(!isSuccess && !isLoading && !isFailed && panResponder.panHandlers)}
+                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                    >
                         <LinearGradient
-                        colors={['#A78BFA', '#5856D6']}
-                        style={styles.feeIconGradient}
-                        >
-                        <MaterialCommunityIcons name="flash" size={16} color="#fff" />
-                        </LinearGradient>
-                    </View>
-                    <Text style={styles.feeTitle}>Network Fee</Text>
-                    </View>
-
-                    <View style={styles.feeDetailsContainer}>
-                    <View style={styles.feeRow}>
-                        <Text style={styles.feeLabel}>Amount</Text>
-                        <View style={styles.feeValueContainer}>
-                        <Text style={styles.feeValue}>{fee.fee}</Text>
-                        <Text style={styles.feeSymbol}>{symbol}</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.feeRow}>
-                        <Text style={styles.feeLabel}>USD Value</Text>
-                        <View style={styles.feeValueContainer}>
-                        <Text style={styles.feeSymbolUsd}>$</Text>
-                        <Text style={styles.feeValue}>{fee.fee_usd}</Text>
-                        </View>
-                    </View>
-                    </View>
-
-                    <View style={styles.feeFooter}>
-                    <MaterialCommunityIcons 
-                        name="information-outline" 
-                        size={14} 
-                        color={isDark ? '#A09CB8' : '#666'} 
-                    />
-                    <Text style={styles.feeFooterText}>
-                        Network fee may vary based on congestion
-                    </Text>
-                    </View>
-                </View>
-                </View>
-
-            </ScrollView>
-
-            <View style={styles.swipeButtonContainer}>
-                <Animated.Text style={[styles.swipeText, { opacity: isSuccess || isLoading || isFailed ? 0 : textOpacity }]}>
-                    Swipe to send
-                </Animated.Text>
-                <Animated.Text style={[styles.swipeText, { opacity: breathingAnim, position: 'absolute' }]}>
-                    {isLoading ? 'Processing...' : isFailed ? 'Failed' : ''}
-                </Animated.Text>
-
-                <Animated.View
-                    style={[styles.swipeButton, { transform: [{ translateX: pan.x }] }]}
-                    {...(!isSuccess && !isLoading && !isFailed && panResponder.panHandlers)}
-                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                >
-                    <LinearGradient
-                        colors={['#A78BFA', '#5856D6']}
-                        style={styles.swipeButtonGradient}
-                    />
-                    <MaterialCommunityIcons name="chevron-double-right" size={30} color="#fff" />
-                </Animated.View>
-                
-                {(isSuccess || isLoading || isFailed) && (
-                     <Animated.View style={[StyleSheet.absoluteFill, styles.swipeButtonContainer, { width: "100%", justifyContent: 'center', alignItems: 'center', backgroundColor: isSuccess ? '#2ECC71' : isFailed ? '#E74C3C' : 'transparent', marginLeft: -20}]}>
-                        {isLoading && <Animated.View style={{transform: [{rotate: loadingRotation.interpolate({inputRange: [0, 1], outputRange: ['0deg', '360deg']})}]}}><MaterialCommunityIcons name="loading" size={32} color="#fff" /></Animated.View>}
-                        {isSuccess && <Animated.View style={{transform: [{scale: successScale}]}}><MaterialCommunityIcons name="check" size={32} color="#fff" /></Animated.View>}
-                        {isFailed && <MaterialCommunityIcons name="close" size={32} color="#fff" />}
+                            colors={['#A78BFA', '#5856D6']}
+                            style={styles.swipeButtonGradient}
+                        />
+                        <MaterialCommunityIcons name="chevron-double-right" size={30} color="#fff" />
                     </Animated.View>
-                )}
+                    
+                    {(isSuccess || isLoading || isFailed) && (
+                        <Animated.View style={[StyleSheet.absoluteFill, styles.swipeButtonContainer, { width: "100%", justifyContent: 'center', alignItems: 'center', backgroundColor: isSuccess ? '#2ECC71' : isFailed ? '#E74C3C' : 'transparent', marginLeft: -20}]}>
+                            {isLoading && <Animated.View style={{transform: [{rotate: loadingRotation.interpolate({inputRange: [0, 1], outputRange: ['0deg', '360deg']})}]}}><MaterialCommunityIcons name="loading" size={32} color="#fff" /></Animated.View>}
+                            {isSuccess && <Animated.View style={{transform: [{scale: successScale}]}}><MaterialCommunityIcons name="check" size={32} color="#fff" /></Animated.View>}
+                            {isFailed && <MaterialCommunityIcons name="close" size={32} color="#fff" />}
+                        </Animated.View>
+                    )}
+                </View>
             </View>
-        </View>
+        </LinearGradient>
     );
 }

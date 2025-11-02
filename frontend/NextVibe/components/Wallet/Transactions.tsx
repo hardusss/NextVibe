@@ -4,6 +4,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import getTransactions from '@/src/api/get.transactions';
 import FastImage from 'react-native-fast-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 interface Transaction {
     amount: number;
@@ -142,38 +144,45 @@ export default function TransactionsScreen() {
                     });
                 }}
             >
-                <View style={styles.transactionIconContainer}>
-                    <FastImage source={{ uri: item.icon }} style={styles.tokenIcon} />
-                    <View style={[styles.directionIndicator, { 
-                        backgroundColor: isIncoming ? '#2ECC71' : '#E74C3C' 
-                    }]}>
-                        <MaterialCommunityIcons 
-                            name={isIncoming ? 'arrow-bottom-left' : 'arrow-top-right'} 
-                            size={14} 
-                            color="#fff" 
-                        />
+                <BlurView
+                    intensity={isDarkMode ? 30 : 90}
+                    tint={isDarkMode ? 'dark' : 'light'}
+                    style={styles.blurViewAbsolute}
+                />
+                <View style={styles.transactionItemContent}>
+                    <View style={styles.transactionIconContainer}>
+                        <FastImage source={{ uri: item.icon }} style={styles.tokenIcon} />
+                        <View style={[styles.directionIndicator, { 
+                            backgroundColor: isIncoming ? '#2ECC71' : '#E74C3C',
+                            borderColor: isDarkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+                        }]}>
+                            <MaterialCommunityIcons 
+                                name={isIncoming ? 'arrow-bottom-left' : 'arrow-top-right'} 
+                                size={14} 
+                                color="#fff" 
+                            />
+                        </View>
                     </View>
-                </View>
-                
-                <View style={styles.transactionInfo}>
-                    <Text style={styles.transactionType}>
-                        {isIncoming ? 'Received' : 'Sent'}
-                    </Text>
-                    <Text style={styles.transactionAddress} numberOfLines={1} ellipsizeMode="middle">
-                        {isIncoming ? `From: ${item.to_address}` : `To: ${item.to_address}`}
-                    </Text>
-                </View>
-                
-                <View style={styles.transactionDetails}>
-                    <Text style={[styles.transactionAmount, { 
-                        color: isIncoming ? '#2ECC71' : isDarkMode ? '#FF6B6B' : '#E74C3C'
-                    }]}>
-                        {isIncoming ? '+' : '-'}{item.amount} {item.blockchain}
-                    </Text>
-                    <Text style={styles.transactionUsdAmount}>
-                       $ {item.amount * prices[item.blockchain as keyof Prices]}
-                    </Text>
-
+                    
+                    <View style={styles.transactionInfo}>
+                        <Text style={styles.transactionType}>
+                            {isIncoming ? 'Received' : 'Sent'}
+                        </Text>
+                        <Text style={styles.transactionAddress} numberOfLines={1} ellipsizeMode="middle">
+                            {isIncoming ? `From: ${item.to_address}` : `To: ${item.to_address}`}
+                        </Text>
+                    </View>
+                    
+                    <View style={styles.transactionDetails}>
+                        <Text style={[styles.transactionAmount, { 
+                            color: isIncoming ? '#2ECC71' : isDarkMode ? '#FF6B6B' : '#E74C3C'
+                        }]}>
+                            {isIncoming ? '+' : '-'}{item.amount} {item.blockchain}
+                        </Text>
+                        <Text style={styles.transactionUsdAmount}>
+                        $ {(item.amount * prices[item.blockchain as keyof Prices]).toFixed(2)}
+                        </Text>
+                    </View>
                 </View>
             </TouchableOpacity>
         );
@@ -182,7 +191,7 @@ export default function TransactionsScreen() {
     const styles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: isDarkMode ? '#0A0410' : '#F5F5F7',
+            backgroundColor: 'transparent',
             paddingHorizontal: 16,
         },
         header: {
@@ -205,15 +214,22 @@ export default function TransactionsScreen() {
             color: isDarkMode ? '#A09CB8' : '#666',
             paddingVertical: 12,
             paddingHorizontal: 4,
-            backgroundColor: isDarkMode ? '#0A0410' : '#F5F5F7',
+            backgroundColor: 'transparent',
         },
         transactionItem: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: isDarkMode ? '#180F2E' : '#FFFFFF',
-            padding: 16,
             borderRadius: 16,
             marginBottom: 12,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
+        },
+        transactionItemContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 16,
+        },
+        blurViewAbsolute: {
+            ...StyleSheet.absoluteFillObject,
         },
         transactionIconContainer: {
             position: 'relative',
@@ -234,7 +250,6 @@ export default function TransactionsScreen() {
             justifyContent: 'center',
             alignItems: 'center',
             borderWidth: 2,
-            borderColor: isDarkMode ? '#180F2E' : '#FFFFFF',
         },
         transactionInfo: {
             flex: 1,
@@ -282,57 +297,63 @@ export default function TransactionsScreen() {
     });
 
     return (
-        <View style={styles.container}>
-            <StatusBar 
-                backgroundColor={isDarkMode ? "#0A0410" : "#F5F5F7"}
-                barStyle={isDarkMode ? "light-content" : "dark-content"}
-            />
-            
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                    <MaterialCommunityIcons 
-                        name="arrow-left" 
-                        size={28} 
-                        color={isDarkMode ? '#FFFFFF' : '#000'} 
-                    />
-                </TouchableOpacity>
-                <Text style={styles.title}>Transaction History</Text>
-            </View>
-
-            {loading && !refreshing ? (
-                <View style={styles.centeredContainer}>
-                    <ActivityIndicator size="large" color={isDarkMode ? '#A78BFA' : '#5856D6'} />
-                </View>
-            ) : error ? (
-                <View style={styles.centeredContainer}>
-                    <MaterialCommunityIcons name="alert-circle-outline" size={50} color="#E74C3C" />
-                    <Text style={styles.errorText}>{error}</Text>
-                </View>
-            ) : (
-                <SectionList
-                    sections={groupedTransactions}
-                    renderItem={renderTransactionItem}
-                    renderSectionHeader={({ section: { title } }) => (
-                        <Text style={styles.sectionHeader}>{title}</Text>
-                    )}
-                    keyExtractor={(item, index) => item.tx_id + index}
-                    showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={
-                        <View style={styles.centeredContainer}>
-                            <MaterialCommunityIcons name="history" size={50} color={isDarkMode ? '#A09CB8' : '#666'} />
-                            <Text style={styles.statusText}>You don't have any transactions yet</Text>
-                        </View>
-                    }
-                    refreshControl={
-                        <RefreshControl 
-                            refreshing={refreshing} 
-                            onRefresh={onRefresh} 
-                            tintColor={isDarkMode ? '#FFFFFF' : '#000'}
+        <LinearGradient
+            colors={
+                isDarkMode
+                ? ['#0A0410', '#1a0a2e', '#0A0410']
+                : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']
+            }
+            style={{flex: 1}}
+        >
+            <View style={styles.container}>
+                <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/>  
+                
+                <View style={styles.header}>
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                        <MaterialCommunityIcons 
+                            name="arrow-left" 
+                            size={28} 
+                            color={isDarkMode ? '#FFFFFF' : '#000'} 
                         />
-                    }
-                    stickySectionHeadersEnabled={false}
-                />
-            )}
-        </View>
+                    </TouchableOpacity>
+                    <Text style={styles.title}>Transaction History</Text>
+                </View>
+
+                {loading && !refreshing ? (
+                    <View style={styles.centeredContainer}>
+                        <ActivityIndicator size="large" color={isDarkMode ? '#A78BFA' : '#5856D6'} />
+                    </View>
+                ) : error ? (
+                    <View style={styles.centeredContainer}>
+                        <MaterialCommunityIcons name="alert-circle-outline" size={50} color="#E74C3C" />
+                        <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                ) : (
+                    <SectionList
+                        sections={groupedTransactions}
+                        renderItem={renderTransactionItem}
+                        renderSectionHeader={({ section: { title } }) => (
+                            <Text style={styles.sectionHeader}>{title}</Text>
+                        )}
+                        keyExtractor={(item, index) => item.tx_id + index}
+                        showsVerticalScrollIndicator={false}
+                        ListEmptyComponent={
+                            <View style={styles.centeredContainer}>
+                                <MaterialCommunityIcons name="history" size={50} color={isDarkMode ? '#A09CB8' : '#666'} />
+                                <Text style={styles.statusText}>You don't have any transactions yet</Text>
+                            </View>
+                        }
+                        refreshControl={
+                            <RefreshControl 
+                                refreshing={refreshing} 
+                                onRefresh={onRefresh} 
+                                tintColor={isDarkMode ? '#FFFFFF' : '#000'}
+                            />
+                        }
+                        stickySectionHeadersEnabled={false}
+                    />
+                )}
+            </View>
+        </LinearGradient>
     );
 }

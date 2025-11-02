@@ -5,6 +5,8 @@ import { useRef, useCallback } from 'react';
 import FastImage from 'react-native-fast-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 export default function ResultTransaction() {
     const { from, to, amount, symbol, usdValue, icon, tx_url } = useLocalSearchParams();
@@ -46,7 +48,7 @@ export default function ResultTransaction() {
     const styles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: isDark ? '#0A0410' : '#F5F5F7',
+            backgroundColor: 'transparent',
             padding: 20,
             justifyContent: 'space-between',
         },
@@ -74,9 +76,17 @@ export default function ResultTransaction() {
         },
         detailsCard: {
             width: '100%',
-            backgroundColor: isDark ? '#180F2E' : '#FFFFFF',
+            backgroundColor: 'transparent',
             borderRadius: 16,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
+        },
+        detailsCardContent: {
             padding: 20,
+        },
+        blurViewAbsolute: {
+            ...StyleSheet.absoluteFillObject,
         },
         amountContainer: {
             flexDirection: 'row',
@@ -106,7 +116,7 @@ export default function ResultTransaction() {
             alignItems: 'center',
             paddingVertical: 16,
             borderBottomWidth: 1,
-            borderBottomColor: isDark ? '#2A1B41' : '#E0E0E0',
+            borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
         },
         label: {
             color: isDark ? '#A09CB8' : '#666',
@@ -140,51 +150,64 @@ export default function ResultTransaction() {
     });
 
     return (
-        <View style={styles.container}>
-            <StatusBar 
-                backgroundColor={isDark ? "#0A0410" : "#F5F5F7"}
-                barStyle={isDark ? "light-content" : "dark-content"}
-            />
+        <LinearGradient
+            colors={
+                isDark
+                ? ['#0A0410', '#1a0a2e', '#0A0410']
+                : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']
+            }
+            style={{flex: 1}}
+        >
+            <View style={styles.container}>
+                 <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
 
-            <View style={styles.contentContainer}>
-                <View style={styles.lottieContainer}>
-                    <LottieView
-                        source={require('../../assets/lottie/success.json')}
-                        autoPlay
-                        loop={false}
-                        style={{ width: '100%', height: '100%' }}
-                    />
+                <View style={styles.contentContainer}>
+                    <View style={styles.lottieContainer}>
+                        <LottieView
+                            source={require('../../assets/lottie/success.json')}
+                            autoPlay
+                            loop={false}
+                            style={{ width: '100%', height: '100%' }}
+                        />
+                    </View>
+                    <Text style={styles.title}>Transaction Successful!</Text>
+                    <Text style={styles.subtitle}>Your funds have been sent.</Text>
+
+                    <Animated.View style={[ styles.detailsCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                        <BlurView
+                            intensity={isDark ? 30 : 90}
+                            tint={isDark ? 'dark' : 'light'}
+                            style={styles.blurViewAbsolute}
+                        />
+                        <View style={styles.detailsCardContent}>
+                            <View style={styles.amountContainer}>
+                                <Text style={styles.amount}>{amount} {symbol}</Text>
+                                <FastImage source={{ uri: icon as string }} style={styles.tokenIcon} />
+                            </View>
+                            <Text style={styles.usdValue}>Last balance ≈ ${usdValue}</Text>
+
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>From</Text>
+                                <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{from}</Text>
+                            </View>
+
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>To</Text>
+                                <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{to}</Text>
+                            </View>
+
+                            <TouchableOpacity style={[styles.infoRow, {borderBottomWidth: 0}]} onPress={() => handleOpenURL(tx_url as string)}>
+                                <Text style={styles.label}>View on Explorer</Text>
+                                <MaterialCommunityIcons name="open-in-new" size={18} color={isDark ? '#A78BFA' : '#5856D6'} />
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
                 </View>
-                <Text style={styles.title}>Transaction Successful!</Text>
-                <Text style={styles.subtitle}>Your funds have been sent.</Text>
 
-                <Animated.View style={[ styles.detailsCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                    <View style={styles.amountContainer}>
-                        <Text style={styles.amount}>{amount} {symbol}</Text>
-                        <FastImage source={{ uri: icon as string }} style={styles.tokenIcon} />
-                    </View>
-                    <Text style={styles.usdValue}>Last balance ≈ ${usdValue}</Text>
-
-                    <View style={styles.infoRow}>
-                        <Text style={styles.label}>From</Text>
-                        <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{from}</Text>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                        <Text style={styles.label}>To</Text>
-                        <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{to}</Text>
-                    </View>
-
-                    <TouchableOpacity style={styles.infoRow} onPress={() => handleOpenURL(tx_url as string)}>
-                        <Text style={styles.label}>View on Explorer</Text>
-                        <MaterialCommunityIcons name="open-in-new" size={18} color={isDark ? '#A78BFA' : '#5856D6'} />
-                    </TouchableOpacity>
-                </Animated.View>
+                <TouchableOpacity style={styles.button} onPress={() => router.push("/wallet")}>
+                    <Text style={styles.buttonText}>Back to Wallet</Text>
+                </TouchableOpacity>
             </View>
-
-            <TouchableOpacity style={styles.button} onPress={() => router.push("/wallet")}>
-                <Text style={styles.buttonText}>Back to Wallet</Text>
-            </TouchableOpacity>
-        </View>
+        </LinearGradient>
     );
 }
