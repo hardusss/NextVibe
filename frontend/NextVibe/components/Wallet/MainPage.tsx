@@ -1,5 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useColorScheme, RefreshControl, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  useColorScheme,
+  RefreshControl,
+  StatusBar,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import getBalanceWallet from '@/src/api/wallet.balance';
 import formatNumberWithCommas from '@/src/utils/formatedNumberUs';
@@ -7,7 +16,8 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import FastImage from 'react-native-fast-image';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
-
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur'; 
 
 type Token = {
   name: string;
@@ -27,251 +37,538 @@ export default function WalletScreen() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [totalBalance, setTotalBalance] = useState<string | null>(null);
   const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
-  
+  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+
   const fetchBalance = async () => {
     setLoading(true);
-    const response = await getBalanceWallet();
-    response.slice(1).forEach((tokensObj: any) => {
-      const tokensArray = Object.entries(tokensObj).map(([key, value]: [string, any]) => ({
-        name: value.name,
-        symbol: value.symbol,
-        icon: value.icon,
-        price: value.price,
-        amount: value.amount,
-      }));
-      setTokens(tokensArray); 
-    });
-    
-    setTotalBalance(`${formatNumberWithCommas(response[0])} $`)
-    setLoading(false);
-  }
+    try {
+      const response = await getBalanceWallet();
+
+      if (response.length > 1) {
+        const tokenData = response[1];
+        const tokensArray: Token[] = Object.values(tokenData).map(
+          (value: any) => ({
+            name: value.name,
+            symbol: value.symbol,
+            icon: value.icon,
+            price: value.price || 0,
+            amount: value.amount || 0,
+          }),
+        );
+        setTokens(tokensArray);
+      }
+      setTotalBalance(`${formatNumberWithCommas(response[0])}`);
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
-      fetchBalance()
-    }, []) 
+      fetchBalance();
+    }, []),
   );
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchBalance();
+    await fetchBalance();
     setRefreshing(false);
   };
 
   const styles = StyleSheet.create({
     container: {
-        backgroundColor: isDarkMode ? '#0A0410' : '#f2f2f2',
-        flex: 1,
-        padding: 20,
+      flex: 1,
     },
-    skeleton: {
-        backgroundColor: isDarkMode ? '#1C112E' : '#ddd',
-        borderRadius: 8,
-        width: '100%',
-        height: 20,
-        marginVertical: 4,
+    gradientBackground: {
+      flex: 1,
     },
-    skeletonSmall: {
-        width: 80,
-        height: 15,
-        backgroundColor: isDarkMode ? '#1C112E' : '#ddd',
-        borderRadius: 6,
-        marginVertical: 3,
+    scrollViewContent: {
+      paddingBottom: 30,
     },
-    skeletonCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: isDarkMode ? '#1C112E' : '#ddd',
-        marginRight: 15,
+    topHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      marginBottom: 30,
     },
-    shimmer: {
-        width: '40%',
-        height: 15,
-        backgroundColor: isDarkMode ? '#1C112E' : '#ddd',
-        borderRadius: 6,
-        marginVertical: 3,
+    rightHeaderGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
     },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
+    headerIconBackground: {
+      width: 50,
+      height: 54,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
+      overflow: 'hidden', 
+      borderWidth: 1, 
+      borderColor: isDarkMode
+        ? 'rgba(255, 255, 255, 0.15)'
+        : 'rgba(220, 220, 220, 0.5)',
     },
-    headerButton: {
-        padding: 8,
+    blurViewAbsolute: {
+      ...StyleSheet.absoluteFillObject,
     },
-    balanceText: {
-        color: isDarkMode ? '#A09CB8' : '#555',
-        fontSize: 16,
-        textAlign: 'center',
+    balanceSection: {
+      alignItems: 'center',
+      marginBottom: 30,
+    },
+    balanceLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
+      marginBottom: 8,
     },
     totalBalance: {
-        color: isDarkMode ? '#FFFFFF' : '#000',
-        fontSize: 42,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginVertical: 10,
+      fontSize: 48,
+      fontWeight: '800',
+      color: isDarkMode ? '#FFFFFF' : '#000000',
+      letterSpacing: -2,
+      marginBottom: 4,
     },
-    buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 30,
-},
-circleWrapper: {
-    alignItems: 'center',
-},
-circleButton: {
-    width: 82,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: isDarkMode ? '#180F2E' : '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 1.5,
-    borderColor: isDarkMode ? '#A78BFA' : '#ccc',
-},
-iconColor: {
-    color: isDarkMode ? '#A78BFA' : '#333',
-},
-circleText: {
-    color: isDarkMode ? '#A09CB8' : '#555',
-    fontSize: 14,
-    fontWeight: '500',
-},
+    balanceSkeleton: {
+      width: 200,
+      height: 48,
+      borderRadius: 12,
+      backgroundColor: isDarkMode
+        ? 'rgba(255,255,255,0.1)'
+        : 'rgba(0,0,0,0.1)',
+    },
+    actionButtonsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      paddingHorizontal: 10,
+      marginBottom: 30,
+    },
+    actionButtonWrapper: {
+      alignItems: 'center',
+    },
+    actionButton: {
+      width: 82,
+      height: 72,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 8,
+      overflow: 'hidden', 
+      borderWidth: 0.7, 
+      borderColor: isDarkMode
+        ? 'rgba(255, 255, 255, 0.2)'
+        : 'rgba(220, 220, 220, 0.5)',
+    },
+    actionButtonText: {
+      color: isDarkMode ? '#FFFFFF' : '#000000',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    recentActivityContainer: {
+      paddingHorizontal: 20,
+      marginBottom: 30,
+    },
+    recentActivityCard: {
+      borderRadius: 20,
+      overflow: 'hidden', 
+      borderWidth: 0.7, 
+      borderColor: isDarkMode
+        ? 'rgba(255, 255, 255, 0.15)'
+        : 'rgba(220, 220, 220, 0.5)',
+    },
+    recentActivityInnerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+    },
+    recentActivityIconBackground: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: isDarkMode
+        ? 'rgba(167, 139, 250, 0.2)'
+        : 'rgba(88, 86, 214, 0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 15,
+      borderWidth: 1,
+      borderColor: isDarkMode
+        ? 'rgba(167, 139, 250, 0.4)'
+        : 'rgba(88, 86, 214, 0.3)',
+    },
+    recentActivityTextContainer: {
+      flex: 1,
+    },
+    recentActivityTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDarkMode ? '#FFFFFF' : '#000000',
+      marginBottom: 4,
+    },
+    recentActivityDetails: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.5)',
+    },
+    recentActivityTime: {
+      fontSize: 12,
+      color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+    },
+    portfolioHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      marginBottom: 16,
+    },
+    portfolioTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: isDarkMode ? '#FFFFFF' : '#000000',
+    },
     tokenItem: {
-        backgroundColor: isDarkMode ? '#180F2E' : '#fff',
-        borderRadius: 16,
-        padding: 15,
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 15,
+      paddingHorizontal: 20,
+      borderBottomWidth: 0.5,
+      borderBottomColor: isDarkMode
+        ? 'rgba(255, 255, 255, 0.1)'
+        : 'rgba(0, 0, 0, 0.08)',
+    },
+    tokenInfoLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     tokenIcon: {
-        width: 40,
-        height: 40,
-        marginRight: 15,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      marginRight: 15,
     },
-    tokenInfo: {
-        flex: 1,
+    tokenNameDetails: {
+      flexDirection: 'column',
     },
     tokenName: {
-        color: isDarkMode ? '#FFFFFF' : '#000',
-        fontSize: 16,
-        fontWeight: 'bold',
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDarkMode ? '#FFFFFF' : '#000000',
     },
     tokenPrice: {
-        color: isDarkMode ? '#A09CB8' : '#555',
-        fontSize: 12,
+      fontSize: 13,
+      color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.5)',
+      marginTop: 2,
+    },
+    tokenInfoRight: {
+      alignItems: 'flex-end',
     },
     tokenAmount: {
-        alignItems: 'flex-end',
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDarkMode ? '#FFFFFF' : '#000000',
     },
     tokenValue: {
-        color: isDarkMode ? '#FFFFFF' : '#000',
-        fontSize: 16,
-        fontWeight: 'bold',
+      fontSize: 13,
+      color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.5)',
+      marginTop: 2,
     },
-    tokenQty: {
-        color: isDarkMode ? '#A09CB8' : '#555',
-        fontSize: 12,
+    skeletonTokenIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: isDarkMode
+        ? 'rgba(255,255,255,0.1)'
+        : 'rgba(0,0,0,0.1)',
+      marginRight: 15,
     },
-    historyButton: {
-        backgroundColor: isDarkMode ? '#180F2E' : '#fff',
-        borderRadius: 16,
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 10,
+    skeletonTokenName: {
+      width: 80,
+      height: 18,
+      borderRadius: 4,
+      backgroundColor: isDarkMode
+        ? 'rgba(255,255,255,0.1)'
+        : 'rgba(0,0,0,0.1)',
+      marginBottom: 4,
     },
-    historyText: {
-        color: isDarkMode ? '#FFFFFF' : '#000',
-        fontSize: 16,
-        fontWeight: '500',
+    skeletonTokenPrice: {
+      width: 60,
+      height: 15,
+      borderRadius: 4,
+      backgroundColor: isDarkMode
+        ? 'rgba(255,255,255,0.08)'
+        : 'rgba(0,0,0,0.08)',
     },
-});
+    skeletonTokenAmount: {
+      width: 70,
+      height: 18,
+      borderRadius: 4,
+      backgroundColor: isDarkMode
+        ? 'rgba(255,255,255,0.1)'
+        : 'rgba(0,0,0,0.1)',
+      marginBottom: 4,
+    },
+    skeletonTokenValue: {
+      width: 90,
+      height: 15,
+      borderRadius: 4,
+      backgroundColor: isDarkMode
+        ? 'rgba(255,255,255,0.08)'
+        : 'rgba(0,0,0,0.08)',
+    },
+  });
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDarkMode ? '#fff' : '#000'} />
+    <LinearGradient
+      colors={
+        isDarkMode
+          ? ['#0A0410', '#1a0a2e', '#0A0410']
+          : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']
       }
+      style={styles.container}
     >
-      <Web3Toast message='Coming Soon...' visible={isToastVisible} onHide={() => setIsToastVisible(false)} isSuccess={false}/>
-      <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/>  
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={28} color={isDarkMode ? '#fafafa' : '#000'} />
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.balanceText}>Total Balance</Text>
-      {loading ? (
-        <View style={[styles.skeleton, { height: 40, alignSelf: 'center', width: '50%' }]} />
-      ) : (
-        <Text style={styles.totalBalance}>{totalBalance}</Text>
-      )}
-      <View style={styles.buttonContainer}>
-        <View style={styles.circleWrapper}>
-          <TouchableOpacity style={styles.circleButton} onPress={() => router.push({
-              pathname: "/select-token",
-              params: {
-                from_page: "send"
-              }
-            })}>
-            <Ionicons name="paper-plane-outline" size={22} style={styles.iconColor} />
-            <Text style={styles.circleText}>Send</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollViewContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={isDarkMode ? '#fff' : '#000'}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <Web3Toast
+          message="Coming Soon..."
+          visible={isToastVisible}
+          onHide={() => setIsToastVisible(false)}
+          isSuccess={false}
+        />
+        <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/>  
+
+        <View style={styles.topHeader}>
+          <TouchableOpacity
+            style={[styles.headerIconBackground, {width: 84}]}
+            onPress={() => router.replace("/profile")}
+          >
+            <BlurView
+              intensity={isDarkMode ? 40 : 80}
+              tint={isDarkMode ? 'dark' : 'light'}
+              style={styles.blurViewAbsolute}
+            />
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={isDarkMode ? '#A78BFA' : '#5856D6'}
+            />
           </TouchableOpacity>
-          
+
+          <View style={styles.rightHeaderGroup}>
+            <TouchableOpacity
+              style={styles.headerIconBackground}
+              onPress={() => setIsBalanceHidden(!isBalanceHidden)}
+            >
+              <BlurView
+                intensity={isDarkMode ? 40 : 80}
+                tint={isDarkMode ? 'dark' : 'light'}
+                style={styles.blurViewAbsolute}
+              />
+              <Ionicons
+                name={isBalanceHidden ? 'eye-off-outline' : 'eye-outline'}
+                size={24}
+                color={isDarkMode ? '#A78BFA' : '#5856D6'}
+              />
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.headerIconBackground, { marginLeft: 12 }]}
+              onPress={() => router.push('/transactions')}
+            >
+              <BlurView
+                intensity={isDarkMode ? 40 : 80}
+                tint={isDarkMode ? 'dark' : 'light'}
+                style={styles.blurViewAbsolute}
+              />
+              <Ionicons
+                name="receipt-outline"
+                size={24}
+                color={isDarkMode ? '#A78BFA' : '#5856D6'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.circleWrapper}>
-          <TouchableOpacity style={styles.circleButton} onPress={() => router.push({
-              pathname: "/select-token",
-              params: {
-                from_page: "deposit"
-              }
-            })}>
-            <Ionicons name="download-outline" size={22} style={styles.iconColor} />
-             <Text style={styles.circleText}>Receive</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.circleWrapper}>
-          <TouchableOpacity style={styles.circleButton} onPress={() => setIsToastVisible(true)}>
-            <Ionicons name="repeat-outline" size={22} style={styles.iconColor} />
-             <Text style={styles.circleText}>Swap</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      {(loading ? Array(3).fill(null) : tokens).map((token, index) => (
-        <View key={index} style={styles.tokenItem}>
+
+        <View style={styles.balanceSection}>
+          <Text style={styles.balanceLabel}>Balance</Text>
           {loading ? (
-            <View style={styles.skeletonCircle} />
+            <View style={styles.balanceSkeleton} />
           ) : (
-            <FastImage source={{ uri: token.icon }} style={styles.tokenIcon} />
+            <Text style={styles.totalBalance}>
+              {isBalanceHidden ? '*****' : `${totalBalance} `}
+              <Text style={{color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontSize: 32}}>USD</Text>
+            </Text>
           )}
-          <View style={styles.tokenInfo}>
-            {loading ? <View style={styles.skeletonSmall} /> : <Text style={styles.tokenName}>{token.name}</Text>}
-            {loading ? <View style={styles.shimmer} /> : <Text style={styles.tokenPrice}>${token.price}</Text>}
+        </View>
+
+        <View style={styles.actionButtonsContainer}>
+          <View style={styles.actionButtonWrapper}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/select-token',
+                  params: { from_page: 'deposit' },
+                })
+              }
+            >
+              <BlurView
+                intensity={isDarkMode ? 40 : 40}
+                tint={isDarkMode ? 'dark' : 'light'}
+                style={styles.blurViewAbsolute}
+              />
+              <Ionicons
+                name="arrow-down-outline"
+                size={26}
+                color={isDarkMode ? '#A78BFA' : '#5856D6'}
+              />
+            </TouchableOpacity>
+            <Text style={styles.actionButtonText}>Receive</Text>
           </View>
-          <View style={styles.tokenAmount}>
-            {loading ? <View style={styles.skeletonSmall} /> : (
-              <Text style={styles.tokenValue}>${(token.price * token.amount).toFixed(2)}</Text>
-            )}
-            {loading ? <View style={styles.shimmer} /> : (
-              <Text style={styles.tokenQty}>{token.amount} {token.symbol}</Text>
-            )}
+
+          <View style={styles.actionButtonWrapper}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/select-token',
+                  params: { from_page: 'send' },
+                })
+              }
+            >
+              <BlurView
+                intensity={isDarkMode ? 40 : 40}
+                tint={isDarkMode ? 'dark' : 'light'}
+                style={styles.blurViewAbsolute}
+              />
+              <Ionicons
+                name="arrow-up-outline"
+                size={26}
+                color={isDarkMode ? '#A78BFA' : '#5856D6'}
+              />
+            </TouchableOpacity>
+            <Text style={styles.actionButtonText}>Send</Text>
+          </View>
+
+          <View style={styles.actionButtonWrapper}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => setIsToastVisible(true)}
+            >
+              <BlurView
+                intensity={isDarkMode ? 40 : 40}
+                tint={isDarkMode ? 'dark' : 'light'}
+                style={styles.blurViewAbsolute}
+              />
+              <Ionicons
+                name="swap-horizontal-outline"
+                size={26}
+                color={isDarkMode ? '#A78BFA' : '#5856D6'}
+              />
+            </TouchableOpacity>
+            <Text style={styles.actionButtonText}>Swap</Text>
           </View>
         </View>
-      ))}
-      <TouchableOpacity style={styles.historyButton} onPress={() => router.push("/transactions")}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Ionicons name="list-outline" size={28} color={isDarkMode ? '#fff' : '#000'} style={{ marginRight: 10 }} />
-          <Text style={styles.historyText}>Transaction history</Text>
+
+        <View style={styles.recentActivityContainer}>
+          <TouchableOpacity
+            style={styles.recentActivityCard}
+            onPress={() => router.push('/transactions')}
+          >
+            <BlurView
+              intensity={isDarkMode ? 30 : 40}
+              tint={isDarkMode ? 'dark' : 'light'}
+              style={styles.blurViewAbsolute}
+            />
+            <View style={styles.recentActivityInnerContent}>
+              <View style={styles.recentActivityIconBackground}>
+                <FastImage
+                  source={{
+                    uri: 'https://cryptologos.cc/logos/cardano-ada-logo.png?v=025',
+                  }}
+                  style={{ width: 30, height: 30 }}
+                />
+              </View>
+              <View style={styles.recentActivityTextContainer}>
+                <Text style={styles.recentActivityTitle}>
+                  {isBalanceHidden
+                    ? 'Recent Transaction'
+                    : 'You received 28 ADA'}
+                </Text>
+                <Text style={styles.recentActivityDetails}>
+                  {isBalanceHidden ? '****' : '~120$'}
+                </Text>
+              </View>
+              <Text style={styles.recentActivityTime}>13 min ago</Text>
+            </View>
+          </TouchableOpacity>
         </View>
-        <Ionicons name="chevron-forward" size={24} color={isDarkMode ? '#aaa' : '#333'} />
-      </TouchableOpacity>
-    </ScrollView>
+
+        <View style={styles.portfolioHeader}>
+          <Text style={styles.portfolioTitle}>Portfolio</Text>
+        </View>
+
+        {(loading ? Array(3).fill(null) : tokens).map((token, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.tokenItem}
+            onPress={() => setIsToastVisible(true)}
+          >
+            <View style={styles.tokenInfoLeft}>
+              {loading ? (
+                <View style={styles.skeletonTokenIcon} />
+              ) : (
+                <FastImage source={{ uri: token.icon }} style={styles.tokenIcon} />
+              )}
+              <View style={styles.tokenNameDetails}>
+                {loading ? (
+                  <View style={styles.skeletonTokenName} />
+                ) : (
+                  <Text style={styles.tokenName}>{token.name}</Text>
+                )}
+                {loading ? (
+                  <View style={styles.skeletonTokenPrice} />
+                ) : (
+                  <Text style={styles.tokenPrice}>
+                    {token.symbol} ${Number(token.price).toFixed(2)}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <View style={styles.tokenInfoRight}>
+              {loading ? (
+                <View style={styles.skeletonTokenAmount} />
+              ) : (
+                <Text style={styles.tokenAmount}>
+                  {isBalanceHidden
+                    ? '****'
+                    : Number(token.amount).toFixed(4)}
+                </Text>
+              )}
+              {loading ? (
+                <View style={styles.skeletonTokenValue} />
+              ) : (
+                <Text style={styles.tokenValue}>
+                  {isBalanceHidden
+                    ? '****'
+                    : `$${Number(token.price * token.amount).toFixed(2)}`}
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </LinearGradient>
   );
 }

@@ -13,7 +13,7 @@ import { VideoView, useVideoPlayer } from "expo-video";
 import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
 import timeAgo from "@/src/utils/formatTime";
-import { LayoutAnimation, Platform, UIManager } from 'react-native';
+import { Platform, UIManager } from 'react-native';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,7 +21,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable } from "react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
-const ESTIMATED_POST_HEIGHT = screenWidth + 200
 
 const darkTheme = {
     background: "#0A0410",
@@ -359,6 +358,7 @@ interface Post {
     owner__official: boolean;
     media: MediaItem[];
     is_ai_generated: boolean;
+    moderation_status: string;
 }
 
 interface LikedPosts {
@@ -598,8 +598,6 @@ export default function MainPage() {
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);    
     const [isVisibleButtonMessage, setVsBM] = useState(true);
-    const [scrollDirection, setScrollDirection] = useState<null | string>(null);
-    const lastOffset = useRef(0);
     const [refreshing, setRefreshing] = useState(false);
     const [currentIndices, setCurrentIndices] = useState<{
         [key: number]: number;
@@ -680,22 +678,6 @@ export default function MainPage() {
         );
     };
 
-    const handleScroll = (event: any) => {
-        const currentOffset = event.nativeEvent.contentOffset.y;
-        const direction = currentOffset > lastOffset.current ? 'down' : 'up';
-
-        if (direction !== scrollDirection) {
-            setScrollDirection(direction);
-        };
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        if (direction === "up"){
-            setVsBM(true)
-        } else {
-            setVsBM(false)
-        }
-
-        lastOffset.current = currentOffset;
-    };
 
     const handlePostDeleted = (postId: number) => {
         setToastMessage("Post successfully deleted")
@@ -743,7 +725,6 @@ export default function MainPage() {
         
         const mediaItems = item.media || [];
         const hasMedia = mediaItems.length > 0;
-        
         return (
             <View style={styles.postContainer}>
                 <View style={styles.postHeader}>
@@ -930,7 +911,6 @@ export default function MainPage() {
             
             {loading ? (
                 <FlatList
-                    onScroll={handleScroll}
                     data={[1, 2, 3, 4, 5, 6]}
                     keyExtractor={(item) => `skeleton-${item}_${Math.random()}`}
                     renderItem={() => <PostSkeleton />}
@@ -940,8 +920,9 @@ export default function MainPage() {
                 />
             ) : (
                 <FlatList
-                    data={posts}
-                    onScroll={handleScroll}
+                    data={posts.filter(p => p.moderation_status === "approved")}
+                    onScrollBeginDrag={() => setDropdownVisible({})}   
+                    onMomentumScrollBegin={() => setDropdownVisible({})}
                     keyExtractor={(item, index) => `${item.id}_${index}`}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContainer}

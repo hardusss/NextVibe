@@ -96,7 +96,7 @@ CACHES = {
 
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=360000),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=36000000),
     'USER_ID_FIELD': 'user_id',
     'USER_ID_CLAIM': 'user_id', 
 }

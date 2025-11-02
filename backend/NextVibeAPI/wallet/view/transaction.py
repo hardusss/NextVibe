@@ -8,7 +8,6 @@ from ..src.sorted_transactions import get_all_transactions_sorted
 from ..src.wallet_encryption import DecryptAEAD
 from ..src.get_tokens_price import get_tokens_prices
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
