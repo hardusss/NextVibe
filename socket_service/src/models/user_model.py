@@ -23,3 +23,4 @@ class User(Base):
     is_staff = Column(Boolean, default=False)
     is_superuser = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    is_online =  Column(Boolean, default=False)

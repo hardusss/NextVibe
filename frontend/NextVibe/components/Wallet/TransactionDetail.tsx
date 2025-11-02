@@ -5,6 +5,8 @@ import { useRef, useCallback, useState } from 'react';
 import FastImage from 'react-native-fast-image';
 import Clipboard from '@react-native-clipboard/clipboard';
 import React from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 export default function TransactionDetail() {
     const { 
@@ -87,7 +89,7 @@ export default function TransactionDetail() {
     const styles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: isDark ? '#0A0410' : '#F5F5F7',
+            backgroundColor: 'transparent',
         },
         scrollContainer: {
             padding: 20,
@@ -96,6 +98,8 @@ export default function TransactionDetail() {
             flexDirection: 'row',
             alignItems: 'center',
             paddingBottom: 20,
+            paddingHorizontal: 20, 
+            paddingTop: 20
         },
         backButton: {
             marginRight: 15,
@@ -118,9 +122,6 @@ export default function TransactionDetail() {
             backgroundColor: isIncoming ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.15)',
             marginBottom: 16,
         },
-        statusIcon: {
-            color: isIncoming ? '#2ECC71' : '#E74C3C',
-        },
         amount: {
             color: isDark ? '#FFFFFF' : '#000',
             fontSize: 36,
@@ -132,9 +133,17 @@ export default function TransactionDetail() {
             marginTop: 4,
         },
         detailsCard: {
-            backgroundColor: isDark ? '#180F2E' : '#FFFFFF',
+            backgroundColor: 'transparent',
             borderRadius: 16,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
+        },
+        detailsCardContent: {
             padding: 8,
+        },
+        blurViewAbsolute: {
+            ...StyleSheet.absoluteFillObject,
         },
         infoRow: {
             flexDirection: 'row',
@@ -143,7 +152,7 @@ export default function TransactionDetail() {
             paddingVertical: 16,
             paddingHorizontal: 12,
             borderBottomWidth: 1,
-            borderBottomColor: isDark ? '#2A1B41' : '#E0E0E0',
+            borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
         },
         infoRowLast: {
             borderBottomWidth: 0,
@@ -192,90 +201,101 @@ export default function TransactionDetail() {
     });
 
     return (
-        <View style={styles.container}>
-            <StatusBar 
-                backgroundColor={isDark ? "#0A0410" : "#F5F5F7"}
-                barStyle={isDark ? "light-content" : "dark-content"}
-            />
+        <LinearGradient
+            colors={
+                isDark
+                ? ['#0A0410', '#1a0a2e', '#0A0410']
+                : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']
+            }
+            style={{flex: 1}}
+        >
+            <View style={styles.container}>
+                <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/> 
 
-            <View style={{padding: 20, paddingBottom: 0}}>
                 <View style={styles.header}>
                     <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                         <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#FFFFFF' : '#000'} />
                     </TouchableOpacity>
                     <Text style={styles.title}>Transaction Details</Text>
                 </View>
+                
+                <ScrollView contentContainerStyle={styles.scrollContainer}>
+                    <Animated.View style={[styles.statusCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                        <View style={styles.statusIconContainer}>
+                            <FastImage source={{ uri: icon as string }} style={{width: 44, height: 44}} />
+                        </View>
+                        <Text style={styles.amount}>
+                            {isIncoming ? '+' : '-'}{amount} {blockchain?.toString().toUpperCase()}
+                        </Text>
+                        {usdValue && <Text style={styles.usdValue}>${usdValue}</Text>}
+                    </Animated.View>
+
+                    <Animated.View style={[styles.detailsCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                        <BlurView
+                            intensity={isDark ? 30 : 90}
+                            tint={isDark ? 'dark' : 'light'}
+                            style={styles.blurViewAbsolute}
+                        />
+                        <View style={styles.detailsCardContent}>
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>Status</Text>
+                                <View style={styles.valueContainer}>
+                                <View style={{width: 8, height: 8, borderRadius: 4, backgroundColor: '#2ECC71'}} />
+                                <Text style={[styles.value, { color: '#2ECC71' }]}>Completed</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>Date</Text>
+                                <Text style={styles.value}>{formatDate(timestamp)}</Text>
+                            </View>
+
+                            {from_address && isIncoming && (
+                                <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(from_address as string, 'From Address')}>
+                                    <Text style={styles.label}>From</Text>
+                                    <View style={styles.valueContainer}>
+                                        <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{from_address}</Text>
+                                        <MaterialCommunityIcons name="content-copy" size={16} color={isDark ? '#A09CB8' : '#666'} />
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                            
+                            <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(to_address as string, 'To Address')}>
+                                <Text style={styles.label}>To</Text>
+                                <View style={styles.valueContainer}>
+                                    <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{to_address}</Text>
+                                    <MaterialCommunityIcons name="content-copy" size={16} color={isDark ? '#A09CB8' : '#666'} />
+                                </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(tx_id as string, 'Transaction ID')}>
+                                <Text style={styles.label}>Transaction ID</Text>
+                                <View style={styles.valueContainer}>
+                                    <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{tx_id}</Text>
+                                    <MaterialCommunityIcons name="content-copy" size={16} color={isDark ? '#A09CB8' : '#666'} />
+                                </View>
+                            </TouchableOpacity>
+
+                            {tx_url && (
+                                <TouchableOpacity style={[styles.infoRow, styles.infoRowLast]} onPress={() => handleOpenURL(tx_url)}>
+                                    <Text style={styles.label}>View on Explorer</Text>
+                                    <View style={styles.valueContainer}>
+                                        <Text style={styles.urlText}>Open Link</Text>
+                                        <MaterialCommunityIcons name="open-in-new" size={18} color={isDark ? '#A78BFA' : '#5856D6'} style={{marginLeft: 4}}/>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </Animated.View>
+                </ScrollView>
+
+                {toastMessage !== '' && (
+                    <Animated.View style={[ styles.toast, { opacity: toastAnimation, transform: [{ translateY: toastAnimation.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
+                        <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />
+                        <Text style={styles.toastText}>{toastMessage}</Text>
+                    </Animated.View>
+                )}
             </View>
-            
-            <ScrollView contentContainerStyle={styles.scrollContainer}>
-                <Animated.View style={[styles.statusCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                    <View style={styles.statusIconContainer}>
-                         <FastImage source={{ uri: icon as string }} style={{width: 44, height: 44}} />
-                    </View>
-                    <Text style={styles.amount}>
-                        {isIncoming ? '+' : '-'}{amount} {blockchain?.toString().toUpperCase()}
-                    </Text>
-                    {usdValue && <Text style={styles.usdValue}>${usdValue}</Text>}
-                </Animated.View>
-
-                <Animated.View style={[styles.detailsCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.label}>Status</Text>
-                        <View style={styles.valueContainer}>
-                           <View style={{width: 8, height: 8, borderRadius: 4, backgroundColor: '#2ECC71'}} />
-                           <Text style={[styles.value, { color: '#2ECC71' }]}>Completed</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                        <Text style={styles.label}>Date</Text>
-                        <Text style={styles.value}>{formatDate(timestamp)}</Text>
-                    </View>
-
-                    {from_address && isIncoming && (
-                        <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(from_address as string, 'From Address')}>
-                            <Text style={styles.label}>From</Text>
-                            <View style={styles.valueContainer}>
-                                <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{from_address}</Text>
-                                <MaterialCommunityIcons name="content-copy" size={16} color={isDark ? '#A09CB8' : '#666'} />
-                            </View>
-                        </TouchableOpacity>
-                    )}
-                    
-                    <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(to_address as string, 'To Address')}>
-                        <Text style={styles.label}>To</Text>
-                        <View style={styles.valueContainer}>
-                            <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{to_address}</Text>
-                            <MaterialCommunityIcons name="content-copy" size={16} color={isDark ? '#A09CB8' : '#666'} />
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(tx_id as string, 'Transaction ID')}>
-                        <Text style={styles.label}>Transaction ID</Text>
-                        <View style={styles.valueContainer}>
-                            <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{tx_id}</Text>
-                            <MaterialCommunityIcons name="content-copy" size={16} color={isDark ? '#A09CB8' : '#666'} />
-                        </View>
-                    </TouchableOpacity>
-
-                    {tx_url && (
-                        <TouchableOpacity style={[styles.infoRow, styles.infoRowLast]} onPress={() => handleOpenURL(tx_url)}>
-                            <Text style={styles.label}>View on Explorer</Text>
-                            <View style={styles.valueContainer}>
-                                <Text style={styles.urlText}>Open Link</Text>
-                                <MaterialCommunityIcons name="open-in-new" size={18} color={isDark ? '#A78BFA' : '#5856D6'} style={{marginLeft: 4}}/>
-                            </View>
-                        </TouchableOpacity>
-                    )}
-                </Animated.View>
-            </ScrollView>
-
-            {toastMessage !== '' && (
-                <Animated.View style={[ styles.toast, { opacity: toastAnimation, transform: [{ translateY: toastAnimation.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
-                    <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />
-                    <Text style={styles.toastText}>{toastMessage}</Text>
-                </Animated.View>
-            )}
-        </View>
+        </LinearGradient>
     );
 }

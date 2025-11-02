@@ -81,7 +81,7 @@ class OnlineUsersView(APIView):
     def get(self, request):
         following_ids = request.user.follow_for
         online_users = User.objects.filter(
-            is_active=True,
+            is_online=True,
             user_id__in=following_ids  
         )
 

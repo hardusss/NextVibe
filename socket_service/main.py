@@ -1,17 +1,17 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 import json, os, base64, redis
 from db import SessionLocal
 from datetime import datetime
-from src.models import Message, MediaAttachment
+from src.models import Message, MediaAttachment, User  
 from src.messages import router as messages_router
 
 app = FastAPI()
 manager = ConnectionManager()  
-
 r = redis.Redis(host='localhost', port=6379, db=0)
+
 
 app.include_router(messages_router, prefix="/api/v1", tags=["Messages"])
 app.add_middleware(
@@ -34,6 +34,14 @@ def get_db():
 async def websocket_endpoint(websocket: WebSocket, user_id: int):
     db = SessionLocal()
     await manager.connect(websocket, user_id)
+
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if user:
+        user.is_online = True
+        db.commit()
+
+    print(f"🟢 User {user_id} connected")
+
     try:
         while True:
             data = await websocket.receive_json()
@@ -43,6 +51,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
                 keys = r.keys(f"chat:{chat_id}:*")
                 if keys:
                     r.delete(*keys)
+
                 unread_messages = (
                     db.query(Message)
                     .filter(Message.chat_id == chat_id)
@@ -50,7 +59,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
                     .filter(Message.is_read == False)
                     .all()
                 )
-                
                 if unread_messages:
                     for msg in unread_messages:
                         msg.is_read = True
@@ -72,6 +80,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
                     "reader_id": user_id
                 }
                 await manager.broadcast(json.dumps(response_data))
+
+            elif data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+
             else:
                 chat_id = data.get("chat_id")
                 message_text = data.get("message", "")
@@ -132,8 +144,16 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
 
                 await manager.broadcast(json.dumps(response_data))
 
+    except WebSocketDisconnect:
+        print(f"🔴 User {user_id} disconnected")
     except Exception as e:
+        print(f"❌ Error in WebSocket for user {user_id}: {e}")
         db.rollback()
     finally:
         manager.disconnect(websocket, user_id)
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if user:
+            user.is_online = False
+            user.last_seen = datetime.utcnow()
+            db.commit()
         db.close()

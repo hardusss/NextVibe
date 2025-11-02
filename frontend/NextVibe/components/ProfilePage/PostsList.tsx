@@ -277,6 +277,7 @@ interface PostItem {
   user_id: number;
   is_ai_generated: boolean;
   is_comments_enabled: boolean,
+  moderation_status: string,
 }
 
 interface User {
@@ -551,9 +552,6 @@ const UserPosts = () => {
     setPosts(prevPosts => prevPosts.filter(post => post.post_id !== postId));
     setDropdownVisible(prev => ({ ...prev, [postId]: false }));
   };
-  const closeAllDropdowns = () => {
-      setDropdownVisible({});
-  };
 
   useFocusEffect(
     useCallback(() => {
@@ -663,7 +661,9 @@ const UserPosts = () => {
     const needsMoreButton = item.about.length > 100;
     const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
     const isVisible = visiblePostId === item.post_id;
-
+    if (item.moderation_status !== "approved"){
+      return <></>
+    }
     return (
       <View style={styles.postContainer}>
         <View style={styles.postHeader}>
@@ -886,6 +886,8 @@ const UserPosts = () => {
         windowSize={5}
         removeClippedSubviews={true}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={() => setDropdownVisible({})}   
+        onMomentumScrollBegin={() => setDropdownVisible({})}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{
           itemVisiblePercentThreshold: 70,
