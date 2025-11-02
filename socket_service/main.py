@@ -40,8 +40,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
         user.is_online = True
         db.commit()
 
-    print(f"🟢 User {user_id} connected")
-
     try:
         while True:
             data = await websocket.receive_json()
@@ -99,6 +97,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
                 db.add(message)
                 db.commit()
                 db.refresh(message)
+
+                keys = r.keys(f"chat:{chat_id}:*")
+                if keys:
+                    r.delete(*keys)
 
                 media_attachments = []
                 if media_list:
