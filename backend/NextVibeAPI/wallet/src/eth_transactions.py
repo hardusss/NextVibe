@@ -7,7 +7,7 @@ load_dotenv()
 ETHERSCAN_API_KEY = getenv("ETHERSCAN_API_TOKEN")
 
 
-async def get_eth_transactions(address: str) -> Dict:
+async def get_eth_transactions(address: str, last: bool = False) -> Dict:
     
     if not ETHERSCAN_API_KEY:
         return {"status": "error", "message": "ETHERSCAN_API_TOKEN not found in .env"}
@@ -23,8 +23,10 @@ async def get_eth_transactions(address: str) -> Dict:
         "end_block": 9999999999,
         "sort": "desc",
         "apikey": ETHERSCAN_API_KEY
-        
     }
+    if last:
+        params["page"] = 1
+        params["offset"] = 1
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
