@@ -2,7 +2,7 @@ import asyncio
 import httpx
 from typing import List, Dict
 
-async def get_sol_transactions(address: str) -> Dict:
+async def get_sol_transactions(address: str, last: bool = False) -> Dict:
     url = "https://api.devnet.solana.com"
     headers = {"Content-Type": "application/json"}
 
@@ -10,8 +10,10 @@ async def get_sol_transactions(address: str) -> Dict:
         "jsonrpc": "2.0",
         "id": 1,
         "method": "getSignaturesForAddress",
-        "params": [address, {"limit": 5}]
+        "params": [address]
     }
+    if last:
+        payload["params"].append({"limit": 1})
 
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.post(url, json=payload, headers=headers)
