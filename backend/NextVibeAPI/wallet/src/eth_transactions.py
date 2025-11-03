@@ -2,13 +2,12 @@ import httpx
 from typing import List, Dict
 from dotenv import load_dotenv
 from os import getenv
-import asyncio
 load_dotenv()
 
 ETHERSCAN_API_KEY = getenv("ETHERSCAN_API_TOKEN")
 
 
-async def get_eth_transactions(address: str, start_block: int = 0, end_block: int = 99999999) -> Dict:
+async def get_eth_transactions(address: str) -> Dict:
     
     if not ETHERSCAN_API_KEY:
         return {"status": "error", "message": "ETHERSCAN_API_TOKEN not found in .env"}
