@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, useColorScheme, TouchableOpacity } from 'react-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MediaGrid from './MediaGrid';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { BlurView } from 'expo-blur';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface MediaAttachment {
   id: number;
@@ -58,23 +60,40 @@ const ChatBubble: React.FC<Props> = ({ message }) => {
 
   return (
     <View style={[styles.container, isMyMessage ? styles.rightAlign : styles.leftAlign]}>
-      <TouchableOpacity 
-        style={styles.messageContent}
-        onLongPress={handleLongPress}
-        delayLongPress={500}
-      >
-        {message.media && message.media.length > 0 && (
-          <MediaGrid media={message.media} />
-        )}
-        <View style={styles.row}>
-          {message.content && (
-            <Text style={styles.text}>{message.content}</Text>
-          )}
-          <View style={styles.messageStatus}>
-            <Text style={styles.time}>{formatMessageTime(message.created_at)}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
+      <View style={styles.messageContainer}>
+        <BlurView
+            intensity={isMyMessage ? (isDark ? 30 : 60) : (isDark ? 25 : 95)}
+            tint={isMyMessage ? 'dark' : (isDark ? 'dark' : 'light')}
+            style={styles.blurViewAbsolute}
+        />
+        {isMyMessage && <View style={styles.myMessageTint} />}
+        
+        <TouchableOpacity 
+            style={styles.messageContent}
+            onLongPress={handleLongPress}
+            delayLongPress={300}
+            activeOpacity={0.8}
+        >
+            {message.media && message.media.length > 0 && (
+                <MediaGrid media={message.media} />
+            )}
+            
+            {message.content ? (
+                <View style={styles.contentWrapper}>
+                    <Text style={styles.text}>{message.content}</Text>
+                    <View style={styles.statusContainer}>
+                        <Text style={styles.time}>{formatMessageTime(message.created_at)}</Text>
+                        
+                    </View>
+                </View>
+            ) : (
+                <View style={styles.statusContainer}>
+                    <Text style={styles.time}>{formatMessageTime(message.created_at)}</Text>
+                    
+                </View>
+            )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -91,55 +110,57 @@ const getStyles = (isDark: boolean, isMyMessage: boolean) => StyleSheet.create({
   leftAlign: {
     justifyContent: 'flex-start',
   },
+  messageContainer: {
+    maxWidth: '80%',
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: isMyMessage 
+      ? (isDark ? 'rgba(167, 139, 250, 0.3)' : 'rgba(88, 86, 214, 0.3)')
+      : (isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)'),
+  },
+  blurViewAbsolute: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  myMessageTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: isDark ? '#A78BFA' : '#5856D6',
+    opacity: 0.15,
+  },
   messageContent: {
-    backgroundColor: isMyMessage ? '#4FD1C5' : (isDark ? '#2c2c2c' : '#e0e0e0'),
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 15,
-    maxWidth: '80%',
-    alignSelf: isMyMessage ? 'flex-end' : 'flex-start',
+    
   },
-  row: {
+  contentWrapper: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     flexWrap: 'wrap',
+    
   },
   text: {
-    color: isMyMessage ? '#fff' : (isDark ? '#fff' : '#000'),
+    color: isMyMessage ? (isDark ? '#FFFFFF' : '#000000') : (isDark ? '#FFFFFF' : '#000000'),
     fontSize: 16,
-    marginRight: 6,
+    lineHeight: 22,
+    flexShrink: 1, 
+    marginRight: 8, 
   },
-  messageStatus: {
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 'auto', 
+    alignSelf: 'flex-end',
+    paddingTop: 4, 
   },
   checkIcon: {
     marginLeft: 4,
+    color: isMyMessage ? (isDark ? '#E0CFFD' : '#333') : (isDark ? '#888' : '#666'),
+    opacity: isMyMessage ? 1 : 0.8,
   },
   time: {
-    color: isMyMessage ? '#e0f7f5' : (isDark ? '#888' : '#666'),
+    color: isMyMessage ? (isDark ? '#E0CFFD' : '#333') : (isDark ? '#888' : '#666'),
     fontSize: 12,
-  },
-  mediaContainer: {
-    marginBottom: 8,
-  },
-  mediaGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    margin: -2,
-  },
-  mediaPreview: {
-    width: 200,
-    height: 200,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  readStatus: {
-    fontSize: 12,
-    color: '#8e8e8e',
-    alignSelf: 'flex-end',
-    marginTop: 2,
+    opacity: isMyMessage ? 1 : 0.8,
   },
 });
 

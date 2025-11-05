@@ -18,6 +18,8 @@ import FastImage from 'react-native-fast-image';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur'; 
+import getLastTransaction from '@/src/api/get.last.transaction';
+import timeAgo from '@/src/utils/formatTime';
 
 type Token = {
   name: string;
@@ -25,6 +27,14 @@ type Token = {
   icon: string;
   price: number;
   amount: number;
+};
+
+type LastTransactionType = {
+  blockchain: string;
+  icon: string;
+  amount: number;
+  timestamp: number;
+  direction: string
 };
 
 export default function WalletScreen() {
@@ -38,6 +48,20 @@ export default function WalletScreen() {
   const [totalBalance, setTotalBalance] = useState<string | null>(null);
   const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const [lastTransaction, setLastTransaction] = useState<LastTransactionType>();
+  const [lastTransactionLoading, setLastTransactionLoading] = useState(true);
+  const [lastTransactionTokenPrice, setlastTransactionTokenPrice] = useState<number>(0.0);
+
+  const getLastTransactionMethod = async () => {
+    setLastTransactionLoading(true);
+    const response = await getLastTransaction();
+    const price = Number(Object.entries(response.prices)[0][1]);
+    const transaction = response.transaction;
+    setlastTransactionTokenPrice(price);
+    setLastTransaction(transaction);
+
+    setLastTransactionLoading(false);
+  };
 
   const fetchBalance = async () => {
     setLoading(true);
@@ -67,14 +91,18 @@ export default function WalletScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      getLastTransactionMethod();
       fetchBalance();
     }, []),
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setLastTransactionLoading(true);
     await fetchBalance();
+    await getLastTransactionMethod();
     setRefreshing(false);
+    setLastTransactionLoading(false);
   };
 
   const styles = StyleSheet.create({
@@ -480,8 +508,7 @@ export default function WalletScreen() {
             <Text style={styles.actionButtonText}>Swap</Text>
           </View>
         </View>
-
-        <View style={styles.recentActivityContainer}>
+      <View style={styles.recentActivityContainer}>
           <TouchableOpacity
             style={styles.recentActivityCard}
             onPress={() => router.push('/transactions')}
@@ -491,39 +518,60 @@ export default function WalletScreen() {
               tint={isDarkMode ? 'dark' : 'light'}
               style={styles.blurViewAbsolute}
             />
-            <View style={styles.recentActivityInnerContent}>
-              <View style={styles.recentActivityIconBackground}>
-                <FastImage
-                  source={{
-                    uri: 'https://cryptologos.cc/logos/cardano-ada-logo.png?v=025',
-                  }}
-                  style={{ width: 30, height: 30 }}
-                />
-              </View>
-              <View style={styles.recentActivityTextContainer}>
+        <View style={styles.recentActivityInnerContent}>
+          <View style={styles.recentActivityIconBackground}>
+            {lastTransactionLoading ? (
+              <View style={[styles.skeletonTokenIcon, {width: 48, height: 48, borderRadius: 24, marginLeft: 13}]} />
+            ) : (
+              <FastImage
+                source={{
+                  uri: lastTransaction?.icon,
+                }}
+                style={{ width: 30, height: 30 }}
+              />
+            )}
+          </View>
+          <View style={styles.recentActivityTextContainer}>
+            {lastTransactionLoading ? (
+              <>
+                <View style={[styles.skeletonTokenName, { marginBottom: 6 }]} />
+                <View style={styles.skeletonTokenPrice} />
+              </>
+            ) : (
+              <>
                 <Text style={styles.recentActivityTitle}>
                   {isBalanceHidden
                     ? 'Recent Transaction'
-                    : 'You received 28 ADA'}
+                    : `You ${lastTransaction?.direction === "incoming" ? "received" : "sent"} ${Number(lastTransaction?.amount.toFixed(8))} ${lastTransaction?.blockchain}`}
                 </Text>
                 <Text style={styles.recentActivityDetails}>
-                  {isBalanceHidden ? '****' : '~120$'}
+                  {isBalanceHidden ? '****' : `~${Number(Number(Number(lastTransaction?.amount.toFixed(8)) * Number(lastTransactionTokenPrice)).toFixed(8))} USD`}
                 </Text>
-              </View>
-              <Text style={styles.recentActivityTime}>13 min ago</Text>
-            </View>
-          </TouchableOpacity>
+              </>
+            )}
+          </View>
+          {lastTransactionLoading ? (
+            <View style={[styles.skeletonTokenPrice, { width: 50 }]} />
+          ) : (
+            <Text style={styles.recentActivityTime}>
+              {lastTransaction?.timestamp 
+                ? timeAgo(new Date(lastTransaction.timestamp * (lastTransaction.blockchain === "TRX" ? 1 : 1000) ).toISOString())
+                : ''}
+            </Text>
+          )}
         </View>
+         </TouchableOpacity>
+        </View>
+
 
         <View style={styles.portfolioHeader}>
           <Text style={styles.portfolioTitle}>Portfolio</Text>
         </View>
 
         {(loading ? Array(3).fill(null) : tokens).map((token, index) => (
-          <TouchableOpacity
+          <View
             key={index}
             style={styles.tokenItem}
-            onPress={() => setIsToastVisible(true)}
           >
             <View style={styles.tokenInfoLeft}>
               {loading ? (
@@ -553,7 +601,7 @@ export default function WalletScreen() {
                 <Text style={styles.tokenAmount}>
                   {isBalanceHidden
                     ? '****'
-                    : Number(token.amount).toFixed(4)}
+                    : Number(token.amount).toFixed(8).replace(/\.?0+$/, '')}
                 </Text>
               )}
               {loading ? (
@@ -566,7 +614,7 @@ export default function WalletScreen() {
                 </Text>
               )}
             </View>
-          </TouchableOpacity>
+          </View>
         ))}
       </ScrollView>
     </LinearGradient>

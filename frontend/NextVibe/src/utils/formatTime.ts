@@ -1,6 +1,5 @@
 export default function timeAgo(timestamp: string | null): string {
     if (!timestamp) return '';
-    
     // Convert timestamp to Date object
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) return "Invalid date";

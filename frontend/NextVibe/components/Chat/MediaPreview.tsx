@@ -9,7 +9,6 @@ interface MediaPreviewProps {
   uri: string;
   type: 'image' | 'video';
   customSize?: { width: number; height: number };
-  style?: any; // Add style prop
   isInGrid?: boolean;
 }
 
@@ -20,7 +19,7 @@ interface OnLoadEvent {
   };
 }
 
-export default function MediaPreview({ uri, type, customSize, style, isInGrid }: MediaPreviewProps) {
+export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaPreviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -47,8 +46,18 @@ export default function MediaPreview({ uri, type, customSize, style, isInGrid }:
     return { width: 150, height: 150 };
   };
 
+  const handleOpenModal = () => {
+    setIsFullScreen(true);
+    setIsPlaying(true); 
+  };
+
+  const handleCloseModal = () => {
+    setIsFullScreen(false);
+    setIsPlaying(false); 
+  };
+
   const renderThumbnail = () => (
-    <TouchableOpacity onPress={() => setIsFullScreen(true)}>
+    <TouchableOpacity onPress={handleOpenModal}>
       <View style={[styles.thumbnailContainer, getThumbnailSize()]}>
         {isLoading && (
           <View style={[styles.loadingContainer, getThumbnailSize()]}>
@@ -74,8 +83,8 @@ export default function MediaPreview({ uri, type, customSize, style, isInGrid }:
               shouldPlay={false}
             />
             <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)']}
-              style={styles.gradient}
+              colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)']}
+              style={styles.videoOverlay}
             >
               <MaterialIcons name="play-circle-filled" size={40} color="white" />
             </LinearGradient>
@@ -90,14 +99,12 @@ export default function MediaPreview({ uri, type, customSize, style, isInGrid }:
       visible={isFullScreen}
       transparent={false}
       animationType="slide"
+      onRequestClose={handleCloseModal}
     >
       <View style={styles.modalContainer}>
         <TouchableOpacity
           style={styles.closeButton}
-          onPress={() => {
-            setIsFullScreen(false);
-            setIsPlaying(false);
-          }}
+          onPress={handleCloseModal}
         >
           <MaterialIcons name="close" size={30} color="white" />
         </TouchableOpacity>
@@ -127,10 +134,10 @@ export default function MediaPreview({ uri, type, customSize, style, isInGrid }:
   );
 
   return (
-    <View style={customSize}>
+    <>
       {renderThumbnail()}
       {renderFullScreen()}
-    </View>
+    </>
   );
 }
 
@@ -146,16 +153,11 @@ const styles = StyleSheet.create({
   thumbnail: {
     borderRadius: 8,
   },
-  gradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 50,
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
+    borderRadius: 8,
   },
   modalContainer: {
     flex: 1,
