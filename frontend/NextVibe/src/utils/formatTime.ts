@@ -1,8 +1,7 @@
 export default function timeAgo(timestamp: string | null): string {
     if (!timestamp) return '';
     // Convert timestamp to Date object
-    const ms = parseInt(timestamp);
-    const date = new Date(ms);
+    const date = new Date(timestamp);
     if (isNaN(date.getTime())) return "Invalid date";
       // Calculate time difference in seconds
     const now = new Date();
