@@ -55,8 +55,11 @@ export default function WalletScreen() {
   const getLastTransactionMethod = async () => {
     setLastTransactionLoading(true);
     const response = await getLastTransaction();
-    setlastTransactionTokenPrice(Number(Object.entries(response.prices)[0][1]))
-    setLastTransaction(response.transaction)
+    const price = Number(Object.entries(response.prices)[0][1]);
+    const transaction = response.transaction;
+    setlastTransactionTokenPrice(price);
+    setLastTransaction(transaction);
+
     setLastTransactionLoading(false);
   };
 
@@ -552,7 +555,7 @@ export default function WalletScreen() {
           ) : (
             <Text style={styles.recentActivityTime}>
               {lastTransaction?.timestamp 
-                ? timeAgo((lastTransaction.timestamp * 1000).toString()) 
+                ? timeAgo(new Date(lastTransaction.timestamp * (lastTransaction.blockchain === "TRX" ? 1 : 1000) ).toISOString())
                 : ''}
             </Text>
           )}
@@ -566,10 +569,9 @@ export default function WalletScreen() {
         </View>
 
         {(loading ? Array(3).fill(null) : tokens).map((token, index) => (
-          <TouchableOpacity
+          <View
             key={index}
             style={styles.tokenItem}
-            onPress={() => setIsToastVisible(true)}
           >
             <View style={styles.tokenInfoLeft}>
               {loading ? (
@@ -612,7 +614,7 @@ export default function WalletScreen() {
                 </Text>
               )}
             </View>
-          </TouchableOpacity>
+          </View>
         ))}
       </ScrollView>
     </LinearGradient>
