@@ -8,7 +8,10 @@ def parse_timestamp(timestamp):
     if timestamp is None:
         return 0
     try:
-        return int(timestamp)
+        ts = int(timestamp)
+        if ts > 10**12:
+            ts = ts / 1000
+        return ts
     except (ValueError, TypeError):
         try:
             dt = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
@@ -16,11 +19,11 @@ def parse_timestamp(timestamp):
         except Exception:
             return 0
 
-async def get_all_transactions_sorted(user_eth_address, user_sol_address, user_trx_address):
+async def get_all_transactions_sorted(user_eth_address, user_sol_address, user_trx_address, last: bool = False):
     eth_transactions, sol_transactions, trx_transactions = await asyncio.gather(
-        get_eth_transactions(user_eth_address),
-        get_sol_transactions(user_sol_address),
-        get_trx_transactions(user_trx_address)
+        get_eth_transactions(user_eth_address, last=last),
+        get_sol_transactions(user_sol_address, last=last),
+        get_trx_transactions(user_trx_address, last=last)
     )
     all_transactions = (
         eth_transactions.get("transactions", [])

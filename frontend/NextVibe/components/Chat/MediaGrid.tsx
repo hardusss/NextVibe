@@ -13,7 +13,7 @@ interface MediaGridProps {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const MAX_CONTENT_WIDTH = SCREEN_WIDTH * 0.65;
+const MAX_CONTENT_WIDTH = SCREEN_WIDTH * 0.8 - 54;
 const GRID_SPACING = 2;
 
 export default function MediaGrid({ media }: MediaGridProps) {
@@ -34,7 +34,7 @@ export default function MediaGrid({ media }: MediaGridProps) {
 
   const getMediaSize = (index: number) => {
     const baseWidth = MAX_CONTENT_WIDTH;
-    const aspectRatio = 3/4; // Стандартне співвідношення сторін
+    const aspectRatio = 3/4; 
 
     switch (media.length) {
       case 1:
@@ -123,6 +123,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 12,
     marginBottom: 8,
+
   },
   singleContainer: {
     width: MAX_CONTENT_WIDTH,
@@ -152,7 +153,6 @@ const styles = StyleSheet.create({
   },
   mediaWrapper: {
     overflow: 'hidden',
-    backgroundColor: '#f0f0f0',
   },
   mediaSpacing: {
     marginTop: GRID_SPACING,

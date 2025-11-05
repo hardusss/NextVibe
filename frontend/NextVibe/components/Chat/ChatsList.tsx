@@ -8,6 +8,7 @@ import {
   RefreshControl,
   TextInput,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,7 +20,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { ChatItemSkeleton, OnlineUserSkeleton } from './SkeletonLoaders';
 import { Chat } from './ChatItem';
 import { deleteChat } from '@/src/api/chat';
-
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 export default function ChatsList() {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -94,15 +96,17 @@ export default function ChatsList() {
 
   const SearchBar = ({ placeholder, value, onChangeText }: any) => (
     <View
-      style={[
-        styles.searchContainer,
-        { backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0' },
-      ]}
+      style={styles.searchContainer}
     >
-      <MaterialIcons name="search" size={24} color={isDark ? '#666' : '#999'} />
+      <BlurView
+        intensity={isDark ? 30 : 30}
+        tint={isDark ? 'dark' : 'light'}
+        style={styles.blurViewAbsolute}
+      />
+      <MaterialIcons name="search" size={24} color={isDark ? '#666' : '#605f5fff'} />
       <TextInput
         placeholder={placeholder}
-        placeholderTextColor={isDark ? '#666' : '#999'}
+        placeholderTextColor={isDark ? '#666' : '#605f5fff'}
         style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
         value={value}
         onChangeText={onChangeText}
@@ -111,7 +115,13 @@ export default function ChatsList() {
   );
 
   const ListHeader = () => (
-    <>
+    <LinearGradient
+        colors={
+            isDark
+            ? ['#0A0410', '#170a27ff', '#0A0410']
+            : ['#FFFFFF', '#b6a8f8ff', '#FFFFFF']
+        }
+    >
       <Header
         title="Chats"
         leftIcon="arrow-back"
@@ -138,43 +148,56 @@ export default function ChatsList() {
           ))}
         </View>
       )}
-    </>
+    </LinearGradient>
   );
 
   return (
-    <FlatList
-      data={chatLoading ? [] : filteredChats}
-      keyExtractor={(item) => item.chat_id.toString()}
-      renderItem={({ item }) => <ChatItem chat={item} onDelete={() => deleteChat(+item.chat_id)}/>}
-      contentContainerStyle={styles.container}
-      ListHeaderComponent={ListHeader}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={isDark ? '#fff' : '#000'}
-          colors={['#00CED1']}
+    <View
+        style={{
+          flex: 1,
+          backgroundColor: 
+            isDark
+            ? '#0A0410'
+            : '#FFFFFF'
+        }}
+    >
+        <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
+        <FlatList
+            data={chatLoading ? [] : filteredChats}
+            keyExtractor={(item) => item.chat_id.toString()}
+            renderItem={({ item }) => <ChatItem chat={item} onDelete={() => deleteChat(+item.chat_id)}/>}
+            contentContainerStyle={styles.container}
+            ListHeaderComponent={ListHeader}
+            refreshControl={
+                <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={isDark ? '#fff' : '#000'}
+                colors={['#00CED1']}
+                />
+                
+            }
+            ListEmptyComponent={
+                !chatLoading ? (
+                  <View style={styles.emptyContainer}>
+                    <Text style={[styles.emptyText, { color: isDark ? '#fff' : '#000' }]}>No chats found</Text>
+                    <Text style={[styles.emptySubText, { color: isDark ? '#A09CB8' : '#666' }]}>
+                      You have no chats yet. Start a conversation with someone!
+                    </Text>
+                  </View>
+                ) : null
+            }
+            
         />
-        
-      }
-      ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No chats found</Text>
-          <Text style={styles.emptySubText}>
-            You have no chats yet. Start a conversation with someone!
-          </Text>
-        </View>
-      }
-      
-    />
+    </View>
   );
 }
 
 const getStyles = (isDark: boolean) =>
   StyleSheet.create({
     container: {
-      flex: 1,
-      backgroundColor: isDark ? '#0A0410' : '#fff',
+      flexGrow: 1,
+      backgroundColor: 'transparent',
     },
     emptyContainer: {
       flex: 1,
@@ -195,13 +218,23 @@ const getStyles = (isDark: boolean) =>
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 10,
-      margin: 10,
-      borderRadius: 10,
+      paddingHorizontal: 16,
+      marginHorizontal: 10,
+      marginTop: 10,
+      marginBottom: 20,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(126, 125, 125, 0.5)',
+      overflow: 'hidden',
+      
+    },
+    blurViewAbsolute: {
+        ...StyleSheet.absoluteFillObject,
     },
     searchInput: {
       flex: 1,
       marginLeft: 10,
       fontSize: 16,
+      paddingVertical: 14,
     },
   });

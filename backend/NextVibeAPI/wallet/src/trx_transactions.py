@@ -2,8 +2,8 @@ import httpx
 from typing import List, Dict
 from tronpy.keys import to_hex_address, is_base58check_address
 
-async def get_trx_transactions(user_address: str) -> Dict:
-    url = f"https://nile.trongrid.io/v1/accounts/{user_address}/transactions?limit=10"
+async def get_trx_transactions(user_address: str, last: bool = False) -> Dict:
+    url = f"https://nile.trongrid.io/v1/accounts/{user_address}/transactions?limit={1 if last else 100}"
     headers = {
         "accept": "application/json",
         "User-Agent": "Mozilla/5.0"

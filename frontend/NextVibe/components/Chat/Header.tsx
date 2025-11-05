@@ -12,10 +12,10 @@ export default function Header({ title, leftIcon, onLeftPress }: HeaderProps) {
   const isDark = useColorScheme() === 'dark';
   
   return (
-    <View style={[styles.header, { backgroundColor: isDark ? '#0A0410' : '#fff' }]}>
+    <View style={styles.header}>
       {leftIcon && (
         <TouchableOpacity onPress={onLeftPress} style={styles.leftButton}>
-          <MaterialIcons name={leftIcon as any} size={24} color={isDark ? '#fff' : '#000'} />
+          <MaterialIcons name={leftIcon as any} size={28} color={isDark ? '#fff' : '#000'} />
         </TouchableOpacity>
       )}
       <Text style={[styles.title, { color: isDark ? '#fff' : '#000' }]}>{title}</Text>
@@ -28,13 +28,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: "#0A0410"
+    paddingTop: 20,
+    backgroundColor: 'transparent',
   },
   leftButton: {
     marginRight: 16
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600'
+    fontSize: 22,
+    fontWeight: 'bold',
   }
 });

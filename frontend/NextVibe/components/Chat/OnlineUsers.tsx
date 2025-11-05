@@ -5,6 +5,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import FastImage from 'react-native-fast-image';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 
 interface OnlineUser {
   user_id: number;
@@ -16,6 +18,19 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>(users);
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
+  const styles = getStyles(isDark);
+
+  const EmptyState = () => (
+    <View style={styles.emptyCard}>
+        <BlurView
+            intensity={isDark ? 30 : 90}
+            tint={isDark ? 'dark' : 'light'}
+            style={styles.blurViewAbsolute}
+        />
+        <Ionicons name="people-outline" size={20} color={isDark ? '#888' : '#555'} />
+        <Text style={styles.emptyText}>No one online</Text>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -24,21 +39,21 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
         data={onlineUsers}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.user_id.toString()}
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: isDark ? '#666' : '#999' }]}> 
-              No users online at the moment
-            </Text>
-          </View>
-        )}
+        ListEmptyComponent={EmptyState}
+        contentContainerStyle={{ paddingHorizontal: 10 }}
         renderItem={({ item }) => (
           <TouchableOpacity 
-            style={styles.userContainer}
+            style={styles.userCard}
             onPress={() => router.push({
               pathname: "/user-profile",
               params: { id: item?.user_id, last_page: `/chats` }
             })}
           >
+            <BlurView
+                intensity={isDark ? 30 : 30}
+                tint={isDark ? 'dark' : 'light'}
+                style={styles.blurViewAbsolute}
+            />
             <View style={styles.avatarContainer}>
               <FastImage
                 source={{ 
@@ -48,9 +63,9 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
                 }}
                 style={styles.avatar}
               />
-              <View style={styles.onlineIndicator} />
+              <View style={[styles.onlineIndicator, { borderColor: isDark ? '#333' : '#eee' }]} />
             </View>
-            <Text style={[styles.username, { color: isDark ? '#fff' : '#000' }]}>
+            <Text style={styles.username} numberOfLines={1}>
               {item.username}
             </Text>
           </TouchableOpacity>
@@ -60,23 +75,32 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (isDark: boolean) => StyleSheet.create({
   container: {
-    height: 90,
-    paddingHorizontal: 15,
-    paddingTop: 15,
+    marginBottom: 24,
   },
-  userContainer: {
+  userCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 15
+    padding: 10,
+    borderRadius: 16,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(109, 109, 109, 0.5)',
+    overflow: 'hidden',
+    height: 60,
+  },
+  blurViewAbsolute: {
+    ...StyleSheet.absoluteFillObject,
   },
   avatarContainer: {
-    position: 'relative'
+    position: 'relative',
+    marginRight: 10,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25
+    width: 40,
+    height: 40,
+    borderRadius: 20
   },
   onlineIndicator: {
     position: 'absolute',
@@ -87,21 +111,28 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#4CAF50',
     borderWidth: 2,
-    borderColor: '#fff'
   },
   username: {
-    marginTop: 5,
-    fontSize: 12
+    fontSize: 14,
+    fontWeight: '600',
+    color: isDark ? '#fff' : '#000',
+    maxWidth: 100,
   },
-  emptyContainer: {
-    flex: 1,
+  emptyCard: {
+    height: 60,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
+    overflow: 'hidden',
   },
   emptyText: {
     fontSize: 14,
-    fontStyle: 'italic',
+    color: isDark ? '#888' : '#555',
+    marginLeft: 8,
+    fontWeight: '500',
   },
 });

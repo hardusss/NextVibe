@@ -35,8 +35,7 @@ class BtcTransactionView(APIView):
         btc_wallet = wallet.btc_wallet
         btc_transaction = BtcTransaction(sender_wallet_name=btc_wallet.wallet_name, recipient_address=to_address, amount=amount)
         transaction = btc_transaction.send()
-        cache.delete(f"balance_wallet_testnet_{user.user_id}")
-        cache.delete(f"transactions_{user.user_id}")
+        # Clear all related caches
         return Response(transaction, status=status.HTTP_200_OK)
     
 class SolTransactionView(APIView):
@@ -64,8 +63,16 @@ class SolTransactionView(APIView):
         sol_model = SolanaTransaction()
         
         transaction = sol_model.send_transaction(private_key, to_address, amount)
-        cache.delete(f"balance_wallet_testnet_{user.user_id}")
-        cache.delete(f"transactions_{user.user_id}")
+        cache_keys = [
+            f"balance_wallet_testnet_{user.user_id}",
+            f"transactions_{user.user_id}",
+            f"transactions_last_{user.user_id}",
+            f"price_last_BTC",
+            "prices"
+        ]
+        for key in cache_keys:
+            cache.delete(key)
+        cache.set(f"cache_invalidation_{user.user_id}", True,  timeout=10)
         return Response(transaction, status=status.HTTP_200_OK)
     
 class EthTrasactionView(APIView):
@@ -90,8 +97,16 @@ class EthTrasactionView(APIView):
 
         eth_transaction = EthTransaction(private_key=f"0x{private_key}", to_address=to_address, value=amount)
         transaction = eth_transaction.send_transaction()
-        cache.delete(f"balance_wallet_testnet_{user.user_id}")
-        cache.delete(f"transactions_{user.user_id}")
+        cache_keys = [
+            f"balance_wallet_testnet_{user.user_id}",
+            f"transactions_{user.user_id}",
+            f"transactions_last_{user.user_id}",
+            f"price_last_BTC",
+            "prices"
+        ]
+        for key in cache_keys:
+            cache.delete(key)
+        cache.set(f"cache_invalidation_{user.user_id}", True,  timeout=10)
         return Response(f"https://sepolia.etherscan.io/tx/0x{transaction.get('tx')}", status=status.HTTP_200_OK)
     
 class TrxTrasactionView(APIView):
@@ -116,20 +131,26 @@ class TrxTrasactionView(APIView):
 
         trx_transaction = TrxTransaction(sender_private_key=private_key, recipient_address=to_address, amount=amount)
         transaction = trx_transaction.send()
-        cache.delete(f"balance_wallet_testnet_{user.user_id}")
-        cache.delete(f"transactions_{user.user_id}")
+        cache_keys = [
+            f"balance_wallet_testnet_{user.user_id}",
+            f"transactions_{user.user_id}",
+            f"transactions_last_{user.user_id}",
+            f"price_last_BTC",
+            "prices"
+        ]
+        for key in cache_keys:
+            cache.delete(key)
+        cache.set(f"cache_invalidation_{user.user_id}", True,  timeout=10)
         return Response(transaction, status=status.HTTP_200_OK)
     
 class AllTransactionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request) -> Response:
-        
         user = get_user_model().objects.get(user_id=request.user.user_id)
         sorted_transactions = cache.get(f"transactions_{user.user_id}", None)
         if sorted_transactions:
             return Response(sorted_transactions, status=status.HTTP_200_OK)
-        del sorted_transactions
         
         wallet = UserWallet.objects.get(user=user)
         eth_wallet = wallet.eth_wallet

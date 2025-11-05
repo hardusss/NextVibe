@@ -23,6 +23,8 @@ import { getMessages, connectWebSocket, sendWebSocketMessage, sendReadStatus, no
 import getUserDetail from '@/src/api/user.detail';
 import MediaPickerModal from './MediaPickerModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface MediaAttachment {
   id: number;
@@ -419,30 +421,39 @@ export default function ChatScreen() {
             </View>
             
             <View style={styles.inputRow}>
-              <TouchableOpacity onPress={pickMedia} style={styles.mediaButton}>
-                <MaterialIcons 
-                  name="camera-alt" 
-                  size={24} 
-                  color={isDark ? '#fff' : '#000'} 
+                <BlurView
+                    intensity={isDark ? 30 : 90}
+                    tint={isDark ? 'dark' : 'light'}
+                    style={styles.blurViewAbsolute}
                 />
-              </TouchableOpacity>
-              
-              <TextInput
-                value={text}
-                onChangeText={setText}
-                placeholder="Message..."
-                placeholderTextColor={isDark ? '#666' : '#999'}
-                style={[styles.input, { color: isDark ? '#fff' : '#000' }]}
-                multiline
-              />
-              
-              <TouchableOpacity 
-                onPress={sendMessage}
-                style={[styles.sendButton, !text.trim() && !selectedMedia.length && styles.sendButtonDisabled]}
-                disabled={!text.trim() && !selectedMedia.length}
-              >
-                <MaterialIcons name="send" size={24} color="#fff" />
-              </TouchableOpacity>
+                <TouchableOpacity onPress={pickMedia} style={styles.mediaButton}>
+                    <MaterialIcons 
+                    name="camera-alt" 
+                    size={24} 
+                    color={isDark ? '#A09CB8' : '#333'} 
+                    />
+                </TouchableOpacity>
+                
+                <TextInput
+                    value={text}
+                    onChangeText={setText}
+                    placeholder="Message..."
+                    placeholderTextColor={isDark ? '#666' : '#999'}
+                    style={[styles.inputField, { color: isDark ? '#fff' : '#000' }]}
+                    multiline
+                />
+                
+                <TouchableOpacity 
+                    onPress={sendMessage}
+                    style={[styles.sendButton, !text.trim() && !selectedMedia.length && styles.sendButtonDisabled]}
+                    disabled={!text.trim() && !selectedMedia.length}
+                >
+                    <LinearGradient
+                        colors={['#A78BFA', '#5856D6']}
+                        style={styles.sendButtonGradient}
+                    />
+                    <MaterialIcons name="send" size={22} color="#fff" />
+                </TouchableOpacity>
             </View>
         </View>
       </View>
@@ -476,8 +487,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     padding: 10,
     paddingBottom: Platform.OS === 'ios' ? 25 : 10,
     borderTopWidth: 1,
-    borderTopColor: isDark ? '#22083cff' : '#eee',
-    backgroundColor: isDark ? '#0A0410' : '#fff',
+    borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: isDark ? 'rgba(10, 4, 16, 0.8)' : 'rgba(255, 255, 255, 0.8)',
   },
   mediaInputRow: {
     width: '100%',
@@ -485,30 +496,47 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
+    overflow: 'hidden',
   },
-  input: {
+  blurViewAbsolute: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 24,
+  },
+  inputField: {
     flex: 1,
-    marginHorizontal: 10,
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     maxHeight: 100,
-    borderRadius: 20,
-    backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0'
+    fontSize: 16,
+    backgroundColor: 'transparent',
   },
   mediaButton: {
-    padding: 10
+    paddingLeft: 15,
+    paddingRight: 10,
+    paddingVertical: 10,
   },
   sendButton: {
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: '#3B0971'
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 4,
+  },
+  sendButtonGradient: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 22,
   },
   sendButtonDisabled: {
     opacity: 0.5
   },
   previewList: {
     flexDirection: 'row',
-    marginBottom: 5,
+    marginBottom: 10,
+    paddingHorizontal: 5,
   },
   previewContainer: {
     marginRight: 8,
@@ -604,8 +632,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? '#0A0410' : '#eee',
-    backgroundColor: isDark ? '#0A0410' : '#fff',
+    borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: isDark ? 'rgba(10, 4, 16, 0.8)' : 'rgba(255, 255, 255, 0.8)',
   },
   backButton: {
     width: 40,
@@ -633,20 +661,13 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     position: 'absolute',
     bottom: 10,
     right: 20,
-    backgroundColor: isDark ? '#0A0410' : 'rgba(255,255,255,0.7)',
-    padding: 8,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: isDark ? 'rgba(30, 30, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   readStatusText: {
-    color: isDark ? '#fff' : '#666',
+    color: isDark ? '#aaa' : '#333',
     fontSize: 12,
   },
   chatContainer: {
