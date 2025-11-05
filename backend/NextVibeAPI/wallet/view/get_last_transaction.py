@@ -21,6 +21,14 @@ class GetLastTransactionView(APIView):
     def get(self, request) -> Response:
         
         user = get_user_model().objects.get(user_id=request.user.user_id)
+        
+        # Check if cache was invalidated
+        if cache.get(f"cache_invalidation_{user.user_id}"):
+            cache.delete(f"transactions_{user.user_id}")
+            cache.delete(f"transactions_last_{user.user_id}")
+            cache.delete(f"cache_invalidation_{user.user_id}")
+            
+        
         sorted_transactions = cache.get(f"transactions_last_{user.user_id}", None)
         if sorted_transactions:
             return Response(sorted_transactions, status=status.HTTP_200_OK)
@@ -47,11 +55,11 @@ class GetLastTransactionView(APIView):
 
 
         last_transaction = sorted_transactions[0]
-        price = asyncio.run(get_tokens_prices(tokens=[TOKENS[last_transaction.get("blockchain", None)]]))
+        price = asyncio.run(get_tokens_prices(tokens=[TOKENS[last_transaction.get("blockchain", None)]], last=True))
         
         data = {
             "transaction": last_transaction,
             "prices": price
         }
-        cache.set(f"transactions_last_{user.user_id}", data, timeout=45)
+        cache.set(f"transactions_last_{user.user_id}", data, timeout=10)
         return Response(data, status=status.HTTP_200_OK)
