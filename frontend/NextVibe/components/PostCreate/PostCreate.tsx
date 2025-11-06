@@ -75,8 +75,12 @@ export default function PostCreate() {
     };
 
     const handleDeleteImage = (item: string) => {
-        if (mediaUrls.length !== 0) {
+        if (mediaUrls.length !== 1) {
             setMediaUrls(prev => prev.filter(url => url !== item));
+        } else {
+            setToastMessage("Error. You must have at least 1 media to post.");
+            setToastSuccess(false)
+            setIsVisibleToast(true);
         }
     };
 
@@ -84,16 +88,14 @@ export default function PostCreate() {
         if (viewableItems.length > 0) {
             const newIndex = viewableItems[0].index;
             setActiveVideoIndex(newIndex);
-            
-            // Зупиняємо всі відео
+
             Object.keys(videoRefs.current).forEach(async (key) => {
                 const index = parseInt(key);
                 if (videoRefs.current[index] && index !== newIndex) {
                     await videoRefs.current[index]?.pauseAsync();
                 }
             });
-            
-            // Програємо активне відео
+
             if (videoRefs.current[newIndex] && isVideo(mediaUrls[newIndex])) {
                 videoRefs.current[newIndex]?.playAsync();
             }
@@ -151,6 +153,12 @@ export default function PostCreate() {
     };
 
     const handlePublish = () => {
+        if (mediaUrls.length < 1) {
+            setToastMessage("Error. You can't publish post without media!");
+            setToastSuccess(false)
+            setIsVisibleToast(true);
+            return;
+        }
         if (mediaUrls.length > 3){
             setToastMessage("Error. A post can contain a maximum of 3 media files!");
             setToastSuccess(false)
