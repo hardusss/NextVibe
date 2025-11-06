@@ -16,8 +16,8 @@ from django.core.cache import cache
 
 from dotenv import load_dotenv
 import os
-import asyncio
-
+import asyncio, httpx
+from .utils import async_clear_cache_later
 
 load_dotenv()
 
@@ -63,16 +63,7 @@ class SolTransactionView(APIView):
         sol_model = SolanaTransaction()
         
         transaction = sol_model.send_transaction(private_key, to_address, amount)
-        cache_keys = [
-            f"balance_wallet_testnet_{user.user_id}",
-            f"transactions_{user.user_id}",
-            f"transactions_last_{user.user_id}",
-            f"price_last_BTC",
-            "prices"
-        ]
-        for key in cache_keys:
-            cache.delete(key)
-        cache.set(f"cache_invalidation_{user.user_id}", True,  timeout=10)
+        async_clear_cache_later(user_id=user.user_id)
         return Response(transaction, status=status.HTTP_200_OK)
     
 class EthTrasactionView(APIView):
@@ -97,16 +88,7 @@ class EthTrasactionView(APIView):
 
         eth_transaction = EthTransaction(private_key=f"0x{private_key}", to_address=to_address, value=amount)
         transaction = eth_transaction.send_transaction()
-        cache_keys = [
-            f"balance_wallet_testnet_{user.user_id}",
-            f"transactions_{user.user_id}",
-            f"transactions_last_{user.user_id}",
-            f"price_last_BTC",
-            "prices"
-        ]
-        for key in cache_keys:
-            cache.delete(key)
-        cache.set(f"cache_invalidation_{user.user_id}", True,  timeout=10)
+        async_clear_cache_later(user_id=user.user_id)
         return Response(f"https://sepolia.etherscan.io/tx/0x{transaction.get('tx')}", status=status.HTTP_200_OK)
     
 class TrxTrasactionView(APIView):
@@ -123,24 +105,18 @@ class TrxTrasactionView(APIView):
         trx_wallet = wallet.trx_wallet
 
         decryptor = DecryptAEAD(key=os.getenv("KEY"))
-        private_key = decryptor.decrypt(
-            encrypted_data=trx_wallet.private_key,
-            user_id=request.user.user_id,
-            token="TRX"
-        )
+        try:
+            private_key = decryptor.decrypt(
+                encrypted_data=trx_wallet.private_key,
+                user_id=request.user.user_id,
+                token="TRX"
+            )
+        except: 
+            private_key=trx_wallet.private_key
 
         trx_transaction = TrxTransaction(sender_private_key=private_key, recipient_address=to_address, amount=amount)
         transaction = trx_transaction.send()
-        cache_keys = [
-            f"balance_wallet_testnet_{user.user_id}",
-            f"transactions_{user.user_id}",
-            f"transactions_last_{user.user_id}",
-            f"price_last_BTC",
-            "prices"
-        ]
-        for key in cache_keys:
-            cache.delete(key)
-        cache.set(f"cache_invalidation_{user.user_id}", True,  timeout=10)
+        async_clear_cache_later(user_id=user.user_id)
         return Response(transaction, status=status.HTTP_200_OK)
     
 class AllTransactionsView(APIView):
@@ -157,13 +133,20 @@ class AllTransactionsView(APIView):
         sol_wallet = wallet.sol_wallet
         trx_wallet = wallet.trx_wallet
         
-        sorted_transactions = asyncio.run(
-            get_all_transactions_sorted(
-                eth_wallet.address, 
-                sol_wallet.address, 
-                trx_wallet.address
+        try:
+            sorted_transactions = asyncio.run(
+                get_all_transactions_sorted(
+                    eth_wallet.address, 
+                    sol_wallet.address, 
+                    trx_wallet.address
+                )
             )
-        )
+        except httpx.ReadTimeout:
+            return Response(
+                {"error": "Blockchain RPC timeout"},
+                status=status.HTTP_504_GATEWAY_TIMEOUT
+            )
+
         prices = asyncio.run(get_tokens_prices())
         
         data = {

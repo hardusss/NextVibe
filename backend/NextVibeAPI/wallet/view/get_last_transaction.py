@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.core.cache import cache
-import asyncio
+import asyncio, httpx
 
 TOKENS = {
             "ETH": "ethereum",
@@ -19,38 +19,35 @@ class GetLastTransactionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request) -> Response:
-        
         user = get_user_model().objects.get(user_id=request.user.user_id)
-        
-        # Check if cache was invalidated
-        if cache.get(f"cache_invalidation_{user.user_id}"):
-            cache.delete(f"transactions_{user.user_id}")
-            cache.delete(f"transactions_last_{user.user_id}")
-            cache.delete(f"cache_invalidation_{user.user_id}")
-            
         
         sorted_transactions = cache.get(f"transactions_last_{user.user_id}", None)
         if sorted_transactions:
             return Response(sorted_transactions, status=status.HTTP_200_OK)
-        del sorted_transactions
         
         wallet = UserWallet.objects.get(user=user)
         eth_wallet = wallet.eth_wallet
         sol_wallet = wallet.sol_wallet
         trx_wallet = wallet.trx_wallet
-        
-        sorted_transactions = asyncio.run(
-            get_all_transactions_sorted(
-                eth_wallet.address, 
-                sol_wallet.address, 
-                trx_wallet.address,
-                last=True
+        try:
+            sorted_transactions = asyncio.run(
+                get_all_transactions_sorted(
+                    eth_wallet.address, 
+                    sol_wallet.address, 
+                    trx_wallet.address,
+                    last=True
+                )
             )
-        )
+        except httpx.ReadTimeout:
+            return Response(
+                {"error": "Blockchain RPC timeout"},
+                status=status.HTTP_504_GATEWAY_TIMEOUT
+            )
+
         if not sorted_transactions:
             return Response(
-                {"status": "error", "message": "No transactions found"}, 
-                status=status.HTTP_404_NOT_FOUND
+                {"data": "null"}, 
+                status=200
             )
 
 
