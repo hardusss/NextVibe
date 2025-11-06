@@ -459,7 +459,6 @@ const MediaItemComponent = ({
                         </View>
                     )}
                     
-                    {/* Кнопка звуку */}
                     <Pressable 
                         onPress={(e) => {
                             e.stopPropagation();
