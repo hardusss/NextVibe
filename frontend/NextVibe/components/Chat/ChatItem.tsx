@@ -1,9 +1,21 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, useColorScheme, Alert, Animated, Dimensions } from 'react-native';
+import { 
+  View, 
+  Text, 
+  Image, 
+  StyleSheet, 
+  TouchableOpacity, 
+  useColorScheme, 
+  Animated, 
+  Dimensions,
+  TouchableWithoutFeedback 
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import GetApiUrl from '@/src/utils/url_api';
 import timeAgo from '@/src/utils/formatTime';
+import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
+import Web3Toast from '../Shared/Toasts/Web3Toast';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -33,115 +45,179 @@ interface ChatItemProps {
 export default function ChatItem({ chat, onDelete }: ChatItemProps) {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', isSuccess: false });
   const translateX = useRef(new Animated.Value(0)).current;
-  const styles = getStyles(isDark); // Move styles into function with isDark param
+  const opacity = useRef(new Animated.Value(1)).current;
+  const styles = getStyles(isDark);
 
   const handleLongPress = () => {
     setIsPressed(true);
     Animated.spring(translateX, {
       toValue: -80,
       useNativeDriver: true,
+      friction: 8,
     }).start();
   };
 
-  const handleDeletePress = async () => {
-    const deleted = await onDelete(chat.chat_id);
-    if (deleted) {
-      Animated.timing(translateX, {
-        toValue: -screenWidth,
-        duration: 250,
-        useNativeDriver: true
-      }).start();
+  const handleDeletePress = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowConfirmDialog(false);
+    setIsDeleting(true);
+    
+    try {
+      const deleted = await onDelete(chat.chat_id);
+      
+      if (deleted) {
+        setToast({ 
+          visible: true, 
+          message: 'Chat deleted successfully', 
+          isSuccess: true 
+        });
+
+        Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: -screenWidth,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        setToast({ 
+          visible: true, 
+          message: 'Failed to delete chat', 
+          isSuccess: false 
+        });
+        resetPosition();
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      setToast({ 
+        visible: true, 
+        message: 'An error occurred while deleting', 
+        isSuccess: false 
+      });
+      resetPosition();
+    } finally {
+      setIsDeleting(false);
     }
   };
 
+  const cancelDelete = () => {
+    setShowConfirmDialog(false);
+    resetPosition();
+  };
+
   const resetPosition = () => {
+    setIsPressed(false);
     Animated.spring(translateX, {
       toValue: 0,
       useNativeDriver: true,
+      friction: 8,
     }).start();
+  };
+
+  const handlePress = () => {
+    if (isPressed) {
+      resetPosition();
+    } else {
+      router.push({
+        pathname: "/(tabs)/chat-room",
+        params: { id: chat.chat_id, userId: chat.other_user.user_id }
+      });
+    }
   };
 
   const messageContent = chat.last_message?.content || 'No messages yet';
   const messageTime = chat.last_message?.created_at ? timeAgo(chat.last_message.created_at) : '';
 
   return (
-    <View style={styles.wrapper}>
-      {isPressed && (
-        <TouchableOpacity
-          style={[styles.deleteButton]}
-          onPress={handleDeletePress}
-        >
-          <MaterialIcons name="delete" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
+    <>
+      <TouchableWithoutFeedback onPress={isPressed ? resetPosition : undefined}>
+        <Animated.View style={[styles.wrapper, { opacity }]}>
+          {isPressed && (
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDeletePress}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Text style={styles.deletingText}>Deleting...</Text>
+              ) : (
+                <MaterialIcons name="delete" size={24} color="#fff" />
+              )}
+            </TouchableOpacity>
+          )}
 
-      <Animated.View style={[{ transform: [{ translateX }] }]}>
-        <TouchableOpacity
-          style={[styles.container, { backgroundColor: isDark ? '#0A0410' : '#fff' }]}
-          onPress={() => router.push({
-            pathname: "/(tabs)/chat-room",
-            params: { id: chat.chat_id, userId: chat.other_user.user_id}
-          })}
-          onLongPress={handleLongPress}
-          delayLongPress={500}
-        >
-          <View style={styles.avatarContainer}>
-            <Image
-              source={{ uri: `${GetApiUrl().slice(0, 25)}${chat.other_user.avatar}` }}
-              style={styles.avatar}
-            />
-            {chat.other_user.is_online && <View style={styles.onlineIndicator} />}
-          </View>
-          
-          <View style={styles.contentContainer}>
-            <View style={styles.header}>
-              <Text style={[styles.username, { color: isDark ? '#fff' : '#000' }]}>
-                {chat.other_user.username}
-              </Text>
-              <Text style={styles.time}>{messageTime}</Text>
-            </View>
-            
-            <View style={styles.messageContainer}>
-              <Text 
-                style={[styles.message, { color: isDark ? '#aaa' : '#666' }]}
-                numberOfLines={1}
-              >
-                {messageContent}
-              </Text>
+          <Animated.View style={{ transform: [{ translateX }] }}>
+            <TouchableOpacity
+              style={[styles.container, { backgroundColor: isDark ? '#0A0410' : '#fff' }]}
+              onPress={handlePress}
+              onLongPress={handleLongPress}
+              delayLongPress={500}
+              disabled={isDeleting}
+              activeOpacity={0.7}
+            >
+              <View style={styles.avatarContainer}>
+                <Image
+                  source={{ uri: `${GetApiUrl().slice(0, 25)}${chat.other_user.avatar}` }}
+                  style={styles.avatar}
+                />
+                {chat.other_user.is_online && <View style={styles.onlineIndicator} />}
+              </View>
               
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
+              <View style={styles.contentContainer}>
+                <View style={styles.header}>
+                  <Text style={[styles.username, { color: isDark ? '#fff' : '#000' }]}>
+                    {chat.other_user.username}
+                  </Text>
+                  <Text style={styles.time}>{messageTime}</Text>
+                </View>
+                
+                <View style={styles.messageContainer}>
+                  <Text 
+                    style={[styles.message, { color: isDark ? '#aaa' : '#666' }]}
+                    numberOfLines={1}
+                  >
+                    {messageContent}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      </TouchableWithoutFeedback>
 
-      {showDeleteModal && (
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? '#222' : '#fff' }]}>
-            <Text style={[styles.modalText, { color: isDark ? '#fff' : '#000' }]}>Delete this chat?</Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={() => {
-                  setShowDeleteModal(false);
-                  resetPosition();
-                }}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.deleteModalButton]}
-                onPress={handleDeletePress}
-              >
-                <Text style={[styles.buttonText, { color: '#fff' }]}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-    </View>
+      <ConfirmDialog
+        visible={showConfirmDialog}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        title="Delete Chat?"
+        message={`Are you sure you want to delete chat with ${chat.other_user.username}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        confirmGradient={['#EF4444', '#DC2626']}
+        iconName="delete-alert"
+        iconColor="#FCA5A5"
+      />
+
+      <Web3Toast
+        visible={toast.visible}
+        message={toast.message}
+        isSuccess={toast.isSuccess}
+        onHide={() => setToast({ ...toast, visible: false })}
+      />
+    </>
   );
 }
 
@@ -203,20 +279,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontSize: 14,
     marginRight: 5
   },
-  unreadBadge: {
-    backgroundColor: '#00CED1',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 5
-  },
-  unreadCount: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600'
-  },
   deleteButton: {
     position: 'absolute',
     right: 0,
@@ -226,53 +288,11 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     backgroundColor: '#ff4444',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: -1,
+    zIndex: 0,
   },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    padding: 20,
-    borderRadius: 12,
-    width: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  modalText: {
-    fontSize: 16,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 5,
-  },
-  cancelButton: {
-    backgroundColor: '#666',
-  },
-  deleteModalButton: {
-    backgroundColor: '#ff4444',
-  },
-  buttonText: {
+  deletingText: {
     color: '#fff',
-    textAlign: 'center',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
 });

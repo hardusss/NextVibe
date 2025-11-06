@@ -78,6 +78,21 @@ export default function ChatsList() {
     setRefreshing(false);
   }, []);
 
+  const handleDeleteChat = async (chatId: number): Promise<boolean> => {
+    try {
+      const result = await deleteChat(chatId);
+      
+      if (result) {
+        setChats(prevChats => prevChats.filter(chat => chat.chat_id !== chatId));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+      return false;
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       checkAndUpdateUserId();
@@ -95,9 +110,7 @@ export default function ChatsList() {
   }, [searchQuery, chats]);
 
   const SearchBar = ({ placeholder, value, onChangeText }: any) => (
-    <View
-      style={styles.searchContainer}
-    >
+    <View style={styles.searchContainer}>
       <BlurView
         intensity={isDark ? 30 : 30}
         tint={isDark ? 'dark' : 'light'}
@@ -116,11 +129,11 @@ export default function ChatsList() {
 
   const ListHeader = () => (
     <LinearGradient
-        colors={
-            isDark
-            ? ['#0A0410', '#170a27ff', '#0A0410']
-            : ['#FFFFFF', '#b6a8f8ff', '#FFFFFF']
-        }
+      colors={
+        isDark
+          ? ['#0A0410', '#1507239e', '#0A0410']
+          : ['#FFFFFF', '#b6a8f8ff', '#FFFFFF']
+      }
     >
       <Header
         title="Chats"
@@ -153,42 +166,44 @@ export default function ChatsList() {
 
   return (
     <View
-        style={{
-          flex: 1,
-          backgroundColor: 
-            isDark
-            ? '#0A0410'
-            : '#FFFFFF'
-        }}
+      style={{
+        flex: 1,
+        backgroundColor: isDark ? '#0A0410' : '#FFFFFF'
+      }}
     >
-        <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
-        <FlatList
-            data={chatLoading ? [] : filteredChats}
-            keyExtractor={(item) => item.chat_id.toString()}
-            renderItem={({ item }) => <ChatItem chat={item} onDelete={() => deleteChat(+item.chat_id)}/>}
-            contentContainerStyle={styles.container}
-            ListHeaderComponent={ListHeader}
-            refreshControl={
-                <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={isDark ? '#fff' : '#000'}
-                colors={['#00CED1']}
-                />
-                
-            }
-            ListEmptyComponent={
-                !chatLoading ? (
-                  <View style={styles.emptyContainer}>
-                    <Text style={[styles.emptyText, { color: isDark ? '#fff' : '#000' }]}>No chats found</Text>
-                    <Text style={[styles.emptySubText, { color: isDark ? '#A09CB8' : '#666' }]}>
-                      You have no chats yet. Start a conversation with someone!
-                    </Text>
-                  </View>
-                ) : null
-            }
-            
-        />
+      <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"} />
+      <FlatList
+        data={chatLoading ? [] : filteredChats}
+        keyExtractor={(item) => item.chat_id.toString()}
+        renderItem={({ item }) => (
+          <ChatItem 
+            chat={item} 
+            onDelete={handleDeleteChat}
+          />
+        )}
+        contentContainerStyle={styles.container}
+        ListHeaderComponent={ListHeader}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={isDark ? '#fff' : '#000'}
+            colors={['#00CED1']}
+          />
+        }
+        ListEmptyComponent={
+          !chatLoading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: isDark ? '#fff' : '#000' }]}>
+                No chats found
+              </Text>
+              <Text style={[styles.emptySubText, { color: isDark ? '#A09CB8' : '#666' }]}>
+                You have no chats yet. Start a conversation with someone!
+              </Text>
+            </View>
+          ) : null
+        }
+      />
     </View>
   );
 }
@@ -226,10 +241,9 @@ const getStyles = (isDark: boolean) =>
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(126, 125, 125, 0.5)',
       overflow: 'hidden',
-      
     },
     blurViewAbsolute: {
-        ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFillObject,
     },
     searchInput: {
       flex: 1,

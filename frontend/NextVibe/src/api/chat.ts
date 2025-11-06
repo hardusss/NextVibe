@@ -134,7 +134,7 @@ export const deleteChat = async (chatId: number): Promise<boolean>  => {
       }
     });
 
-    return response.status === 204; 
+    return response.status === 200; 
   } catch (error) {
     return false;
   }

@@ -48,61 +48,91 @@ export default function WalletScreen() {
   const [totalBalance, setTotalBalance] = useState<string | null>(null);
   const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
-  const [lastTransaction, setLastTransaction] = useState<LastTransactionType>();
+  const [lastTransaction, setLastTransaction] = useState<LastTransactionType | undefined>(undefined);
   const [lastTransactionLoading, setLastTransactionLoading] = useState(true);
   const [lastTransactionTokenPrice, setlastTransactionTokenPrice] = useState<number>(0.0);
+  const [isErrorToastVisible, setIsErrorToastVisible] = useState<boolean>(false);
+  const [errorToastMessage, setErrorToastMessage] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
-  const getLastTransactionMethod = async () => {
-    setLastTransactionLoading(true);
-    const response = await getLastTransaction();
-    const price = Number(Object.entries(response.prices)[0][1]);
-    const transaction = response.transaction;
-    setlastTransactionTokenPrice(price);
-    setLastTransaction(transaction);
+  const getLastTransactionMethod = async (withLoading = false) => {
+    if (withLoading) setLastTransactionLoading(true);
+    setError(null);
 
-    setLastTransactionLoading(false);
+    try {
+      const response = await getLastTransaction();
+      if (response?.data?.error) {
+        throw new Error(response.data.error);
+      }
+      if (response.data === "null") {
+        return;
+      }
+      const price = Number(Object.entries(response.prices)[0][1]);
+      const transaction = response.transaction;
+
+      setlastTransactionTokenPrice(price);
+      setLastTransaction(transaction);
+    } catch (error: any) {
+      const errorMsg =
+          error?.response?.data?.error ||
+          error?.message ||
+          "Failed to load recent transaction";
+
+      setErrorToastMessage(errorMsg);
+      setIsErrorToastVisible(true);
+      setError("Failed to load recent transaction"); 
+    } finally {
+      if (withLoading) setLastTransactionLoading(false);
+    }
   };
 
-  const fetchBalance = async () => {
-    setLoading(true);
+  const fetchBalance = async (withLoading = false) => {
+    if (withLoading) setLoading(true);
+    setError(null);
+
     try {
       const response = await getBalanceWallet();
-
       if (response.length > 1) {
         const tokenData = response[1];
-        const tokensArray: Token[] = Object.values(tokenData).map(
-          (value: any) => ({
-            name: value.name,
-            symbol: value.symbol,
-            icon: value.icon,
-            price: value.price || 0,
-            amount: value.amount || 0,
-          }),
-        );
+        const tokensArray: Token[] = Object.values(tokenData).map((value: any) => ({
+          name: value.name,
+          symbol: value.symbol,
+          icon: value.icon,
+          price: value.price || 0,
+          amount: value.amount || 0,
+        }));
         setTokens(tokensArray);
       }
       setTotalBalance(`${formatNumberWithCommas(response[0])}`);
     } catch (error) {
-      console.error('Error fetching balance:', error);
+      
     } finally {
-      setLoading(false);
+      if (withLoading) setLoading(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      getLastTransactionMethod();
-      fetchBalance();
+      const fetchData = () => {
+        getLastTransactionMethod(); 
+        fetchBalance();            
+      };
+
+      fetchBalance(true);
+      getLastTransactionMethod(true);
+
+      const interval = setInterval(fetchData, 10000);
+
+      return () => clearInterval(interval);
     }, []),
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    setLastTransactionLoading(true);
+    setError(null);
     await fetchBalance();
     await getLastTransactionMethod();
     setRefreshing(false);
-    setLastTransactionLoading(false);
   };
 
   const styles = StyleSheet.create({
@@ -114,6 +144,22 @@ export default function WalletScreen() {
     },
     scrollViewContent: {
       paddingBottom: 30,
+    },
+    testnetBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 10,
+      backgroundColor: isDarkMode ? 'rgba(255, 165, 0, 0.2)' : 'rgba(255, 165, 0, 0.3)',
+      borderRadius: 12,
+      marginHorizontal: 20,
+      marginTop: 10,
+    },
+    testnetBannerText: {
+        color: isDarkMode ? '#FFA500' : '#D2691E',
+        fontSize: 14,
+        fontWeight: '600',
+        marginLeft: 8,
     },
     topHeader: {
       flexDirection: 'row',
@@ -210,6 +256,7 @@ export default function WalletScreen() {
       flexDirection: 'row',
       alignItems: 'center',
       padding: 16,
+      minHeight: 82, 
     },
     recentActivityIconBackground: {
       width: 48,
@@ -243,6 +290,19 @@ export default function WalletScreen() {
     recentActivityTime: {
       fontSize: 12,
       color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+    },
+    recentActivityErrorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 10,
+        justifyContent: 'center',
+    },
+    recentActivityErrorText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: isDarkMode ? '#FF6B6B' : '#E74C3C',
+        marginLeft: 12,
     },
     portfolioHeader: {
       flexDirection: 'row',
@@ -374,7 +434,17 @@ export default function WalletScreen() {
           onHide={() => setIsToastVisible(false)}
           isSuccess={false}
         />
-        <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/>  
+        <Web3Toast
+          message={errorToastMessage}
+          visible={isErrorToastVisible}
+          onHide={() => setIsErrorToastVisible(false)}
+          isSuccess={false}
+        />
+        <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/> 
+        <View style={styles.testnetBanner}>
+            <Ionicons name="flask-outline" size={18} color={isDarkMode ? '#FFA500' : '#D2691E'} />
+            <Text style={styles.testnetBannerText}>Testnet Mode</Text>
+        </View>
 
         <View style={styles.topHeader}>
           <TouchableOpacity
@@ -430,11 +500,11 @@ export default function WalletScreen() {
 
         <View style={styles.balanceSection}>
           <Text style={styles.balanceLabel}>Balance</Text>
-          {loading ? (
+          {loading && !refreshing ? (
             <View style={styles.balanceSkeleton} />
           ) : (
             <Text style={styles.totalBalance}>
-              {isBalanceHidden ? '*****' : `${totalBalance} `}
+              {isBalanceHidden ? '* * * * * ' : `${totalBalance} `}
               <Text style={{color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontSize: 32}}>USD</Text>
             </Text>
           )}
@@ -511,55 +581,75 @@ export default function WalletScreen() {
       <View style={styles.recentActivityContainer}>
           <TouchableOpacity
             style={styles.recentActivityCard}
-            onPress={() => router.push('/transactions')}
+            onPress={() => {
+              if (error) {
+                onRefresh(); 
+              } else if (lastTransaction) {
+                router.push('/transactions');
+              }
+            }}
+            disabled={lastTransactionLoading}
           >
             <BlurView
               intensity={isDarkMode ? 30 : 40}
               tint={isDarkMode ? 'dark' : 'light'}
               style={styles.blurViewAbsolute}
             />
-        <View style={styles.recentActivityInnerContent}>
-          <View style={styles.recentActivityIconBackground}>
-            {lastTransactionLoading ? (
-              <View style={[styles.skeletonTokenIcon, {width: 48, height: 48, borderRadius: 24, marginLeft: 13}]} />
-            ) : (
-              <FastImage
-                source={{
-                  uri: lastTransaction?.icon,
-                }}
-                style={{ width: 30, height: 30 }}
-              />
-            )}
-          </View>
-          <View style={styles.recentActivityTextContainer}>
-            {lastTransactionLoading ? (
-              <>
-                <View style={[styles.skeletonTokenName, { marginBottom: 6 }]} />
-                <View style={styles.skeletonTokenPrice} />
-              </>
-            ) : (
-              <>
-                <Text style={styles.recentActivityTitle}>
-                  {isBalanceHidden
-                    ? 'Recent Transaction'
-                    : `You ${lastTransaction?.direction === "incoming" ? "received" : "sent"} ${Number(lastTransaction?.amount.toFixed(8))} ${lastTransaction?.blockchain}`}
-                </Text>
-                <Text style={styles.recentActivityDetails}>
-                  {isBalanceHidden ? '****' : `~${Number(Number(Number(lastTransaction?.amount.toFixed(8)) * Number(lastTransactionTokenPrice)).toFixed(8))} USD`}
-                </Text>
-              </>
-            )}
-          </View>
-          {lastTransactionLoading ? (
-            <View style={[styles.skeletonTokenPrice, { width: 50 }]} />
-          ) : (
-            <Text style={styles.recentActivityTime}>
-              {lastTransaction?.timestamp 
-                ? timeAgo(new Date(lastTransaction.timestamp * (lastTransaction.blockchain === "TRX" ? 1 : 1000) ).toISOString())
-                : ''}
-            </Text>
-          )}
-        </View>
+            <View style={styles.recentActivityInnerContent}>
+              {lastTransactionLoading ? (
+                <>
+                  <View style={styles.recentActivityIconBackground}>
+                    <View style={[styles.skeletonTokenIcon, {width: 30, height: 30, borderRadius: 15, marginRight: 0}]} />
+                  </View>
+                  <View style={styles.recentActivityTextContainer}>
+                    <View style={[styles.skeletonTokenName, { marginBottom: 6, height: 16 }]} />
+                    <View style={[styles.skeletonTokenPrice, { height: 13 }]} />
+                  </View>
+                  <View style={[styles.skeletonTokenPrice, { width: 50, height: 12 }]} />
+                </>
+              ) : error ? (
+                <View style={styles.recentActivityErrorContainer}>
+                  <Ionicons name="alert-circle-outline" size={24} color={isDarkMode ? '#FF6B6B' : '#E74C3C'} />
+                  <Text style={styles.recentActivityErrorText}>Failed to load activity</Text>
+                </View>
+              ) : lastTransaction ? (
+                <>
+                  <View style={styles.recentActivityIconBackground}>
+                    <FastImage
+                      source={{
+                        uri: lastTransaction.icon,
+                      }}
+                      style={{ width: 30, height: 30 }}
+                    />
+                  </View>
+                  <View style={styles.recentActivityTextContainer}>
+                    <Text style={styles.recentActivityTitle}>
+                      {isBalanceHidden
+                        ? 'Recent Transaction'
+                        : `You ${lastTransaction.direction === "incoming" ? "received" : "sent"} ${Number(lastTransaction.amount.toFixed(8))} ${lastTransaction.blockchain}`
+                      }
+                    </Text>
+                    <Text style={styles.recentActivityDetails}>
+                      {isBalanceHidden ? '****' : 
+                        `~${Number(Number(Number(lastTransaction.amount.toFixed(8)) * Number(lastTransactionTokenPrice)).toFixed(8))} USD`
+                      }
+                    </Text>
+                  </View>
+                  <Text style={styles.recentActivityTime}>
+                    {lastTransaction.timestamp 
+                      ? timeAgo(new Date(lastTransaction.timestamp * (lastTransaction.blockchain === "TRX" ? 1 : 1000) ).toISOString())
+                      : ''}
+                  </Text>
+                </>
+              ) : (
+                <View style={styles.recentActivityErrorContainer}>
+                  <Ionicons name="document-text-outline" size={24} color={isDarkMode ? '#A09CB8' : '#666'} />
+                  <Text style={[styles.recentActivityErrorText, { color: isDarkMode ? '#A09CB8' : '#666' }]}>
+                    No recent activity
+                  </Text>
+                </View>
+              )}
+            </View>
          </TouchableOpacity>
         </View>
 
@@ -568,7 +658,7 @@ export default function WalletScreen() {
           <Text style={styles.portfolioTitle}>Portfolio</Text>
         </View>
 
-        {(loading ? Array(3).fill(null) : tokens).map((token, index) => (
+        {(loading && !refreshing ? Array(3).fill(null) : tokens).map((token, index) => (
           <View
             key={index}
             style={styles.tokenItem}
@@ -581,37 +671,39 @@ export default function WalletScreen() {
               )}
               <View style={styles.tokenNameDetails}>
                 {loading ? (
-                  <View style={styles.skeletonTokenName} />
+                  <>
+                    <View style={[styles.skeletonTokenName, { height: 16, marginBottom: 6 }]} />
+                    <View style={[styles.skeletonTokenPrice, { height: 13 }]} />
+                  </>
                 ) : (
-                  <Text style={styles.tokenName}>{token.name}</Text>
-                )}
-                {loading ? (
-                  <View style={styles.skeletonTokenPrice} />
-                ) : (
-                  <Text style={styles.tokenPrice}>
-                    {token.symbol} ${Number(token.price).toFixed(2)}
-                  </Text>
+                  <>
+                    <Text style={styles.tokenName}>{token.name}</Text>
+                    <Text style={styles.tokenPrice}>
+                      {token.symbol} ${Number(token.price).toFixed(2)}
+                    </Text>
+                  </>
                 )}
               </View>
             </View>
             <View style={styles.tokenInfoRight}>
               {loading ? (
-                <View style={styles.skeletonTokenAmount} />
+                <>
+                  <View style={[styles.skeletonTokenAmount, { height: 16, marginBottom: 6 }]} />
+                  <View style={[styles.skeletonTokenValue, { height: 13 }]} />
+                </>
               ) : (
-                <Text style={styles.tokenAmount}>
-                  {isBalanceHidden
-                    ? '****'
-                    : Number(token.amount).toFixed(8).replace(/\.?0+$/, '')}
-                </Text>
-              )}
-              {loading ? (
-                <View style={styles.skeletonTokenValue} />
-              ) : (
-                <Text style={styles.tokenValue}>
-                  {isBalanceHidden
-                    ? '****'
-                    : `$${Number(token.price * token.amount).toFixed(2)}`}
-                </Text>
+                <>
+                  <Text style={styles.tokenAmount}>
+                    {isBalanceHidden
+                      ? '****'
+                      : Number(token.amount).toFixed(8).replace(/\.?0+$/, '')}
+                  </Text>
+                  <Text style={styles.tokenValue}>
+                    {isBalanceHidden
+                      ? '****'
+                      : `$${Number(token.price * token.amount).toFixed(2)}`}
+                  </Text>
+                </>
               )}
             </View>
           </View>
