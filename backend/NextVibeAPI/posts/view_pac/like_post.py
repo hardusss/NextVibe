@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from ..models import Post
-
+from user.models import Notification
 
 User = get_user_model()
 
@@ -40,15 +40,31 @@ class LikePostView(APIView):
 
         if post_id in user.liked_posts:
             user.liked_posts.remove(post_id)
-            post.count_likes -= 1
-            post.save()
-            user.save()
+            if post.count_likes != 0:
+                post.count_likes -= 1
+                post.save()
+                user.save()
             return Response({"data": "Post is unliked"}, status=status.HTTP_200_OK)
         else:
             user.liked_posts.append(post_id)
             post.count_likes += 1
             post.save()
             user.save()
+
+            # Check and create notification
+            existing = Notification.objects.filter(
+                sender=user,
+                recipient=post.owner,
+                post=post,
+                notification_type="like",
+            ).first()
+            if not existing:
+                Notification.objects.create(
+                    sender=user,
+                    recipient=post.owner,
+                    post=post,
+                    notification_type="like",
+                    text_preview=f"{user.username} like your post!"
+                )
             return Response({"data": "Succes"}, status=status.HTTP_200_OK)
         
-        return Response({"data": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)

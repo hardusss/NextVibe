@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import Comment
 from ..models import CommentReply
 from django.contrib.auth import get_user_model
-
+from user.models import Notification
 
 User = get_user_model()
 
@@ -20,8 +20,26 @@ class CommentCreateView(APIView):
         else:
             comment = CommentSerializer(data=request.data)
         if comment.is_valid():
-            comment.save()
+            comment_obj = comment.save()
             user = User.objects.get(user_id=comment.data["owner"])
+            
+            existing = Notification.objects.filter(
+                sender=user,
+                recipient=comment_obj.post.owner,
+                post=comment_obj.post,
+                notification_type="comment",
+                comment=comment_obj
+            ).first()
+            if not existing:
+                Notification.objects.create(
+                    sender=user,
+                    recipient=comment_obj.post.owner,
+                    post=comment_obj.post,
+                    notification_type="comment",
+                    text_preview=f"{user.username} commented on your post!",
+                    comment=comment_obj
+                )
+                
             user_data: dict = {
                 "username": user.username,
                 "avatar": str(user.avatar),
