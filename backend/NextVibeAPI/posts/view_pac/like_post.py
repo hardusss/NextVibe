@@ -60,11 +60,11 @@ class LikePostView(APIView):
             ).first()
             if not existing:
                 Notification.objects.create(
-                sender=user,
-                recipient=post.owner,
-                post=post,
-                notification_type="like",
-                text_preview=f"User {user.username} like your post!"
-            )
+                    sender=user,
+                    recipient=post.owner,
+                    post=post,
+                    notification_type="like",
+                    text_preview=f"{user.username} like your post!"
+                )
             return Response({"data": "Succes"}, status=status.HTTP_200_OK)
         
