@@ -4,13 +4,15 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
+from ..models import Notification
 
 User = get_user_model()
 
 class FollowView(APIView):
     permission_classes = [IsAuthenticated]
     
-    def put(self, request, id: int, follow_id: int):
+    def put(self, request, follow_id: int):
+        id: int = request.user.user_id
         try:
             user = User.objects.get(user_id=id)
             user2 = User.objects.get(user_id=follow_id)
