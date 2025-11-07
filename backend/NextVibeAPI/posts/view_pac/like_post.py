@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from ..models import Post
-
+from user.models import Notification
 
 User = get_user_model()
 
@@ -50,5 +50,21 @@ class LikePostView(APIView):
             post.count_likes += 1
             post.save()
             user.save()
+
+            # Check and create notification
+            existing = Notification.objects.filter(
+                sender=user,
+                recipient=post.owner,
+                post=post,
+                notification_type="like",
+            ).first()
+            if not existing:
+                Notification.objects.create(
+                sender=user,
+                recipient=post.owner,
+                post=post,
+                notification_type="like",
+                text_preview=f"User {user.username} like your post!"
+            )
             return Response({"data": "Succes"}, status=status.HTTP_200_OK)
         
