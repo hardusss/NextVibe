@@ -85,6 +85,10 @@ class Notification(models.Model):
     post = models.ForeignKey(
         "posts.Post", on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
     )
+    comment = models.ForeignKey(
+        "posts.Comment", on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
+    )
+
     text_preview = models.CharField(max_length=255, blank=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
