@@ -4,13 +4,17 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
+from ..models import Notification
+from datetime import timedelta
+from django.utils import timezone
 
 User = get_user_model()
 
 class FollowView(APIView):
     permission_classes = [IsAuthenticated]
     
-    def put(self, request, id: int, follow_id: int):
+    def put(self, request, follow_id: int):
+        id: int = request.user.user_id
         try:
             user = User.objects.get(user_id=id)
             user2 = User.objects.get(user_id=follow_id)
@@ -42,6 +46,22 @@ class FollowView(APIView):
                 user2.readers.append(id)
             except:
                 user2.readers = [id]
+            
+            # Check notify per one day and create notification
+            recent = Notification.objects.filter(
+                sender=user,
+                recipient=user2,
+                notification_type='follow',
+                created_at__gte=timezone.now() - timedelta(days=1)
+            ).first()
+
+            if not recent:
+                Notification.objects.create(
+                    sender=user,
+                    recipient=user2,
+                    notification_type='follow',
+                    text_preview=f"{user.username} followed you!"
+                )
             
             user2.save()
             

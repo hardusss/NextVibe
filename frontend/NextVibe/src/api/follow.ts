@@ -4,11 +4,10 @@ import GetApiUrl from "../utils/url_api";
 
 const followUser = async (follow_id: number): Promise<number> => {
     const TOKEN = await AsyncStorage.getItem("access");
-    const ID = await AsyncStorage.getItem("id");
 
     try {
         const response = await axios.put(
-            `${GetApiUrl()}/users/follow/${ID}/${follow_id}/`, 
+            `${GetApiUrl()}/users/follow/${follow_id}/`, 
             {}, 
             {
                 headers: {

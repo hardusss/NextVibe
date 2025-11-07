@@ -459,7 +459,6 @@ const MediaItemComponent = ({
                         </View>
                     )}
                     
-                    {/* Кнопка звуку */}
                     <Pressable 
                         onPress={(e) => {
                             e.stopPropagation();
@@ -618,7 +617,7 @@ const UserPosts = () => {
                 return {
                     ...post,
                     count_likes: likedPosts[postId] 
-                        ? post.count_likes - 1 
+                        ? post.count_likes > 0 ? post.count_likes - 1 : 0
                         : post.count_likes + 1
                 };
             }
