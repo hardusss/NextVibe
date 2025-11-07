@@ -45,6 +45,13 @@ class FollowView(APIView):
             except:
                 user2.readers = [id]
             
+            Notification(
+                sender=user,
+                recipient=user2,
+                notification_type="follow",
+                text_preview=f"User {user.username} follow your profile!"
+            ).save()
+            
             user2.save()
             
             # Ensure consistency
