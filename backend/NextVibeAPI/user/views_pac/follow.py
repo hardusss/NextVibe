@@ -5,6 +5,8 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from ..models import Notification
+from datetime import timedelta
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -45,12 +47,21 @@ class FollowView(APIView):
             except:
                 user2.readers = [id]
             
-            Notification(
+            # Check notify per one day and create notification
+            recent = Notification.objects.filter(
                 sender=user,
                 recipient=user2,
-                notification_type="follow",
-                text_preview=f"User {user.username} follow your profile!"
-            ).save()
+                notification_type='follow',
+                created_at__gte=timezone.now() - timedelta(days=1)
+            ).first()
+
+            if not recent:
+                Notification.objects.create(
+                    sender=user,
+                    recipient=user2,
+                    notification_type='follow',
+                    text_preview=f"{user.username} followed you!"
+                )
             
             user2.save()
             
