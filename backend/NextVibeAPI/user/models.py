@@ -70,13 +70,17 @@ class Notification(models.Model):
     NOTIFICATION_TYPES = (
         ('like', 'Like'),
         ('comment', 'Comment'),
+        ('comment_reply', "Comment Reply"),
+        ('comment_like', "Comment Like"),
         ('follow', 'Follow'),
         ('revived_transaction', "Recived Transaction"),
-        ("deleted_post", "Post Deleted")
+        ('deleted_post', 'Post Deleted'),
+        ("moderation_success", "Moderation Success"),
+        ("moderation_fail", "Moderation Fail"),
     )
 
     sender = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="sent_notifications"
+        User, on_delete=models.CASCADE, related_name="sent_notifications", null=True, blank=True
     )
     recipient = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="received_notifications"
@@ -88,6 +92,9 @@ class Notification(models.Model):
     comment = models.ForeignKey(
         "posts.Comment", on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
     )
+    comment_reply = models.ForeignKey(
+        "posts.CommentReply", on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
+    )
 
     text_preview = models.CharField(max_length=255, blank=True)
     is_read = models.BooleanField(default=False)
@@ -97,4 +104,4 @@ class Notification(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.sender} -> {self.recipient} ({self.notification_type})"
+        return f"{self.sender if self.sender is not None else 'System'} -> {self.recipient} ({self.notification_type})"
