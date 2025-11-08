@@ -1,8 +1,10 @@
-import { TouchableOpacity, Text, View, StyleSheet, Animated, Easing } from "react-native";
-import { useRef, useEffect, useMemo, useState } from "react";
+import { TouchableOpacity, Text, View, StyleSheet, Animated } from "react-native";
+import { useRef, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
 import FastImage from 'react-native-fast-image';
+import { Ionicons } from '@expo/vector-icons';
+import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
 
 export default function Header({ isVisible }: { isVisible: boolean }) {
   const translateY = useRef(new Animated.Value(0)).current;
@@ -13,61 +15,39 @@ export default function Header({ isVisible }: { isVisible: boolean }) {
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
   const styles = getStyles(isDark);
-  const prevVisible = useRef<boolean>(isVisible);
-  const animationTimeout = useRef<NodeJS.Timeout>();
-  
-  useEffect(() => {
-    if (prevVisible.current === isVisible) return;
-
-    if (animationTimeout.current) {
-      clearTimeout(animationTimeout.current);
+  const [notificationsCount, setNotificationsCount] = useState(0)
+  let rightPosition = -15;
+    if (notificationsCount > 9 && notificationsCount <= 99) {
+      rightPosition = -6;
+    } else if (notificationsCount <= 9) {
+      rightPosition = -3;
+    } else if (notificationsCount >= 99 && notificationsCount < 999) {
+      rightPosition = -11;
     }
 
-    animationTimeout.current = setTimeout(() => {
-      prevVisible.current = isVisible;
-      
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: isVisible ? 0 : -40,
-          duration: 300,
-          useNativeDriver: true,
-          easing: Easing.bezier(0.4, 0, 0.2, 1)
-        }),
-        Animated.timing(scaleY, {
-          toValue: isVisible ? 1 : 0,
-          duration: 300,
-          useNativeDriver: true,
-          easing: Easing.bezier(0.4, 0, 0.2, 1)
-        }),
-        Animated.timing(scale, {
-          toValue: isVisible ? 1 : 0.9,
-          duration: 300,
-          useNativeDriver: true,
-          easing: Easing.bezier(0.4, 0, 0.2, 1)
-        }),
-        Animated.timing(opacity, {
-          toValue: isVisible ? 1 : 0,
-          duration: 300,
-          useNativeDriver: true,
-        
-          easing: Easing.bezier(0.4, 0, 0.2, 1)
-        }),
-        Animated.timing(height, {
-          toValue: isVisible ? 110 : 50,
-          duration: 300,
-          useNativeDriver: true,
-        
-          easing: Easing.bezier(0.4, 0, 0.2, 1)
-        })
-      ]).start();
-    }, 150);
+  const displayCount = (count: number): string => {
+    return (
+        notificationsCount > 999
+          ? '999+'
+          : notificationsCount > 99
+            ? '99+'
+            : notificationsCount > 9
+              ? '9+'
+              : notificationsCount.toString()
+    )
 
-    return () => {
-      if (animationTimeout.current) {
-        clearTimeout(animationTimeout.current);
-      }
-    };
-  }, [isVisible]);
+  }
+
+  const fetchCountUnreadNotification = async () => {
+    const countUnread = await getCountUnreadNotifications();
+    setNotificationsCount(countUnread)
+  }
+
+  useEffect(() => {
+    fetchCountUnreadNotification();
+    const interval = setInterval(fetchCountUnreadNotification, 15000)
+    return () => clearInterval(interval);
+  }, [])
 
   return (
     <Animated.View style={[styles.container, {
@@ -76,11 +56,28 @@ export default function Header({ isVisible }: { isVisible: boolean }) {
       <View style={styles.headerFixed}>
         <View style={styles.row}>
           <Text style={styles.text}>NextVibe</Text>
-          <FastImage
-            source={require('@/assets/logo.png')}
-            style={styles.logo}
-            resizeMode={FastImage.resizeMode.contain}
-          />
+          <View style={{flexDirection: "row", gap: 15}}>
+            <TouchableOpacity style={styles.notifyContainer}>
+              <Ionicons name="notifications-outline" size={30} color="#7F00FF" />
+              {notificationsCount > 0 && (
+                <View style={[
+                  styles.counterBox,
+                  {right: rightPosition },
+                  
+                ]}>
+                  <Text style={styles.counterText}>
+                    {displayCount(notificationsCount)}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <FastImage
+              source={require('@/assets/logo.png')}
+              style={styles.logo}
+              resizeMode={FastImage.resizeMode.contain}
+            />
+          </View>
         </View>
       </View>
 
@@ -112,6 +109,30 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     width: '100%',
     marginTop: -5,
   },
+  notifyContainer: {
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  counterBox: {
+    position: "absolute",
+    right: -15,
+    top: 15,
+    backgroundColor: "red",
+    paddingHorizontal: 5,
+    height: 14,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+  counterText: {
+    color: "#fff",
+    fontSize: 8,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+
   headerFixed: {
     paddingHorizontal: 10,
     backgroundColor: isDark ? '#0A0410' : '#fff',
