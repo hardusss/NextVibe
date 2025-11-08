@@ -74,11 +74,13 @@ class Notification(models.Model):
         ('comment_like', "Comment Like"),
         ('follow', 'Follow'),
         ('revived_transaction', "Recived Transaction"),
-        ('deleted_post', 'Post Deleted')
+        ('deleted_post', 'Post Deleted'),
+        ("moderation_success", "Moderation Success"),
+        ("moderation_fail", "Moderation Fail"),
     )
 
     sender = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="sent_notifications"
+        User, on_delete=models.CASCADE, related_name="sent_notifications", null=True, blank=True
     )
     recipient = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="received_notifications"
@@ -102,4 +104,4 @@ class Notification(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.sender} -> {self.recipient} ({self.notification_type})"
+        return f"{self.sender if self.sender is not None else 'System'} -> {self.recipient} ({self.notification_type})"
