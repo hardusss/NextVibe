@@ -71,6 +71,7 @@ class Notification(models.Model):
         ('like', 'Like'),
         ('comment', 'Comment'),
         ('comment_reply', "Comment Reply"),
+        ('comment_like', "Comment Like"),
         ('follow', 'Follow'),
         ('revived_transaction', "Recived Transaction"),
         ('deleted_post', 'Post Deleted')
