@@ -70,9 +70,10 @@ class Notification(models.Model):
     NOTIFICATION_TYPES = (
         ('like', 'Like'),
         ('comment', 'Comment'),
+        ('comment_reply', "Comment Reply"),
         ('follow', 'Follow'),
         ('revived_transaction', "Recived Transaction"),
-        ("deleted_post", "Post Deleted")
+        ('deleted_post', 'Post Deleted')
     )
 
     sender = models.ForeignKey(
