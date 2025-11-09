@@ -2,15 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework import status
-from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from user.models import Notification
 from django.core.cache import cache
 from typing import Self, NewType
 
 CacheKey = NewType("CacheKey", str)
-
-USER = get_user_model()
 
 
 class GetCountUnreadNotificationsView(APIView):
