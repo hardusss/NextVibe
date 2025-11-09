@@ -6,7 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import Comment, CommentReply
 from django.contrib.auth import get_user_model
 from user.models import Notification
-import json
+from user.src.clear_notify_cache import clear_notification_cache
+
 User = get_user_model()
 
 
@@ -41,6 +42,7 @@ class CommentCreateView(APIView):
                         text_preview=f"{user.username} commented on your post!",
                         comment=comment_obj
                     )
+                    clear_notification_cache(comment_obj.post.owner.user_id)
 
             user_data = {
                 "username": user.username,
@@ -81,7 +83,7 @@ class CommentReplyView(APIView):
                     notification_type="comment_reply",
                     text_preview=f"{reply_obj.owner.username} replied to your comment!"
                 )
-
+                clear_notification_cache(comment.owner.user_id)
             if comment.post.owner != reply_obj.owner and comment.post.owner != comment.owner:
                 Notification.objects.create(
                     sender=reply_obj.owner,
@@ -91,7 +93,7 @@ class CommentReplyView(APIView):
                     notification_type="comment",
                     text_preview=f"{reply_obj.owner.username} commented on your post!"
                 )
-
+                clear_notification_cache(comment.post.owner.user_id)
 
             user_data = {
                 "username": user.username,
