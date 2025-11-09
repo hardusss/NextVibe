@@ -8,13 +8,13 @@ from .views_pac import (
                             UpdateUserText, UpdateUserAvatar,
                             UpdatePassword, GetReaders,
                             GetFollows, GetCountUnreadNotificationsView,
-                            GetNotificationsView
+                            GetNotificationsView, ReadNotificationsView
                         )
 
 
 urlpatterns = [
-    path('register/', RegisterUserView.as_view(), name='register_user'),
-    path('login/', LoginUserView.as_view(), name='login_user'),
+    path("register/", RegisterUserView.as_view(), name='register_user'),
+    path("login/", LoginUserView.as_view(), name='login_user'),
     path("google-register/", GoogleRegisterView.as_view(), name="google_register"),
     path("google-login/", GoogleLoginUserView.as_view(), name="google_login"),
     path("user-detail/<int:id>/", UserDetailView.as_view(), name="user-detail"),
@@ -29,5 +29,6 @@ urlpatterns = [
     path("get-readers/", GetReaders.as_view(), name="get_readers"),
     path("get-follows/", GetFollows.as_view(), name="get_follows"),
     path("count-unread-notifications/", GetCountUnreadNotificationsView.as_view(), name="count_unread_notifications"),
-    path("notifications/", GetNotificationsView.as_view(), name="notifications")
+    path("notifications/", GetNotificationsView.as_view(), name="notifications"),
+    path("read-notifications/", ReadNotificationsView.as_view(), name="read_notifications")
 ]

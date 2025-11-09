@@ -15,3 +15,4 @@ from .get_readers import GetReaders
 from .get_follows import GetFollows
 from .count_unread_notifications import GetCountUnreadNotificationsView
 from .get_notifications import GetNotificationsView
+from .read_notifications import ReadNotificationsView
