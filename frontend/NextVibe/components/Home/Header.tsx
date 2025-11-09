@@ -1,7 +1,7 @@
 import { TouchableOpacity, Text, View, StyleSheet, Animated } from "react-native";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useColorScheme } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import FastImage from 'react-native-fast-image';
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -43,11 +43,14 @@ export default function Header() {
     setNotificationsCount(countUnread)
   }
 
-  useEffect(() => {
-    fetchCountUnreadNotification();
-    const interval = setInterval(fetchCountUnreadNotification, 30000)
-    return () => clearInterval(interval);
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      fetchCountUnreadNotification();
+      const interval = setInterval(fetchCountUnreadNotification, 30000);
+      return () => clearInterval(interval);
+    }, [])
+  );
+
 
   return (
     <Animated.View style={[styles.container, {
