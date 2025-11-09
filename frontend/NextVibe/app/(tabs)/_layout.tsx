@@ -25,7 +25,7 @@ export default function Layout() {
     "create-wallet", "result-transaction",
     "transactions", "transaction-detail",
     "chat-room", "chats",
-    "follows-screen"
+    "follows-screen", "notifications"
   ];
 
   const tabs = [

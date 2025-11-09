@@ -4,6 +4,7 @@ from rest_framework import status
 from ..models import Post
 from django.contrib.auth import get_user_model
 from user.models import Notification
+from user.src.clear_notify_cache import clear_notification_cache
 
 User = get_user_model()
 
@@ -56,17 +57,18 @@ class ModerationCallbackView(APIView):
                     notification_type="moderation_fail",
                     text_preview=f"Your post was rejected: {reason}"
                 )
+                clear_notification_cache(post.owner.user_id)
         else:
             existing = Notification.objects.filter(
                 recipient=post.owner,
                 post=post,
             ).exists()
             if not existing:
-               Notification.objects.create(
+                Notification.objects.create(
                     recipient=post.owner,
                     post=post,
                     notification_type="moderation_success",
                     text_preview=f"Post published successfully"
                 ) 
-        
+                clear_notification_cache(post.owner.user_id)
         return Response({"status": "ok"}, status=status.HTTP_200_OK)

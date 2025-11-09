@@ -136,6 +136,7 @@ const getStyles = (theme: typeof darkTheme) => {
             lineHeight: 20
         },
         postFooter: {
+            marginLeft: -1,
             flexDirection: "row",
             gap: 10,
             alignItems: "center"
@@ -799,17 +800,19 @@ const UserPosts = () => {
             </View>
           )}
         </View>
+        {displayText && (
+            <View style={styles.postContent}>
+              <Text style={styles.postText}>{displayText}</Text>
+              {needsMoreButton && (
+                <TouchableOpacity onPress={() => toggleExpand(item.post_id)}>
+                  <Text style={{ color: theme.accentColor, marginTop: 5 }}>
+                    {isExpanded ? "Show less" : "Read more"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+        )}
         
-        <View style={styles.postContent}>
-          <Text style={styles.postText}>{displayText}</Text>
-          {needsMoreButton && (
-            <TouchableOpacity onPress={() => toggleExpand(item.post_id)}>
-              <Text style={{ color: theme.accentColor, marginTop: 5 }}>
-                {isExpanded ? "Show less" : "Read more"}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
         
         <View style={styles.postFooter}>
           <TouchableOpacity onPress={() => toggleLike(item.post_id)} style={styles.likesContainer}>

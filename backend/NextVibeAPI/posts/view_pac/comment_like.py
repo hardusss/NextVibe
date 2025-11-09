@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from ..models import Comment, CommentReply
 from user.models import Notification
+from user.src.clear_notify_cache import clear_notification_cache
 
 User = get_user_model()
 
@@ -94,6 +95,7 @@ class LikeCommentView(APIView):
                             comment=comment.comment,  
                             comment_reply=comment  
                         )
+                        clear_notification_cache(comment.owner.user_id)
                 else:
                     post = comment.post
                     text = f"{user.username} liked your comment!"
@@ -115,6 +117,7 @@ class LikeCommentView(APIView):
                             text_preview=text,
                             comment=comment
                         )
+                        clear_notification_cache(comment.owner.user_id)
             
             return Response(
                 {"data": "Success"}, 

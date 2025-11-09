@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import Comment, CommentReply
 from django.contrib.auth import get_user_model
 from user.models import Notification
+from user.src.clear_notify_cache import clear_notification_cache
 
 User = get_user_model()
 
@@ -41,6 +42,7 @@ class CommentCreateView(APIView):
                         text_preview=f"{user.username} commented on your post!",
                         comment=comment_obj
                     )
+                    clear_notification_cache(comment_obj.post.owner.user_id)
 
             user_data = {
                 "username": user.username,
@@ -71,43 +73,27 @@ class CommentReplyView(APIView):
             reply_obj = reply.save()
             user = reply_obj.owner
             
-            if user != comment.owner:
-                existing = Notification.objects.filter(
-                    sender=user,
+            if reply_obj.owner != comment.owner:
+                Notification.objects.create(
+                    sender=reply_obj.owner,
                     recipient=comment.owner,
                     post=comment.post,
+                    comment=comment,
+                    comment_reply=reply_obj,
                     notification_type="comment_reply",
-                    comment=comment
-                ).first()
-                
-                if not existing:
-                    Notification.objects.create(
-                        sender=user,
-                        recipient=comment.owner,
-                        post=comment.post,
-                        notification_type="comment_reply",
-                        text_preview=f"{user.username} replied to your comment!",
-                        comment=comment
-                    )
-                    
-            if user != comment.post.owner and comment.owner != comment.post.owner:
-                existing_post = Notification.objects.filter(
-                    sender=user,
+                    text_preview=f"{reply_obj.owner.username} replied to your comment!"
+                )
+                clear_notification_cache(comment.owner.user_id)
+            if comment.post.owner != reply_obj.owner and comment.post.owner != comment.owner:
+                Notification.objects.create(
+                    sender=reply_obj.owner,
                     recipient=comment.post.owner,
                     post=comment.post,
+                    comment=comment,
                     notification_type="comment",
-                    comment=comment
-                ).first()
-                
-                if not existing_post:
-                    Notification.objects.create(
-                        sender=user,
-                        recipient=comment.post.owner,
-                        post=comment.post,
-                        notification_type="comment",
-                        text_preview=f"{user.username} replied to a comment on your post!",
-                        comment=comment
-                    )
+                    text_preview=f"{reply_obj.owner.username} commented on your post!"
+                )
+                clear_notification_cache(comment.post.owner.user_id)
 
             user_data = {
                 "username": user.username,

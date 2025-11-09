@@ -1,12 +1,12 @@
 import { TouchableOpacity, Text, View, StyleSheet, Animated } from "react-native";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useColorScheme } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import FastImage from 'react-native-fast-image';
-import { Ionicons } from '@expo/vector-icons';
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-export default function Header({ isVisible }: { isVisible: boolean }) {
+export default function Header() {
   const translateY = useRef(new Animated.Value(0)).current;
   const scaleY = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -20,12 +20,12 @@ export default function Header({ isVisible }: { isVisible: boolean }) {
     if (notificationsCount > 9 && notificationsCount <= 99) {
       rightPosition = -6;
     } else if (notificationsCount <= 9) {
-      rightPosition = -3;
+      rightPosition = -1;
     } else if (notificationsCount >= 99 && notificationsCount < 999) {
       rightPosition = -11;
     }
 
-  const displayCount = (count: number): string => {
+  const displayCount = (): string => {
     return (
         notificationsCount > 999
           ? '999+'
@@ -43,11 +43,14 @@ export default function Header({ isVisible }: { isVisible: boolean }) {
     setNotificationsCount(countUnread)
   }
 
-  useEffect(() => {
-    fetchCountUnreadNotification();
-    const interval = setInterval(fetchCountUnreadNotification, 15000)
-    return () => clearInterval(interval);
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      fetchCountUnreadNotification();
+      const interval = setInterval(fetchCountUnreadNotification, 30000);
+      return () => clearInterval(interval);
+    }, [])
+  );
+
 
   return (
     <Animated.View style={[styles.container, {
@@ -57,16 +60,16 @@ export default function Header({ isVisible }: { isVisible: boolean }) {
         <View style={styles.row}>
           <Text style={styles.text}>NextVibe</Text>
           <View style={{flexDirection: "row", gap: 15}}>
-            <TouchableOpacity style={styles.notifyContainer}>
-              <Ionicons name="notifications-outline" size={30} color="#7F00FF" />
+            <TouchableOpacity style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
+              <MaterialCommunityIcons name="bell-outline" size={30} color="#fafafa" />
               {notificationsCount > 0 && (
                 <View style={[
                   styles.counterBox,
-                  {right: rightPosition },
+                  {right: rightPosition,},
                   
                 ]}>
-                  <Text style={styles.counterText}>
-                    {displayCount(notificationsCount)}
+                  <Text style={[styles.counterText, {fontSize: notificationsCount > 999 ? 8 : 10}]}>
+                    {displayCount()}
                   </Text>
                 </View>
               )}
@@ -118,7 +121,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     position: "absolute",
     right: -15,
     top: 15,
-    backgroundColor: "red",
+    backgroundColor: "#7F00FF",
     paddingHorizontal: 5,
     height: 14,
     borderRadius: 9,
@@ -128,7 +131,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   counterText: {
     color: "#fff",
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: "bold",
     textAlign: "center",
   },
