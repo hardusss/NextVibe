@@ -1,5 +1,20 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, TextInput, Animated, Dimensions, PanResponder, FlatList, StyleSheet, Image } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Modal, 
+  TextInput, 
+  Animated, 
+  Dimensions, 
+  PanResponder, 
+  FlatList, 
+  StyleSheet, 
+  Image,
+  LayoutAnimation,
+  UIManager,
+  Platform
+} from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import getComments from '@/src/api/get.comments';
 import GetApiUrl from '@/src/utils/url_api';
@@ -10,10 +25,17 @@ import getUserDetail from '@/src/api/user.detail';
 import createComment from '@/src/api/create.comment';
 import createCommentReply from '@/src/api/comment.reply';
 import commentLike from '@/src/api/comment.like';
-
 import FastImage from 'react-native-fast-image';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { height, width } = Dimensions.get('window');
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const REPLIES_BATCH_SIZE = 3;
 
 interface User {
   username: string;
@@ -59,7 +81,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const [comments, setComments] = useState<Comment[]>([]);
-  const [expandedComments, setExpandedComments] = useState<{ [key: number]: boolean }>({});
+  const [expandedComments, setExpandedComments] = useState<{ [key: number]: number }>({});
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserData>();
   const [owner, setOwner] = useState<string | null>(null);
@@ -121,10 +143,23 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
     }, [post_id])
   );
 
-  const toggleReplies = (commentId: number) => {
+  const showMoreReplies = (commentId: number, totalReplies: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedComments((prev) => {
+      const currentCount = prev[commentId] || 0;
+      const newCount = Math.min(totalReplies, currentCount + REPLIES_BATCH_SIZE);
+      return {
+        ...prev,
+        [commentId]: newCount,
+      };
+    });
+  };
+
+  const hideReplies = (commentId: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedComments((prev) => ({
       ...prev,
-      [commentId]: !prev[commentId],
+      [commentId]: 0,
     }));
   };
 
@@ -142,13 +177,10 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
 
 
   const toggleLike = async (item: Comment | Reply) => {
-    // Call the API to toggle like
     await handleCommentLike('reply_id' in item ? item.reply_id : item.id, 'reply_id' in item);
     
-    // Get the current like state before updating
     const isCurrentlyLiked = isLiked(item);
     
-    // Update like status in local state
     setLikedComments((prev) => {
       if ('reply_id' in item) {
         return {
@@ -169,11 +201,9 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
       }
     });
 
-    // Update comment/reply like count
     setComments((prevComments) => 
       prevComments.map((comment) => {
         if ('reply_id' in item) {
-          // If it's a reply being liked
           if (comment.replies.some(r => r.reply_id === item.reply_id)) {
             return {
               ...comment,
@@ -185,7 +215,6 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             };
           }
         } else if (comment.id === item.id) {
-          // If it's a main comment being liked
           return {
             ...comment,
             count_likes: comment.count_likes + (isCurrentlyLiked ? -1 : 1)
@@ -221,21 +250,25 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
 
     const response = await createCommentReply(content, commentId);
     if (response) {
+      let newTotalReplies = 0;
       setComments(prevComments => {
         return prevComments.map(comment => {
           if (comment.id === commentId) {
+            const updatedReplies = comment.replies ? [...comment.replies, response] : [response];
+            newTotalReplies = updatedReplies.length;
             return {
               ...comment,
-              replies: comment.replies ? [...comment.replies, response] : [response]
+              replies: updatedReplies
             };
           }
           return comment;
         });
       });
       
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setExpandedComments(prev => ({
         ...prev,
-        [commentId]: true
+        [commentId]: newTotalReplies
       }));
     }
   };
@@ -303,68 +336,92 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
     );
   };
 
-  const renderComment = ({ item }: { item: Comment }) => (
-    <View style={styles.commentContainer}>
-      <View style={styles.userInfo}>
-        <FastImage
-          source={{ 
-            uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}`,
-            priority: FastImage.priority.normal,
-            cache: FastImage.cacheControl.immutable
-          }}
-          style={styles.avatar}
-          resizeMode={FastImage.resizeMode.cover}
-        />
-        <View style={styles.commentContent}>
-          <View style={styles.userDetails}>
-            <Text style={styles.username}>{item.user.username}</Text>
-            {item.user.official && (
-              <MaterialIcons name="check-circle" size={12} color="#58a6ff" style={{ marginLeft: 5 }} />
+  const renderComment = ({ item }: { item: Comment }) => {
+    const currentVisibleCount = expandedComments[item.id] || 0;
+    const totalReplies = item.replies?.length || 0;
+    const areAllRepliesShown = currentVisibleCount === totalReplies;
+
+    let showMoreText = `View answers: ${totalReplies}`;
+    if (currentVisibleCount > 0) {
+        const remaining = totalReplies - currentVisibleCount;
+        showMoreText = `View ${remaining} more`;
+    }
+
+    return (
+      <View style={styles.commentContainer}>
+        <View style={styles.userInfo}>
+          <FastImage
+            source={{ 
+              uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}`,
+              priority: FastImage.priority.normal,
+              cache: FastImage.cacheControl.immutable
+            }}
+            style={styles.avatar}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+          <View style={styles.commentContent}>
+            <View style={styles.userDetails}>
+              <Text style={styles.username}>{item.user.username}</Text>
+              {item.user.official && (
+                <MaterialIcons name="check-circle" size={12} color="#58a6ff" style={{ marginLeft: 5 }} />
+              )}
+            </View>
+            {renderCommentText(item.content, `comment-${item.id}`)}
+            <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
+              <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
+                <Text style={{color: "gray", fontWeight: "300"}}>{timeAgo(item.create_at)}</Text>
+                <TouchableOpacity onPress={() => handleReply(item)}>
+                  <Text style={{color: "gray", fontWeight: "bold"}}>Reply</Text>
+                </TouchableOpacity>
+              </View>
+              <View>
+                <TouchableOpacity onPress={() => toggleLike(item)}>
+                  <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
+                    <Text style={{color: "gray", fontSize: 12}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
+                    <MaterialIcons 
+                      name={isLiked(item) ? 'favorite' : 'favorite-border'} 
+                      size={18} 
+                      color={isLiked(item) ? "#40E0D0" : "#FFF"} 
+                      style={isLiked(item) ? styles.neonShadow : null}
+                    /> 
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+            {currentVisibleCount > 0 && item.replies && (
+              <FlatList
+                data={item.replies.slice(0, currentVisibleCount)}
+                renderItem={renderReply}
+                keyExtractor={(reply) => reply.reply_id.toString()}
+                scrollEnabled={false}
+                nestedScrollEnabled={true}
+              />
+            )}
+            {item.replies && item.replies.length > 0 && (
+                <View style={styles.repliesButtonContainer}>
+                    {!areAllRepliesShown && (
+                        <TouchableOpacity onPress={() => showMoreReplies(item.id, totalReplies)} style={styles.replyButton}>
+                            <Text style={styles.toggleRepliesText}>
+                                {showMoreText}
+                            </Text>
+                            <Entypo name="chevron-down" size={12} color="#d3d3d3" style={{marginTop: 1}}/> 
+                        </TouchableOpacity>
+                    )}
+                    {currentVisibleCount > 0 && (
+                        <TouchableOpacity onPress={() => hideReplies(item.id)} style={[styles.replyButton, { marginLeft: 15 }]}>
+                            <Text style={styles.toggleRepliesText}>
+                                Hide Answers
+                            </Text>
+                            <Entypo name="chevron-up" size={12} color="#d3d3d3" style={{marginTop: 3}}/> 
+                        </TouchableOpacity>
+                    )}
+                </View>
             )}
           </View>
-          {renderCommentText(item.content, `comment-${item.id}`)}
-          <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
-            <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
-              <Text style={{color: "gray", fontWeight: "300"}}>{timeAgo(item.create_at)}</Text>
-              <TouchableOpacity onPress={() => handleReply(item)}>
-                <Text style={{color: "gray", fontWeight: "bold"}}>Reply</Text>
-              </TouchableOpacity>
-            </View>
-            <View>
-              <TouchableOpacity onPress={() => toggleLike(item)}>
-                <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
-                  <Text style={{color: "gray", fontSize: 12}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
-                  <MaterialIcons 
-                    name={isLiked(item) ? 'favorite' : 'favorite-border'} 
-                    size={18} 
-                    color={isLiked(item) ? "#40E0D0" : "#FFF"} 
-                    style={isLiked(item) ? styles.neonShadow : null}
-                  /> 
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {expandedComments[item.id] && item.replies && (
-            <FlatList
-              data={item.replies}
-              renderItem={renderReply}
-              keyExtractor={(reply) => reply.reply_id.toString()}
-              scrollEnabled={false}
-              nestedScrollEnabled={true}
-            />
-          )}
-          {item.replies && item.replies.length > 0 && (
-            <TouchableOpacity onPress={() => toggleReplies(item.id)} style={{flexDirection: 'row', alignItems: 'center'}}>
-              <Text style={styles.toggleRepliesText}>
-                {expandedComments[item.id] ? 'Hide Answers' : ` View answers: ${item.replies.length}`}
-              </Text>
-              <Entypo name="chevron-down" size={12} color="#d3d3d3" style={{marginTop: 5}}/> 
-            </TouchableOpacity>
-          )}
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderReply = ({ item }: { item: Reply }) => (
     <View style={styles.replyContainer}>
@@ -421,6 +478,11 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             ]}
             {...panResponder.panHandlers}
           >
+            <BlurView
+                intensity={80} 
+                tint="dark"
+                style={[styles.blurViewAbsolute, { borderTopLeftRadius: 20, borderTopRightRadius: 20 }]}
+            />
             <View style={styles.header}>
               <View style={styles.bar} />
               <Text style={styles.headerText}>Comments: {comments.reduce((total, comment) => total + 1 + (comment.replies?.length || 0), 0)}</Text>
@@ -432,10 +494,10 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
               <ActivityIndicator size="large" color="#0000ff" />
             ) : !isCommentsEnabled ? (
               <View style={styles.disabledCommentsContainer}>
-                <Text style={styles.disabledCommentsText}>The author has disabled comments. {isCommentsEnabled}</Text>
+                <Text style={styles.disabledCommentsText}>The author has disabled comments.</Text>
               </View>
             ) : comments.length === 0 ? (
-              <Text style={styles.noCommentsText}>No comments available {isCommentsEnabled}</Text>
+              <Text style={styles.noCommentsText}>No comments available</Text>
             ) : (
               <FlatList
                 data={comments}
@@ -463,11 +525,32 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             ): ""}
             {isCommentsEnabled ? (
                 <View style={styles.inputContainer}>
-                  <FastImage source={{uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}`}} style={{width: 50, height: 50, borderRadius: 50}}/>
-                  <TextInput value={commentText} autoFocus returnKeyType='send' style={styles.input} placeholder={isCommentsEnabled ? `Add a comment for ${owner}...` : 'Comments are disabled by the author'} placeholderTextColor="#888" editable={isCommentsEnabled} onChange={(e) => setCommentText(e.nativeEvent.text)} />
-                  <TouchableOpacity style={styles.sendButton} onPress={handleSendComment} disabled={!commentText.trim() || !isCommentsEnabled}>
-                    <MaterialIcons name="arrow-upward" size={22} color={"white"}/>
-                  </TouchableOpacity>
+                  <BlurView
+                    intensity={115} 
+                    tint="dark"
+                    style={styles.blurViewAbsolute}
+                  />
+                  <View style={styles.inputBorderContainer}> 
+                    <FastImage source={{uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}`}} style={{width: 44, height: 44, borderRadius: 22}}/>
+                    <TextInput 
+                      value={commentText} 
+                      autoFocus 
+                      returnKeyType='send' 
+                      style={styles.input} 
+                      placeholder={isCommentsEnabled ? `Add a comment for ${owner}...` : 'Comments are disabled by the author'} 
+                      placeholderTextColor="#BBB" 
+                      editable={isCommentsEnabled} 
+                      onChange={(e) => setCommentText(e.nativeEvent.text)} 
+                    />
+                    <TouchableOpacity style={styles.sendButton} onPress={handleSendComment} disabled={!commentText.trim() || !isCommentsEnabled}>
+                      <LinearGradient
+                          colors={['#A78BFA', '#5856D6']}
+                          style={styles.sendButtonGradient}
+                      >
+                          <MaterialIcons name="arrow-upward" size={22} color={"white"}/>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
               </View>
             ) : null}
             
@@ -479,34 +562,53 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
 };
 
 const styles = StyleSheet.create({
+  blurViewAbsolute: {
+    ...StyleSheet.absoluteFillObject,
+  },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderTopWidth: 0.3,
-    borderColor: 'gray',
-    backgroundColor: '#2e2d2d',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)', 
+    backgroundColor: 'rgba(0, 0, 0, 1)', 
     position: 'absolute',
     bottom: 0,
     width: width,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputBorderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '95%',
+    paddingHorizontal: 5,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)', 
+    backgroundColor: 'rgba(0, 0, 0, 0.9)', 
   },
   input: {
     flex: 1,
-    height: 40,
+    height: 44,
     paddingHorizontal: 10,
     color: '#FFF',
     fontSize: 16,
+    backgroundColor: 'transparent',
   },
   sendButton: {
-    marginLeft: 10,
-    backgroundColor: '#007bff',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    marginLeft: 5,
+    marginRight: 2,
   },
-  sendButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+  sendButtonGradient: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   container: {
     flex: 1,
@@ -520,24 +622,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
   },
   modalContent: {
-    backgroundColor: '#2e2d2d', 
+    backgroundColor: 'rgba(0, 0, 0, 0.23)', 
     padding: 20,
     paddingBottom: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: height * 0.8,
     position: 'relative',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)', 
   },
   header: {
     alignItems: 'center',
     marginBottom: 10,
+    position: 'relative', 
+    paddingVertical: 5,
   },
   bar: {
     width: 40,
     height: 5,
     backgroundColor: '#555',
     borderRadius: 2.5,
+    marginBottom: 10,
   },
   headerText: {
     fontSize: 18,
@@ -550,11 +657,11 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   commentContainer: {
-    marginVertical: 20, 
+    marginVertical: 12, 
   },
   replyContainer: {
-    marginTop: 20,
-    marginLeft: 0,
+    marginTop: 15,
+    marginLeft: 10, 
     marginVertical: 5,
   },
   userInfo: {
@@ -562,9 +669,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start', 
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36, 
+    height: 36,
+    borderRadius: 18,
     marginRight: 10,
   },
   commentContent: {
@@ -573,33 +680,45 @@ const styles = StyleSheet.create({
   userDetails: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: -5
+    marginTop: -2,
+    marginBottom: 2, 
   },
   username: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: 15, 
     fontWeight: 'bold',
   },
   commentText: {
-    fontSize: 16,
-    marginTop: 5,
-    color: '#FFF',
+    fontSize: 15,
+    marginTop: 3, 
+    color: '#E0E0E0', 
   },
   replyText: {
-    fontSize: 14,
-    marginTop: 5,
-    color: '#AAA',
+    fontSize: 13,
+    marginTop: 3,
+    color: '#CCC',
   },
-  toggleRepliesText: {
-    color: '#d3d3d3', 
-    marginTop: 5,
+  repliesButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  replyButton: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  toggleRepliesText: {
+    color: '#d3d3d3', 
+    flexDirection: 'row',
+    alignItems: 'center',
+    fontSize: 13,
+    fontWeight: '500',
+  },
   closeButton: {
     position: 'absolute',
-    right: 10,
-    top: 10,
+    right: 5,
+    top: 5,
+    padding: 5,
   },
   neonShadow: {
     textShadowColor: '#40E0D0',
@@ -609,22 +728,27 @@ const styles = StyleSheet.create({
   replyingToContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    backgroundColor: '#333',
-    padding: 10,
-    borderRadius: 5,
-    position: 'absolute',
-    bottom: 61,
-    left: 5,
     justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    backgroundColor: 'rgba(50, 50, 50, 0.7)', 
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 70 : 60,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopWidth: 1,
   },
   replyingToText: {
-    color: '#FFF',
+    color: '#E0E0E0',
     marginRight: 10,
+    fontSize: 14,
   },
   showMoreText: {
     color: '#40E0D0',
-    marginTop: 5,
+    marginTop: 4,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -632,6 +756,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    flex: 1,
   },
   disabledCommentsText: {
     color: '#FFF',

@@ -5,7 +5,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 import logging
 from django.db.models import Count
-from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,11 @@ class ChatListView(APIView):
                     "sort_date": last_message.created_at if last_message else None
                 })
             
-            chat_data.sort(key=lambda x: x["sort_date"] or timezone.datetime.min, reverse=True)
+            chat_data.sort(
+                    key=lambda x: x["sort_date"].timestamp() if x["sort_date"] else 0,
+                    reverse=True
+                )
+
 
             for chat in chat_data:
                 chat.pop("sort_date", None)
@@ -122,14 +125,16 @@ class CreateChatView(APIView):
                         "avatar": other_user.avatar.url if other_user.avatar else None,
                         "is_online": other_user.is_active
                     },
-                    # Додаємо поле для сортування
+
                     "sort_date": last_message.created_at if last_message else None
                 })
-            
-            # 🔽 Сортуємо чати — найновіші вгорі
-            chat_data.sort(key=lambda x: x["sort_date"] or timezone.datetime.min, reverse=True)
 
-            # Видаляємо допоміжне поле перед відправкою
+            chat_data.sort(
+                key=lambda x: x["sort_date"].timestamp() if x["sort_date"] else 0,
+                reverse=True
+            )
+
+
             for chat in chat_data:
                 chat.pop("sort_date", None)
 
