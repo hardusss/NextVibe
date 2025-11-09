@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from ..models import Post
 from user.models import Notification
+from user.src.clear_notify_cache import clear_notification_cache
 
 User = get_user_model()
 
@@ -67,5 +68,6 @@ class LikePostView(APIView):
                         notification_type="like",
                         text_preview=f"{user.username} like your post!"
                     )
+                    clear_notification_cache(post.owner.user_id)
             return Response({"data": "Succes"}, status=status.HTTP_200_OK)
         
