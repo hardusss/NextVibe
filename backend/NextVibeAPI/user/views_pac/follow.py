@@ -7,6 +7,7 @@ from django.core.cache import cache
 from ..models import Notification
 from datetime import timedelta
 from django.utils import timezone
+from user.src.clear_notify_cache import clear_notification_cache
 
 User = get_user_model()
 
@@ -62,6 +63,7 @@ class FollowView(APIView):
                     notification_type='follow',
                     text_preview=f"{user.username} followed you!"
                 )
+                clear_notification_cache(user2)
             
             user2.save()
             
