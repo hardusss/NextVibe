@@ -71,28 +71,27 @@ class CommentReplyView(APIView):
             reply_obj = reply.save()
             user = reply_obj.owner
             
-            if user != comment.owner:
+            if reply_obj.owner != comment.owner:
                 Notification.objects.create(
-                    sender=user,
+                    sender=reply_obj.owner,
                     recipient=comment.owner,
                     post=comment.post,
+                    comment=comment,
+                    comment_reply=reply_obj,
                     notification_type="comment_reply",
-                    text_preview = json.dumps([
-                        f"{user.username} replied to your comment!",
-                        reply_obj.content
-                    ])
-
+                    text_preview=f"{reply_obj.owner.username} replied to your comment!"
                 )
-                    
-            if user != comment.post.owner and comment.owner != comment.post.owner:
+
+            if comment.post.owner != reply_obj.owner and comment.post.owner != comment.owner:
                 Notification.objects.create(
-                    sender=user,
+                    sender=reply_obj.owner,
                     recipient=comment.post.owner,
                     post=comment.post,
+                    comment=comment,
                     notification_type="comment",
-                    text_preview=f"{user.username} replied to a comment on your post!",
-                    comment=comment
+                    text_preview=f"{reply_obj.owner.username} commented on your post!"
                 )
+
 
             user_data = {
                 "username": user.username,
