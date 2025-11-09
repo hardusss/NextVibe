@@ -127,6 +127,7 @@ const getStyles = (theme: typeof darkTheme) => {
         lineHeight: 20
     },
     postFooter: {
+        marginLeft: -1,
         flexDirection: "row",
         gap: 10,
         alignItems: "center"
@@ -596,7 +597,6 @@ export default function MainPage() {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);    
-    const [isVisibleButtonMessage, setVsBM] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [currentIndices, setCurrentIndices] = useState<{
         [key: number]: number;
@@ -860,17 +860,19 @@ export default function MainPage() {
                         )}
                     </View>
                 )}
+                {displayText && (
+                    <View style={styles.postContent}>
+                        <Text style={styles.postText}>{displayText}</Text>
+                        {needsMoreButton && (
+                            <TouchableOpacity onPress={() => toggleExpandText(item.id)}>
+                                <Text style={{ color: theme.accentColor, marginTop: 5 }}>
+                                    {isExpanded ? "Show less" : "Read more"}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
                 
-                <View style={styles.postContent}>
-                    <Text style={styles.postText}>{displayText}</Text>
-                    {needsMoreButton && (
-                        <TouchableOpacity onPress={() => toggleExpandText(item.id)}>
-                            <Text style={{ color: theme.accentColor, marginTop: 5 }}>
-                                {isExpanded ? "Show less" : "Read more"}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
                 
                 <View style={styles.postFooter}>
                     <TouchableOpacity onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
@@ -905,7 +907,7 @@ export default function MainPage() {
                     onHide={() => setIsToastVisible(false)}
                     isSuccess={toastSuccess}
                   />
-            <Header isVisible={isVisibleButtonMessage}/>
+            <Header/>
             {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)} isCommentsEnabled={popupCommentsEnabled}/>}
             
             {loading ? (
