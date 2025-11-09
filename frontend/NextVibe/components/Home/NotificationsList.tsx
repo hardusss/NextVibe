@@ -1,22 +1,23 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-  ScrollView,
   View,
   Text,
-  useColorScheme,
   StyleSheet,
-  StatusBar,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
+  useColorScheme,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import getNotifications from '@/src/api/get.notifications';
+import GetApiUrl from '@/src/utils/url_api';
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import getNotifications from '@/src/api/get.notifications';
-import GetApiUrl from '@/src/utils/url_api';
+import readNotifications from '@/src/api/read.notifications';
 
 const icons = {
   like: {
@@ -89,13 +90,13 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: themeColors.background,
+      backgroundColor: 'transparent',
     },
     header: {
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 16,
-      backgroundColor: isDarkTheme ? '#0A0410' : '#FFFFFF',
+      backgroundColor: 'transparent',
     },
     scrollContentContainer: {
       paddingHorizontal: 16,
@@ -196,11 +197,19 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
       fontSize: 12,
       marginTop: 4,
     },
+    noNotificationsContainer: {
+        paddingTop: 100,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
     noNotificationsText: {
       color: themeColors.textSecondary,
       textAlign: 'center',
-      marginTop: 32,
+      marginTop: 16,
       fontSize: 16,
+    },
+    skeletonContainer: {
+        paddingTop: 8,
     },
     skeletonRow: {
       flexDirection: 'row',
@@ -266,7 +275,7 @@ export default function NotificationsListPage() {
   const router = useRouter();
 
   const themeColors = {
-    background: isDarkTheme ? '#0A0410' : '#FFFFFF',
+    background: 'transparent',
     text: isDarkTheme ? '#F1F5F9' : '#1E293B',
     textSecondary: isDarkTheme ? '#94A3B8' : '#64748B',
     border: isDarkTheme 
@@ -334,19 +343,19 @@ export default function NotificationsListPage() {
     }
   }, []);
 
+  const fetchReadNotifications = async () => {
+    await readNotifications();
+  }
   useEffect(() => {
     fetchNotifications(1, true);
+    fetchReadNotifications();
   }, []);
 
-  const handleScroll = useCallback((event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const paddingToBottom = 20;
-    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
-
-    if (isCloseToBottom && loadMore && !isLoadingMore && !isLoading && !isRefreshing) {
+  const handleEndReached = () => {
+    if (loadMore && !isLoadingMore && !isLoading && !isRefreshing) {
       fetchNotifications(page, false);
     }
-  }, [loadMore, isLoadingMore, isLoading, isRefreshing, page]);
+  };
 
   const parseTextPreview = (text_preview: string) => {
     try {
@@ -358,7 +367,6 @@ export default function NotificationsListPage() {
         };
       }
     } catch (e) {
-      // Not JSON, return as is
     }
     return {
       main: text_preview,
@@ -385,14 +393,12 @@ export default function NotificationsListPage() {
   const renderAvatar = (notification: Notification) => {
     const iconData = icons[notification.notification_type] || icons.follow;
     
-    // Системні типи сповіщень
     const systemNotifications = ['deleted_post', 'moderation_success', 'moderation_fail', 'revived_transaction'];
     const isSystemNotification = systemNotifications.includes(notification.notification_type);
 
     if (isSystemNotification) {
-      // Для системних сповіщень показуємо велику іконку
       const bgColor = iconData.color.length === 9 
-        ? iconData.color.slice(0, 7) + '30' // Додаємо прозорість
+        ? iconData.color.slice(0, 7) + '30'
         : iconData.color + '30';
       
       return (
@@ -408,14 +414,13 @@ export default function NotificationsListPage() {
       );
     }
 
-    // Для звичайних сповіщень від користувачів
     return (
       <View style={styles.avatarContainer}>
         <FastImage
           source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${notification.sender__avatar}` }}
           style={styles.avatar}
         />
-        <View style={styles.iconBadge}>
+        <View style={[styles.iconBadge, { backgroundColor: isDarkTheme ? '#1A1A1A' : '#FFFFFF' }]}>
           <MaterialCommunityIcons
             name={iconData.icon as any}
             size={16}
@@ -426,13 +431,12 @@ export default function NotificationsListPage() {
     );
   };
 
-  const renderNotification = (notification: Notification) => {
-    const { main, sub } = parseTextPreview(notification.text_preview);
-    const isUnread = !notification.is_read;
+  const renderNotification = ({ item }: { item: Notification }) => {
+    const { main, sub } = parseTextPreview(item.text_preview);
+    const isUnread = !item.is_read;
 
     return (
       <View
-        key={notification.id}
         style={[
           styles.notificationItem,
           isUnread ? styles.notificationItemUnread : styles.notificationItemRead,
@@ -445,20 +449,20 @@ export default function NotificationsListPage() {
           style={styles.blurViewAbsolute}
         />
         <View style={styles.notificationContent}>
-          {renderAvatar(notification)}
+          {renderAvatar(item)}
 
           <View style={styles.notificationTextContainer}>
             <View style={styles.notificationTextRow}>
                 
               <Text style={styles.notificationText}>
-                {notification.sender__username && (
+                {item.sender__username && (
                     <Text style={styles.username}>
-                        {notification.sender__username}{' '}
+                        {item.sender__username}{' '}
                     </Text>
                 )}
 
                
-                {main.replace(notification.sender__username, '').trim()}
+                {main.replace(item.sender__username, '').trim()}
               </Text>
               {isUnread && <View style={styles.unreadIndicator} />}
             </View>
@@ -469,25 +473,63 @@ export default function NotificationsListPage() {
               </Text>
             )}
             
-            {notification.comment__content && notification.notification_type === 'comment' && (
+            {item.comment__content && item.notification_type === 'comment' && (
               <Text style={styles.notificationSubText} numberOfLines={2}>
-                "{notification.comment__content}"
+                "{item.comment__content}"
               </Text>
             )}
             
-            {notification.post__about && (
+            {item.post__about && (
               <Text style={styles.notificationSubText} numberOfLines={1}>
-                Post: {notification.post__about}
+                Post: {item.post__about}
               </Text>
             )}
             
             <Text style={styles.timestamp}>
-              {formatTimestamp(notification.created_at)}
+              {formatTimestamp(item.created_at)}
             </Text>
           </View>
         </View>
       </View>
     );
+  };
+
+  const renderListFooter = () => {
+    if (!isLoadingMore) return null;
+    return (
+      <View style={styles.loadingMoreContainer}>
+        <ActivityIndicator size="small" color={isDarkTheme ? '#A78BFA' : '#5856D6'} />
+      </View>
+    );
+  };
+
+  const renderEmptyList = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.skeletonContainer}>
+          {[...Array(5)].map((_, index) => (
+            <View key={index} style={styles.skeletonRow}>
+              <View style={styles.skeletonCircle} />
+              <View style={styles.skeletonTextBlock}>
+                <View style={styles.skeletonLineShort} />
+                <View style={styles.skeletonLineLong} />
+              </View>
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (notifications.length === 0) {
+      return (
+        <View style={styles.noNotificationsContainer}>
+            <MaterialCommunityIcons name="bell-off-outline" size={64} color={themeColors.textSecondary} />
+            <Text style={styles.noNotificationsText}>No notifications yet</Text>
+        </View>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -514,45 +556,27 @@ export default function NotificationsListPage() {
         </View>
       </View>
 
-      <ScrollView
+      <FlatList
+        data={notifications}
+        renderItem={renderNotification}
+        keyExtractor={(item) => item.id.toString()}
         style={styles.container}
         contentContainerStyle={styles.scrollContentContainer}
-        onScroll={handleScroll}
-        scrollEventThrottle={400}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderListFooter}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={renderEmptyList}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor="#7F00FF"
-            colors={["#7F00FF"]}
+            tintColor={isDarkTheme ? '#A78BFA' : '#5856D6'}
+            colors={["#A78BFA", "#5856D6"]}
           />
         }
-      >
-        {isLoading
-          ? [...Array(5)].map((_, index) => (
-              <View key={index} style={styles.skeletonRow}>
-                <View style={styles.skeletonCircle} />
-                <View style={styles.skeletonTextBlock}>
-                  <View style={styles.skeletonLineShort} />
-                  <View style={styles.skeletonLineLong} />
-                </View>
-              </View>
-            ))
-          : notifications.length > 0
-          ? (
-            <>
-              {notifications.map(renderNotification)}
-              {isLoadingMore && (
-                <View style={styles.loadingMoreContainer}>
-                  <ActivityIndicator size="small" color="#7F00FF" />
-                </View>
-              )}
-            </>
-          )
-          : (
-            <Text style={styles.noNotificationsText}>No notifications yet</Text>
-          )}
-      </ScrollView>
+      />
     </LinearGradient>
   );
 }
