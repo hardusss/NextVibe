@@ -57,7 +57,7 @@ export default function Header() {
         <View style={styles.row}>
           <Text style={styles.text}>NextVibe</Text>
           <View style={{flexDirection: "row", gap: 15}}>
-            <TouchableOpacity style={styles.notifyContainer}>
+            <TouchableOpacity style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
               <MaterialCommunityIcons name="bell-outline" size={30} color="#fafafa" />
               {notificationsCount > 0 && (
                 <View style={[
