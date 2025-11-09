@@ -6,7 +6,6 @@ def clear_notification_cache(user_id: int) -> NoReturn:
     if redis_client:
         client = redis_client.get_client()
         pattern = f"user_{user_id}_notifications_page_*"
-        keys = client.keys(pattern)
-        if keys:
-            client.delete(*keys)
+        for key in client.scan_iter(match=pattern, count=1000):
+            client.delete(key)
     cache.delete(f"user_{user_id}_notifications_count")
