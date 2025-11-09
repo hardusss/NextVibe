@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import Comment, CommentReply
 from django.contrib.auth import get_user_model
 from user.models import Notification
-
+import json
 User = get_user_model()
 
 
@@ -72,42 +72,27 @@ class CommentReplyView(APIView):
             user = reply_obj.owner
             
             if user != comment.owner:
-                existing = Notification.objects.filter(
+                Notification.objects.create(
                     sender=user,
                     recipient=comment.owner,
                     post=comment.post,
                     notification_type="comment_reply",
-                    comment=comment
-                ).first()
-                
-                if not existing:
-                    Notification.objects.create(
-                        sender=user,
-                        recipient=comment.owner,
-                        post=comment.post,
-                        notification_type="comment_reply",
-                        text_preview=f"{user.username} replied to your comment!",
-                        comment=comment
-                    )
+                    text_preview = json.dumps([
+                        f"{user.username} replied to your comment!",
+                        reply_obj.content
+                    ])
+
+                )
                     
             if user != comment.post.owner and comment.owner != comment.post.owner:
-                existing_post = Notification.objects.filter(
+                Notification.objects.create(
                     sender=user,
                     recipient=comment.post.owner,
                     post=comment.post,
                     notification_type="comment",
+                    text_preview=f"{user.username} replied to a comment on your post!",
                     comment=comment
-                ).first()
-                
-                if not existing_post:
-                    Notification.objects.create(
-                        sender=user,
-                        recipient=comment.post.owner,
-                        post=comment.post,
-                        notification_type="comment",
-                        text_preview=f"{user.username} replied to a comment on your post!",
-                        comment=comment
-                    )
+                )
 
             user_data = {
                 "username": user.username,
