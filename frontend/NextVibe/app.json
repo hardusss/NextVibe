@@ -19,7 +19,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0A0410"
       },
       "package": "com.harrddddd.NextVibe",
       "googleServicesFile": "./google-services.json",
