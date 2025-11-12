@@ -66,45 +66,62 @@ class CommentReplyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        comment = Comment.objects.get(id=kwargs["comment_id"])
+        comment_id = kwargs["comment_id"]
+
+        comment = Comment.objects.filter(id=comment_id).first()
+        is_reply_to_reply = False
+
+        if not comment:
+            comment = CommentReply.objects.get(id=comment_id)
+            is_reply_to_reply = True
+
         reply = CommentReplySerializer(data=request.data)
-        
+
         if reply.is_valid():
             reply_obj = reply.save()
             user = reply_obj.owner
-            
-            if reply_obj.owner != comment.owner:
-                Notification.objects.create(
-                    sender=reply_obj.owner,
-                    recipient=comment.owner,
-                    post=comment.post,
-                    comment=comment,
-                    comment_reply=reply_obj,
-                    notification_type="comment_reply",
-                    text_preview=f"{reply_obj.owner.username} replied to your comment!"
-                )
-                clear_notification_cache(comment.owner.user_id)
-            if comment.post.owner != reply_obj.owner and comment.post.owner != comment.owner:
-                Notification.objects.create(
-                    sender=reply_obj.owner,
-                    recipient=comment.post.owner,
-                    post=comment.post,
-                    comment=comment,
-                    notification_type="comment",
-                    text_preview=f"{reply_obj.owner.username} commented on your post!"
-                )
-                clear_notification_cache(comment.post.owner.user_id)
+
+            if is_reply_to_reply:
+                parent_reply = comment  
+
+                if user != parent_reply.owner:
+                    Notification.objects.create(
+                        sender=user,
+                        recipient=parent_reply.owner,
+                        post=parent_reply.post,
+                        comment=parent_reply.comment, 
+                        comment_reply=reply_obj,
+                        notification_type="comment_reply",
+                        text_preview=f"{user.username} replied to your reply!"
+                    )
+                    clear_notification_cache(parent_reply.owner.user_id)
+
+
+            else:
+                if user != comment.owner:
+                    Notification.objects.create(
+                        sender=user,
+                        recipient=comment.owner,
+                        post=comment.post,
+                        comment=comment,
+                        comment_reply=reply_obj,
+                        notification_type="comment_reply",
+                        text_preview=f"{user.username} replied to your comment!"
+                    )
+                    clear_notification_cache(comment.owner.user_id)
+
 
             user_data = {
                 "username": user.username,
                 "avatar": str(user.avatar),
                 "official": user.official
             }
+
             return Response(
                 dict({"user": user_data}, **reply.data),
                 status=status.HTTP_201_CREATED
             )
-        
+
         return Response(reply.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, *args, **kwargs):

@@ -262,6 +262,24 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
       paddingVertical: 20,
       alignItems: 'center',
     },
+    replyQuoteBlock: {
+      marginTop: 8,
+      paddingLeft: 12,
+      borderLeftWidth: 3,
+      borderLeftColor: themeColors.border,
+    },
+    replyQuoteText: {
+      color: themeColors.textSecondary,
+      fontSize: 13,
+      fontStyle: 'italic',
+      lineHeight: 18,
+    },
+    replyText: {
+      color: themeColors.text, 
+      fontSize: 14,
+      marginTop: 4, 
+      lineHeight: 19,
+    },
   });
 
 export default function NotificationsListPage() {
@@ -348,7 +366,10 @@ export default function NotificationsListPage() {
   }
   useEffect(() => {
     fetchNotifications(1, true);
-    fetchReadNotifications();
+    setTimeout(() => {
+      fetchReadNotifications();
+    }, 2000)
+    
   }, []);
 
   const handleEndReached = () => {
@@ -467,13 +488,28 @@ export default function NotificationsListPage() {
               {isUnread && <View style={styles.unreadIndicator} />}
             </View>
             
-            {sub && (
+           {sub && (
               <Text style={styles.notificationSubText} numberOfLines={2}>
                 {sub}
               </Text>
             )}
             
-            {item.comment__content && item.notification_type === 'comment' && (
+            {item.notification_type === 'comment_reply' && (
+              <View style={styles.replyQuoteBlock}>
+                {item.comment__content && (
+                  <Text style={styles.replyQuoteText} numberOfLines={2}>
+                    "{item.comment__content}"
+                  </Text>
+                )}
+                {item.comment_reply__content && (
+                  <Text style={styles.replyText} numberOfLines={2}>
+                    {item.comment_reply__content}
+                  </Text>
+                )}
+              </View>
+            )}
+            
+            {item.notification_type === 'comment' && item.comment__content && (
               <Text style={styles.notificationSubText} numberOfLines={2}>
                 "{item.comment__content}"
               </Text>
