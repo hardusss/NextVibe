@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Image, TouchableOpacity, StyleSheet, Modal, Dimensions, ActivityIndicator } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import FastImage from 'react-native-fast-image';
@@ -17,6 +17,47 @@ interface OnLoadEvent {
     width: number;
     height: number;
   };
+}
+
+function VideoThumbnail({ uri, size }: { uri: string; size: { width: number; height: number } }) {
+  const player = useVideoPlayer(uri, (player) => {
+    player.pause();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={[styles.thumbnail, size]}
+      nativeControls={false}
+      contentFit="cover"
+    />
+  );
+}
+
+function FullScreenVideo({ uri, isPlaying }: { uri: string; isPlaying: boolean }) {
+  const player = useVideoPlayer(uri, (player) => {
+    player.loop = true;
+    if (isPlaying) {
+      player.play();
+    }
+  });
+
+  React.useEffect(() => {
+    if (isPlaying) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [isPlaying, player]);
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.fullScreenMedia}
+      nativeControls={true}
+      contentFit="contain"
+    />
+  );
 }
 
 export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaPreviewProps) {
@@ -75,13 +116,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
           />
         ) : (
           <View>
-            <Video
-              source={{ uri }}
-              style={[styles.thumbnail, getThumbnailSize()]}
-              resizeMode={"cover" as ResizeMode}
-              onLoad={() => setIsLoading(false)}
-              shouldPlay={false}
-            />
+            <VideoThumbnail uri={uri} size={getThumbnailSize()} />
             <LinearGradient
               colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)']}
               style={styles.videoOverlay}
@@ -120,14 +155,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
             resizeMode={FastImage.resizeMode.contain}
           />
         ) : (
-          <Video
-            source={{ uri }}
-            style={styles.fullScreenMedia}
-            shouldPlay={isPlaying}
-            isLooping
-            resizeMode={"contain" as ResizeMode}
-            useNativeControls
-          />
+          <FullScreenVideo uri={uri} isPlaying={isPlaying} />
         )}
       </View>
     </Modal>

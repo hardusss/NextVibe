@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, Image, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Video } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { ResizeMode } from 'expo-av';
 import createPost from '@/src/api/create.post';
 import generateImage from '@/src/api/generate.image';
 import { useFocusEffect } from 'expo-router';
@@ -42,6 +41,33 @@ const darkColors = {
 
 const {width, height} = Dimensions.get("window")
 
+// Компонент для відео
+function VideoPlayer({ uri, isActive }: { uri: string; isActive: boolean }) {
+    const player = useVideoPlayer(uri, (player) => {
+        player.loop = true;
+        if (isActive) {
+            player.play();
+        }
+    });
+
+    useEffect(() => {
+        if (isActive) {
+            player.play();
+        } else {
+            player.pause();
+        }
+    }, [isActive, player]);
+
+    return (
+        <VideoView
+            player={player}
+            style={{ width: '100%', height: '100%' }}
+            nativeControls={false}
+            contentFit="cover"
+        />
+    );
+}
+
 export default function PostCreate() {
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -57,7 +83,6 @@ export default function PostCreate() {
     const [toastMessage, setToastMessage] = useState<string>("");
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
-    const videoRefs = useRef<{ [key: number]: Video | null }>({});
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? darkColors : lightColors;
 
@@ -88,17 +113,6 @@ export default function PostCreate() {
         if (viewableItems.length > 0) {
             const newIndex = viewableItems[0].index;
             setActiveVideoIndex(newIndex);
-
-            Object.keys(videoRefs.current).forEach(async (key) => {
-                const index = parseInt(key);
-                if (videoRefs.current[index] && index !== newIndex) {
-                    await videoRefs.current[index]?.pauseAsync();
-                }
-            });
-
-            if (videoRefs.current[newIndex] && isVideo(mediaUrls[newIndex])) {
-                videoRefs.current[newIndex]?.playAsync();
-            }
         }
     }).current;
 
@@ -116,16 +130,9 @@ export default function PostCreate() {
                     >
                         <MaterialIcons name="close" color="white" size={20}/>
                     </TouchableOpacity>
-                    <Video
-                        ref={(ref) => {
-                            videoRefs.current[index] = ref;
-                        }}
-                        source={{ uri: item.startsWith('file://') ||  item.startsWith('https://')? item : `file://${item}` }}
-                        style={themedStyles.media}
-                        useNativeControls={false}
-                        isLooping
-                        resizeMode={ResizeMode.COVER}
-                        shouldPlay={index === activeVideoIndex}
+                    <VideoPlayer 
+                        uri={item.startsWith('file://') || item.startsWith('https://') ? item : `file://${item}`}
+                        isActive={index === activeVideoIndex}
                     />
                 </View>
             );
@@ -286,7 +293,6 @@ export default function PostCreate() {
             backgroundColor: colors.inputBackground,
             color: colors.textPrimary,
             lineHeight: 18,
-            resizeMode: "none"
         },
         input: {
             height: 22,
