@@ -670,7 +670,7 @@ const UserPosts = () => {
           {userData && (
             <>
               <FastImage 
-                source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${userData.avatar}` }} 
+                source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${userData.avatar}` }} 
                 style={styles.avatar} 
               />
               <View style={styles.userInfo}>

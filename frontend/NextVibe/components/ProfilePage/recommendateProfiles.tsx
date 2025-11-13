@@ -105,7 +105,7 @@ const RecommendedUsers = () => {
                                 }
                             > 
                                 <FastImage 
-                                    source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.avatar}` }} 
+                                    source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.avatar}` }} 
                                     style={styles.avatar} 
                                 />
                                 <View style={styles.userInfo}>

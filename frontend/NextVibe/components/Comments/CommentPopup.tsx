@@ -352,7 +352,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
         <View style={styles.userInfo}>
           <FastImage
             source={{ 
-              uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}`,
+              uri: `${GetApiUrl().slice(0, 26)}/media/${item.user.avatar}`,
               priority: FastImage.priority.normal,
               cache: FastImage.cacheControl.immutable
             }}
@@ -426,7 +426,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
   const renderReply = ({ item }: { item: Reply }) => (
     <View style={styles.replyContainer}>
       <View style={styles.userInfo}>
-        <FastImage source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}` }} style={styles.avatar} />
+        <FastImage source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${item.user.avatar}` }} style={styles.avatar} />
         <View style={styles.commentContent}>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{item.user.username}</Text>
@@ -531,7 +531,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                     style={styles.blurViewAbsolute}
                   />
                   <View style={styles.inputBorderContainer}> 
-                    <FastImage source={{uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}`}} style={{width: 44, height: 44, borderRadius: 22}}/>
+                    <FastImage source={{uri: `${GetApiUrl().slice(0, 26)}${user?.avatar}`}} style={{width: 44, height: 44, borderRadius: 22}}/>
                     <TextInput 
                       value={commentText} 
                       autoFocus 
