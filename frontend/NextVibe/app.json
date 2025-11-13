@@ -7,8 +7,10 @@
     "icon": "./assets/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
+    "jsEngine": "hermes",
     "ios": {
+      "jsEngine": "hermes",
       "supportsTablet": true,
       "bundleIdentifier": "com.harrddddd.NextVibe",
       "infoPlist": {
@@ -18,6 +20,7 @@
       }
     },
     "android": {
+      "jsEngine": "hermes",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0A0410"

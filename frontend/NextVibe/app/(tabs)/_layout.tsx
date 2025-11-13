@@ -8,6 +8,34 @@ import FastImage from 'react-native-fast-image';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { WebSocketProvider } from "@/src/context/WebSocketContext";
 
+// ====== POLYFILL для getDevServer помилки ======
+if (__DEV__ && typeof global !== 'undefined') {
+  const originalError = console.error;
+  const originalWarn = console.warn;
+  
+  console.error = (...args) => {
+    if (
+      typeof args[0] === 'string' &&
+      (args[0].includes('getDevServer') || 
+       args[0].includes('getDevServer is not a function'))
+    ) {
+      return;
+    }
+    originalError(...args);
+  };
+
+  console.warn = (...args) => {
+    if (
+      typeof args[0] === 'string' &&
+      args[0].includes('getDevServer')
+    ) {
+      return;
+    }
+    originalWarn(...args);
+  };
+}
+// ====== КІНЕЦЬ POLYFILL ======
+
 export default function Layout() {
   const theme = useColorScheme();
   const router = useRouter();
