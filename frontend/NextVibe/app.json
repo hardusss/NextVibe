@@ -7,12 +7,13 @@
     "icon": "./assets/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.harrddddd.NextVibe",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow NextVibe access your camera",
+        "NSMicrophoneUsageDescription": "Allow NextVibe access your microphone",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -46,26 +47,30 @@
       [
         "expo-splash-screen",
         {
-          "cameraPermissionText": "NextVibe needs access to your Camera.",
-          "enableMicrophonePermission": true,
-          "photosPermission": "NextVibe accesses your photos",
-          "videosPermission": "The app accesses your videos",
-          "microphonePermissionText": "NextVibe needs access to your Microphone.",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0A0410",
+          "backgroundColor": "#0A0410"
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "NextVibe needs access to your Camera.",
+          "enableMicrophonePermission": true,
+          "microphonePermissionText": "NextVibe needs access to your Microphone."
+        }
+      ],
+      "expo-image-picker",
+      [
+        "expo-video",
+        {
           "supportsBackgroundPlayback": true,
           "supportsPictureInPicture": true
         }
       ],
-      "expo-image-picker",
-      "expo-video",
-      "react-native-vision-camera",
       "expo-font",
-      "react-native-video",
-      "expo-audio",
-      "expo-video"
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
