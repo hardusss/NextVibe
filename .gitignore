@@ -2,6 +2,7 @@
 
 *.env
 *.log
+*.apk
 
 backend/.venv/
 backend/NextVibeAPI/staticfiles
