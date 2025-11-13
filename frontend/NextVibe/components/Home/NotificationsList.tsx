@@ -438,7 +438,7 @@ export default function NotificationsListPage() {
     return (
       <View style={styles.avatarContainer}>
         <FastImage
-          source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${notification.sender__avatar}` }}
+          source={{ uri: `${GetApiUrl().slice(0, 26)}/media/${notification.sender__avatar}` }}
           style={styles.avatar}
         />
         <View style={[styles.iconBadge, { backgroundColor: isDarkTheme ? '#1A1A1A' : '#FFFFFF' }]}>
