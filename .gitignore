@@ -4,6 +4,7 @@
 *.log
 
 backend/.venv/
+backend/NextVibeAPI/staticfiles
 
 backend/NextVibeAPI/media/
 
