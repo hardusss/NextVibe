@@ -170,7 +170,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
             >
               <View style={styles.avatarContainer}>
                 <Image
-                  source={{ uri: `${GetApiUrl().slice(0, 26)}${chat.other_user.avatar}` }}
+                  source={{ uri: `${GetApiUrl().slice(0, 25)}${chat.other_user.avatar}` }}
                   style={styles.avatar}
                 />
                 {chat.other_user.is_online && <View style={styles.onlineIndicator} />}
