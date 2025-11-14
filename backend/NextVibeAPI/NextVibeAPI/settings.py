@@ -30,6 +30,14 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.getenv("API_SECRET"),
 }
 
+# Cloudflare
+STORAGES = {  "default": {  "BACKEND": "storages.backends.s3.S3Storage",  },  "staticfiles": {  "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",  }, }
+
+AWS_S3_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
+AWS_S3_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.getenv("BUCKET_NAME")
+AWS_S3_ENDPOINT_URL = os.getenv("ENDPOINT_URL")
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.r2.cloudflarestorage.com"  
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -98,6 +106,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'cloudinary',
     'cloudinary_storage',
+    "storages",
 ]
 
 MIDDLEWARE = [
@@ -115,6 +124,16 @@ MIDDLEWARE = [
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'auto-moderation-every-5-min': {
+        'task': 'posts.tasks.auto_moderation_check',
+        'schedule': crontab(minute='*/5'),  # every 5 min
+    },
+}
+
 
 CACHES = {
     "default": {
