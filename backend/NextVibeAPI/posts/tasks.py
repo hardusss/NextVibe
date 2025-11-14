@@ -2,6 +2,8 @@ from celery import shared_task
 import requests
 from .models import Post
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 
 GO_MODERATION_URL = "http://127.0.0.1:8080/moderation"
 User = get_user_model()
@@ -101,3 +103,18 @@ def send_post_for_moderation(self, post_id):
         post.save(update_fields=['moderation_status'])
         import traceback
         traceback.print_exc()
+
+
+@shared_task
+def auto_moderation_check():
+    limit_time = timezone.now() - timedelta(minutes=10)
+
+    outdated_posts = Post.objects.filter(
+        moderation_status="pending",
+        create_at__lt=limit_time
+    )
+
+    count = outdated_posts.count()
+    outdated_posts.delete()
+
+    print(f"Auto moderation removed {count} old pending posts")
