@@ -86,7 +86,8 @@ export default function Layout() {
       try {
         const data = await getUserDetail();
         if (data.avatar) {
-          setImageProfile(`${GetApiUrl().slice(0, 25)}${data.avatar}`);
+          console.log(data.avatar)
+          setImageProfile(`${data.avatar}`);
         }
       } catch (error) {
         console.error('Error getting profile image:', error);
