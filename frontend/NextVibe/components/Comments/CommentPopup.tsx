@@ -352,7 +352,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
         <View style={styles.userInfo}>
           <FastImage
             source={{ 
-              uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}`,
+              uri: `${item.user.avatar}`,
               priority: FastImage.priority.normal,
               cache: FastImage.cacheControl.immutable
             }}
@@ -426,7 +426,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
   const renderReply = ({ item }: { item: Reply }) => (
     <View style={styles.replyContainer}>
       <View style={styles.userInfo}>
-        <FastImage source={{ uri: `${GetApiUrl().slice(0, 25)}/media/${item.user.avatar}` }} style={styles.avatar} />
+        <FastImage source={{ uri: `${item.user.avatar}` }} style={styles.avatar} />
         <View style={styles.commentContent}>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{item.user.username}</Text>
@@ -531,7 +531,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                     style={styles.blurViewAbsolute}
                   />
                   <View style={styles.inputBorderContainer}> 
-                    <FastImage source={{uri: `${GetApiUrl().slice(0, 25)}${user?.avatar}`}} style={{width: 44, height: 44, borderRadius: 22}}/>
+                    <FastImage source={{uri: `${user?.avatar}`}} style={{width: 35, height: 35, borderRadius: 17.5}}/>
                     <TextInput 
                       value={commentText} 
                       autoFocus 
@@ -596,14 +596,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     marginLeft: 5,
-    marginRight: 2,
   },
   sendButtonGradient: {
     ...StyleSheet.absoluteFillObject,
