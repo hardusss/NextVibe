@@ -3,7 +3,7 @@
 *.env
 *.log
 *.apk
-
+celerybeat-schedule
 backend/.venv/
 backend/NextVibeAPI/staticfiles
 
