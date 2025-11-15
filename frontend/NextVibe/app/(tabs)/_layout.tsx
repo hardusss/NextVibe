@@ -41,7 +41,7 @@ export default function Layout() {
   const inactiveColor = theme === "dark" ? "#fafafa" : "black";
   const [imageProfile, setImageProfile] = useState<string | null>(null);
   const [userID, setUserID] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
   
   const blacklist = ["register", "login",
     "postslist", "splash",
@@ -70,9 +70,7 @@ export default function Layout() {
       }
     } catch (error) {
       console.error('Error getting user ID:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    } 
   };
 
   useEffect(() => {
@@ -98,18 +96,6 @@ export default function Layout() {
     router.push(tab as RelativePathString); 
   };
 
-  if (isLoading) {
-    return (
-      <View style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        backgroundColor: theme === "dark" ? "#0A0410" : "#FAFAFA"
-      }}>
-        <ActivityIndicator size="large" color="#A78BFA" />
-      </View>
-    );
-  }
   const showTabBar = userID && ![...blacklist, "camera"].includes(currentPage);
   
   return (
