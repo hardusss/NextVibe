@@ -25,7 +25,7 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser):
     user_id = models.AutoField(primary_key=True, unique=True)
-    avatar = models.ImageField(upload_to='images/', default='images/default.png')
+    _avatar = models.ImageField(upload_to='images/', default='images/default.png', db_column='avatar')
     about = models.CharField(default="",max_length=120, null=True, blank=True)
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
@@ -60,6 +60,14 @@ class User(AbstractBaseUser):
 
     def has_module_perms(self, app_label):
         return self.is_superuser
+    
+    @property
+    def avatar(self):
+        return self._avatar.url if self._avatar else None
+    
+    @avatar.setter
+    def avatar(self, value):
+        self._avatar = value
 
     
 class HistorySearch(models.Model):
