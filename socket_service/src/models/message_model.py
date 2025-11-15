@@ -50,15 +50,15 @@ class Message(Base):
 
 class MediaAttachment(Base):
     __tablename__ = 'chat_mediaattachment'
-
+    
     id = Column(Integer, primary_key=True, index=True)
     message_id = Column(Integer, ForeignKey('chat_message.id', ondelete='CASCADE'))
-    file = Column(String(255))  # Тільки поле file, як у Django моделі
-
+    file = Column(String(255))
+    
     message = relationship("Message", back_populates="media")
-
+    
     @property
     def file_url(self):
         if self.file:
-            return f"/media/{self.file}"
+            return f"https://media.nextvibe.io/{self.file}"
         return None

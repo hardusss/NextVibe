@@ -1,17 +1,16 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
-from sqlalchemy.orm import Session
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
-import json, os, base64, redis
+import json, base64, redis
 from db import SessionLocal
 from datetime import datetime
 from src.models import Message, MediaAttachment, User  
 from src.messages import router as messages_router
+from r2_storage import r2_storage  
 
 app = FastAPI()
 manager = ConnectionManager()  
 r = redis.Redis(host='localhost', port=6379, db=0)
-
 
 app.include_router(messages_router, prefix="/api/v1", tags=["Messages"])
 app.add_middleware(
@@ -104,19 +103,31 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
 
                 media_attachments = []
                 if media_list:
-                    media_path = "../backend/NextVibeAPI/media/chat_media"
-                    os.makedirs(media_path, exist_ok=True)
-
-                    for media in media_list:
+                    for idx, media in enumerate(media_list):
                         try:
-                            file_data = base64.b64decode(media['data'])
-                            file_name = f"message_{message.id}_{len(media_attachments)}"
-                            file_ext = "jpg" if "image" in media['type'] else "mp4"
-                            relative_path = f"chat_media/{file_name}.{file_ext}"
-                            full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend/NextVibeAPI/media', relative_path)
+                            print(f"  Media {idx}: {media.keys() if isinstance(media, dict) else type(media)}")
                             
-                            with open(full_path, 'wb') as f:
-                                f.write(file_data)
+                            if not isinstance(media, dict):
+                                print(f"  ⚠️ Media {idx} is not a dict, skipping")
+                                continue
+                                
+                            if 'data' not in media:
+                                print(f"  ⚠️ Media {idx} has no 'data' key, skipping")
+                                continue
+                            
+                            if not media['data']:
+                                print(f"  ⚠️ Media {idx} 'data' is empty, skipping")
+                                continue
+
+                            file_data = base64.b64decode(media['data'])
+
+                            file_name = f"message_{message.id}_{len(media_attachments)}"
+                            file_ext = "jpg" if "image" in media.get('type', '') else "mp4"
+                            relative_path = f"chat_media/{file_name}.{file_ext}"
+
+                            content_type = "image/jpeg" if "image" in media.get('type', '') else "video/mp4"
+
+                            file_url = r2_storage.upload_file(file_data, relative_path, content_type)
 
                             media_attachment = MediaAttachment(
                                 message_id=message.id,
@@ -125,13 +136,16 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
                             db.add(media_attachment)
                             db.commit()
                             db.refresh(media_attachment)
-
+                            
                             media_attachments.append({
                                 'id': media_attachment.id,
-                                'file_url': f"/media/{relative_path}"
+                                'file_url': file_url
                             })
+                            
                         except Exception as e:
-                            print(f"Error saving media: {str(e)}")
+                            print(f"❌ Error saving media {idx}: {str(e)}")
+                            import traceback
+                            traceback.print_exc()
                             db.rollback()
 
                 response_data = {
