@@ -36,8 +36,8 @@ STORAGES = {  "default": {  "BACKEND": "storages.backends.s3.S3Storage",  },  "s
 AWS_S3_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
 AWS_S3_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = os.getenv("BUCKET_NAME")
-AWS_S3_ENDPOINT_URL = os.getenv("ENDPOINT_URL")
-AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.r2.cloudflarestorage.com"  
+AWS_S3_ENDPOINT_URL = f"https://{os.getenv('ENDPOINT_URL')}"  # https додаємо тут
+AWS_S3_CUSTOM_DOMAIN = os.getenv('ENDPOINT_URL')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
