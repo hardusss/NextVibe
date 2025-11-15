@@ -4,7 +4,10 @@ from rest_framework.request import Request
 from rest_framework.permissions import IsAuthenticated
 from django.core.cache import cache
 from ..models import User
-from django.db.models import Case, When
+from django.db.models import Case, When, CharField, Value, F
+from django.db.models.functions import Concat
+from django.conf import settings
+
 
 class GetReaders(APIView):
     permission_classes = [IsAuthenticated]
@@ -56,11 +59,20 @@ class GetReaders(APIView):
         
         readers_qs = list(
             User.objects.filter(user_id__in=slice_ids)
-            .annotate(ordering=preserved_order)
+            .annotate(
+                ordering=preserved_order,
+                avatar_url=Concat(
+                            Value(f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/"),
+                            F('avatar'),
+                            output_field=CharField()
+                    )
+                )
             .order_by("ordering")
-            .values("avatar", "username", "user_id")
+            .values("avatar_url", "username", "user_id")
         )
-        
+        for reader in readers_qs:
+            reader['avatar'] = reader.pop('avatar_url')
+
         response_data = {"data": readers_qs, "end": is_end}
         
         cache.set(cache_key, response_data, timeout=35)

@@ -17,7 +17,7 @@ class RecommendedUsersView(APIView):
         recommended_users = User.objects.exclude(user_id=user.user_id).order_by("?")[:5]
 
         data = [
-            {"id": u.user_id, "username": u.username, "avatar": str(u.avatar), "official": u.official, "about": u.about}
+            {"id": u.user_id, "username": u.username, "avatar": u.avatar.url, "official": u.official, "about": u.about}
             for u in recommended_users if u.user_id not in user.follow_for
         ]
 

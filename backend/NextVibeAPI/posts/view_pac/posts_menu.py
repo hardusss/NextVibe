@@ -60,7 +60,7 @@ class PostMenuView(APIView):
             "user": {
                 "id": user_owner_posts.user_id,
                 "username": user_owner_posts.username,
-                "avatar": str(user_owner_posts.avatar),
+                "avatar": user_owner_posts.avatar.url,
                 "official": user_owner_posts.official
             },
             "data": data,

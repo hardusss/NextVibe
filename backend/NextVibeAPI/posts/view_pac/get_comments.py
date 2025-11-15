@@ -36,7 +36,7 @@ class GetCommentView(APIView):
                     {
                         "user": {
                             "username": User.objects.get(user_id=r.owner.user_id).username,
-                            "avatar": str(User.objects.get(user_id=r.owner.user_id).avatar),
+                            "avatar": str(User.objects.get(user_id=r.owner.user_id).avatar.url),
                             "official": User.objects.get(user_id=r.owner.user_id).official
                             },
                         "user_id": r.owner.user_id,

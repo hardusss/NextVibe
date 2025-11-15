@@ -5,6 +5,9 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import HistorySearch
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django.db.models import Case, When, CharField, Value, F
+from django.db.models.functions import Concat
+from django.conf import settings
 
 User = get_user_model()
 
@@ -34,10 +37,18 @@ class HistorySearchView(APIView):
         data = []
         for entry in history.values():
             searched_user_id = entry.get("searched_user_id")
-            user_data = User.objects.filter(user_id=searched_user_id).values(
-                "user_id", "avatar",
+            user_data = User.objects.filter(user_id=searched_user_id).annotate(
+                        avatar_url=Concat(
+                            Value(f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/"),
+                            F('avatar'),
+                            output_field=CharField()
+                        )
+                    ).values(
+                "user_id", "avatar_url",
                 "username", "official", 
                 "readers_count").first()
+            if user_data:
+                user_data['avatar'] = user_data.pop('avatar_url')
             if user_data:
                 data.append(user_data)
         return Response({"data": data}, status=200)
