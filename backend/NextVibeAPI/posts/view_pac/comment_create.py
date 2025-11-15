@@ -46,7 +46,7 @@ class CommentCreateView(APIView):
 
             user_data = {
                 "username": user.username,
-                "avatar": str(user.avatar),
+                "avatar": user.avatar.url,
                 "official": user.official
             }
             return Response(
@@ -113,7 +113,7 @@ class CommentReplyView(APIView):
 
             user_data = {
                 "username": user.username,
-                "avatar": str(user.avatar),
+                "avatar": user.avatar.url,
                 "official": user.official
             }
 
