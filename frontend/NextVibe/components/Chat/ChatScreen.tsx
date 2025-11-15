@@ -288,7 +288,7 @@ export default function ChatScreen() {
             <Image 
               source={{ 
                 uri: userDetails?.avatar 
-                  ? `${GetApiUrl().slice(0, 25)}${userDetails.avatar}` 
+                  ? `${userDetails.avatar}` 
                   : `${GetApiUrl().slice(0, 25)}/media/images/default.png`
               }} 
               style={styles.profileImage} 
@@ -344,7 +344,7 @@ export default function ChatScreen() {
             <Image 
               source={{ 
                 uri: userDetails?.avatar 
-                  ? `${GetApiUrl().slice(0, 25)}${userDetails.avatar}` 
+                  ? `${userDetails.avatar}` 
                   : `${GetApiUrl().slice(0, 25)}/media/images/default.png`
               }} 
               style={styles.headerAvatar} 
