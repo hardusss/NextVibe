@@ -3,7 +3,6 @@ import { FontAwesome5, MaterialIcons, MaterialCommunityIcons } from "@expo/vecto
 import { useColorScheme, View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useEffect, useState } from "react";
 import getUserDetail from "@/src/api/user.detail";
-import GetApiUrl from "@/src/utils/url_api";
 import FastImage from 'react-native-fast-image';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { WebSocketProvider } from "@/src/context/WebSocketContext";
@@ -86,7 +85,6 @@ export default function Layout() {
       try {
         const data = await getUserDetail();
         if (data.avatar) {
-          console.log(data.avatar)
           setImageProfile(`${data.avatar}`);
         }
       } catch (error) {
