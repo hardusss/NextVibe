@@ -46,7 +46,7 @@ class PostMenuView(APIView):
                 "post_id": post.id,
                 "about": post.about,
                 "count_likes": post.count_likes,
-                "media": [{"id": m.id, "media_url": str(m.file)} for m in post.media.all()],
+                "media": [{"id": m.id, "media_url": m.file.url if not str(m.file).startswith("https://res.cloudinary.com/") else str(m.file)} for m in post.media.all()],
                 "create_at": post.create_at,
                 "is_ai_generated": post.is_ai_generated,
                 "location": post.location,
