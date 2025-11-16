@@ -20,7 +20,7 @@ export default function GoogleLogin(email: string, router: Router) {
             text2: 'Welcome to NextVibe'
         });
         setTimeout(() => {
-            router.push("/profile");
+            router.replace("/profile");
         }, 2000);
 
     })

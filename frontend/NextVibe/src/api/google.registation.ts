@@ -22,7 +22,7 @@ export default function GoogleRegister(username: string, email: string, avatar_u
             text2: 'Welcome to NextVibe'
         });
         setTimeout(() => {
-            router.push("/profile");
+            router.replace("/profile");
         }, 2000);
 
     })
