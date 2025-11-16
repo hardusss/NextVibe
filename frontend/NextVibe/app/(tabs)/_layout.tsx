@@ -1,7 +1,7 @@
-import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
+import { RelativePathString, Stack, useRouter, useSegments, useFocusEffect } from "expo-router";
 import { FontAwesome5, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useColorScheme, View, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useEffect, useState } from "react";
+import { useColorScheme, View, TouchableOpacity } from "react-native";
+import { useEffect, useState, useCallback } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -73,9 +73,11 @@ export default function Layout() {
     } 
   };
 
-  useEffect(() => {
-    getId();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      getId();
+      }, [])
+  ) 
 
   useEffect(() => {
     if (blacklist.includes(currentPage) || !userID) return;
@@ -96,7 +98,7 @@ export default function Layout() {
     router.push(tab as RelativePathString); 
   };
 
-  const showTabBar = userID && ![...blacklist, "camera"].includes(currentPage);
+  const showTabBar = ![...blacklist, "camera"].includes(currentPage);
   
   return (
     <WebSocketProvider userId={userID || 0}>
