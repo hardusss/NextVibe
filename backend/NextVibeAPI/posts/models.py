@@ -1,5 +1,5 @@
 from django.db import models
-from cloudinary.models import CloudinaryField
+from django.conf import settings
 
 class Post(models.Model):
     owner = models.ForeignKey("user.User", on_delete=models.CASCADE)
@@ -18,8 +18,23 @@ class Post(models.Model):
 
 class PostsMedia(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="media")
-    file = CloudinaryField(resource_type="auto")
+    file = models.FileField(upload_to='posts_media/')
+    preview = models.ImageField(upload_to='posts_previews/', null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def file_url(self):
+        """Return full file URL"""
+        if self.file:
+            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.file.name}"
+        return None
+    
+    @property
+    def preview_url(self):
+        """Return full preview URL"""
+        if self.preview:
+            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.preview.name}"
+        return None
 
     def __str__(self):
         return f"Media for Post {self.post.id}"
