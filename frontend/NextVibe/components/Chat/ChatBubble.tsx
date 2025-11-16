@@ -113,7 +113,7 @@ const getStyles = (isDark: boolean, isMyMessage: boolean) => StyleSheet.create({
   messageContainer: {
     maxWidth: '80%',
     borderRadius: 18,
-    overflow: 'hidden',
+    overflow: 'hidden',  // ✅ Обрізає контент що виходить за межі
     borderWidth: 1,
     borderColor: isMyMessage 
       ? (isDark ? 'rgba(167, 139, 250, 0.3)' : 'rgba(88, 86, 214, 0.3)')
@@ -130,13 +130,13 @@ const getStyles = (isDark: boolean, isMyMessage: boolean) => StyleSheet.create({
   messageContent: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    
+    maxWidth: '100%',  // ✅ Обмежує ширину
   },
   contentWrapper: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     flexWrap: 'wrap',
-    
+    maxWidth: '100%',  // ✅ Обмежує ширину
   },
   text: {
     color: isMyMessage ? (isDark ? '#FFFFFF' : '#000000') : (isDark ? '#FFFFFF' : '#000000'),

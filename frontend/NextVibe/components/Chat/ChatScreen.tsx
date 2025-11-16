@@ -231,22 +231,26 @@ export default function ChatScreen() {
     
             notifyEnterChat(+id);
           } else {
-            setMessages(prev => 
-              prev.map(msg => 
-                msg.sender_id === userIdState && msg.media.some(m => !m.file_url?.startsWith('/media/'))
-                  ? {
-                      ...msg,
-                      message_id: data.message_id,
-                      media: data.media || []
-                    }
-                  : msg
-              )
-            );
+              setMessages(prev => {
+                const filtered = prev.filter(msg => 
+                  !(msg.sender_id === userIdState && 
+                    msg.media.some(m => m.file_url && !m.file_url.startsWith('http')))
+                );
+
+                return [{
+                  message_id: data.message_id,
+                  sender_id: data.sender_id,
+                  content: data.content,
+                  created_at: data.created_at,
+                  is_read: false,
+                  media: data.media || []
+                }, ...filtered];
+              });
+            }
           }
-        }
-      });
-    }
-  }, [userIdState, id]);
+        });
+      }
+    }, [userIdState, id]);
 
   useEffect(() => {
     if (userId) {
@@ -345,7 +349,7 @@ export default function ChatScreen() {
               source={{ 
                 uri: userDetails?.avatar 
                   ? `${userDetails.avatar}` 
-                  : `${GetApiUrl().slice(0, 25)}/media/images/default.png`
+                  : `https://media.nextvibe.io/images/default.png`
               }} 
               style={styles.headerAvatar} 
             />
