@@ -4,7 +4,6 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import FastImage from 'react-native-fast-image';
-// 1. Імпортуємо expo-video-thumbnails
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
 interface MediaPreviewProps {
@@ -26,14 +25,9 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  
-  // 2. Додаємо стан для збереження URI згенерованого прев'ю
+
   const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
 
-  // 3. thumbnailPlayer видалено. Він нам більше не потрібен у сітці.
-  
-  // 4. Створюємо fullScreenPlayer (він буде створений для
-  //    кожного елемента, але не буде активним до модального вікна)
   const fullScreenPlayer = type === 'video' ? useVideoPlayer(uri, (player) => {
     player.loop = true;
   }) : null;
@@ -46,35 +40,25 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
     }
   }, [isFullScreen, isPlaying]);
 
-  // 5. Додаємо useEffect для генерації прев'ю
   React.useEffect(() => {
     if (type === 'video') {
-      // Встановлюємо isLoading в true для відео, щоб показати лоадер
       setIsLoading(true);
       (async () => {
         try {
           const { uri: generatedUri } = await VideoThumbnails.getThumbnailAsync(
             uri,
-            { time: 1000 } // Беремо кадр на 1-й секунді
+            { time: 1000 } 
           );
           setThumbnailUri(generatedUri);
         } catch (e) {
           console.warn('Не вдалося згенерувати прев\'ю для відео:', e);
         } finally {
-          setIsLoading(false); // Вимикаємо лоадер у будь-якому випадку
+          setIsLoading(false); 
         }
       })();
     }
-  }, [uri, type]); // Ефект спрацює, якщо зміниться uri або type
+  }, [uri, type]); 
 
-  React.useEffect(() => {
-    return () => {
-      // 6. Прибираємо thumbnailPlayer з очищення
-      if (fullScreenPlayer) {
-        fullScreenPlayer.pause();
-      }
-    };
-  }, []); // Залишаємо fullScreenPlayer в залежностях
 
   const handleLoad = (width: number, height: number) => {
     setIsLoading(false);
@@ -116,12 +100,10 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
         width: size.width,
         height: size.height,
         // @ts-ignore
-        borderRadius: size.borderRadius || 8, // Беремо borderRadius з customSize, якщо є
+        borderRadius: size.borderRadius || 8, 
         overflow: 'hidden',
         backgroundColor: '#1a1a1a',
       }}>
-        
-        {/* 7. Повністю змінюємо логіку рендерингу */}
         
         {type === 'image' ? (
           <>
@@ -145,16 +127,13 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
             />
           </>
         ) : (
-          // 8. Логіка для ВІДЕО
           <>
-            {/* Показуємо лоадер, поки генерується прев'ю */}
             {isLoading && (
               <View style={[StyleSheet.absoluteFill, styles.loadingContainer]}>
                 <ActivityIndicator color="#00CED1" />
               </View>
             )}
             
-            {/* Коли прев'ю готове (thumbnailUri не null), показуємо FastImage */}
             {thumbnailUri && (
               <FastImage
                 source={{ uri: thumbnailUri }}
@@ -165,8 +144,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
                 resizeMode={FastImage.resizeMode.cover}
               />
             )}
-            
-            {/* Завжди показуємо оверлей з іконкою Play поверх */}
+
             <View style={StyleSheet.absoluteFill} pointerEvents="none">
               <LinearGradient
                 colors={['transparent', 'rgba(0,0,0,0.3)']}
@@ -183,7 +161,6 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
     </TouchableOpacity>
   );
 
-  // 9. renderFullScreen() залишається без змін.
   const renderFullScreen = () => (
     <Modal
       visible={isFullScreen}
