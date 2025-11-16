@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar, Dimensions, useColorScheme, Animated, RefreshControl, TouchableWithoutFeedback, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar, Dimensions, useColorScheme, Animated, RefreshControl, ActivityIndicator } from "react-native";
 import Header from "./Header";
 import { useEffect, useState, useCallback, useRef } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
@@ -7,7 +7,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import formatNumber from "@/src/utils/formatNumber";
-import GetApiUrl from "@/src/utils/url_api";
 import PopupModal from "../Comments/CommentPopup";
 import { VideoView, useVideoPlayer } from "expo-video";
 import likePost from "@/src/api/like.post";
