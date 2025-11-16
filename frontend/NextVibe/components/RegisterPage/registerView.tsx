@@ -148,7 +148,7 @@ export default function RegisterView() {
                 <GoogleButtonAuth page='register' />
                 <View>
                     <Text style={registerStyles.bottomText}>
-                        Already have an account? <Text style={registerStyles.bottomLink} onPress={() => router.push("/login")}>Login</Text>
+                        Already have an account? <Text style={registerStyles.bottomLink} onPress={() => router.replace("/login")}>Login</Text>
                     </Text>
                 </View>
             </ScrollView>

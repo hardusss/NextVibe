@@ -92,7 +92,7 @@ export default function LoginView() {
             <GoogleButtonAuth page='login'/>
             <View>
                 <Text style={loginStyes.bottomText}>
-                    Don't have an account? <Text style={loginStyes.bottomLink} onPress={() => router.push("/register")}>Register</Text>
+                    Don't have an account? <Text style={loginStyes.bottomLink} onPress={() => router.replace("/register")}>Register</Text>
                 </Text>
             </View>
         </SafeAreaView>
