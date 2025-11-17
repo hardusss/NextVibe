@@ -56,7 +56,11 @@ class Recomendations:
         data = []
         for post in posts:
             media = PostsMedia.objects.filter(post_id=post["id"])
-            media_data = [{"id": m.id, "media_url": str(m.file)} for m in media] if media.exists() else None
+            media_data = [{
+                "id": m.id, 
+                "media_url": m.file.url if not str(m.file).startswith("https://res.cloudinary.com/") else str(m.file), # Check where media saved
+                "media_preview": m.preview.url if m.preview else None # Get media if exists
+                }for m in media] if media.exists() else None
             data.append({
                 "owner__user_id": post["owner__user_id"],
                 "owner__username": post["owner__username"],
