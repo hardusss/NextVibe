@@ -3,17 +3,31 @@ from PIL import Image, ImageOps
 import cv2
 import os
 from io import BytesIO
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 from .models import PostsMedia, Post
 import requests
 from django.contrib.auth import get_user_model
+# Using boto3
+import boto3
+
+from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 
 GO_MODERATION_URL = "http://127.0.0.1:8080/moderation"
 User = get_user_model()
 
+
+def get_s3_client():
+    """Create S3 cliend for R2"""
+    
+    return boto3.client(
+        's3',
+        endpoint_url=settings.AWS_S3_ENDPOINT_URL,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name='auto',
+        config=boto3.session.Config(signature_version='s3v4')
+    )
 
 @shared_task
 def process_media_file(media_id):
@@ -50,10 +64,11 @@ def compress_image(media):
     try:
         # Read file from R2
         file_content = media.file.read()
-        media.file.seek(0)  # Reset position
+        media.file.seek(0)
         
         img = Image.open(BytesIO(file_content))
-
+        
+        # Fix orientation
         img = ImageOps.exif_transpose(img)
         
         # Convert RGBA to RGB 
@@ -76,18 +91,19 @@ def compress_image(media):
         img.save(output, format='JPEG', quality=85, optimize=True)
         output.seek(0)
         
-        # ✅ Using R2 storage
-        from NextVibeAPI.storage import r2_storage
-        
-        # Replace file to R2
+        # Upload to R2 by means of boto3
+        s3_client = get_s3_client()
         file_name = media.file.name
-        r2_storage.upload_file(
-            output.getvalue(),
-            file_name,
-            'image/jpeg'
+        
+        s3_client.put_object(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+            Key=file_name,
+            Body=output.getvalue(),
+            ContentType='image/jpeg',
+            CacheControl='max-age=86400'
         )
         
-        print(f"✅ Image {media.id} compressed and re-uploaded successfully")
+        print(f"✅ Image {media.id} compressed successfully")
         
     except Exception as e:
         print(f"❌ Error compressing image {media.id}: {e}")
@@ -139,18 +155,8 @@ def generate_video_thumbnail(media):
                 img.save(output, format='JPEG', quality=70, optimize=True)
                 output.seek(0)
                 
-                # Using boto3
-                import boto3
-                from django.conf import settings
                 
-                s3_client = boto3.client(
-                    's3',
-                    endpoint_url=settings.AWS_S3_ENDPOINT_URL,
-                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                    region_name='auto',
-                    config=boto3.session.Config(signature_version='s3v4')
-                )
+                s3_client = get_s3_client()
                 
                 preview_path = f"previews/{media.id}_preview.jpg"
                 s3_client.put_object(
