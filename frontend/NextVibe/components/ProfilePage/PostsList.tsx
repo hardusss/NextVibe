@@ -10,12 +10,12 @@ import {
   StatusBar,
   Animated,
   ActivityIndicator,
+  Pressable
 } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import Icon from "react-native-vector-icons/Ionicons";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import getMenuPosts from "@/src/api/menu.posts";
-import GetApiUrl from "@/src/utils/url_api";
 import timeAgo from "@/src/utils/formatTime";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import likePost from "@/src/api/like.post";
@@ -25,8 +25,6 @@ import FastImage from 'react-native-fast-image';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-import { Pressable } from "react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
 const ESTIMATED_POST_HEIGHT = screenWidth + 200
@@ -265,6 +263,7 @@ const getStyles = (theme: typeof darkTheme) => {
 interface MediaItem {
   id: number;
   media_url: string;
+  media_preview: string | null;
   type: "image" | "video";
 }
 
@@ -288,22 +287,57 @@ interface User {
   official: boolean;
 }
 
-const getCloudinaryTransformations = (url: string) => {
-    if (!url.includes('cloudinary.com')) {
-        return { preview: url, hd: url };
+type VideoStorage = 
+    | { storage: "cloudinary"; is_video: true }
+    | { storage: "r2"; is_video: true }
+    | false;
+
+const isVideo = (url: string): VideoStorage => {
+    if (url.includes("/video/")) {
+        return {
+            storage: "cloudinary",
+            is_video: true
+        };
     }
-    
-    const previewUrl = url.replace(
-        '/video/upload/',
-        '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
-    );
 
-    const hdUrl = url.replace(
-        '/video/upload/',
-        '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
-    );
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+    if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) {
+        return {
+            storage: "r2",
+            is_video: true
+        };
+    }
 
-    return { preview: previewUrl, hd: hdUrl };
+    return false;
+};
+
+const getVideoUrls = (mediaItem: MediaItem) => {
+    const videoCheck = isVideo(mediaItem.media_url);
+
+    if (!videoCheck) {
+        return { preview: mediaItem.media_url, hd: mediaItem.media_url, isVideo: false };
+    }
+
+    if (videoCheck.storage === "cloudinary") {
+        const previewUrl = mediaItem.media_url.replace(
+            '/video/upload/',
+            '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
+        );
+
+        const hdUrl = mediaItem.media_url.replace(
+            '/video/upload/',
+            '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
+        );
+
+        return { preview: previewUrl, hd: hdUrl, isVideo: true };
+    }
+
+    // R2 storage
+    return { 
+        preview: mediaItem.media_preview || mediaItem.media_url, 
+        hd: mediaItem.media_url,
+        isVideo: true
+    };
 };
 
 const MediaItemComponent = ({ 
@@ -319,23 +353,20 @@ const MediaItemComponent = ({
     isLiked: boolean;
     isVisible: boolean;
 }) => {
-    const mediaUrl = item.media_url;
-    const isVideo = item.media_url.includes("/video/");
+    const { preview, hd, isVideo: isVideoMedia } = getVideoUrls(item);
     
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
-    const [isLoading, setIsLoading] = useState(isVideo);
-    const [showPreview, setShowPreview] = useState(isVideo);
+    const [isLoading, setIsLoading] = useState(isVideoMedia);
+    const [showPreview, setShowPreview] = useState(isVideoMedia);
     const heartAnim = useRef(new Animated.Value(0)).current;
     const tapCount = useRef<number>(0);
     const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
-
-    const { preview, hd } = isVideo ? getCloudinaryTransformations(mediaUrl) : { preview: mediaUrl, hd: mediaUrl };
     
-    const player = useVideoPlayer(isVideo ? hd : '', player => {
+    const player = useVideoPlayer(isVideoMedia ? hd : '', player => {
         player.loop = true;
         player.muted = isMuted;
     });
@@ -389,7 +420,7 @@ const MediaItemComponent = ({
     }, []);
 
     React.useEffect(() => {
-        if (!isVideo) return;
+        if (!isVideoMedia) return;
 
         const subscription = player.addListener('statusChange', (status) => {
             if (status.status === 'readyToPlay') {
@@ -409,10 +440,10 @@ const MediaItemComponent = ({
         return () => {
             subscription.remove();
         };
-    }, [isVideo, isVisible]);
+    }, [isVideoMedia, isVisible]);
 
     React.useEffect(() => {
-        if (!isVideo) return;
+        if (!isVideoMedia) return;
 
         if (isVisible) {
             player.play();
@@ -421,20 +452,20 @@ const MediaItemComponent = ({
             player.currentTime = 0;
             setShowPreview(true);
         }
-    }, [isVisible, isVideo]);
+    }, [isVisible, isVideoMedia]);
 
     React.useEffect(() => {
-        if (isVideo) {
+        if (isVideoMedia) {
             player.muted = isMuted;
         }
-    }, [isMuted, isVideo]);
+    }, [isMuted, isVideoMedia]);
 
     return (
         <Pressable 
             onPress={handleDoublePress}
             style={styles.mediaContainer}
         >
-            {isVideo ? (
+            {isVideoMedia ? (
                 <>
                     {showPreview && (
                         <FastImage
@@ -442,7 +473,7 @@ const MediaItemComponent = ({
                                 uri: preview,
                                 priority: FastImage.priority.high,
                             }}
-                            style={styles.previewImage}
+                            style={[styles.previewImage, isLoading && { opacity: 0.7 }]}
                             resizeMode={FastImage.resizeMode.cover}
                         />
                     )}
@@ -477,7 +508,7 @@ const MediaItemComponent = ({
             ) : (
                 <FastImage
                     source={{ 
-                        uri: mediaUrl,
+                        uri: preview,
                         priority: FastImage.priority.normal,
                         cache: FastImage.cacheControl.immutable
                     }}
@@ -499,6 +530,7 @@ const MediaItemComponent = ({
         </Pressable>
     );
 };
+
 const UserPosts = () => {
   const router = useRouter();
   let user_id = useLocalSearchParams().user_id;
@@ -513,6 +545,7 @@ const UserPosts = () => {
     [key: number]: number;
   }>({});
   const [likedPosts, setLikedPosts] = useState<{ [key: number]: boolean }>({});
+  const [likeCounts, setLikeCounts] = useState<{ [key: number]: number }>({});
   const [expandedPosts, setExpandedPosts] = useState<{
     [key: number]: boolean;
   }>({});
@@ -530,15 +563,18 @@ const UserPosts = () => {
   const [userID, setUserID] = useState<number>(0);
   const [popupCommentsEnabled, setPopupCommentsEnabled] = useState<boolean>(true);
   const [toastSuccess, setToastSuccess] = useState<boolean>(false);
+  
   const getUserID = async () => {
     const id = await AsyncStorage.getItem("id")
     setUserID(id ? +id : 0)
   }
+  
   const clearData = useCallback(() => {
     setPosts([]);
     setUserData(null);
     setCurrentIndices({});
     setLikedPosts({});
+    setLikeCounts({});
     setExpandedPosts({});
     setVisiblePostId(null);
     setIndex(0);
@@ -575,6 +611,14 @@ const UserPosts = () => {
         setPosts(data.data);
         setUserData(data.user)
         setHasMore(data.more_posts);
+        
+        // Initialize like counts
+        const counts: { [key: number]: number } = {};
+        data.data.forEach((post: PostItem) => {
+          counts[post.post_id] = post.count_likes;
+        });
+        setLikeCounts(counts);
+        
         if (data.liked_posts) {
           const newLikedPosts = data.liked_posts.reduce(
             (acc: any, liked_id: number) => {
@@ -606,26 +650,26 @@ const UserPosts = () => {
     }, [TARGET_ID, posts])
   );
 
-  const toggleLike = (postId: number) => {
+  const toggleLike = useCallback((postId: number) => {
     likePost(postId);
+    
     setLikedPosts((prevLiked) => ({
       ...prevLiked,
       [postId]: !prevLiked[postId],
     }));
-    setPosts(prevPosts => 
-        prevPosts.map(post => {
-            if (post.post_id === postId) {
-                return {
-                    ...post,
-                    count_likes: likedPosts[postId] 
-                        ? post.count_likes > 0 ? post.count_likes - 1 : 0
-                        : post.count_likes + 1
-                };
-            }
-            return post;
-        })
-    );
-  };
+    
+    setLikeCounts((prevCounts) => {
+      const isCurrentlyLiked = likedPosts[postId];
+      const currentCount = prevCounts[postId] || 0;
+      
+      return {
+        ...prevCounts,
+        [postId]: isCurrentlyLiked 
+          ? Math.max(0, currentCount - 1)
+          : currentCount + 1
+      };
+    });
+  }, [likedPosts]);
 
   const toggleExpand = (postId: number) => {
     setExpandedPosts((prevExpanded) => ({
@@ -657,13 +701,16 @@ const UserPosts = () => {
     index: number;
   }) => {
     const isLiked = likedPosts[item.post_id] ?? false;
+    const likeCount = likeCounts[item.post_id] ?? item.count_likes;
     const isExpanded = expandedPosts[item.post_id] ?? false;
     const needsMoreButton = item.about.length > 100;
     const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
     const isVisible = visiblePostId === item.post_id;
+    
     if (item.moderation_status !== "approved"){
       return <></>
     }
+    
     return (
       <View style={styles.postContainer}>
         <View style={styles.postHeader}>
@@ -733,7 +780,6 @@ const UserPosts = () => {
                   setIsToastVisible(true);
                 }}
                 onReportResult={(reported?: boolean, message?: string) => {
-                  // Wait a short moment for the modal to close before showing toast
                   setDropdownVisible(prev => ({ ...prev, [item.post_id]: false }));
                   setTimeout(() => {
                     if (message) {
@@ -821,10 +867,9 @@ const UserPosts = () => {
               size={24} 
               color={isLiked ? "red" : theme.textPrimary} 
             />
-            <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
+            <Text style={styles.likesCount}>{formatNumber(likeCount)}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => {
-            
             setPopupCommentsEnabled(item.is_comments_enabled)
             setPopupPostId(item.post_id);
             setShowPopup(true);
@@ -876,7 +921,7 @@ const UserPosts = () => {
         ref={flatListRef}
         data={posts}
         renderItem={renderPostItem}
-        keyExtractor={(item, index) => `${item.post_id}_${index}`}
+        keyExtractor={(item) => `post_${item.post_id}`}
         contentContainerStyle={styles.listContainer}
         initialScrollIndex={posts.findIndex(
           (item) => item.post_id === TARGET_ID
