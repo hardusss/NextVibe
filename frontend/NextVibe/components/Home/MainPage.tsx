@@ -342,6 +342,7 @@ const PostSkeleton = () => {
 interface MediaItem {
     id: number;
     media_url: string;
+    media_preview: string | null;
     type: "image" | "video";
 }
 
@@ -365,22 +366,57 @@ interface LikedPosts {
     [key: number]: boolean;
 }
 
-const getCloudinaryTransformations = (url: string) => {
-    if (!url.includes('cloudinary.com')) {
-        return { preview: url, hd: url };
+type VideoStorage = 
+    | { storage: "cloudinary"; is_video: true }
+    | { storage: "r2"; is_video: true }
+    | false
+
+const isVideo = (url: string): VideoStorage => {
+    if (url.includes("/video/")) {
+        return {
+            storage: "cloudinary",
+            is_video: true
+        };
     }
 
-    const previewUrl = url.replace(
-        '/video/upload/',
-        '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
-    );
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+    if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) {
+        return {
+            storage: "r2",
+            is_video: true
+        };
+    }
 
-    const hdUrl = url.replace(
-        '/video/upload/',
-        '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
-    );
+    return false;
+};
 
-    return { preview: previewUrl, hd: hdUrl };
+const getVideoUrls = (mediaItem: MediaItem) => {
+    const videoCheck = isVideo(mediaItem.media_url);
+
+    if (!videoCheck) {
+        return { preview: mediaItem.media_url, hd: mediaItem.media_url, isVideo: false };
+    }
+
+    if (videoCheck.storage === "cloudinary") {
+        const previewUrl = mediaItem.media_url.replace(
+            '/video/upload/',
+            '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
+        );
+
+        const hdUrl = mediaItem.media_url.replace(
+            '/video/upload/',
+            '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
+        );
+
+        return { preview: previewUrl, hd: hdUrl, isVideo: true };
+    }
+
+    // R2 storage
+    return { 
+        preview: mediaItem.media_preview || mediaItem.media_url, 
+        hd: mediaItem.media_url,
+        isVideo: true
+    };
 };
 
 const MediaItemComponent = ({ 
@@ -396,27 +432,21 @@ const MediaItemComponent = ({
     isLiked: boolean;
     isVisible: boolean;
 }) => {
-    const mediaUrl = item.media_url.startsWith('http') 
-        ? item.media_url 
-        : `${item.media_url}`;
-    
-    const isVideo = item.media_url.includes("/video/") || item.media_url.match(/\.(mp4|webm|ogg|mov|mkv)$/);
-    
+    const { preview, hd, isVideo: isVideoMedia } = getVideoUrls(item);
+
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
-    const [isLoading, setIsLoading] = useState<boolean>(isVideo as boolean);
-    const [showPreview, setShowPreview] = useState<boolean>(isVideo as boolean);
+    const [isLoading, setIsLoading] = useState<boolean>(isVideoMedia as boolean);
+    const [showPreview, setShowPreview] = useState<boolean>(isVideoMedia as boolean);
     const heartAnim = useRef(new Animated.Value(0)).current;
-    const lastTap = useRef(0);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
     const tapCount = useRef<number>(0);
     const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const { preview, hd } = isVideo ? getCloudinaryTransformations(mediaUrl) : { preview: mediaUrl, hd: mediaUrl };
     
-    const player = useVideoPlayer(isVideo ? hd : '', player => {
+    const player = useVideoPlayer(isVideoMedia ? hd : '', player => {
         player.loop = true;
         player.muted = isMuted;
     });
@@ -470,7 +500,7 @@ const MediaItemComponent = ({
         }, []);
 
     useEffect(() => {
-        if (!isVideo) return;
+        if (!isVideoMedia) return;
 
         const subscription = player.addListener('statusChange', (status) => {
             if (status.status === 'readyToPlay') {
@@ -490,10 +520,10 @@ const MediaItemComponent = ({
         return () => {
             subscription.remove();
         };
-    }, [isVideo, isVisible]);
+    }, [isVideoMedia, isVisible]);
 
     useEffect(() => {
-        if (!isVideo) return;
+        if (!isVideoMedia) return;
 
         if (isVisible) {
             player.play();
@@ -502,20 +532,20 @@ const MediaItemComponent = ({
             player.currentTime = 0;
             setShowPreview(true);
         }
-    }, [isVisible, isVideo]);
+    }, [isVisible, isVideoMedia]);
 
     useEffect(() => {
-        if (isVideo) {
+        if (isVideoMedia) {
             player.muted = isMuted;
         }
-    }, [isMuted, isVideo]);
+    }, [isMuted, isVideoMedia]);
 
         return (
         <Pressable 
             onPress={handleDoublePress}
             style={styles.mediaContainer}
         >
-            {isVideo ? (
+            {isVideoMedia ? (
                 <>
                     {showPreview && (
                         <FastImage
@@ -558,7 +588,7 @@ const MediaItemComponent = ({
             ) : (
                 <FastImage
                     source={{ 
-                        uri: mediaUrl,
+                        uri: item.media_url,
                         priority: FastImage.priority.normal,
                         cache: FastImage.cacheControl.immutable
                     }}
