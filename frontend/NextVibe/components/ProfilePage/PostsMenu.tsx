@@ -23,10 +23,14 @@ const imageSize = (screenWidth - padding * 2) / 3;
 
 interface Post {
     post_id: number;
-    media: { media_url: string }[] | null;
+    media: { media_url: string, media_preview: string | null }[] | null;
     is_ai_generated: boolean;
     moderation_status: string;
 }
+
+type MediaCheck = 
+    | { storage: string; is_video: true }
+    | false;
 
 const PostGallery = ({id, previous}: {id: number, previous: string}) => {
     const router = useRouter();
@@ -79,13 +83,42 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         }, [])
     );
 
-    const isVideo = (url: string) => url.includes("/video/");
-    const getPreviewUrl = (url: string) => {
-        if (isVideo(url)) {
-            return url.replace("/video/upload/", "/video/upload/so_0,du_1,q_10,f_jpg/");
+
+    const isVideo = (url: string): MediaCheck => {
+        if (url.includes("/video/")) {
+            return {
+                storage: "cloudinary",
+                is_video: true
+            };
         }
+
+        const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+        if (videoExtensions.some(ext => url.endsWith(ext))) {
+            return {
+                storage: "r2",
+                is_video: true
+            };
+        }
+
+        return false; 
+    };
+
+    const getPreviewUrl = (url: string, item: any): string => {
+        const videoCheck = isVideo(url);
+
+        if (videoCheck) {
+            if (videoCheck.storage === "cloudinary") {
+                return url.replace("/video/upload/", "/video/upload/so_0,du_1,q_10,f_jpg/");
+            }
+
+            if (videoCheck.storage === "r2") {
+                return item?.media[0]?.media_preview || item?.preview || url;
+            }
+        }
+
         return url;
     };
+
 
     return (
         <View style={styles.container}>
@@ -103,8 +136,8 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                     renderItem={({ item }) => {
                         const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
                         const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
+                        
                         const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
-                    
                         return (
                             <TouchableOpacity 
                                 style={styles.postContainer} 
@@ -115,7 +148,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                     isMediaVideo ? (
                                         <View style={styles.videoContainer}>
                                             <FastImage 
-                                                source={{ uri: getPreviewUrl(mediaUrl!) }}
+                                                source={{ uri: getPreviewUrl(mediaUrl!, item) }}
                                                 style={styles.media}
                                                 resizeMode={FastImage.resizeMode.cover}
                                             />
