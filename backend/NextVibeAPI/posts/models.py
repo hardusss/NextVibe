@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from .managers import PostsManager, CommentManager, CommentReplyManager
 
 class Post(models.Model):
     owner = models.ForeignKey("user.User", on_delete=models.CASCADE)
@@ -12,6 +13,8 @@ class Post(models.Model):
     moderation_status = models.CharField(max_length=20, default="pending")
     categories = models.JSONField(default=list, blank=True)
     is_comments_enabled = models.BooleanField(default=True, blank=True, null=True)
+    objects = PostsManager()
+    all_objects = models.Manager()
 
     def __str__(self):
         return f"Post by {self.owner.username} with id {self.id}"
@@ -71,6 +74,8 @@ class Comment(models.Model):
     content = models.TextField(max_length=255)
     create_at = models.DateTimeField(auto_now_add=True)
     count_likes = models.IntegerField(default=0, null=True)
+    objects = CommentManager()
+    all_objects = models.Manager()
     
     def __str__(self) -> str:
         return f"Comment by {self.owner.user_id} in post {self.post.id}"
@@ -81,6 +86,8 @@ class CommentReply(models.Model):
     content = models.TextField(max_length=255)
     create_at = models.DateTimeField(auto_now_add=True)
     count_likes = models.IntegerField(default=0, null=True)
-    
+    objects = CommentReplyManager()
+    all_objects = models.Manager()
+
     def __str__(self) -> str:
         return f"Reply by {self.owner.user_id} in comment {self.comment.id}"
