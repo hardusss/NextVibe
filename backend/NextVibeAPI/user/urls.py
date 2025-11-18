@@ -8,7 +8,8 @@ from .views_pac import (
                             UpdateUserText, UpdateUserAvatar,
                             UpdatePassword, GetReaders,
                             GetFollows, GetCountUnreadNotificationsView,
-                            GetNotificationsView, ReadNotificationsView
+                            GetNotificationsView, ReadNotificationsView,
+                            CheckStatusView
                         )
 
 
@@ -30,5 +31,6 @@ urlpatterns = [
     path("get-follows/", GetFollows.as_view(), name="get_follows"),
     path("count-unread-notifications/", GetCountUnreadNotificationsView.as_view(), name="count_unread_notifications"),
     path("notifications/", GetNotificationsView.as_view(), name="notifications"),
-    path("read-notifications/", ReadNotificationsView.as_view(), name="read_notifications")
+    path("read-notifications/", ReadNotificationsView.as_view(), name="read_notifications"),
+    path("check-status/", CheckStatusView.as_view(), name="check_status")
 ]
