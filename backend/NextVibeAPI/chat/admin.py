@@ -1,9 +1,6 @@
 from django.contrib import admin
 from .models import Chat, Message, MediaAttachment
 from django.contrib import admin
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
 
 @admin.register(Chat)
 class ChatAdmin(admin.ModelAdmin):
