@@ -3,7 +3,14 @@ from django.db import models
 from django.utils import timezone
 
 
+class UserQuerySet(models.QuerySet):
+    def visible(self):
+        return self.filter(is_baned=False)
+    
 class UserManager(BaseUserManager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_baned=False)
+    
     def create_user(self, email, username, password=None, **extra_fields):
         if not email:
             raise ValueError("The Email field must be set")
@@ -47,10 +54,12 @@ class User(AbstractBaseUser):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_baned = models.BooleanField(default=False)
     last_activity = models.DateTimeField(default=timezone.now)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
     objects = UserManager()
+    all_objects = models.Manager()
 
     def __str__(self):
         return self.username
