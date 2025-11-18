@@ -42,19 +42,7 @@ export default function Layout() {
   const [imageProfile, setImageProfile] = useState<string | null>(null);
   const [userID, setUserID] = useState<number | null>(null);
 
-  
-  const blacklist = ["register", "login",
-    "postslist", "splash",
-    "index", "create-post",
-    "settings", "wallet",
-    "select-token", "deposit",
-    "transaction", "user-profile",
-    "create-wallet", "result-transaction",
-    "transactions", "transaction-detail",
-    "chat-room", "chats",
-    "follows-screen", "notifications",
-    "user-banned"
-  ];
+  const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "wallet", "select-token", "deposit", "transaction", "user-profile", "create-wallet", "result-transaction", "transactions", "transaction-detail", "chat-room", "chats", "follows-screen", "notifications", "user-banned"];
 
   const tabs = [
     { name: "home", icon: MaterialCommunityIcons, iconName: ["home-outline", "home"] },
@@ -63,48 +51,58 @@ export default function Layout() {
     { name: "profile", icon: FontAwesome5, iconName: ["user", "user"] }
   ];
 
-  const getId = async () => {
+  const loadUserData = async () => {
     try {
       const id = await AsyncStorage.getItem("id");
+      const avatar = await AsyncStorage.getItem("avatar");
+      
       if (id) {
         setUserID(Number(id));
       }
+      
+      if (avatar) {
+        setImageProfile(avatar);
+      }
     } catch (error) {
-      console.error('Error getting user ID:', error);
-    } 
+      console.error('Error loading user data:', error);
+    }
   };
 
   useFocusEffect(
     useCallback(() => {
-      getId();
-      }, [])
-  ) 
+      loadUserData();
+    }, [])
+  );
 
   useEffect(() => {
     if (blacklist.includes(currentPage) || !userID) return;
+    
     const getImageProfile = async () => {
       try {
         const data = await getUserDetail();
         if (data.avatar) {
-          setImageProfile(`${data.avatar}`);
+          setImageProfile(data.avatar);
+          await AsyncStorage.setItem("avatar", data.avatar);
         }
       } catch (error) {
+        setImageProfile("https://media.nextvibe.io/images/default.png");
         console.error('Error getting profile image:', error);
       }
     };
+    
     getImageProfile();
   }, [currentPage, userID]);
 
   const goToTab = (tab: string) => {
-    router.push(tab as RelativePathString); 
+    router.push(tab as RelativePathString);
   };
 
   const showTabBar = ![...blacklist, "camera"].includes(currentPage);
-  
+
   return (
     <WebSocketProvider userId={userID || 0}>
       <View style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false, animation: "none"}} >
+        <Stack screenOptions={{ headerShown: false, animation: "none" }} >
           <Stack.Screen name="home" />
           <Stack.Screen name="search" />
           <Stack.Screen name="camera" />
