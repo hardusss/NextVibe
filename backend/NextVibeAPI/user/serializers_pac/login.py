@@ -14,7 +14,7 @@ class UserLoginSerializer(serializers.Serializer):
         email = attrs.get('email')
         password = attrs.get('password')
 
-        user = self.User.objects.filter(email=email).first()
+        user = self.User.all_objects.filter(email=email).first()
 
         if not user:
             raise serializers.ValidationError("User with this email does not exist")
