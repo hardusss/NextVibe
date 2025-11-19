@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, ScrollView, StatusBar, Text, StyleSheet, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, Image, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import Video, { VideoRef } from 'react-native-video';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import createPost from '@/src/api/create.post';
 import generateImage from '@/src/api/generate.image';
@@ -42,27 +42,28 @@ const darkColors = {
 const {width, height} = Dimensions.get("window")
 
 function VideoPlayer({ uri, isActive }: { uri: string; isActive: boolean }) {
-    const videoRef = useRef<VideoRef>(null);
+    const player = useVideoPlayer(uri, (player) => {
+        player.loop = true;
+        if (isActive) {
+            player.play();
+        }
+    });
 
     useEffect(() => {
-        if (isActive && videoRef.current) {
-            videoRef.current.seek(0);
+        if (isActive) {
+            player.play();
+        } else {
+            player.pause();
         }
-    }, [isActive]);
+    }, [isActive, player]);
 
     return (
-        <View style={{ width: '100%', height: '100%', overflow: 'hidden', borderRadius: 16 }}>
-            <Video
-                ref={videoRef}
-                source={{ uri: uri.startsWith('file://') || uri.startsWith('https://') ? uri : `file://${uri}` }}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="cover"
-                controls={false}
-                repeat={true}
-                paused={!isActive}
-                progressUpdateInterval={1000}
-            />
-        </View>
+        <VideoView
+            player={player}
+            style={{ width: '100%', height: '100%' }}
+            nativeControls={false}
+            contentFit="cover"
+        />
     );
 }
 
@@ -81,7 +82,6 @@ export default function PostCreate() {
     const [toastMessage, setToastMessage] = useState<string>("");
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
-    const mediaScrollRef = useRef<ScrollView>(null);
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? darkColors : lightColors;
 
@@ -108,10 +108,54 @@ export default function PostCreate() {
         }
     };
 
-    const handleScroll = (event: any) => {
-        const contentOffsetX = event.nativeEvent.contentOffset.x;
-        const index = Math.round(contentOffsetX / (width * 0.65 + 12));
-        setActiveVideoIndex(Math.min(index, mediaUrls.length - 1));
+    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+        if (viewableItems.length > 0) {
+            const newIndex = viewableItems[0].index;
+            setActiveVideoIndex(newIndex);
+        }
+    }).current;
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 50,
+    }).current;
+
+    const renderMedia = ({ item, index }: { item: string; index: number }) => {
+        if (isVideo(item)) {
+            return (
+                <View style={themedStyles.mediaContainer}>
+                    <TouchableOpacity 
+                        onPress={() => handleDeleteImage(item)} 
+                        style={themedStyles.deleteButton}
+                    >
+                        <MaterialIcons name="close" color="white" size={20}/>
+                    </TouchableOpacity>
+                    <VideoPlayer 
+                        uri={item.startsWith('file://') || item.startsWith('https://') ? item : `file://${item}`}
+                        isActive={index === activeVideoIndex}
+                    />
+                </View>
+            );
+        } else {
+            return (
+                <View style={themedStyles.mediaContainer}>
+                    <TouchableOpacity 
+                        onPress={() => handleDeleteImage(item)} 
+                        style={themedStyles.deleteButton}
+                    >
+                        <MaterialIcons name="close" color="white" size={20}/>
+                    </TouchableOpacity>
+                    <FastImage
+                        source={{ 
+                            uri: item.startsWith('https://') || item.startsWith('file://') ? item : `file://${item}`,
+                            priority: FastImage.priority.normal,
+                            cache: FastImage.cacheControl.immutable
+                        }}
+                        style={themedStyles.media}
+                        resizeMode={FastImage.resizeMode.cover}
+                    />
+                </View>
+            );
+        }
     };
 
     const handlePublish = () => {
@@ -192,9 +236,9 @@ export default function PostCreate() {
             marginTop: -15,
             padding: 16,
         },
-        mediaScrollContainer: {
-            height: height * 0.3 + 16,
-            marginBottom: 12,
+        flatListContent: {
+            paddingVertical: 8,
+            width: mediaUrls.length === 1 ? "100%" : "auto"
         },
         mediaContainer: {
             width: width * 0.65,
@@ -208,7 +252,6 @@ export default function PostCreate() {
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.1,
             shadowRadius: 8,
-            elevation: 5,
         },
         media: {
             width: '100%',
@@ -249,6 +292,16 @@ export default function PostCreate() {
             color: colors.textPrimary,
             lineHeight: 18,
         },
+        input: {
+            height: 22,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 12,
+            paddingHorizontal: 14,
+            fontSize: 16,
+            backgroundColor: colors.inputBackground,
+            color: colors.textPrimary,
+        },
         inputWithIcon: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -286,6 +339,7 @@ export default function PostCreate() {
             fontWeight: '600',
             color: colors.textPrimary,
         },
+        
         footer: {
             padding: 16,
             paddingBottom: 32,
@@ -416,46 +470,19 @@ export default function PostCreate() {
                     {mediaUrls.length > 0 && (
                         <View style={{ marginBottom: 5 }}>
                             <Text style={themedStyles.sectionTitle}>Media</Text>
-                            <View style={themedStyles.mediaScrollContainer}>
-                                <ScrollView
-                                    ref={mediaScrollRef}
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    onScroll={handleScroll}
-                                    scrollEventThrottle={16}
-                                    contentContainerStyle={{
-                                        paddingVertical: 8,
-                                        paddingHorizontal: mediaUrls.length === 1 ? (width - width * 0.65) / 2 : 0,
-                                    }}
-                                >
-                                    {mediaUrls.map((item, index) => (
-                                        <View key={`${item}-${index}`} style={themedStyles.mediaContainer}>
-                                            <TouchableOpacity 
-                                                onPress={() => handleDeleteImage(item)} 
-                                                style={themedStyles.deleteButton}
-                                            >
-                                                <MaterialIcons name="close" color="white" size={20}/>
-                                            </TouchableOpacity>
-                                            {isVideo(item) ? (
-                                                <VideoPlayer 
-                                                    uri={item}
-                                                    isActive={index === activeVideoIndex}
-                                                />
-                                            ) : (
-                                                <FastImage
-                                                    source={{ 
-                                                        uri: item,
-                                                        priority: FastImage.priority.normal,
-                                                        cache: FastImage.cacheControl.immutable
-                                                    }}
-                                                    style={themedStyles.media}
-                                                    resizeMode={FastImage.resizeMode.cover}
-                                                />
-                                            )}
-                                        </View>
-                                    ))}
-                                </ScrollView>
-                            </View>
+                            <FlatList
+                                data={mediaUrls}
+                                renderItem={renderMedia}
+                                keyExtractor={(item, index) => index.toString()}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={[
+                                    themedStyles.flatListContent,
+                                    mediaUrls.length === 1 && { justifyContent: 'center' },
+                                ]}
+                                onViewableItemsChanged={onViewableItemsChanged}
+                                viewabilityConfig={viewabilityConfig}
+                            />
                         </View>
                     )}
 
@@ -472,6 +499,7 @@ export default function PostCreate() {
                                 value={postText}
                                 onChangeText={setPostText}
                             />
+
                         </View>
                     </View>
 
@@ -600,6 +628,7 @@ export default function PostCreate() {
                                 will fail.
                             </Text>
                         </View>
+
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
