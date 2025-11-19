@@ -2,15 +2,16 @@ import { StyleSheet } from 'react-native';
 
 const colors = {
     background: '#ffffff',
-    cardBackground: '#f2f2f2',
-    inputBackground: '#ffffff',
-    primary: '#1f6feb',
-    secondary: '#58a6ff',
-    textPrimary: '#0a0c1a',
-    textSecondary: '#4b5563',
-    border: '#d1d5db',
-    shadow: '#d1d5db',
+    cardBackground: '#f8f9fa',
+    inputBackground: '#e9ecef',
+    primary: '#007bff',
+    secondary: '#0056b3',
+    textPrimary: '#212529',
+    textSecondary: '#6c757d',
+    border: '#ced4da',
+    shadow: 'rgba(0, 0, 0, 0.15)',
 };
+
 
 const loginLightStyles = StyleSheet.create({
     container: {
@@ -56,7 +57,7 @@ const loginLightStyles = StyleSheet.create({
         transform: [{ translateY: -15 }],
     },
     loginButton: {
-        backgroundColor: colors.primary,
+        backgroundColor: "#391b78ff",
         borderRadius: 10,
         paddingVertical: 15,
         alignItems: 'center',
@@ -114,7 +115,7 @@ const loginLightStyles = StyleSheet.create({
         marginLeft: 10,
     },
     bottomText: {
-        color: colors.textPrimary,
+        color: colors.textSecondary,
         fontSize: 14,
         textAlign: 'center',
         marginTop: 20,

@@ -81,7 +81,7 @@ export default function LoginView() {
             </View>
             
             <TouchableOpacity style={loginStyes.loginButton} onPress={() => {Login(email, password, router)}}>
-                <Text style={[loginStyes.loginButtonText, { color: colorScheme === 'dark' ? '#fff' : '#000' }]}>Login</Text>
+                <Text style={[loginStyes.loginButtonText]}>Login</Text>
             </TouchableOpacity>
 
             <View style={loginStyes.hrcontainer}>
