@@ -13,13 +13,13 @@ export default async function createPost(
         const OWNER_ID = await AsyncStorage.getItem("id");
 
         if (!TOKEN || !OWNER_ID) {
-            return { success: false, message: "Не знайдено токен або ID користувача" };
+            return { success: false, message: "User not found" };
         }
 
         const postUrl = `${GetApiUrl()}/posts/posts/`;
         const mediaUploadUrl = `${GetApiUrl()}/posts/add-media/`;
 
-        // --- 1. Створення посту ---
+        // Creating post
         const postResponse = await fetch(postUrl, {
             method: "POST",
             headers: {
@@ -38,13 +38,12 @@ export default async function createPost(
         const postData = await postResponse.json();
 
         if (!postResponse.ok || !postData?.id) {
-            console.log("Помилка при створенні посту:", postData);
-            return { success: false, message: "Не вдалося створити пост" };
+            return { success: false, message: "Failed to create post" };
         }
 
         const postId = postData.id;
 
-        // --- 2. Додавання медіа ---
+        // Add media
         if (mediaUrls.length > 0) {
             const formData = new FormData();
 
@@ -77,14 +76,12 @@ export default async function createPost(
             const mediaData = await mediaResponse.json();
 
             if (!mediaResponse.ok) {
-                console.log("Помилка при додаванні медіа:", mediaData);
-                return { success: false, message: "Не вдалося завантажити медіа" };
+                return { success: false, message: "Failed to upload media" };
             }
         }
 
-        return { success: true, message: "Пост успішно створено" };
+        return { success: true, message: "Post successfully created" };
     } catch (error) {
-        console.log("Помилка у createPost:", error);
-        return { success: false, message: "Невідома помилка" };
+        return { success: false, message: "Error" };
     }
 }
