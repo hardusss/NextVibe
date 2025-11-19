@@ -64,7 +64,7 @@ const loginDarkStyles = StyleSheet.create({
         elevation: 7,
     },
     loginButtonText: {
-        color: "black",
+        color: "#fff",
         fontSize: 16,
         fontWeight: 'bold',
     },
