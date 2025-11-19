@@ -32,7 +32,7 @@ interface MediaAttachment {
 }
 
 interface Message {
-  message_id: number;
+  message_id: number | string;
   content: string;
   sender_id: number;
   created_at: string;
@@ -50,14 +50,6 @@ interface UserDetails {
   post_count: number;
   official: boolean;
 }
-
-interface ImagePickerAsset {
-  uri: string;
-  width: number;
-  height: number;
-  type?: string;
-}
-
 
 export default function ChatScreen() {
   const { id, userId } = useLocalSearchParams();
@@ -182,7 +174,7 @@ export default function ChatScreen() {
     if (!text.trim() && selectedMedia.length === 0) return;
     
     const tempMessage: Message = {
-      message_id: Date.now(),
+      message_id: Date.now(), 
       content: text.trim(),
       sender_id: userIdState!,
       created_at: new Date().toISOString(),
@@ -192,12 +184,16 @@ export default function ChatScreen() {
         file_url: media.uri
       }))
     };
-    
+
     setMessages(prev => [tempMessage, ...prev]);
-    await sendWebSocketMessage(+id, text.trim(), selectedMedia);
+    
+    const messageText = text.trim();
+    const mediaToSend = [...selectedMedia];
     
     setText('');
     setSelectedMedia([]);
+
+    await sendWebSocketMessage(+id, messageText, mediaToSend);
   };
 
   useEffect(() => {
@@ -220,37 +216,26 @@ export default function ChatScreen() {
           }
         } else if (data.chat_id === +id) {
           if (data.sender_id !== userIdState) {
-            setMessages(prev => [{
-              message_id: data.message_id,
-              sender_id: data.sender_id,
-              content: data.content,
-              created_at: data.created_at,
-              is_read: false,
-              media: data.media || []
-            }, ...prev]);
-    
+            setMessages(prev => {
+              const exists = prev.some(msg => msg.message_id === data.message_id);
+              if (exists) return prev;
+              
+              return [{
+                message_id: data.message_id,
+                sender_id: data.sender_id,
+                content: data.content,
+                created_at: data.created_at,
+                is_read: false,
+                media: data.media || []
+              }, ...prev];
+            });
+            
             notifyEnterChat(+id);
-          } else {
-              setMessages(prev => {
-                const filtered = prev.filter(msg => 
-                  !(msg.sender_id === userIdState && 
-                    msg.media.some(m => m.file_url && !m.file_url.startsWith('http')))
-                );
-
-                return [{
-                  message_id: data.message_id,
-                  sender_id: data.sender_id,
-                  content: data.content,
-                  created_at: data.created_at,
-                  is_read: false,
-                  media: data.media || []
-                }, ...filtered];
-              });
-            }
           }
-        });
-      }
-    }, [userIdState, id]);
+        }
+      });
+    }
+  }, [userIdState, id]);
 
   useEffect(() => {
     if (userId) {
