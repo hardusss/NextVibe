@@ -4,20 +4,19 @@ import LottieView from "lottie-react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import getStatusProfile from "@/src/api/check.status";
-
 const {width, height} = Dimensions.get("window")
 
 
 export default function SplashScreen() {
     const router = useRouter();
     const redirectTo = async () => {
-        const status = await getStatusProfile();
-        if (status.ban) {
-            router.replace("/user-banned");
-            return;
-        };
-        AsyncStorage.getItem("access").then((token) => {
+        AsyncStorage.getItem("access").then(async (token) => {
             if (token) {
+                const status = await getStatusProfile();
+                if (status.ban) {
+                    router.replace("/user-banned");
+                    return;
+                };
                 router.replace("/home");
             } else {
                 router.replace("/register");
