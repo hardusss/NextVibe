@@ -12,16 +12,18 @@ import { ActivityIndicator } from "../CustomActivityIndicator";
 import getMenuPosts from "@/src/api/menu.posts";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
 import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
 const imageSize = (screenWidth - padding * 2) / 3; 
 
 interface Post {
+    user_id: number;
     post_id: number;
     media: { media_url: string, media_preview: string | null }[] | null;
     is_ai_generated: boolean;
@@ -39,10 +41,18 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true); 
     const [index, setIndex] = useState(0);
+    const [userID, setUserID] = useState<number | null>(null);
 
     const POSTS_PER_PAGE = 9;
 
-    const fetchPosts = async (shouldLoadMore = false) => {
+    const getId = async () => {
+        const storedId = await AsyncStorage.getItem("id");
+        const parsedId = Number(storedId);
+        setUserID(parsedId);
+        return parsedId;
+    };
+
+    const fetchPosts = async (shouldLoadMore = false, currentUserID?: number) => {
         if (loadingMore || !hasMore) return;
     
         if (shouldLoadMore) setLoadingMore(true);
@@ -51,24 +61,29 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         try {
             const response = await getMenuPosts(id, index, POSTS_PER_PAGE);
             const newPosts = response.data;
-    
             setHasMore(response.more_posts);
     
             setPosts((prevPosts) => {
+                const actualUserID = currentUserID ?? userID;
+                
+                const filteredNewPosts = newPosts.filter(
+                    (p: any) =>
+                        p.moderation_status === "approved" || 
+                        (p.moderation_status === "pending" && p.user_id === actualUserID)
+                );
+
                 if (shouldLoadMore) {
-                    // Append new posts
                     const uniquePosts = new Map(prevPosts.map(post => [post.post_id, post]));
-                    newPosts.forEach((post: any) => uniquePosts.set(post.post_id, post));
+                    filteredNewPosts.forEach((post: any) => uniquePosts.set(post.post_id, post));
                     return Array.from(uniquePosts.values());
                 } else {
-                    // Replace all posts
-                    return newPosts;
+                    return filteredNewPosts;
                 }
             });
-            
+
             setIndex((prevIndex) => shouldLoadMore ? prevIndex + POSTS_PER_PAGE : POSTS_PER_PAGE);
         } catch (error) {
-            console.error("❌ Error fetching posts:", error);
+            
         }
     
         setLoading(false);
@@ -79,10 +94,18 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         useCallback(() => {
             setPosts([]);
             setIndex(0);
-            fetchPosts();
+            
+            getId().then((fetchedUserID) => {
+                fetchPosts(false, fetchedUserID);
+            });
         }, [])
     );
 
+    useEffect(() => {
+        if (userID !== null && posts.length === 0 && !loading) {
+            
+        }
+    }, [userID]);
 
     const isVideo = (url: string): MediaCheck => {
         if (url.includes("/video/")) {
@@ -118,7 +141,6 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
 
         return url;
     };
-
 
     return (
         <View style={styles.container}>
@@ -158,7 +180,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                             source={{ uri: mediaUrl! }}
                                             style={[styles.media]}
                                             resizeMode={FastImage.resizeMode.cover}
-                                            onError={() => console.error("❌ Failed to load image:", mediaUrl)}
+                                            onError={() => console.error("Failed to load image:", mediaUrl)}
                                         />
                                     )
                                 ) : (
@@ -167,7 +189,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                     </View>
                                 )}
                     
-                                {item.moderation_status === "pending" && (
+                                {(item.moderation_status === "pending" && item.user_id === userID) && (
                                     <BlurView 
                                         style={styles.moderationStatus} 
                                         blurType="dark"   
