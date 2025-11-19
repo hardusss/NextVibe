@@ -1,5 +1,5 @@
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { Text, Pressable, Image } from 'react-native';
+import { Text, Pressable, Image, useColorScheme } from 'react-native';
 import registerStyles from '../../styles/dark-theme/registerStyles';
 import { useEffect } from 'react';
 import GoogleRegister from '../../src/api/google.registation';
@@ -9,6 +9,7 @@ import Toast from "react-native-toast-message";
 
 export default function GoogleButtonAuth({ page }: { page: string }) {
     const router = useRouter();
+    const isDark = useColorScheme() === "dark";
 
     useEffect(() => {
         GoogleSignin.configure({
@@ -58,7 +59,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
     };
 
     return (
-        <Pressable onPress={signInWithGoogle} style={registerStyles.googlebutton}>
+        <Pressable onPress={signInWithGoogle} style={[registerStyles.googlebutton, {borderWidth: !isDark ? 0.6 : 0, borderColor: !isDark ? "#791cb3ff" : "#fafafa"}]}>
             <Image source={require('../../assets/google.png') } style={registerStyles.icon} />
             <Text style={registerStyles.googletext}>Sign in with Google</Text>
         </Pressable>
