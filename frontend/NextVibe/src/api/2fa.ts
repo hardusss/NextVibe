@@ -1,10 +1,10 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export async function connect2FA() {
-    const TOKEN = await AsyncStorage.getItem("access");
+    const TOKEN = await storage.getItem("access");
 
     try {
         const response = await axios.get(`${GetApiUrl()}/users/2fa/`, {
@@ -22,7 +22,7 @@ export async function connect2FA() {
 }
 
 export async function auth(code: string) {
-    const TOKEN = await AsyncStorage.getItem("access");
+    const TOKEN = await storage.getItem("access");
     const CONFIG = {
         headers: {
             Authorization: `Bearer ${TOKEN}`
@@ -43,7 +43,7 @@ export async function auth(code: string) {
 };
 
 export default async function updateStatus(enable2FA: boolean) {
-    const TOKEN = await AsyncStorage.getItem("access");
+    const TOKEN = await storage.getItem("access");
     const CONFIG = {
         headers: {
             Authorization: `Bearer ${TOKEN}`

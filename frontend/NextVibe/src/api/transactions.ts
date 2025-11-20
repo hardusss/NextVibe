@@ -1,5 +1,5 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
@@ -8,7 +8,7 @@ export async function sendBtcTransaction(
   address: string
 ) {
   try {
-    const token = await AsyncStorage.getItem("access");
+    const token = await storage.getItem("access");
     const url = `${GetApiUrl()}/wallets/transaction/btc/`;
     const response = await axios.post(url, {},
       {
@@ -36,7 +36,7 @@ export async function sendSolTransaction(
   address: string
 ) {
   try {
-    const token = await AsyncStorage.getItem("access");
+    const token = await storage.getItem("access");
     const url = `${GetApiUrl()}/wallets/transaction/sol/`;
     const response = await axios.post(
       url,
@@ -66,7 +66,7 @@ export async function sendEthTransaction(
   address: string
 ) {
   try {
-    const token = await AsyncStorage.getItem("access");
+    const token = await storage.getItem("access");
     const url = `${GetApiUrl()}/wallets/transaction/eth/`;
     const response = await axios.post(
       url,
@@ -93,7 +93,7 @@ export async function sendEthTransaction(
 
 export async function sendTrxTransaction(amount: number, address: string) {
   try {
-    const token = await AsyncStorage.getItem("access");
+    const token = await storage.getItem("access");
     const url = `${GetApiUrl()}/wallets/transaction/trx/`;
     const response = await axios.post(
       url,

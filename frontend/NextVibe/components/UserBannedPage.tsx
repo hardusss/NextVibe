@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, useColorScheme, StyleSheet, StatusBar } f
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/src/utils/storage";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useEffect } from "react";
 export default function UserBannedPage() {
@@ -26,6 +27,7 @@ export default function UserBannedPage() {
 
     const handleLogout = () => {
         AsyncStorage.clear()
+        storage.clearAll()
         GoogleSignin.signOut()
         router.replace("/register")
     };

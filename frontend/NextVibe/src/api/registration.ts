@@ -1,7 +1,7 @@
 import Toast from 'react-native-toast-message';
 import axios from 'axios';
 import validationInput from '../validation/register-validator';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from "../utils/storage";
 import GetApiUrl from '../utils/url_api';
 import { Router } from 'expo-router';
 
@@ -29,9 +29,9 @@ export default async function Register (username: string, email: string, passwor
 
         await axios.post(`${GetApiUrl()}/users/register/`, data)
             .then(response => {
-                AsyncStorage.setItem("id", `${response.data.user_id}`)
-                AsyncStorage.setItem("access", response.data.data.token.access)
-                AsyncStorage.setItem("refresh", response.data.data.token.refresh)
+                storage.setItem("id", `${response.data.user_id}`)
+                storage.setItem("access", response.data.data.token.access)
+                storage.setItem("refresh", response.data.data.token.refresh)
 
                 Toast.show({
                     type: 'success',

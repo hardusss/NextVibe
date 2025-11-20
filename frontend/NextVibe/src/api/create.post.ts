@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 export default async function createPost(
@@ -9,8 +9,8 @@ export default async function createPost(
     isCommentsEnabled: boolean = true
 ): Promise<{ success: boolean; message?: string }> {
     try {
-        const TOKEN = await AsyncStorage.getItem("access");
-        const OWNER_ID = await AsyncStorage.getItem("id");
+        const TOKEN = await storage.getItem("access");
+        const OWNER_ID = await storage.getItem("id");
 
         if (!TOKEN || !OWNER_ID) {
             return { success: false, message: "User not found" };

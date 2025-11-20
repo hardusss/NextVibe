@@ -5,10 +5,10 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import getUserDetail from "@/src/api/user.detail";
-import GetApiUrl from "@/src/utils/url_api";
 import { Switch } from "react-native-paper";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from '@/src/utils/storage';
 import { useFocusEffect } from "expo-router";
 import { useCallback } from 'react';
 import BottomSheet from "../2FA/Connect";
@@ -83,10 +83,11 @@ function PageSettingsContent() {
     }, []);
 
     const handleLogoutConfirm = () => {
-        AsyncStorage.clear()
-        GoogleSignin.signOut()
-        setIsVisibleLogoutConfirmation(false) 
-        router.replace("/register")
+        storage.clearAll();
+        AsyncStorage.clear();
+        GoogleSignin.signOut();
+        setIsVisibleLogoutConfirmation(false); 
+        router.replace("/register");
     }
 
     const handleLogout = () => {

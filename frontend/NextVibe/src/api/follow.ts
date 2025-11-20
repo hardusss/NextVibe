@@ -1,9 +1,9 @@
-import axios, { AxiosError } from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 const followUser = async (follow_id: number): Promise<number> => {
-    const TOKEN = await AsyncStorage.getItem("access");
+    const TOKEN = await storage.getItem("access");
 
     try {
         const response = await axios.put(

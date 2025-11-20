@@ -1,5 +1,5 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../utils/storage';
 import GetApiUrl from '../utils/url_api';
 
 let ws: WebSocket | null = null;
@@ -78,7 +78,7 @@ export const notifyEnterChat = (chatId: number) => {
 export const getWebSocket = () => ws;
 
 export const getChats = async () => {
-  const token = await AsyncStorage.getItem('access');
+  const token = await storage.getItem('access');
   try {
     const response = await axios.get(`${GetApiUrl()}/chat/chats/`, {
       headers: {
@@ -92,7 +92,7 @@ export const getChats = async () => {
 };
 
 export const getOnlineUsers = async () => {
-  const token = await AsyncStorage.getItem('access');
+  const token = await storage.getItem('access');
   try {
     const response = await axios.get(`${GetApiUrl()}/chat/online-users/`, {
       headers: {
@@ -107,8 +107,8 @@ export const getOnlineUsers = async () => {
 };
 
 export const getMessages = async (chatId: number, lastMessageId?: number) => {
-  const token = await AsyncStorage.getItem('access');
-  const user_id = await AsyncStorage.getItem("id")
+  const token = await storage.getItem('access');
+  const user_id = await storage.getItem("id")
   try {
     const url = lastMessageId 
       ? `${GetApiUrl().replace(":8000", ":8081")}/messages/${chatId}?last_message_id=${lastMessageId}&user_id=${user_id}`
@@ -126,7 +126,7 @@ export const getMessages = async (chatId: number, lastMessageId?: number) => {
 };
 
 export const deleteChat = async (chatId: number): Promise<boolean>  => {
-  const token = await AsyncStorage.getItem('access');
+  const token = await storage.getItem('access');
   try {
     const response = await axios.delete(`${GetApiUrl()}/chat/delete-chat/${chatId}/`, {
       headers: {

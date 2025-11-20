@@ -4,7 +4,8 @@ import { useColorScheme, View, TouchableOpacity } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { storage } from "@/src/utils/storage";
 import { WebSocketProvider } from "@/src/context/WebSocketContext";
 
 if (__DEV__ && typeof global !== 'undefined') {
@@ -53,7 +54,7 @@ export default function Layout() {
 
   const loadUserData = async () => {
     try {
-      const id = await AsyncStorage.getItem("id");
+      const id = await storage.getItem("id");
       const avatar = await AsyncStorage.getItem("avatar");
       
       if (id) {

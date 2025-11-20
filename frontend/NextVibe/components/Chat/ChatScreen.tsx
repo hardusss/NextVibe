@@ -22,7 +22,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getMessages, connectWebSocket, sendWebSocketMessage, sendReadStatus, notifyEnterChat, getWebSocket } from '@/src/api/chat';
 import getUserDetail from '@/src/api/user.detail';
 import MediaPickerModal from './MediaPickerModal';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/src/utils/storage';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -98,7 +98,7 @@ export default function ChatScreen() {
   };
 
   const fetchUserId = async () => {
-    const id_ = await AsyncStorage.getItem('id');
+    const id_ = await storage.getItem('id');
     setUserIdState(Number(id_));
   };
 

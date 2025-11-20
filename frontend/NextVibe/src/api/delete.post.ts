@@ -1,11 +1,11 @@
 import axios, { AxiosError } from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export default async function deletePost(postId: number) {
     try {
-        const token = await AsyncStorage.getItem("access");
+        const token = await storage.getItem("access");
         if (token) {
             const response = await axios.delete(`${GetApiUrl()}/posts/delete-post/`, {
                 headers: {

@@ -1,10 +1,10 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export default async function getMediaToPost(post_id: number) {
-    const TOKEN = await AsyncStorage.getItem('access');
+    const TOKEN = await storage.getItem('access');
     
     const response = await axios.get(`${GetApiUrl()}/posts/get-media/`, {
         headers: {

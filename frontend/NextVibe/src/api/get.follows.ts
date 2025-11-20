@@ -1,11 +1,11 @@
 import axios, { AxiosError } from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export default async function getFollows(user_id: number, index: number = 0) {
     try {
-        const token = await AsyncStorage.getItem("access");
+        const token = await storage.getItem("access");
         if (token) {
             const response = await axios.get(`${GetApiUrl()}/users/get-follows/`, {
                 headers: {

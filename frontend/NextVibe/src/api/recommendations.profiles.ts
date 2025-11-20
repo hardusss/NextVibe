@@ -1,11 +1,11 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 const getRoccomendationsProfiles = async () => {
-    const TOKEN = await AsyncStorage.getItem("access");
-    const ID = await AsyncStorage.getItem("id");
+    const TOKEN = await storage.getItem("access");
+    const ID = await storage.getItem("id");
     const response = await axios.get(`${GetApiUrl()}/users/recommendations/${ID}/`, {
         headers: {
             Authorization: `Bearer ${TOKEN}`
