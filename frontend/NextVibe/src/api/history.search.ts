@@ -1,11 +1,11 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export async function setSearchHistory(searchedUser: number) {
-    const TOKEN = await AsyncStorage.getItem("access");
-    const ID = await AsyncStorage.getItem("id");
+    const TOKEN = await storage.getItem("access");
+    const ID = await storage.getItem("id");
 
     const config = {
         headers: {
@@ -17,13 +17,13 @@ export async function setSearchHistory(searchedUser: number) {
         },
     };
 
-    const response = await axios.post(`${GetApiUrl()}/users/history/`, {}, config)
+    await axios.post(`${GetApiUrl()}/users/history/`, {}, config)
     
 };
 
 export async function getSearchHistory() {
-    const TOKEN = await AsyncStorage.getItem("access");
-    const ID = await AsyncStorage.getItem("id");
+    const TOKEN = await storage.getItem("access");
+    const ID = await storage.getItem("id");
 
     const config = {
         headers: {
@@ -40,8 +40,8 @@ export async function getSearchHistory() {
 };
 
 export async function deleteUserFromHistory(searchedUser: number) {
-    const TOKEN = await AsyncStorage.getItem("access");
-    const ID = await AsyncStorage.getItem("id");
+    const TOKEN = await storage.getItem("access");
+    const ID = await storage.getItem("id");
 
     const config = {
         headers: {
@@ -53,6 +53,6 @@ export async function deleteUserFromHistory(searchedUser: number) {
         },
     };
 
-    const response = await axios.delete(`${GetApiUrl()}/users/history/`, config)
+    await axios.delete(`${GetApiUrl()}/users/history/`, config)
     
 }

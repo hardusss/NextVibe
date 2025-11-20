@@ -4,7 +4,6 @@ import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
 import getUserDetail from "@/src/api/user.detail";
-import GetApiUrl from "@/src/utils/url_api";
 import { MaterialIcons } from '@expo/vector-icons';
 import formatNumber from "@/src/utils/formatNumber";
 import ButtonSettings from "./ButtonSettings";
@@ -13,7 +12,7 @@ import RecommendedUsers from "./recommendateProfiles";
 import PostGallery from "./PostsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { useFocusEffect } from 'expo-router';
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from '@/src/utils/storage';
 import { useRef } from "react";
 import FastImage from 'react-native-fast-image';
 import { useRouter } from 'expo-router';
@@ -87,7 +86,7 @@ const ProfileView = () => {
     };
 
     const getId = async () => {
-        const id = await AsyncStorage.getItem("id");
+        const id = await storage.getItem("id");
         setId(parseInt(id as string));
     }
     const onRefresh = useCallback(async () => {

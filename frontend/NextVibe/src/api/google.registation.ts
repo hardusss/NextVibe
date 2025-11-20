@@ -1,7 +1,7 @@
 import axios from "axios";
 import GetApiUrl from "../utils/url_api";
 import Toast from "react-native-toast-message";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import { Router } from "expo-router";
 
 export default function GoogleRegister(username: string, email: string, avatar_url: string, router: Router) {
@@ -13,9 +13,9 @@ export default function GoogleRegister(username: string, email: string, avatar_u
     }
     axios.post(`${GetApiUrl()}/users/google-register/`, data)
     .then(response => {
-        AsyncStorage.setItem("id", `${response.data.user_id}`)
-        AsyncStorage.setItem("access", response.data.token.access)
-        AsyncStorage.setItem("refresh", response.data.token.refresh)
+        storage.setItem("id", `${response.data.user_id}`)
+        storage.setItem("access", response.data.token.access)
+        storage.setItem("refresh", response.data.token.refresh)
         Toast.show({
             type: 'success',
             text1: 'Registration successful',

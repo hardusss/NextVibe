@@ -1,11 +1,11 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export default async function CreateChat(userId: number) {
-    const token = await AsyncStorage.getItem("access");
-    const ownerId = await AsyncStorage.getItem("id");
+    const token = await storage.getItem("access");
+    const ownerId = await storage.getItem("id");
     if (!token || !ownerId) {
         throw new Error("User is not authenticated");
     }

@@ -1,5 +1,5 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 interface ResetPasswordData {
@@ -8,7 +8,7 @@ interface ResetPasswordData {
 }
 
 export default async function resetPassword({ code, newPassword }: ResetPasswordData) {
-    const TOKEN = await AsyncStorage.getItem("access");
+    const TOKEN = await storage.getItem("access");
 
     try {
         const response = await axios.put(

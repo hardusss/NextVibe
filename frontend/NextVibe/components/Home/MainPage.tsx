@@ -15,7 +15,7 @@ import timeAgo from "@/src/utils/formatTime";
 import { Platform, UIManager } from 'react-native';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from '@/src/utils/storage';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable } from "react-native";
 
@@ -637,7 +637,7 @@ export default function MainPage() {
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     
     const getUserID = async () => {
-        const id = await AsyncStorage.getItem("id")
+        const id = await storage.getItem("id")
         setUserID(id ? +id : 0)
     };
 

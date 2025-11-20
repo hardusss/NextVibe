@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useColorScheme, TouchableOpacity } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/src/utils/storage';
 import MediaGrid from './MediaGrid';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { BlurView } from 'expo-blur';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+
 
 interface MediaAttachment {
   id: number;
@@ -39,7 +39,7 @@ const ChatBubble: React.FC<Props> = ({ message }) => {
 
   useEffect(() => {
     const getId = async () => {
-      const id = await AsyncStorage.getItem('id');
+      const id = await storage.getItem('id');
       setUserId(Number(id));
     };
     getId();

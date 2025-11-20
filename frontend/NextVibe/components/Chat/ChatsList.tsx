@@ -10,7 +10,7 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/src/utils/storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import OnlineUsers from './OnlineUsers';
 import ChatItem from './ChatItem';
@@ -37,7 +37,7 @@ export default function ChatsList() {
   const styles = getStyles(isDark);
 
   const checkAndUpdateUserId = useCallback(async () => {
-    const storedId = await AsyncStorage.getItem('id');
+    const storedId = await storage.getItem('id');
     if (!currentUserId || storedId !== currentUserId) {
       setCurrentUserId(storedId);
       await loadAllData();

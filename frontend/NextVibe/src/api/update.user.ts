@@ -1,10 +1,10 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 export default async function updateUser (username?: string, about?: string) {
     if (!username && !about) return;
-    const token = await AsyncStorage.getItem("access");
+    const token = await storage.getItem("access");
 
     try {
         const response = await axios.put(`${GetApiUrl()}/users/update/user-text/`, {}, {

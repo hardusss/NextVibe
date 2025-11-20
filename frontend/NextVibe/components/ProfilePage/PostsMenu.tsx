@@ -16,7 +16,7 @@ import { useCallback, useEffect } from 'react';
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
 import { MaterialIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from '@/src/utils/storage';
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
@@ -46,7 +46,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
     const POSTS_PER_PAGE = 9;
 
     const getId = async () => {
-        const storedId = await AsyncStorage.getItem("id");
+        const storedId = await storage.getItem("id");
         const parsedId = Number(storedId);
         setUserID(parsedId);
         return parsedId;

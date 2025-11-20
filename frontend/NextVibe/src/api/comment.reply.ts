@@ -1,11 +1,11 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export default async function createCommentReply(content: string, commentId: number) {
-    const TOKEN = await AsyncStorage.getItem("access");
-    const OWNER_ID = await AsyncStorage.getItem("id");
+    const TOKEN = await storage.getItem("access");
+    const OWNER_ID = await storage.getItem("id");
 
     const url = `${GetApiUrl()}/posts/comment-reply/${commentId}/`;
     

@@ -1,10 +1,10 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export default async function getStatusProfile() {
-    const TOKEN = await AsyncStorage.getItem("access");
+    const TOKEN = await storage.getItem("access");
 
     const url = `${GetApiUrl()}/users/check-status/`;
 

@@ -24,7 +24,7 @@ import PopupModal from "../Comments/CommentPopup";
 import FastImage from 'react-native-fast-image';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from '@/src/utils/storage';
 
 const { width: screenWidth } = Dimensions.get("window");
 const ESTIMATED_POST_HEIGHT = screenWidth + 200
@@ -565,7 +565,7 @@ const UserPosts = () => {
   const [toastSuccess, setToastSuccess] = useState<boolean>(false);
   
   const getUserID = async () => {
-    const id = await AsyncStorage.getItem("id")
+    const id = await storage.getItem("id")
     setUserID(id ? +id : 0)
   }
   

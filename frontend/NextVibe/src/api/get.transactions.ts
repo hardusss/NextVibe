@@ -1,10 +1,10 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 export default async function getTransactions () {
     const url = GetApiUrl();
-    const token = await AsyncStorage.getItem("access");
+    const token = await storage.getItem("access");
 
     const response = await axios.get(`${url}/wallets/transactions/`, {
         headers: {

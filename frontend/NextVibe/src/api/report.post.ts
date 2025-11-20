@@ -1,12 +1,12 @@
 import axios, { AxiosError } from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
 
 export default async function reportPost(postId: number, report_type: string, description?: string) {
     try {
-        const token = await AsyncStorage.getItem("access");
-        const reporter = await AsyncStorage.getItem("id");
+        const token = await storage.getItem("access");
+        const reporter = await storage.getItem("id");
 
         const data = {
             post: postId,
