@@ -8,6 +8,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const MAX_DURATION = 30 * 1000; // 30 seconds in milliseconds
 
 const CameraScreen = () => {
   const router = useRouter();
@@ -21,6 +22,8 @@ const CameraScreen = () => {
   const [zoom, setZoom] = useState<number>(1);
   const [lastPhoto, setLastPhoto] = useState<string | null>(null);
   const [showToast, setShowToast] = useState<boolean>(false);
+  const [toastText, setToastText] = useState<string>("Maximum 3 files allowed. Please select fewer.");
+
   const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraRef = useRef<Camera>(null);
   const device = useCameraDevice(cameraSide);
@@ -37,12 +40,20 @@ const CameraScreen = () => {
       aspect: [4, 3],
       quality: 1,
       allowsMultipleSelection: true,
-      videoMaxDuration: 30
     });
     
     if (!medias.canceled) {
       const selected = medias.assets || [];
+      for (const asset of selected) {
+        if (asset.duration && asset.duration > MAX_DURATION) {
+          setToastText("The video must be no longer than 30 seconds.");
+          setShowToast(true);
+          return;
+        }
+      };
+
       if (selected.length > 3) {
+        setToastText("Maximum 3 files allowed. Please select fewer.");
         setShowToast(true);
         return;
       };
@@ -186,7 +197,7 @@ const CameraScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: '#0A0410' }]}> 
       <StatusBar backgroundColor={'#0A0410'} />
-      <Web3Toast message="Error. You can only select 3 media files!" visible={showToast} onHide={() => setShowToast(false)} isSuccess={false}/>
+      <Web3Toast message={toastText} visible={showToast} onHide={() => setShowToast(false)} isSuccess={false}/>
       {cameraPermission && microphonePermission ? (
         <View style={styles.cameraContainer}>
           <Camera
