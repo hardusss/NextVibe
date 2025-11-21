@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Pressable
 } from "react-native";
-import { VideoView, useVideoPlayer } from "expo-video";
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import Icon from "react-native-vector-icons/Ionicons";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import getMenuPosts from "@/src/api/menu.posts";
@@ -326,7 +326,7 @@ const getVideoUrls = (mediaItem: MediaItem) => {
 
         const hdUrl = mediaItem.media_url.replace(
             '/video/upload/',
-            '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
+            '/video/upload/q_auto:good,f_auto,vc_h264:baseline,br_1500k/' 
         );
 
         return { preview: previewUrl, hd: hdUrl, isVideo: true };
@@ -366,10 +366,7 @@ const MediaItemComponent = ({
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
     
-    const player = useVideoPlayer(isVideoMedia ? hd : '', player => {
-        player.loop = true;
-        player.muted = isMuted;
-    });
+    const videoRef = useRef<Video>(null);
 
     const handleDoublePress = () => {
         tapCount.current += 1;
@@ -419,46 +416,28 @@ const MediaItemComponent = ({
         };
     }, []);
 
-    React.useEffect(() => {
-        if (!isVideoMedia) return;
+    const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+        if (!status.isLoaded) {
+            return;
+        }
 
-        const subscription = player.addListener('statusChange', (status) => {
-            if (status.status === 'readyToPlay') {
-                setIsLoading(false);
-                setTimeout(() => setShowPreview(false), 150);
-            }
-            else if (status.status === 'loading') {
-                if (isVisible) {
-                    setIsLoading(true);
-                }
-            }
-            else if (status.status === 'idle') {
-                setIsLoading(false);
-            }
-        });
+        if (status.isLoaded && status.isPlaying) {
+            setIsLoading(false);
+            setTimeout(() => setShowPreview(false), 150);
+        }
+    };
 
-        return () => {
-            subscription.remove();
-        };
-    }, [isVideoMedia, isVisible]);
-
-    React.useEffect(() => {
-        if (!isVideoMedia) return;
+    useEffect(() => {
+        if (!isVideoMedia || !videoRef.current) return;
 
         if (isVisible) {
-            player.play();
+            videoRef.current.playAsync();
         } else {
-            player.pause();
-            player.currentTime = 0;
+            videoRef.current.pauseAsync();
+            videoRef.current.setPositionAsync(0);
             setShowPreview(true);
         }
     }, [isVisible, isVideoMedia]);
-
-    React.useEffect(() => {
-        if (isVideoMedia) {
-            player.muted = isMuted;
-        }
-    }, [isMuted, isVideoMedia]);
 
     return (
         <Pressable 
@@ -477,13 +456,15 @@ const MediaItemComponent = ({
                             resizeMode={FastImage.resizeMode.cover}
                         />
                     )}
-                    <VideoView
+                    <Video
+                        ref={videoRef}
                         style={styles.fullMedia}
-                        player={player}
-                        allowsFullscreen={false}
-                        allowsPictureInPicture={false}
-                        nativeControls={false}
-                        contentFit="cover"
+                        source={{ uri: hd }}
+                        resizeMode={ResizeMode.COVER}
+                        isLooping
+                        isMuted={isMuted}
+                        shouldPlay={false}
+                        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                     />
                     {isLoading && isVisible && (
                         <View style={styles.mediaLoading}>
