@@ -16,7 +16,7 @@ from ..src.get_tokens_price import get_tokens_prices
 import asyncio
 from functools import partial
 from decimal import Decimal
-
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
@@ -46,6 +46,8 @@ async def get_balances_and_prices(for_balances):
 
 class GetBalanceWallet(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "balance"
 
     def get(self, request) -> Response:
         user = User.objects.get(user_id=request.user.user_id)

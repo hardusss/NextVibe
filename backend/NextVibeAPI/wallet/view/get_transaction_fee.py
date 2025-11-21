@@ -7,12 +7,15 @@ from rest_framework.permissions import IsAuthenticated
 from web3 import Web3
 import os
 from dotenv import load_dotenv
+from rest_framework.throttling import ScopedRateThrottle
 
 load_dotenv()
 
 class GetTransactionFee(APIView):
     permission_classes = [IsAuthenticated]
-
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "transaction_fee"
+    
     _w3 = None
     
     @classmethod

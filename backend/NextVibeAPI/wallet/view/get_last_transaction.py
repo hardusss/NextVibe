@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.core.cache import cache
 import asyncio, httpx
+from rest_framework.throttling import ScopedRateThrottle
 
 TOKENS = {
             "ETH": "ethereum",
@@ -17,6 +18,8 @@ TOKENS = {
 
 class GetLastTransactionView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "last_transaction"
 
     def get(self, request) -> Response:
         user = get_user_model().objects.get(user_id=request.user.user_id)

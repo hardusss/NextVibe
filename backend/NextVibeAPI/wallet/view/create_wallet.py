@@ -19,12 +19,16 @@ from ..models import (
     UserWallet
 )
 
+from rest_framework.throttling import ScopedRateThrottle
+
 User = get_user_model()
 load_dotenv()
 
 
 class CreateWallet(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "wallet_create"
 
     def post(self, request) -> Response:
         if UserWallet.objects.filter(user=request.user).exists():
