@@ -6,11 +6,14 @@ from ..models import Comment
 from ..models import CommentReply
 from django.contrib.auth import get_user_model
 from ..models import Post
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
 class GetCommentView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "comments_list"
     
     def get(self, request, post_id: int) -> Response:
         comments = Comment.objects.filter(post__id=post_id)[::-1]

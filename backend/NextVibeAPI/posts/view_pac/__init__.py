@@ -6,7 +6,6 @@ from .post_create import PostViewSet
 from .add_media import AddMediaToPostView
 from .generate_image_view import GenerateImage
 from .get_recomend import RecomendationsView
-from .get_media import GetMediaView
 from .moderation_callback import ModerationCallbackView
 from .comment_like import LikeCommentView
 from .delete_post import DeletePostView

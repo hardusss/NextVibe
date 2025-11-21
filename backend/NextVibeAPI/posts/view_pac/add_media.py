@@ -5,9 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from ..serializers_pac import PostsMediaSerializer
 from ..tasks import send_post_for_moderation
 from ..models import Post, PostsMedia
+from rest_framework.throttling import ScopedRateThrottle
 
 class AddMediaToPostView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "add_media"
     
     def post(self, request, *args, **kwargs) -> Response:
         post_id = request.data.get("post", None)

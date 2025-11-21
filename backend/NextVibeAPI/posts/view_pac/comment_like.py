@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from ..models import Comment, CommentReply
 from user.models import Notification
 from user.src.clear_notify_cache import clear_notification_cache
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
@@ -18,6 +19,8 @@ class LikeCommentView(APIView):
         APIView (_type_): Parent class from drf for api
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "comment_like"
 
     def put(self, request, comment_id: int) -> Response:
         """

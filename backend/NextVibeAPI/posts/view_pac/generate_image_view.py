@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..src.generate_image import generate
 from django.contrib.auth import get_user_model
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
@@ -24,6 +25,8 @@ class GenerateImage(APIView):
             Handles POST requests to generate an image based on the given prompt.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "ai_gen"
 
     def post(self, request) -> Response:
         """

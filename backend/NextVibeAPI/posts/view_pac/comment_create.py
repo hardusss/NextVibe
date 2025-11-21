@@ -7,12 +7,15 @@ from ..models import Comment, CommentReply
 from django.contrib.auth import get_user_model
 from user.models import Notification
 from user.src.clear_notify_cache import clear_notification_cache
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
 
 class CommentCreateView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "comment"
 
     def post(self, request, *args, **kwargs):
         if "comment_id" in request.data:
@@ -64,6 +67,8 @@ class CommentCreateView(APIView):
 
 class CommentReplyView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "comment"
 
     def post(self, request, *args, **kwargs):
         comment_id = kwargs["comment_id"]
