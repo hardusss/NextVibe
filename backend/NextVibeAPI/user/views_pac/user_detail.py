@@ -5,11 +5,14 @@ from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 
 from ..serializers_pac import UserDetailSerializer
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "profile"
     
     def get(self, request, id: int):
         try:

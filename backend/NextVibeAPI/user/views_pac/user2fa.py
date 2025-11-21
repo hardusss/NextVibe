@@ -4,6 +4,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from ..src import TwoFA
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
@@ -11,6 +12,8 @@ User = get_user_model()
 
 class TwoFAView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "2fa"
     def get(self, request, *args, **kwargs) -> Response:
         try:
             user = User.objects.get(user_id=request.user.user_id)

@@ -6,12 +6,15 @@ from rest_framework.permissions import IsAuthenticated
 from user.models import Notification
 from django.core.cache import cache
 from typing import Self, NewType
+from rest_framework.throttling import ScopedRateThrottle
 
 CacheKey = NewType("CacheKey", str)
 
 
 class GetCountUnreadNotificationsView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "notifications"
 
     def get(self: Self, request: Request) -> Response:
         """Method for getting unread notifications"""

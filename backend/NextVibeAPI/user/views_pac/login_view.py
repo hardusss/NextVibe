@@ -2,9 +2,13 @@ from ..serializers_pac import UserLoginSerializer
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+
 
 class LoginUserView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     def post(self, request, *args, **kwargs):
         serializer = UserLoginSerializer(data=request.data)

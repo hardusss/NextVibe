@@ -5,15 +5,18 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import HistorySearch
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from django.db.models import Case, When, CharField, Value, F
+from django.db.models import CharField, Value, F
 from django.db.models.functions import Concat
 from django.conf import settings
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
 
 class HistorySearchView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "search"
     """
     A class for create and delete user history search
 

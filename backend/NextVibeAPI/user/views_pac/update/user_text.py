@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
@@ -17,6 +18,9 @@ class UpdateUserText(APIView):
     """
     
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "profile_edit"
+    
     def put(self, request) -> Response:
         user_id = request.user.user_id
         username = request.query_params.get("username")
