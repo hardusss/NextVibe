@@ -148,6 +148,52 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/min",
+        "user": "300/min",
+
+        # Users
+        "profile": "60/min",
+        "profile_edit": "10/min",
+        "2fa": "5/min",
+        "password_reset": "5/min",
+        "follow": "40/min", 
+        "follows": "100/min",
+        "readers": "100/min",
+        "search": "100/min",
+        "notifications": "150/min",  
+        "auth": "10/min",
+
+        # Posts/Feed
+        "feed": "110/min",   
+        "post_menu": "170/min",
+        "report": "5/min",         
+        "post": "15/min",
+        "post_delete": "20/min",
+        "ai_gen": "10/min",
+        "add_media": "50/min",
+        "like": "80/min",     
+
+        # Comments  
+        "comment": "45/min",  
+        "comment_like": "70/min", 
+        "comments_list": "100/min",
+
+        # Chats  
+        "chat": "40/min",
+        "delete_chat": "20/min",
+        "chats_list": "100/min",
+        "online_users": "100/min", 
+
+        
+        
+        # Wallets
+        "wallet_create": "15/min",
+        "balance": "50/min",
+        "last_transaction": "60/min",
+        "transaction_fee": "20/min",
+        "transaction": "20/min",
+    },
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
