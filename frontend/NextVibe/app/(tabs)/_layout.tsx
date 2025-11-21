@@ -1,12 +1,14 @@
 import { RelativePathString, Stack, useRouter, useSegments, useFocusEffect } from "expo-router";
 import { FontAwesome5, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColorScheme, View, TouchableOpacity } from "react-native";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { storage } from "@/src/utils/storage";
 import { WebSocketProvider } from "@/src/context/WebSocketContext";
+import axios from "axios";
+import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
 
 if (__DEV__ && typeof global !== 'undefined') {
   const originalError = console.error;
@@ -42,6 +44,8 @@ export default function Layout() {
   const inactiveColor = theme === "dark" ? "#fafafa" : "black";
   const [imageProfile, setImageProfile] = useState<string | null>(null);
   const [userID, setUserID] = useState<number | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [visible, setVisible] = useState<boolean>(false);
 
   const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "wallet", "select-token", "deposit", "transaction", "user-profile", "create-wallet", "result-transaction", "transactions", "transaction-detail", "chat-room", "chats", "follows-screen", "notifications", "user-banned"];
 
@@ -75,6 +79,20 @@ export default function Layout() {
     }, [])
   );
 
+ useEffect(() => {
+  const interceptor = axios.interceptors.response.use(
+    (res) => res,
+    (error) => {
+      if (error.response?.status === 429) {
+        setToastMessage("You exceeded the request limit!");
+        setVisible(true);
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return () => axios.interceptors.response.eject(interceptor);
+}, []);
   useEffect(() => {
     if (blacklist.includes(currentPage) || !userID) return;
     
@@ -102,6 +120,14 @@ export default function Layout() {
 
   return (
     <WebSocketProvider userId={userID || 0}>
+      {toastMessage && (
+        <Web3Toast
+          message={toastMessage}
+          visible={visible}
+          onHide={() => setVisible(false)}
+          isSuccess={false}
+        />
+      )}
       <View style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false, animation: "none" }} >
           <Stack.Screen name="home" />
