@@ -8,7 +8,7 @@ import Icon from "react-native-vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
-import { VideoView, useVideoPlayer } from "expo-video";
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
 import timeAgo from "@/src/utils/formatTime";
@@ -405,7 +405,7 @@ const getVideoUrls = (mediaItem: MediaItem) => {
 
         const hdUrl = mediaItem.media_url.replace(
             '/video/upload/',
-            '/video/upload/q_auto:good,f_auto,vc_auto,br_1500k/'
+            '/video/upload/q_auto:good,f_auto,vc_h264:baseline,br_1500k/' 
         );
 
         return { preview: previewUrl, hd: hdUrl, isVideo: true };
@@ -444,12 +444,7 @@ const MediaItemComponent = ({
     const styles = getStyles(theme);
     const tapCount = useRef<number>(0);
     const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    
-    const player = useVideoPlayer(isVideoMedia ? hd : '', player => {
-        player.loop = true;
-        player.muted = isMuted;
-    });
+    const videoRef = useRef<Video>(null);
 
     const handleDoublePress = () => {
         tapCount.current += 1;
@@ -492,55 +487,37 @@ const MediaItemComponent = ({
     };
 
     useEffect(() => {
-            return () => {
-                if (tapTimer.current) {
-                    clearTimeout(tapTimer.current);
-                }
-            };
-        }, []);
-
-    useEffect(() => {
-        if (!isVideoMedia) return;
-
-        const subscription = player.addListener('statusChange', (status) => {
-            if (status.status === 'readyToPlay') {
-                setIsLoading(false);
-                setTimeout(() => setShowPreview(false), 150);
-            }
-            else if (status.status === 'loading') {
-                if (isVisible) {
-                    setIsLoading(true);
-                }
-            }
-            else if (status.status === 'idle') {
-                setIsLoading(false);
-            }
-        });
-
         return () => {
-            subscription.remove();
+            if (tapTimer.current) {
+                clearTimeout(tapTimer.current);
+            }
         };
-    }, [isVideoMedia, isVisible]);
+    }, []);
 
     useEffect(() => {
-        if (!isVideoMedia) return;
+        if (!isVideoMedia || !videoRef.current) return;
 
         if (isVisible) {
-            player.play();
+            videoRef.current.playAsync();
         } else {
-            player.pause();
-            player.currentTime = 0;
+            videoRef.current.pauseAsync();
+            videoRef.current.setPositionAsync(0);
             setShowPreview(true);
         }
     }, [isVisible, isVideoMedia]);
 
-    useEffect(() => {
-        if (isVideoMedia) {
-            player.muted = isMuted;
+    const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+        if (!status.isLoaded) {
+            return;
         }
-    }, [isMuted, isVideoMedia]);
 
-        return (
+        if (status.isLoaded && status.isPlaying) {
+            setIsLoading(false);
+            setTimeout(() => setShowPreview(false), 150);
+        }
+    };
+
+    return (
         <Pressable 
             onPress={handleDoublePress}
             style={styles.mediaContainer}
@@ -557,13 +534,15 @@ const MediaItemComponent = ({
                             resizeMode={FastImage.resizeMode.cover}
                         />
                     )}
-                    <VideoView
+                    <Video
+                        ref={videoRef}
                         style={styles.fullMedia}
-                        player={player}
-                        allowsFullscreen={false}
-                        allowsPictureInPicture={false}
-                        nativeControls={false}
-                        contentFit="cover"
+                        source={{ uri: hd }}
+                        resizeMode={ResizeMode.COVER}
+                        isLooping
+                        isMuted={isMuted}
+                        shouldPlay={false}
+                        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                     />
                     {isLoading && isVisible && (
                         <View style={styles.mediaLoading}>
