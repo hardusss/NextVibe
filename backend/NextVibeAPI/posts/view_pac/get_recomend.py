@@ -2,9 +2,12 @@ from .recomendations import RecomendationsFormater
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 
 class RecomendationsView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "feed"
     def get(self, request) -> Response:
         rec = RecomendationsFormater([128, 123, 131, 125, 126], 
                                     [162, 180, 172, 210, 192],

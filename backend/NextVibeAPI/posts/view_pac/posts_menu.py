@@ -6,6 +6,7 @@ from ..models import Post, PostsMedia
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Prefetch
+from rest_framework.throttling import ScopedRateThrottle
 
 User: AbstractUser = get_user_model()
 
@@ -13,6 +14,8 @@ User: AbstractUser = get_user_model()
 
 class PostMenuView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "post_menu"
 
     def get(self, request, id: int) -> Response:
         index = int(request.query_params.get("index", 0))

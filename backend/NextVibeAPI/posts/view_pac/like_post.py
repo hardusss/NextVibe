@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from ..models import Post
 from user.models import Notification
 from user.src.clear_notify_cache import clear_notification_cache
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
@@ -17,6 +18,8 @@ class LikePostView(APIView):
 
     """
     permission_classes = [IsAuthenticated] # checks if the user is authorized
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "like"
     
     def put(self, request, id: int, post_id: int) -> Response:
         """

@@ -5,11 +5,14 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import Post
 from django.contrib.auth import get_user_model
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
 class DeletePostView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "post_delete"
     def delete(self, request) -> Response:
         post_id: int = request.query_params.get("postId", 0)
 
