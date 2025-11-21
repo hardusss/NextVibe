@@ -7,10 +7,13 @@ from ..models import User
 from django.db.models import Case, When, CharField, Value, F
 from django.db.models.functions import Concat
 from django.conf import settings
+from rest_framework.throttling import ScopedRateThrottle
 
 
 class GetReaders(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "readers"
     
     def get(self, request: Request) -> Response:
         # Get data request

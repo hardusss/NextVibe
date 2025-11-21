@@ -9,10 +9,14 @@ from datetime import timedelta
 from django.utils import timezone
 from user.src.clear_notify_cache import clear_notification_cache
 
+from rest_framework.throttling import ScopedRateThrottle
+
 User = get_user_model()
 
 class FollowView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "follow"
     
     def put(self, request, follow_id: int):
         id: int = request.user.user_id

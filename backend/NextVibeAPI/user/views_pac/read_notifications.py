@@ -4,10 +4,13 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from user.models import Notification
 from user.src.clear_notify_cache import clear_notification_cache
+from rest_framework.throttling import ScopedRateThrottle
 
 
 class ReadNotificationsView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "notifications"
 
     def put(self, request):
         user = request.user

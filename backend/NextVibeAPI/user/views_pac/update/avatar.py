@@ -1,12 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.throttling import ScopedRateThrottle
 
 
 class UpdateUserAvatar(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "profile_edit"
 
     def put(self, request) -> Response:
         avatar = request.FILES.get('avatar')

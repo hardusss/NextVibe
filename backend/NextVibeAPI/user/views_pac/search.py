@@ -5,6 +5,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import Case, When, CharField, Value, F
 from django.db.models.functions import Concat
 from django.conf import settings
+from rest_framework.throttling import ScopedRateThrottle
+
 
 User = get_user_model()
 
@@ -20,7 +22,9 @@ class SearchUsersView(APIView):
     """
     
     permission_classes=[IsAuthenticated] # Checking whether the user who sent the request is authorized
-    
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "search"
+
     def get(self, request, *args, **kwargs) -> Response:
         search_name = request.query_params.get("searchName", "")
         try:

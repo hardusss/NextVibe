@@ -9,12 +9,15 @@ from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
 from django.conf import settings
 from typing import Self, Any
+from rest_framework.throttling import ScopedRateThrottle
 
 PAGE_SIZE: int = 15
 
 class GetNotificationsView(APIView):
     permission_classes = [IsAuthenticated]
-    
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "notifications"
+
     def get(self: Self, request: Request) -> Response:
         user: Any = request.user
         page_number: int = int(request.query_params.get("page", 1))

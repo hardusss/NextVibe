@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
 from ..src.two_fa import TwoFA
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
@@ -18,6 +18,8 @@ class UpdatePassword(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "password_reset"
     def put(self, request) -> Response:
         """Updates user password.
 
