@@ -18,11 +18,14 @@ from dotenv import load_dotenv
 import os
 import asyncio, httpx
 from .utils import async_clear_cache_later
+from rest_framework.throttling import ScopedRateThrottle
 
 load_dotenv()
 
 class BtcTransactionView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "transaction"
 
     def post(self, request) -> Response:
         
