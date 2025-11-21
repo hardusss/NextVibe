@@ -1,16 +1,19 @@
-import { useColorScheme, Animated, View, Text, StyleSheet } from "react-native";
+import { useColorScheme, Animated, View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useRef, useEffect } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-
 
 export default function Web3Toast({ message, visible, onHide, isSuccess }: { message: string, visible: boolean, onHide: () => void, isSuccess: boolean }) {
   const isDark = useColorScheme() === "dark";
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (visible) {
+      // Reset animations
+      progressAnim.setValue(1);
+
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
@@ -25,26 +28,42 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: { mes
         }),
       ]).start();
 
+      // Progress bar animation
+      Animated.timing(progressAnim, {
+        toValue: 0,
+        duration: 3000,
+        useNativeDriver: false,
+      }).start();
+
       const timer = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(slideAnim, {
-            toValue: -100,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacityAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]).start(() => onHide());
+        handleClose();
       }, 3000);
 
       return () => clearTimeout(timer);
     }
-  }, [visible]);
+  }, [visible, slideAnim, opacityAnim, progressAnim]);
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: -100,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => onHide());
+  };
 
   if (!visible) return null;
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
     <Animated.View
@@ -58,12 +77,19 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: { mes
         },
       ]}
     >
-      <LinearGradient
-        colors={['#8B5CF6', '#6366F1', '#EC4899']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.toastBorder}
-      />
+      {/* Animated progress bar */}
+      <View style={styles.progressContainer}>
+        <Animated.View style={{ width: progressWidth }}>
+          <LinearGradient
+            colors={['#8B5CF6', '#6366F1', '#EC4899']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.progressBar}
+          />
+        </Animated.View>
+      </View>
+
+      {/* Toast content */}
       <View style={styles.toastContent}>
         <View style={[
           styles.toastIconContainer,
@@ -83,6 +109,20 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: { mes
         ]}>
           {message}
         </Text>
+        
+        {/* Close button */}
+        <TouchableOpacity 
+          onPress={handleClose}
+          style={styles.closeButton}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialCommunityIcons
+            name="close"
+            size={20}
+            color={isDark ? "#9CA3AF" : "#6B7280"}
+          />
+        </TouchableOpacity>
       </View>
     </Animated.View>
   );
@@ -104,8 +144,13 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  toastBorder: {
+  progressContainer: {
     height: 3,
+    width: "100%",
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+  },
+  progressBar: {
+    height: "100%",
     width: "100%",
   },
   toastContent: {
@@ -128,5 +173,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     letterSpacing: 0.2,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
