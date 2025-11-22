@@ -59,12 +59,6 @@ class AddMediaToPostView(APIView):
                     PostsMedia.objects.filter(id=media['id']).delete()
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        # Update post status
-        post.moderation_status = "pending"
-        post.save(update_fields=['moderation_status'])
-        
-        # Send to moderation
-        send_post_for_moderation.delay(post_id)
         
         return Response({
             "message": "Media files added successfully. Processing in background.",
