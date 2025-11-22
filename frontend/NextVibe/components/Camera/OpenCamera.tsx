@@ -6,9 +6,12 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useFocusEffect } from "expo-router";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
+import * as FileSystem from 'expo-file-system';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const MAX_DURATION = 30 * 1000; // 30 seconds in milliseconds
+const VIDEO_MAX_SIZE_MB = 100;
+const IMAGE_MAX_SIZE_MB = 30;
 
 const CameraScreen = () => {
   const router = useRouter();
@@ -50,6 +53,25 @@ const CameraScreen = () => {
           setShowToast(true);
           return;
         }
+        const info = await FileSystem.getInfoAsync(asset.uri);
+        if (info.exists){
+        if (asset.type === "video"){
+            const sizeMB = info.size / (1024 * 1024);
+            if (sizeMB > VIDEO_MAX_SIZE_MB) {
+              setToastText("This video is a bit too big. Please upload a file under 100MB.");
+              setShowToast(true);
+              return;
+            };
+          };
+        if (asset.type === "image"){
+            const sizeMB = info.size / (1024 * 1024);
+            if (sizeMB > IMAGE_MAX_SIZE_MB) {
+              setToastText("This image is a bit too big. Please upload a file under 30MB.");
+              setShowToast(true);
+              return;
+            };
+        }
+        };
       };
 
       if (selected.length > 3) {
