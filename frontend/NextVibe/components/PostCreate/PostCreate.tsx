@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, Image, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, ScrollView, StatusBar, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Switch, useColorScheme, Dimensions, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'; 
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import createPost from '@/src/api/create.post';
 import generateImage from '@/src/api/generate.image';
@@ -42,28 +42,30 @@ const darkColors = {
 const {width, height} = Dimensions.get("window")
 
 function VideoPlayer({ uri, isActive }: { uri: string; isActive: boolean }) {
-    const player = useVideoPlayer(uri, (player) => {
-        player.loop = true;
-        if (isActive) {
-            player.play();
-        }
-    });
-
-    useEffect(() => {
-        if (isActive) {
-            player.play();
-        } else {
-            player.pause();
-        }
-    }, [isActive, player]);
+    const video = useRef<Video>(null);
+    const [status, setStatus] = useState<AVPlaybackStatus>();
 
     return (
-        <VideoView
-            player={player}
-            style={{ width: '100%', height: '100%' }}
-            nativeControls={false}
-            contentFit="cover"
-        />
+        <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+            {(!status?.isLoaded) && (
+                <ActivityIndicator size="large" color="white" style={{ position: 'absolute', zIndex: 1 }} />
+            )}
+            
+            <Video
+                ref={video}
+                style={{ width: '100%', height: '100%' }}
+                source={{ uri: uri }}
+                useNativeControls={true} 
+                resizeMode={ResizeMode.CONTAIN}
+                isLooping
+                shouldPlay={isActive}
+                isMuted={false} 
+                onPlaybackStatusUpdate={status => setStatus(() => status)}
+                onError={(error) => console.error("Video Load Error:", error)}
+                onLoadStart={() => console.log("Video loading started:", uri)}
+                onLoad={(status) => console.log("Video loaded successfully", status)}
+            />
+        </View>
     );
 }
 
@@ -95,7 +97,7 @@ export default function PostCreate() {
     );
     
     const isVideo = (uri: string): boolean => {
-        return uri.endsWith('.mp4') || uri.endsWith('.mov');
+        return uri.match(/\.(mp4|mov|mkv|webm|ogg)$/i) !== null;
     };
 
     const handleDeleteImage = (item: string) => {
@@ -120,6 +122,10 @@ export default function PostCreate() {
     }).current;
 
     const renderMedia = ({ item, index }: { item: string; index: number }) => {
+        const fixedUri = item.startsWith('file://') || item.startsWith('https://') 
+            ? item 
+            : `file://${item}`;
+
         if (isVideo(item)) {
             return (
                 <View style={themedStyles.mediaContainer}>
@@ -130,7 +136,7 @@ export default function PostCreate() {
                         <MaterialIcons name="close" color="white" size={20}/>
                     </TouchableOpacity>
                     <VideoPlayer 
-                        uri={item.startsWith('file://') || item.startsWith('https://') ? item : `file://${item}`}
+                        uri={fixedUri}
                         isActive={index === activeVideoIndex}
                     />
                 </View>
@@ -146,7 +152,7 @@ export default function PostCreate() {
                     </TouchableOpacity>
                     <FastImage
                         source={{ 
-                            uri: item.startsWith('https://') || item.startsWith('file://') ? item : `file://${item}`,
+                            uri: fixedUri,
                             priority: FastImage.priority.normal,
                             cache: FastImage.cacheControl.immutable
                         }}
