@@ -62,7 +62,7 @@ def compress_video(media):
     """
     Compress video using FFmpeg:
     - Resize to max width 1280 (720p)
-    - CRF 28 (Good balance for social media)
+    - CRF 23 (Good balance for social media)
     - AAC audio
     - movflags=+faststart (Starts playing immediately on web)
     """
@@ -100,7 +100,7 @@ def compress_video(media):
                 stream, 
                 temp_output.name,
                 vcodec='libx264',
-                crf=28,             # Constant Rate Factor (18-28 is good, 28 is smaller size)
+                crf=23,             # Constant Rate Factor (18-28 is good, 28 is smaller size)
                 preset='fast',      # Encoding speed
                 acodec='aac',       # Audio codec
                 audio_bitrate='128k',
