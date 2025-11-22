@@ -6,8 +6,9 @@ from io import BytesIO
 from .models import PostsMedia, Post
 import requests
 from django.contrib.auth import get_user_model
-# Using boto3
 import boto3
+import ffmpeg  
+from django.core.files.temp import NamedTemporaryFile
 
 from django.conf import settings
 from django.utils import timezone
@@ -19,7 +20,6 @@ User = get_user_model()
 
 def get_s3_client():
     """Create S3 cliend for R2"""
-    
     return boto3.client(
         's3',
         endpoint_url=settings.AWS_S3_ENDPOINT_URL,
@@ -32,7 +32,7 @@ def get_s3_client():
 @shared_task
 def process_media_file(media_id):
     """
-    Handle media file: compresses image or generate preview for video
+    Handle media file: compresses image/video or generate preview
     """
     try:
         media = PostsMedia.objects.get(id=media_id)
@@ -43,6 +43,7 @@ def process_media_file(media_id):
         image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
         
         if file_extension in video_extensions:
+            compress_video(media)
             generate_video_thumbnail(media)
         elif file_extension in image_extensions:
             compress_image(media)
@@ -57,6 +58,101 @@ def process_media_file(media_id):
         return f"Error processing media {media_id}: {str(e)}"
 
 
+def compress_video(media):
+    """
+    Compress video using FFmpeg:
+    - Resize to max width 1280 (720p)
+    - CRF 28 (Good balance for social media)
+    - AAC audio
+    - movflags=+faststart (Starts playing immediately on web)
+    """
+    temp_input = None
+    temp_output = None
+    
+    try:
+        print(f"🎥 Starting compression for video {media.id}...")
+        
+        # 1. Download original video to temp file
+        video_content = media.file.read()
+        media.file.seek(0)
+        
+        temp_input = NamedTemporaryFile(delete=False, suffix='.mp4')
+        temp_input.write(video_content)
+        temp_input.flush()
+        temp_input.close()
+        
+        # Get original size in MB
+        original_size = os.path.getsize(temp_input.name)
+        original_size_mb = original_size / (1024 * 1024)
+        
+        # Prepare output temp file
+        temp_output = NamedTemporaryFile(delete=False, suffix='.mp4')
+        temp_output.close() # We just need the name
+        
+        # 2. Run FFmpeg compression
+        try:
+            stream = ffmpeg.input(temp_input.name)
+            
+            # Scale logic: width 1280, height automatic (divisible by 2)
+            stream = ffmpeg.filter(stream, 'scale', 1280, -2)
+            
+            stream = ffmpeg.output(
+                stream, 
+                temp_output.name,
+                vcodec='libx264',
+                crf=28,             # Constant Rate Factor (18-28 is good, 28 is smaller size)
+                preset='fast',      # Encoding speed
+                acodec='aac',       # Audio codec
+                audio_bitrate='128k',
+                movflags='faststart', # Critical for web streaming!
+                loglevel='error'
+            )
+            
+            ffmpeg.run(stream, overwrite_output=True)
+            
+        except ffmpeg.Error as e:
+            print(f"❌ FFmpeg error: {e.stderr.decode('utf8')}")
+            raise e
+
+        # 3. Check results and upload
+        compressed_size = os.path.getsize(temp_output.name)
+        compressed_size_mb = compressed_size / (1024 * 1024)
+        
+        # Calculate savings
+        saved_mb = original_size_mb - compressed_size_mb
+        saved_percent = (saved_mb / original_size_mb) * 100 if original_size_mb > 0 else 0
+        
+        print(f"📊 Video {media.id} Compression Results:")
+        print(f"   Before: {original_size_mb:.2f} MB")
+        print(f"   After:  {compressed_size_mb:.2f} MB")
+        print(f"   Saved:  {saved_mb:.2f} MB ({saved_percent:.1f}%)")
+
+        # Upload back to S3/R2 (replacing original)
+        s3_client = get_s3_client()
+        with open(temp_output.name, 'rb') as data:
+            s3_client.put_object(
+                Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                Key=media.file.name,
+                Body=data,
+                ContentType='video/mp4',
+                CacheControl='max-age=31536000'
+            )
+            
+        print(f"✅ Compressed video uploaded successfully")
+
+    except Exception as e:
+        print(f"❌ Error compressing video {media.id}: {e}")
+        import traceback
+        traceback.print_exc()
+        
+    finally:
+        # Cleanup
+        if temp_input and os.path.exists(temp_input.name):
+            os.unlink(temp_input.name)
+        if temp_output and os.path.exists(temp_output.name):
+            os.unlink(temp_output.name)
+
+
 def compress_image(media):
     """
     Compress image to max width 1920px with 85% quality
@@ -68,6 +164,9 @@ def compress_image(media):
         
         img = Image.open(BytesIO(file_content))
         
+        # Calculate original size roughly
+        original_size_mb = len(file_content) / (1024 * 1024)
+
         # Fix orientation
         img = ImageOps.exif_transpose(img)
         
@@ -91,7 +190,10 @@ def compress_image(media):
         img.save(output, format='JPEG', quality=85, optimize=True)
         output.seek(0)
         
-        # Upload to R2 by means of boto3
+        compressed_size_mb = output.getbuffer().nbytes / (1024 * 1024)
+        
+        print(f"📊 Image {media.id}: {original_size_mb:.2f}MB -> {compressed_size_mb:.2f}MB")
+        
         s3_client = get_s3_client()
         file_name = media.file.name
         
@@ -116,9 +218,10 @@ def generate_video_thumbnail(media):
     Generate thumbnail from first video frame 
     """
     try:
-        from django.core.files.temp import NamedTemporaryFile
+        # NOTE: We can optimize this by passing the file path if it was just compressed locally,
+        # but for simplicity and robustness we download (it might be fast on server network)
         
-        print(f"📥 Downloading video {media.id} from R2...")
+        print(f"📥 Downloading video {media.id} for thumbnail...")
         
         video_content = media.file.read()
         media.file.seek(0)
@@ -128,8 +231,6 @@ def generate_video_thumbnail(media):
         temp_video.flush()
         temp_video.close()
         video_path = temp_video.name
-        
-        print(f"✅ Video saved to temp: {video_path}")
         
         try:
             cap = cv2.VideoCapture(video_path)
@@ -155,7 +256,6 @@ def generate_video_thumbnail(media):
                 img.save(output, format='JPEG', quality=70, optimize=True)
                 output.seek(0)
                 
-                
                 s3_client = get_s3_client()
                 
                 preview_path = f"previews/{media.id}_preview.jpg"
@@ -169,20 +269,16 @@ def generate_video_thumbnail(media):
                 
                 media.preview = preview_path
                 media.save(update_fields=['preview'])
-                
-                preview_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{preview_path}"
-                print(f"✅ Video thumbnail {media.id} generated: {preview_url}")
+
+                print(f"✅ Video thumbnail generated")
             else:
                 print(f"❌ Could not read frame from video {media.id}")
             
             cap.release()
             
         finally:
-            try:
+            if os.path.exists(video_path):
                 os.unlink(video_path)
-                print(f"🗑️ Temp file deleted: {video_path}")
-            except Exception as e:
-                print(f"Warning: Could not delete temp file: {e}")
                 
     except Exception as e:
         print(f"❌ Error in generate_video_thumbnail {media.id}: {e}")
