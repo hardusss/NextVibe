@@ -909,9 +909,9 @@ const UserPosts = () => {
         )}
         onEndReached={() => fetchPosts()}
         onEndReachedThreshold={0.8}
-        initialNumToRender={6}
-        maxToRenderPerBatch={3}
-        windowSize={5}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         removeClippedSubviews={true}
         showsVerticalScrollIndicator={false}
         onScrollBeginDrag={() => setDropdownVisible({})}   
@@ -919,7 +919,7 @@ const UserPosts = () => {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{
           itemVisiblePercentThreshold: 70,
-          minimumViewTime: 100,
+          minimumViewTime: 200,
         }}
         getItemLayout={(data, index) => ({
           length: ESTIMATED_POST_HEIGHT,
