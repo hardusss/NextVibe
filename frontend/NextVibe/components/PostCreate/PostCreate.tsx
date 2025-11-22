@@ -55,8 +55,8 @@ function VideoPlayer({ uri, isActive }: { uri: string; isActive: boolean }) {
                 ref={video}
                 style={{ width: '100%', height: '100%' }}
                 source={{ uri: uri }}
-                useNativeControls={true} 
-                resizeMode={ResizeMode.CONTAIN}
+                useNativeControls={false} 
+                resizeMode={ResizeMode.COVER}
                 isLooping
                 shouldPlay={isActive}
                 isMuted={false} 
