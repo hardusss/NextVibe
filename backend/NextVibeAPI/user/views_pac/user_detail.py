@@ -9,6 +9,17 @@ from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
+BANED_FIELDS = [
+    "email",
+    "last_login",
+    "secret_2fa",
+    "is2FA",
+    "count_generations_ai",
+    "is_staff",
+    "is_superuser",
+    "is_active",
+    "last_activity"
+]
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
@@ -19,14 +30,20 @@ class UserDetailView(APIView):
             user = User.objects.get(user_id=id)
             isProfile = request.query_params.get('isProfile')
             serializer = UserDetailSerializer(user)
+
+            data = serializer.data.copy()
+
             is_subscribed = False
             if isProfile == "true":
-               owner = User.objects.get(user_id=request.user.user_id)
-               if serializer.data["user_id"] in owner.follow_for:
+                owner = User.objects.get(user_id=request.user.user_id)
+                if data["user_id"] in owner.follow_for:
                    is_subscribed = True
-               else:
-                   is_subscribed = False
-            return Response({**serializer.data, "is_subscribed": is_subscribed}, status=status.HTTP_200_OK)
+
+            if id != request.user.user_id:
+                for banned_field in BANED_FIELDS:
+                    data.pop(banned_field, None)
+
+            return Response({**data, "is_subscribed": is_subscribed}, status=status.HTTP_200_OK)
+        
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        
