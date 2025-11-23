@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import ChatBubble from './ChatBubble';
 import GetApiUrl from '@/src/utils/url_api';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getMessages, connectWebSocket, sendWebSocketMessage, sendReadStatus, notifyEnterChat, getWebSocket } from '@/src/api/chat';
+import { getMessages, connectWebSocket, sendWebSocketMessage, sendReadStatus, notifyEnterChat } from '@/src/api/chat';
 import getUserDetail from '@/src/api/user.detail';
 import MediaPickerModal from './MediaPickerModal';
 import { storage } from '@/src/utils/storage';
@@ -198,7 +198,7 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (userIdState) {
-      connectWebSocket(+userIdState, (data) => {
+      connectWebSocket((data) => {
         if (data.type === "message_edited" && data.chat_id === +id) {
           setMessages(prev => prev.map(msg => 
             msg.message_id === data.message_id 
