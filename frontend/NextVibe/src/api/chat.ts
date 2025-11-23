@@ -4,21 +4,31 @@ import GetApiUrl from '../utils/url_api';
 
 let ws: WebSocket | null = null;
 
-export const connectWebSocket = (userId: number, onMessage: (data: any) => void) => {
-  const wsUrl = GetApiUrl().replace('http', 'ws').replace(':8000', ':8081').replace('/api/v1', '');
-  ws = new WebSocket(`${wsUrl}/ws/${userId}`);
-  
-  ws.onopen = () => {};
+export const connectWebSocket = async (onMessage: (data: any) => void) => {
+  const token = await storage.getItem('access');
+  if (!token) throw new Error('No access token found');
+
+  const wsUrl = GetApiUrl()
+    .replace('http', 'ws')
+    .replace(':8000', ':8081')
+    .replace('/api/v1', '');
+
+  if (!ws?.OPEN){
+    ws = new WebSocket(`${wsUrl}/ws?token=${token}`); 
+  }
+
+  ws.onopen = () => console.log('WebSocket connected');
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
     onMessage(data);
   };
 
-  ws.onerror = (error) => {};
+  ws.onerror = (error) => console.error('WebSocket error:', error);
 
   ws.onclose = () => {
-    setTimeout(() => connectWebSocket(userId, onMessage), 5000);
+    console.log('WebSocket closed, reconnecting in 5s...');
+    setTimeout(() => connectWebSocket(onMessage), 5000);
   };
 };
 
@@ -28,7 +38,7 @@ export const sendWebSocketMessage = async (chatId: number, message: string, medi
       const media = await Promise.all(mediaFiles.map(async (file) => {
         const response = await fetch(file.uri);
         const blob = await response.blob();
-        
+
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => {
@@ -46,8 +56,8 @@ export const sendWebSocketMessage = async (chatId: number, message: string, medi
 
       ws.send(JSON.stringify({
         chat_id: chatId,
-        message: message,
-        media: media
+        message,
+        media
       }));
     } catch (error) {
       console.error('Error preparing media:', error);
@@ -64,7 +74,6 @@ export const sendReadStatus = (chatId: number) => {
   }
 };
 
-
 export const notifyEnterChat = (chatId: number) => {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({
@@ -74,7 +83,6 @@ export const notifyEnterChat = (chatId: number) => {
     }));
   }
 };
-
 export const getWebSocket = () => ws;
 
 export const getChats = async () => {
