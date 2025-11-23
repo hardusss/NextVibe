@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Header
 from sqlalchemy.orm import Session
 from db import SessionLocal
 from src.models import Chat, Message, User
 from typing import Optional
 import redis
 import json
+from auth import auth_jwt
+
 
 router = APIRouter()
 MESSAGES_PER_PAGE = 18
@@ -21,12 +23,21 @@ def get_db():
     finally:
         db.close()
 
+def get_current_user(authorization: str = Header(...)):
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    token = authorization.split(" ")[1]
+    auth_user = auth_jwt(token)
+    if not auth_user["auth"] or auth_user["token_type"] != "access":
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return auth_user["user_id"]
+
 
 @router.get("/messages/{chat_id}")
 async def get_chat_messages(
     chat_id: int,
     last_message_id: Optional[int] = Query(None),
-    user_id: int = Query(...),  
+    user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     cache_key = get_messages_cache_key(chat_id, last_message_id)
@@ -73,5 +84,4 @@ async def get_chat_messages(
         })
 
     r.setex(cache_key, 30, json.dumps(data))
-
     return list(data)
