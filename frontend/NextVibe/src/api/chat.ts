@@ -26,10 +26,6 @@ export const connectWebSocket = async (onMessage: (data: any) => void) => {
 
   ws.onerror = (error) => console.error('WebSocket error:', error);
 
-  ws.onclose = () => {
-    console.log('WebSocket closed, reconnecting in 5s...');
-    setTimeout(() => connectWebSocket(onMessage), 5000);
-  };
 };
 
 export const sendWebSocketMessage = async (chatId: number, message: string, mediaFiles: any[] = []) => {
