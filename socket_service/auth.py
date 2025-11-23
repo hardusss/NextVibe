@@ -9,6 +9,7 @@ class AuthSuccess(TypedDict):
     status: Literal[200]
     detail: str
     user_id: int
+    token_type: str
 
 
 class AuthFail(TypedDict):
