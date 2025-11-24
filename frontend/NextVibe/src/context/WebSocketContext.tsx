@@ -3,6 +3,8 @@ import { AppState } from "react-native";
 import GetApiUrl from "../utils/url_api";
 import { storage } from "../utils/storage";
 
+let ws: WebSocket | null = null;  // GLOBAL SOCKET
+
 export const WebSocketProvider = ({
   userId,
   children,
@@ -10,19 +12,15 @@ export const WebSocketProvider = ({
   userId: number;
   children: React.ReactNode;
 }) => {
-  const wsRef = useRef<WebSocket | null>(null);
   const appState = useRef(AppState.currentState);
-  const tokenRef = useRef<string | null>(null);
 
   const getWebSocketUrl = async (): Promise<string | null> => {
     try {
-      const token = await storage.getItem('access');
+      const token = await storage.getItem("access");
       if (!token) {
-        console.error('❌ No access token found');
+        console.error("❌ No access token found");
         return null;
       }
-
-      tokenRef.current = token;
 
       const baseUrl = GetApiUrl().split("/api/v1")[0];
       const wsBaseUrl = baseUrl
@@ -31,81 +29,78 @@ export const WebSocketProvider = ({
         .replace(":8000", ":8081");
 
       const wsUrl = `${wsBaseUrl}/ws?token=${token}`;
-      
-      console.log('🔌 WebSocket URL:', wsUrl.replace(token, token.substring(0, 20) + '...'));
+      console.log("🔌 WS URL:", wsUrl.replace(token, token.substring(0, 20) + "..."));
+
       return wsUrl;
     } catch (error) {
-      console.error('❌ Error getting WebSocket URL:', error);
+      console.error("❌ Error building WS URL:", error);
       return null;
     }
   };
 
   const connect = async () => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      console.log('✅ WebSocket already connected');
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      console.log("⚠️ WebSocket already active");
       return;
     }
 
     const wsUrl = await getWebSocketUrl();
-    if (!wsUrl) {
-      console.error('❌ Cannot connect: no WebSocket URL');
-      return;
-    }
+    if (!wsUrl) return;
 
-    try {
-      console.log('🔌 Connecting to WebSocket...');
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+    console.log("🔌 Connecting WebSocket...");
+    ws = new WebSocket(wsUrl);
 
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected successfully');
-      };
+    ws.onopen = () => {
+      console.log("✅ WebSocket connected");
+    };
 
+    ws.onerror = (e: any) => {
+      console.error("⚠️ WebSocket error:", e?.message);
+    };
 
-      ws.onerror = (e: any) => {
-        console.error('⚠️ WebSocket error:', e.message);
-      };
-
-      ws.onclose = (event) => {
-        console.log(`🔌 WebSocket closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
-        wsRef.current = null;
-
-      };
-    } catch (error) {
-      console.error('❌ WebSocket connection error:', error);
-    }
+    ws.onclose = (event) => {
+      console.log(
+        `🔌 WebSocket closed (code: ${event.code}, reason: ${event.reason || "none"})`
+      );
+      ws = null; 
+    };
   };
 
   const disconnect = () => {
-    if (wsRef.current) {
-      console.log('👋 Disconnecting WebSocket...');
-      wsRef.current.close();
-      wsRef.current = null;
+    if (ws) {
+      console.log("👋 Closing WebSocket...");
+      ws.close();
+      ws = null;
     }
   };
 
   useEffect(() => {
-    connect();
+    connect(); 
 
     const subscription = AppState.addEventListener("change", (nextAppState) => {
-      console.log('📱 App state changed:', appState.current, '->', nextAppState);
-      
-      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
-        console.log('📱 App became active, connecting WebSocket...');
+      console.log("📱 App state:", appState.current, "->", nextAppState);
+
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        console.log("📱 App active → reconnecting WS");
         connect();
-      } else if (nextAppState.match(/inactive|background/)) {
-        console.log('📱 App went to background, disconnecting WebSocket...');
+      }
+
+      if (nextAppState.match(/inactive|background/)) {
+        console.log("📱 App background → disconnect WS");
         disconnect();
       }
-      
+
       appState.current = nextAppState;
     });
 
     return () => {
       subscription.remove();
-      disconnect();
+      disconnect(); 
     };
-  }, [userId]); 
+  }, [userId]);
 
   return <>{children}</>;
 };
