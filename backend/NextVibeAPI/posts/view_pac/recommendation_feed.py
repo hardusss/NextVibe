@@ -5,10 +5,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from posts.paginations import StandardResultsSetPagination
 from posts.models import Post
+from user.models import HistorySearch
 
-# For work with time
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Q
 
 
 class RecommendationFeedView(APIView):
@@ -21,19 +22,31 @@ class RecommendationFeedView(APIView):
         user = request.user
         last_7_days = timezone.now() - timedelta(days=7)
 
-        # Init pagination
         paginator = self.pagination_class()
-        following_ids = user.follow_for or [] # Get user following ids
 
-        # Check user following
-        if following_ids:
-            posts_queryset = Post.objects.filter(
-                create_at__gte=last_7_days,
-                owner__user_id__in=list(user.follow_for)
-            ).values()
+        following_ids = list(user.follow_for or [])
+        last_5_search = list(
+            HistorySearch.objects
+            .filter(user__user_id=user.user_id)
+            .values_list("searched_user__user_id", flat=True)[:5]
+        )
 
-            page = paginator.paginate_queryset(posts_queryset, request, view=self)
-            return paginator.get_paginated_response(page)
+        # base queryset
+        posts_queryset = Post.objects.filter(create_at__gte=last_7_days)
+
+        # forming OR scripts
+        filters = Q()
         
-        return Response({"data": None}, status=200)
-            
+        if following_ids:
+            filters |= Q(owner__user_id__in=following_ids)
+
+        if last_5_search:
+            filters |= Q(owner__user_id__in=last_5_search)
+
+        # if any filters exsist add it
+        if filters:
+            posts_queryset = posts_queryset.filter(filters)
+
+        # pagination
+        page = paginator.paginate_queryset(posts_queryset.values(), request, view=self)
+        return paginator.get_paginated_response(page)
