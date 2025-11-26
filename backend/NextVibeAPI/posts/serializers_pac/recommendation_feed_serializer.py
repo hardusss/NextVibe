@@ -1,0 +1,61 @@
+from rest_framework import serializers
+from posts.models import Post, PostsMedia
+from django.conf import settings
+
+
+class MediaItemSerializer(serializers.ModelSerializer):
+    media_url = serializers.SerializerMethodField()
+    media_preview = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PostsMedia
+        fields = ['id', 'media_url', 'media_preview', 'type']
+
+    def get_media_url(self, obj):
+        # Check if file is from Cloudinary or S3
+        if str(obj.file).startswith("https://res.cloudinary.com/"):
+            return str(obj.file)
+        return obj.file.url if obj.file else None
+
+    def get_media_preview(self, obj):
+        if obj.preview:
+            return obj.preview.url
+        return None
+
+    def get_type(self, obj):
+        # Determine type based on file extension or mime type
+        file_str = str(obj.file).lower()
+        if any(ext in file_str for ext in ['.mp4', '.mov', '.avi', '.webm']):
+            return "video"
+        return "image"
+
+
+class PostFeedSerializer(serializers.ModelSerializer):
+    owner__user_id = serializers.IntegerField(source='owner.user_id')
+    owner__username = serializers.CharField(source='owner.username')
+    owner__avatar = serializers.SerializerMethodField()
+    owner__official = serializers.BooleanField(source='owner.official')
+    media = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Post
+        fields = [
+            'id', 'about', 'create_at', 'location', 'count_likes',
+            'is_comments_enabled', 'owner__user_id', 'owner__username',
+            'owner__avatar', 'owner__official', 'media',
+            'is_ai_generated', 'moderation_status'
+        ]
+
+    def get_owner__avatar(self, obj):
+        if obj.owner.avatar:
+            # Check if avatar is from Cloudinary
+            if str(obj.owner.avatar).startswith("https://res.cloudinary.com/"):
+                return str(obj.owner.avatar)
+            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{obj.owner.avatar}"
+        return None
+
+    def get_media(self, obj):
+        # Prefetch media to avoid N+1 queries
+        media_items = obj.media.all() if hasattr(obj, 'media') else PostsMedia.objects.filter(post=obj)
+        return MediaItemSerializer(media_items, many=True).data
