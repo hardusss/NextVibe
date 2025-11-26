@@ -3,6 +3,11 @@ from django.conf import settings
 from .managers import PostsManager, CommentManager, CommentReplyManager
 
 class Post(models.Model):
+    class Meta:
+        indexes = [
+            models.Index(fields=['-create_at', '-count_likes']),
+            models.Index(fields=['owner', '-create_at']),
+        ]
     owner = models.ForeignKey("user.User", on_delete=models.CASCADE)
     about = models.TextField(max_length=255, default="", null=True, blank=True)
     count_likes = models.IntegerField(default=0, null=True)
