@@ -1,6 +1,19 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar, Dimensions, useColorScheme, Animated, RefreshControl, ActivityIndicator } from "react-native";
+import {
+    View,
+    Text,
+    FlatList,
+    TouchableOpacity,
+    StyleSheet,
+    StatusBar,
+    Dimensions,
+    useColorScheme,
+    Animated,
+    RefreshControl,
+    ActivityIndicator,
+    Pressable
+} from "react-native";
 import Header from "./Header";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, memo } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -17,10 +30,10 @@ import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { storage } from '@/src/utils/storage';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Pressable } from "react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
 
+// --- THEME & STYLES ---
 const darkTheme = {
     background: "#0A0410",
     cardBackground: "#0A0410",
@@ -47,250 +60,320 @@ const lightTheme = {
 
 const getStyles = (theme: typeof darkTheme) => {
     return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.background
-    },
-    listContainer: {
-        backgroundColor: theme.background,
-        paddingBottom: 50,
-    },
-    postContainer: {
-        borderRadius: 12,
-        marginBottom: 16,
-        padding: 14,
-        position: "relative",
-    },
-    postHeader: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: 12
-    },
-    avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginRight: 12
-    },
-    userInfo: {
-        flex: 1
-    },
-    usernameContainer: {
-        flexDirection: "row",
-        alignItems: "center"
-    },
-    username: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: theme.textPrimary
-    },
-    location: {
-        fontSize: 14,
-        color: theme.textSecondary,
-        marginTop: 2
-    },
-    mediaPlaceholder: {
-        width: "100%",
-        height: screenWidth,
-        backgroundColor: '#1a1a1a',
-        borderRadius: 8,
-        marginBottom: 12,
-        overflow: "hidden",
-    },
-    mediaImage: {
-        width: "100%",
-        height: "100%",
-    },
-    mediaVideo: {
-        width: "100%",
-        height: "100%",
-    },
-    mediaLoading: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "rgba(0, 0, 0, 0.3)",
-        zIndex: 10
-    },
-    
-    postContent: {
-        marginBottom: 12
-    },
-    postText: {
-        fontSize: 15,
-        color: theme.textPrimary,
-        lineHeight: 20
-    },
-    postFooter: {
-        marginLeft: -1,
-        flexDirection: "row",
-        gap: 10,
-        alignItems: "center"
-    },
-    likesContainer: {
-        flexDirection: "row",
-        alignItems: "center"
-    },
-    likesCount: {
-        marginLeft: 6,
-        color: theme.textPrimary,
-        fontSize: 14
-    },
-    postDate: {
-        color: theme.textSecondary,
-        fontSize: 14,
-        position: "absolute",
-        bottom: 20,
-        right: 15
-    },
-    loadingMore: {
-        paddingVertical: 16,
-        alignItems: "center"
-    },
-    emptyContainer: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: 32
-    },
-    emptyText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: theme.textSecondary
-    },
-    skeletonContainer: {
-        marginBottom: 16,
-        padding: 14,
-        shadowColor: theme.shadowColor,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-        position: "relative",
-    },
-    skeletonHeader: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: 12
-    },
-    skeletonAvatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: theme.skeletonBackground,
-        marginRight: 12
-    },
-    skeletonInfo: {
-        flex: 1
-    },
-    skeletonUsername: {
-        width: 120,
-        height: 16,
-        backgroundColor: theme.skeletonBackground,
-        borderRadius: 4,
-        marginBottom: 4
-    },
-    skeletonLocation: {
-        width: 80,
-        height: 14,
-        backgroundColor: theme.skeletonBackground,
-        borderRadius: 4
-    },
-    skeletonContent: {
-        height: 60,
-        backgroundColor: theme.skeletonBackground,
-        borderRadius: 4,
-        marginBottom: 12
-    },
-    skeletonFooter: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center"
-    },
-    skeletonLikes: {
-        width: 60,
-        height: 16,
-        backgroundColor: theme.skeletonBackground,
-        borderRadius: 4
-    },
-    skeletonList: {
-        paddingHorizontal: 16
-    },
-    muteButton: {
-        position: "absolute",
-        bottom: 20,
-        right: 40,
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        padding: 8,
-        borderRadius: 20,
-        zIndex: 20
-    },
-    pageIndicator: {
-        position: "absolute",
-        right: 30,
-        top: 10,
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        padding: 5,
-        borderRadius: 10,
-    },
-    pageIndicatorText: {
-        color: "white",
-        fontSize: 12,
-    },
-    fullMedia: {
-        width: screenWidth,
-        height: screenWidth,
-    },
-    post: {
-        width: screenWidth,
-        backgroundColor: theme.background,
-    },
-    mediaContainer: {
-        width: screenWidth,
-        height: screenWidth,
-        backgroundColor: '#1a1a1a',
-        overflow: "hidden",
-    },
-    heartOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'transparent',
-        zIndex: 15
-    },
-    aiBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#05f0d8',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 12,
-        marginLeft: 8,
-    },
-    aiBadgeText: {
-        color: '#000',
-        fontSize: 10,
-        fontWeight: 'bold',
-        marginLeft: 2,
-    },
-    previewImage: {
-        position: "absolute",
-        width: "100%",
-        height: "100%",
-        zIndex: 5
-    }
-});
+        container: {
+            flex: 1,
+            backgroundColor: theme.background
+        },
+        listContainer: {
+            backgroundColor: theme.background,
+            paddingBottom: 50
+        },
+        postContainer: {
+            borderRadius: 12,
+            marginBottom: 16,
+            padding: 14,
+            position: "relative"
+        },
+        postHeader: {
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 12
+        },
+        avatar: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            marginRight: 12
+        },
+        userInfo: {
+            flex: 1
+        },
+        usernameContainer: {
+            flexDirection: "row",
+            alignItems: "center"
+        },
+        username: {
+            fontSize: 16,
+            fontWeight: "600",
+            color: theme.textPrimary
+        },
+        location: {
+            fontSize: 14,
+            color: theme.textSecondary,
+            marginTop: 2
+        },
+        mediaPlaceholder: {
+            width: "100%",
+            height: screenWidth,
+            backgroundColor: '#1a1a1a',
+            borderRadius: 8,
+            marginBottom: 12,
+            overflow: "hidden"
+        },
+        mediaImage: {
+            width: "100%",
+            height: "100%"
+        },
+        mediaVideo: {
+            width: "100%",
+            height: "100%"
+        },
+        mediaLoading: {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+            zIndex: 10
+        },
+        postContent: {
+            marginBottom: 12
+        },
+        postText: {
+            fontSize: 15,
+            color: theme.textPrimary,
+            lineHeight: 20
+        },
+        postFooter: {
+            marginLeft: -1,
+            flexDirection: "row",
+            gap: 10,
+            alignItems: "center"
+        },
+        likesContainer: {
+            flexDirection: "row",
+            alignItems: "center"
+        },
+        likesCount: {
+            marginLeft: 6,
+            color: theme.textPrimary,
+            fontSize: 14
+        },
+        postDate: {
+            color: theme.textSecondary,
+            fontSize: 14,
+            position: "absolute",
+            bottom: 20,
+            right: 15
+        },
+        loadingMore: {
+            paddingVertical: 16,
+            alignItems: "center"
+        },
+        emptyContainer: {
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingVertical: 32
+        },
+        emptyText: {
+            marginTop: 16,
+            fontSize: 16,
+            color: theme.textSecondary
+        },
+        skeletonContainer: {
+            marginBottom: 16,
+            padding: 14,
+            shadowColor: theme.shadowColor,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+            position: "relative"
+        },
+        skeletonHeader: {
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 12
+        },
+        skeletonAvatar: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: theme.skeletonBackground,
+            marginRight: 12
+        },
+        skeletonInfo: {
+            flex: 1
+        },
+        skeletonUsername: {
+            width: 120,
+            height: 16,
+            backgroundColor: theme.skeletonBackground,
+            borderRadius: 4,
+            marginBottom: 4
+        },
+        skeletonLocation: {
+            width: 80,
+            height: 14,
+            backgroundColor: theme.skeletonBackground,
+            borderRadius: 4
+        },
+        skeletonContent: {
+            height: 60,
+            backgroundColor: theme.skeletonBackground,
+            borderRadius: 4,
+            marginBottom: 12
+        },
+        skeletonFooter: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center"
+        },
+        skeletonLikes: {
+            width: 60,
+            height: 16,
+            backgroundColor: theme.skeletonBackground,
+            borderRadius: 4
+        },
+        muteButton: {
+            position: "absolute",
+            bottom: 20,
+            right: 40,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            padding: 8,
+            borderRadius: 20,
+            zIndex: 20
+        },
+        pageIndicator: {
+            position: "absolute",
+            right: 30,
+            top: 10,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            padding: 5,
+            borderRadius: 10
+        },
+        pageIndicatorText: {
+            color: "white",
+            fontSize: 12
+        },
+        fullMedia: {
+            width: screenWidth,
+            height: screenWidth
+        },
+        mediaContainer: {
+            width: screenWidth,
+            height: screenWidth,
+            backgroundColor: '#1a1a1a',
+            overflow: "hidden"
+        },
+        heartOverlay: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'transparent',
+            zIndex: 15
+        },
+        aiBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#05f0d8',
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 12,
+            marginLeft: 8
+        },
+        aiBadgeText: {
+            color: '#000',
+            fontSize: 10,
+            fontWeight: 'bold',
+            marginLeft: 2
+        },
+        previewImage: {
+            position: "absolute",
+            width: "100%",
+            height: "100%",
+            zIndex: 5
+        },
+        endOfListText: {
+            textAlign: 'center',
+            color: theme.textSecondary,
+            padding: 20,
+            fontSize: 14
+        }
+    });
 }
 
-const PostSkeleton = () => {
+// ... Interfaces ...
+interface MediaItem {
+    id: number;
+    media_url: string;
+    media_preview: string | null;
+    type: "image" | "video";
+}
+
+interface Post {
+    id: number;
+    about: string;
+    create_at: string;
+    location: string;
+    count_likes: number;
+    is_comments_enabled: boolean;
+    owner__user_id: number;
+    owner__username: string;
+    owner__avatar: string;
+    owner__official: boolean;
+    media: MediaItem[];
+    is_ai_generated: boolean;
+    moderation_status: string;
+}
+
+interface LikedPosts {
+    [key: number]: boolean;
+}
+
+type VideoStorage =
+    | { storage: "cloudinary"; is_video: true }
+    | { storage: "r2"; is_video: true }
+    | false;
+
+// ... Utils ...
+const isVideo = (url: string): VideoStorage => {
+    if (url.includes("/video/")) {
+        return { storage: "cloudinary", is_video: true };
+    }
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+    if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) {
+        return { storage: "r2", is_video: true };
+    }
+    return false;
+};
+
+const getVideoUrls = (mediaItem: MediaItem) => {
+    const videoCheck = isVideo(mediaItem.media_url);
+
+    if (!videoCheck) {
+        return { preview: mediaItem.media_url, hd: mediaItem.media_url, isVideo: false };
+    }
+
+    if (videoCheck.storage === "cloudinary") {
+        const previewUrl = mediaItem.media_url.replace(
+            '/video/upload/',
+            '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
+        );
+        const hdUrl = mediaItem.media_url.replace(
+            '/video/upload/',
+            '/video/upload/q_auto:good,f_auto,vc_h264:baseline,br_1500k/'
+        );
+        return { preview: previewUrl, hd: hdUrl, isVideo: true };
+    }
+
+    return {
+        preview: mediaItem.media_preview || mediaItem.media_url,
+        hd: mediaItem.media_url,
+        isVideo: true
+    };
+};
+
+// --- COMPONENTS ---
+const PostSkeleton = memo(() => {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
@@ -319,7 +402,7 @@ const PostSkeleton = () => {
             outputRange: [theme.skeletonBackground, theme.skeletonHighlight]
         })
     };
-    
+
     return (
         <View style={styles.skeletonContainer}>
             <View style={styles.skeletonHeader}>
@@ -331,109 +414,12 @@ const PostSkeleton = () => {
             </View>
             <Animated.View style={[styles.mediaPlaceholder, animatedStyle]} />
             <Animated.View style={[styles.skeletonContent, animatedStyle]} />
-            <View style={styles.skeletonFooter}>
-                <Animated.View style={[styles.skeletonLikes, animatedStyle]} />
-            </View>
         </View>
     );
-}
+});
 
-
-interface MediaItem {
-    id: number;
-    media_url: string;
-    media_preview: string | null;
-    type: "image" | "video";
-}
-
-interface Post {
-    id: number;
-    about: string;
-    create_at: string;
-    location: string;
-    count_likes: number;
-    is_comments_enabled: boolean,
-    owner__user_id: number;
-    owner__username: string;
-    owner__avatar: string;
-    owner__official: boolean;
-    media: MediaItem[];
-    is_ai_generated: boolean;
-    moderation_status: string;
-}
-
-interface LikedPosts {
-    [key: number]: boolean;
-}
-
-type VideoStorage = 
-    | { storage: "cloudinary"; is_video: true }
-    | { storage: "r2"; is_video: true }
-    | false
-
-const isVideo = (url: string): VideoStorage => {
-    if (url.includes("/video/")) {
-        return {
-            storage: "cloudinary",
-            is_video: true
-        };
-    }
-
-    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
-    if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) {
-        return {
-            storage: "r2",
-            is_video: true
-        };
-    }
-
-    return false;
-};
-
-const getVideoUrls = (mediaItem: MediaItem) => {
-    const videoCheck = isVideo(mediaItem.media_url);
-
-    if (!videoCheck) {
-        return { preview: mediaItem.media_url, hd: mediaItem.media_url, isVideo: false };
-    }
-
-    if (videoCheck.storage === "cloudinary") {
-        const previewUrl = mediaItem.media_url.replace(
-            '/video/upload/',
-            '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
-        );
-
-        const hdUrl = mediaItem.media_url.replace(
-            '/video/upload/',
-            '/video/upload/q_auto:good,f_auto,vc_h264:baseline,br_1500k/' 
-        );
-
-        return { preview: previewUrl, hd: hdUrl, isVideo: true };
-    }
-
-    // R2 storage
-    return { 
-        preview: mediaItem.media_preview || mediaItem.media_url, 
-        hd: mediaItem.media_url,
-        isVideo: true
-    };
-};
-
-const MediaItemComponent = ({ 
-    item, 
-    postId, 
-    onLike, 
-    isLiked,
-    isVisible 
-}: { 
-    item: MediaItem; 
-    postId: number;
-    onLike: (postId: number) => void;
-    isLiked: boolean;
-    isVisible: boolean;
-}) => {
+const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: { item: MediaItem; postId: number; onLike: (postId: number) => void; isLiked: boolean; isVisible: boolean; }) => {
     const { preview, hd, isVideo: isVideoMedia } = getVideoUrls(item);
-
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
     const [isLoading, setIsLoading] = useState<boolean>(isVideoMedia as boolean);
@@ -442,29 +428,12 @@ const MediaItemComponent = ({
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
-    const tapCount = useRef<number>(0);
-    const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const videoRef = useRef<Video>(null);
 
-    const handleDoublePress = () => {
-        tapCount.current += 1;
-
-        if (tapTimer.current) {
-            clearTimeout(tapTimer.current);
-        }
-
-        if (tapCount.current === 2) {
-            animateHeart();
-            if (!isLiked) {
-                onLike(postId);
-            }
-            tapCount.current = 0;
-        } else {
-            tapTimer.current = setTimeout(() => {
-                tapCount.current = 0;
-            }, 300);
-        }
-    };
+    const handleDoublePress = useCallback(() => {
+        animateHeart();
+        if (!isLiked) onLike(postId);
+    }, [isLiked, postId]);
 
     const animateHeart = () => {
         setShowHeart(true);
@@ -487,16 +456,7 @@ const MediaItemComponent = ({
     };
 
     useEffect(() => {
-        return () => {
-            if (tapTimer.current) {
-                clearTimeout(tapTimer.current);
-            }
-        };
-    }, []);
-
-    useEffect(() => {
         if (!isVideoMedia || !videoRef.current) return;
-
         if (isVisible) {
             videoRef.current.playAsync();
         } else {
@@ -507,10 +467,7 @@ const MediaItemComponent = ({
     }, [isVisible, isVideoMedia]);
 
     const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-        if (!status.isLoaded) {
-            return;
-        }
-
+        if (!status.isLoaded) return;
         if (status.isLoaded && status.isPlaying) {
             setIsLoading(false);
             setTimeout(() => setShowPreview(false), 150);
@@ -518,17 +475,24 @@ const MediaItemComponent = ({
     };
 
     return (
-        <Pressable 
-            onPress={handleDoublePress}
+        <Pressable
+            onPress={() => {
+                let lastTap = 0;
+                return () => {
+                    const now = Date.now();
+                    if (now - lastTap < 300) handleDoublePress();
+                    lastTap = now;
+                };
+            }}
             style={styles.mediaContainer}
         >
             {isVideoMedia ? (
                 <>
                     {showPreview && (
                         <FastImage
-                            source={{ 
+                            source={{
                                 uri: preview,
-                                priority: FastImage.priority.high,
+                                priority: FastImage.priority.high
                             }}
                             style={styles.previewImage}
                             resizeMode={FastImage.resizeMode.cover}
@@ -549,24 +513,23 @@ const MediaItemComponent = ({
                             <ActivityIndicator size="large" color="#ffffff" />
                         </View>
                     )}
-                    
-                    <Pressable 
+                    <Pressable
                         onPress={(e) => {
                             e.stopPropagation();
                             setIsMuted(prev => !prev);
-                        }} 
+                        }}
                         style={styles.muteButton}
                     >
-                        <MaterialIcons 
-                            name={isMuted ? "volume-off" : "volume-up"} 
-                            size={24} 
-                            color="white" 
+                        <MaterialIcons
+                            name={isMuted ? "volume-off" : "volume-up"}
+                            size={24}
+                            color="white"
                         />
                     </Pressable>
                 </>
             ) : (
                 <FastImage
-                    source={{ 
+                    source={{
                         uri: item.media_url,
                         priority: FastImage.priority.normal,
                         cache: FastImage.cacheControl.immutable
@@ -576,11 +539,14 @@ const MediaItemComponent = ({
                 />
             )}
             {showHeart && (
-                <Animated.View 
-                    style={[styles.heartOverlay, {
-                        transform: [{ scale: heartAnim }],
-                        opacity: heartAnim,
-                    }]}
+                <Animated.View
+                    style={[
+                        styles.heartOverlay,
+                        {
+                            transform: [{ scale: heartAnim }],
+                            opacity: heartAnim
+                        }
+                    ]}
                     pointerEvents="none"
                 >
                     <MaterialIcons name="favorite" size={80} color="#ff0000" />
@@ -588,219 +554,78 @@ const MediaItemComponent = ({
             )}
         </Pressable>
     );
-};
+}, (prev, next) => prev.isVisible === next.isVisible && prev.isLiked === next.isLiked && prev.item.id === next.item.id);
 
-export default function MainPage() {
-    const router = useRouter();
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
-    const [likedPosts, setLikedPosts] = useState<LikedPosts>({});
-    const [showPopup, setShowPopup] = useState(false);
-    const [popupPostId, setPopupPostId] = useState<number | null>(null);
-    const [popupCommentsEnabled, setPopupCommentsEnabled] = useState<boolean>(true);
-    const [expandedPosts, setExpandedPosts] = useState<{[key: string]: boolean}>({});
-    const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
-    const colorScheme = useColorScheme();
-    const theme = colorScheme === "dark" ? darkTheme : lightTheme;
-    const styles = getStyles(theme);    
-    const [refreshing, setRefreshing] = useState(false);
-    const [currentIndices, setCurrentIndices] = useState<{
-        [key: number]: number;
-    }>({});
-    const [dropdownVisible, setDropdownVisible] = useState<{ [key: number]: boolean }>({});
-    const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
-    const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
-    const [userID, setUserID] = useState<number>(0);
-    const [toastSuccess, setToastSuccess] = useState<boolean>(false);
-    
-    const getUserID = async () => {
-        const id = await storage.getItem("id")
-        setUserID(id ? +id : 0)
-    };
+const PostItem = memo(({
+    item,
+    isLiked,
+    isVisible,
+    userID,
+    theme,
+    styles,
+    router,
+    toggleLike,
+    onDelete,
+    openComments,
+    dropdownVisible,
+    setDropdownVisible,
+    setToastMessage,
+    setToastSuccess,
+    setIsToastVisible
+}: any) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        fetchPosts().then(() => setRefreshing(false));
-    }, []);
-    
-    const fetchPosts = async (loadMore = false) => {
-        if (loadingMore || (!hasMore && loadMore)) return;
+    const needsMoreButton = item.about?.length > 100;
+    const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
+    const mediaItems = item.media || [];
+    const hasMedia = mediaItems.length > 0;
 
-        if (loadMore) setLoadingMore(true);
-        else setLoading(true);
-
-        try {
-            const response = await getRecomendatePosts();
-            const newPosts = response.data;
-            if (loadMore) {
-                setPosts(prevPosts => [...prevPosts, ...newPosts]);
-            } else {
-                setPosts(newPosts);
-            }
-            
-            if (response.liked_posts) {
-                response.liked_posts.forEach((likedId: number) => {
-                    setLikedPosts(prev => ({ ...prev, [likedId]: true }));
-                });
-            }
-            
-            setHasMore(newPosts.length === 6);
-        } catch (error) {
-            console.error("Error fetching recommended posts:", error);
-        } finally {
-            setLoading(false);
-            setLoadingMore(false);
-        }
-    };
-
-    useEffect(() => {
-        if (Platform.OS === 'android') {
-            UIManager.setLayoutAnimationEnabledExperimental?.(true);
-        }
-        getUserID();
-        fetchPosts();
-    }, []);
-    
-
-    const toggleLike = (postId: number) => {
-        likePost(postId)
-        setLikedPosts((prevLiked) => ({
-            ...prevLiked,
-            [postId]: !prevLiked[postId],
-        }));
-        setPosts(prevPosts => 
-            prevPosts.map(post => {
-                if (post.id === postId) {
-                    return {
-                        ...post,
-                        count_likes: likedPosts[postId] 
-                            ? post.count_likes > 0 ? post.count_likes - 1 : 0
-                            : post.count_likes + 1
-                    };
-                }
-                return post;
-            })
-        );
-    };
-
-
-    const handlePostDeleted = (postId: number) => {
-        setToastMessage("Post successfully deleted")
-        setToastSuccess(true);
-        setIsToastVisible(true);
-        setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
-        setDropdownVisible(prev => ({ ...prev, [postId]: false }));
-    };
-
-    const toggleExpandText = (postId: number) => {
-        setExpandedPosts(prev => ({
-            ...prev,
-            [postId]: !prev[postId]
-        }));
-    };
-
-    const viewabilityConfig = useRef({
-        itemVisiblePercentThreshold: 70,
-        minimumViewTime: 100,
-    }).current;
-
-    const onViewableItemsChangedRef = useRef(
-        ({ viewableItems }: { viewableItems: any[] }) => {
-            if (viewableItems.length > 0) {
-                const mostVisibleItem = viewableItems.reduce((prev, current) => {
-                    return (current.isViewable && (!prev || current.index < prev.index)) ? current : prev;
-                }, null);
-                
-                if (mostVisibleItem && mostVisibleItem.item) {
-                    setVisiblePostId(mostVisibleItem.item.id);
-                }
-            } else {
-                setVisiblePostId(null);
-            }
-        }
-    );
-
-    
-    const renderItem = ({ item, index }: { item: Post; index: number }) => {
-        const isLiked = likedPosts[item.id] ?? false;
-        const isExpanded = expandedPosts[item.id] ?? false;
-        const needsMoreButton = item.about?.length > 100;
-        const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
-        const isVisible = visiblePostId === item.id;
-        
-        const mediaItems = item.media || [];
-        const hasMedia = mediaItems.length > 0;
-        return (
-            <View style={styles.postContainer}>
-                <View style={styles.postHeader}>
-                    <FastImage 
-                        source={{ uri: `${item.owner__avatar}` }} 
-                        style={styles.avatar} 
-                    />
-                    <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}>
-                        <View style={styles.usernameContainer}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Text style={styles.username}>{item.owner__username}</Text>
-                                {item.owner__official && (
-                                    <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5 }} />
-                                )}
-                            </View>
-                            {item.is_ai_generated && (
-                                <View style={styles.aiBadge}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <MaterialIcons name="auto-awesome" size={12} color="#fff" />
-                                        <Text style={styles.aiBadgeText}>AI</Text>
-                                    </View>
-                                </View>
-                            )}
+    return (
+        <View style={styles.postContainer}>
+            <View style={styles.postHeader}>
+                <FastImage source={{ uri: `${item.owner__avatar}` }} style={styles.avatar} />
+                <TouchableOpacity
+                    style={styles.userInfo}
+                    onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
+                >
+                    <View style={styles.usernameContainer}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.username}>{item.owner__username}</Text>
+                            {item.owner__official && <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5 }} />}
                         </View>
-                         {item.location && (
-                            <Text style={styles.location}>{item.location}</Text>
+                        {item.is_ai_generated && (
+                            <View style={styles.aiBadge}>
+                                <MaterialIcons name="auto-awesome" size={12} color="#fff" />
+                                <Text style={styles.aiBadgeText}>AI</Text>
+                            </View>
                         )}
-                    </TouchableOpacity>
-                      <View style={{position: "relative"}}>
-                        <TouchableOpacity 
-                            style={{position: "absolute", right: -2, top: -10, zIndex: 10}}
-                            onPress={(e) => {
+                    </View>
+                    {item.location && <Text style={styles.location}>{item.location}</Text>}
+                </TouchableOpacity>
+                <View style={{ position: "relative" }}>
+                    <TouchableOpacity
+                        style={{ position: "absolute", right: -2, top: -10, zIndex: 10, padding: 5 }}
+                        onPress={(e) => {
                             e.stopPropagation();
-                            setDropdownVisible(prev => {
-                                const newState = { ...prev };
-                                Object.keys(newState).forEach(key => {
-                                if (Number(key) !== item.id) {
-                                    newState[Number(key)] = false;
-                                }
-                                });
-                                newState[item.id] = !prev[item.id];
-                                return newState;
-                            });
-                            }}
-                        >
-                            <MaterialCommunityIcons 
-                            name="dots-vertical" 
-                            color={theme.textPrimary} 
-                            size={24}
-                            />
-                        </TouchableOpacity>
-
-                        <DropDown
-                            isVisible={dropdownVisible[item.id] || false}
-                            isOwner={userID === item.owner__user_id}
-                            postId={item.id}
-                            onClose={() => setDropdownVisible(prev => ({
-                            ...prev,
-                            [item.id]: false
-                            }))}
-                            onPostDeleted={() => handlePostDeleted(item.id)}
-                            onPostDeletedFail={() => {
-                                setToastMessage("Error deleting post");
-                                setToastSuccess(false);
-                                setIsToastVisible(true);
-                            }}
-                            onReportResult={(reported?: boolean, message?: string) => {
-                            // Wait a short moment for the modal to close before showing toast
-                            setDropdownVisible(prev => ({ ...prev, [item.id]: false }));
+                            setDropdownVisible(item.id);
+                        }}
+                    >
+                        <MaterialCommunityIcons name="dots-vertical" color={theme.textPrimary} size={24} />
+                    </TouchableOpacity>
+                    <DropDown
+                        isVisible={dropdownVisible}
+                        isOwner={userID === item.owner__user_id}
+                        postId={item.id}
+                        onClose={() => setDropdownVisible(null)}
+                        onPostDeleted={() => onDelete(item.id)}
+                        onPostDeletedFail={() => {
+                            setToastMessage("Error deleting post");
+                            setToastSuccess(false);
+                            setIsToastVisible(true);
+                        }}
+                        onReportResult={(reported?: boolean, message?: string) => {
+                            setDropdownVisible(null);
                             setTimeout(() => {
                                 if (message) {
                                     setToastMessage(message);
@@ -812,159 +637,284 @@ export default function MainPage() {
                                     setIsToastVisible(true);
                                 }
                             }, 260);
-                            }}
-                        />
-                    </View>
+                        }}
+                    />
                 </View>
-                
-                {hasMedia && (
-                    <View style={styles.mediaPlaceholder}>
-                        {mediaItems.length > 1 ? (
-                            <View style={{ width: screenWidth, height: screenWidth, position: "relative" }} pointerEvents="box-none">
-                                <FlatList
-                                    data={mediaItems}
-                                    renderItem={({ item: mediaItem, index: mediaIndex }) => (
-                                        <MediaItemComponent 
-                                            item={mediaItem} 
-                                            postId={item.id}
-                                            onLike={toggleLike}
-                                            isLiked={isLiked}
-                                            isVisible={isVisible && (currentIndices[item.id] ?? 0) === mediaIndex}
-                                        />
-                                    )}
-                                    keyExtractor={mediaItem => mediaItem.id.toString()}
-                                    horizontal
-                                    pagingEnabled
-                                    showsHorizontalScrollIndicator={false}
-                                    onMomentumScrollEnd={(event) => {
-                                        const offsetX = event.nativeEvent.contentOffset.x;
-                                        const index = Math.round(offsetX / screenWidth);
-                                        setCurrentIndices(prev => {
-                                            if (prev[item.id] !== index) {
-                                                return { ...prev, [item.id]: index };
-                                            }
-                                            return prev;
-                                        });
-                                    }}
-                                    scrollEventThrottle={16}
-                                    nestedScrollEnabled={true}
-                                />
-                                <View style={styles.pageIndicator}>
-                                    <Text style={styles.pageIndicatorText}>
-                                        {((currentIndices[item.id] ?? 0) + 1)}/{mediaItems.length}
-                                    </Text>
-                                </View>
-                            </View>
-                        ) : (
-                            mediaItems.length === 1 && (
-                                <MediaItemComponent 
-                                    item={mediaItems[0]} 
-                                    postId={item.id}
-                                    onLike={toggleLike}
-                                    isLiked={isLiked}
-                                    isVisible={isVisible}
-                                />
-                            )
-                        )}
-                    </View>
-                )}
-                {displayText && (
-                    <View style={styles.postContent}>
-                        <Text style={styles.postText}>{displayText}</Text>
-                        {needsMoreButton && (
-                            <TouchableOpacity onPress={() => toggleExpandText(item.id)}>
-                                <Text style={{ color: theme.accentColor, marginTop: 5 }}>
-                                    {isExpanded ? "Show less" : "Read more"}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                )}
-                
-                
-                <View style={styles.postFooter}>
-                    <TouchableOpacity onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
-                        <Icon 
-                            name={isLiked ? "heart" : "heart-outline"} 
-                            size={24} 
-                            color={isLiked ? "red" : theme.textPrimary} 
-                        />
-                        <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {
-                        setPopupCommentsEnabled(item.is_comments_enabled)
-                        setPopupPostId(item.id);
-                        setShowPopup(true);
-                    }}>
-                        <Icon name="chatbubble-outline" size={20} style={{marginTop: -3}} color={theme.textPrimary} />
-                    </TouchableOpacity>
-                </View>
-                <Text style={styles.postDate}>
-                    {timeAgo(item.create_at)}
-                </Text>
             </View>
-        );
+
+            {hasMedia && (
+                <View style={styles.mediaPlaceholder}>
+                    {mediaItems.length > 1 ? (
+                        <View style={{ width: screenWidth, height: screenWidth, position: "relative" }}>
+                            <FlatList
+                                data={mediaItems}
+                                renderItem={({ item: mediaItem, index: mediaIndex }) => (
+                                    <MediaItemComponent
+                                        item={mediaItem}
+                                        postId={item.id}
+                                        onLike={toggleLike}
+                                        isLiked={isLiked}
+                                        isVisible={isVisible && currentMediaIndex === mediaIndex}
+                                    />
+                                )}
+                                keyExtractor={mediaItem => mediaItem.id.toString()}
+                                horizontal
+                                pagingEnabled
+                                showsHorizontalScrollIndicator={false}
+                                onMomentumScrollEnd={(event) => {
+                                    const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+                                    setCurrentMediaIndex(index);
+                                }}
+                                scrollEventThrottle={16}
+                                initialNumToRender={1}
+                                maxToRenderPerBatch={1}
+                                windowSize={2}
+                            />
+                            <View style={styles.pageIndicator}>
+                                <Text style={styles.pageIndicatorText}>{currentMediaIndex + 1}/{mediaItems.length}</Text>
+                            </View>
+                        </View>
+                    ) : (
+                        <MediaItemComponent
+                            item={mediaItems[0]}
+                            postId={item.id}
+                            onLike={toggleLike}
+                            isLiked={isLiked}
+                            isVisible={isVisible}
+                        />
+                    )}
+                </View>
+            )}
+            {displayText && (
+                <View style={styles.postContent}>
+                    <Text style={styles.postText}>{displayText}</Text>
+                    {needsMoreButton && (
+                        <TouchableOpacity onPress={() => setIsExpanded(!isExpanded)}>
+                            <Text style={{ color: theme.accentColor, marginTop: 5 }}>
+                                {isExpanded ? "Show less" : "Read more"}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
+
+            <View style={styles.postFooter}>
+                <TouchableOpacity onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
+                    <Icon name={isLiked ? "heart" : "heart-outline"} size={24} color={isLiked ? "red" : theme.textPrimary} />
+                    <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => openComments(item)}>
+                    <Icon name="chatbubble-outline" size={20} style={{ marginTop: -3 }} color={theme.textPrimary} />
+                </TouchableOpacity>
+            </View>
+            <Text style={styles.postDate}>{timeAgo(item.create_at)}</Text>
+        </View>
+    );
+}, (prev, next) => prev.item.id === next.item.id && prev.item.count_likes === next.item.count_likes && prev.isLiked === next.isLiked && prev.isVisible === next.isVisible && prev.dropdownVisible === next.dropdownVisible && prev.theme === next.theme);
+
+// --- MAIN PAGE ---
+export default function MainPage() {
+    const router = useRouter();
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [likedPosts, setLikedPosts] = useState<LikedPosts>({});
+    const [showPopup, setShowPopup] = useState(false);
+    const [popupPostId, setPopupPostId] = useState<number | null>(null);
+    const [popupCommentsEnabled, setPopupCommentsEnabled] = useState<boolean>(true);
+    const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
+    const colorScheme = useColorScheme();
+    const theme = colorScheme === "dark" ? darkTheme : lightTheme;
+    const styles = getStyles(theme);
+    const [refreshing, setRefreshing] = useState(false);
+    const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+    const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
+    const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
+    const [userID, setUserID] = useState<number>(0);
+    const [toastSuccess, setToastSuccess] = useState<boolean>(false);
+    const [seenPostIds, setSeenPostIds] = useState<number[]>([]);
+    const isFetchingRef = useRef(false);
+
+    const getUserID = async () => {
+        const id = await storage.getItem("id")
+        setUserID(id ? +id : 0)
     };
+
+    const onRefresh = useCallback(() => {
+        if (isFetchingRef.current) return;
+        setRefreshing(true);
+        setSeenPostIds([]);
+        setHasMore(true);
+        // Force reset
+        fetchPosts(false, true).then(() => setRefreshing(false));
+    }, []);
+
+    // Optimized fetch logic
+    const fetchPosts = async (loadMore = false, reset = false) => {
+        if (isFetchingRef.current) return;
+        if (!reset && loadMore && !hasMore) return;
+
+        isFetchingRef.current = true; // LOCK
+
+        if (loadMore) setLoadingMore(true);
+        else if (!reset) setLoading(true);
+
+        try {
+            const currentSeenIds = reset ? [] : seenPostIds;
+            const response = await getRecomendatePosts(currentSeenIds);
+            const newPosts = response.results || [];
+            const newSeenIds = response.seen_ids || [];
+
+            // If backend returns empty array, we are done.
+            if (newPosts.length === 0) {
+                setHasMore(false);
+            } else {
+                if (loadMore && !reset) {
+                    setPosts(prev => [...prev, ...newPosts]);
+                    setSeenPostIds(prev => [...prev, ...newSeenIds]);
+                } else {
+                    setPosts(newPosts);
+                    setSeenPostIds(newSeenIds);
+                }
+
+                if (response.liked_posts) {
+                    const newLikes: LikedPosts = {};
+                    response.liked_posts.forEach((likedId: number) => { newLikes[likedId] = true; });
+                    setLikedPosts(prev => ({ ...prev, ...newLikes }));
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching posts:", error);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+            setTimeout(() => {
+                isFetchingRef.current = false; // UNLOCK
+            }, 500);
+        }
+    };
+
+    useEffect(() => {
+        if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.(true);
+        getUserID();
+        fetchPosts(false, true); // Initial load treated as reset
+    }, []);
+
+    const toggleLike = useCallback((postId: number) => {
+        likePost(postId);
+        setLikedPosts(prev => {
+            const isLiked = !!prev[postId];
+            return { ...prev, [postId]: !isLiked };
+        });
+        setPosts(prev => prev.map(post =>
+            post.id === postId
+                ? { ...post, count_likes: post.count_likes + (likedPosts[postId] ? -1 : 1) }
+                : post
+        ));
+    }, [likedPosts]);
+
+    const handlePostDeleted = useCallback((postId: number) => {
+        setToastMessage("Post successfully deleted");
+        setToastSuccess(true);
+        setIsToastVisible(true);
+        setPosts(prev => prev.filter(p => p.id !== postId));
+        setActiveDropdownId(null);
+    }, []);
+
+    const openComments = useCallback((item: Post) => {
+        setPopupCommentsEnabled(item.is_comments_enabled);
+        setPopupPostId(item.id);
+        setShowPopup(true);
+    }, []);
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 70,
+        minimumViewTime: 100
+    }).current;
+
+    const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: any[] }) => {
+        if (viewableItems.length > 0) {
+            const mostVisible = viewableItems.reduce((prev, cur) => (cur.isViewable && (!prev || cur.index < prev.index)) ? cur : prev, null);
+            if (mostVisible?.item) setVisiblePostId(mostVisible.item.id);
+        } else {
+            setVisiblePostId(null);
+        }
+    });
+
+    const renderFooter = () => {
+        if (loadingMore) return <View style={styles.loadingMore}><CustomActivityIndicator size="small" color="#58a6ff" /></View>;
+        if (!hasMore && posts.length > 0) return <Text style={styles.endOfListText}>You've seen all the posts</Text>;
+        return <View style={{ height: 20 }} />;
+    };
+
+    const dataToRender = loading ? Array.from({ length: 2 }).map((_, i) => ({ id: `skeleton-${i}`, type: 'skeleton' })) : posts.filter(p => p.moderation_status === "approved");
+
+    const renderItem = useCallback(({ item }: { item: any }) => {
+        if (loading || item.type === 'skeleton') {
+            return <PostSkeleton />;
+        }
+        return (
+            <PostItem
+                item={item}
+                isLiked={!!likedPosts[item.id]}
+                isVisible={visiblePostId === item.id}
+                userID={userID}
+                theme={theme}
+                styles={styles}
+                router={router}
+                toggleLike={toggleLike}
+                onDelete={handlePostDeleted}
+                openComments={openComments}
+                dropdownVisible={activeDropdownId === item.id}
+                setDropdownVisible={(id: number | null) => setActiveDropdownId(prev => (id === null || prev === id) ? null : id)}
+                setToastMessage={setToastMessage}
+                setToastSuccess={setToastSuccess}
+                setIsToastVisible={setIsToastVisible}
+            />
+        );
+    }, [loading, likedPosts, visiblePostId, userID, theme, styles, activeDropdownId]);
 
     return (
         <View style={styles.container}>
-            <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"}></StatusBar>
+            <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"} />
             <Web3Toast
-                    message={toastMessage}
-                    visible={isToastVisible}
-                    onHide={() => setIsToastVisible(false)}
-                    isSuccess={toastSuccess}
-                  />
-            <Header/>
-            {showPopup && <PopupModal post_id={popupPostId as number} onClose={() => setShowPopup(false)} isCommentsEnabled={popupCommentsEnabled}/>}
-            
-            {loading ? (
-                <FlatList
-                    data={[1, 2, 3, 4, 5, 6]}
-                    keyExtractor={(item) => `skeleton-${item}_${Math.random()}`}
-                    renderItem={() => <PostSkeleton />}
-                    contentContainerStyle={styles.listContainer}
-                    onViewableItemsChanged={onViewableItemsChangedRef.current}
-                    viewabilityConfig={viewabilityConfig}
-                />
-            ) : (
-                <FlatList
-                    data={posts.filter(p => p.moderation_status === "approved")}
-                    onScrollBeginDrag={() => setDropdownVisible({})}   
-                    onMomentumScrollBegin={() => setDropdownVisible({})}
-                    keyExtractor={(item, index) => `${item.id}_${index}`}
-                    renderItem={renderItem}
-                    contentContainerStyle={styles.listContainer}
-                    onEndReached={() => fetchPosts(true)}
-                    onEndReachedThreshold={0.8}
-                    initialNumToRender={6}
-                    maxToRenderPerBatch={3}
-                    windowSize={5}
-                    removeClippedSubviews={true}
-                    showsVerticalScrollIndicator={false}
-                    onViewableItemsChanged={onViewableItemsChangedRef.current}
-                    viewabilityConfig={viewabilityConfig}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                    }
-
-                    ListFooterComponent={
-                        loadingMore ? (
-                            <View style={styles.loadingMore}>
-                                <CustomActivityIndicator size="small" color="#58a6ff" />
-                            </View>
-                        ) : null
-                    }
-                    ListEmptyComponent={
-                        !loading && (
-                            <View style={styles.emptyContainer}>
-                                <MaterialIcons name="sentiment-dissatisfied" size={60} color="#58a6ff" />
-                                <Text style={styles.emptyText}>No posts found</Text>
-                            </View>
-                        )
-                    }
+                message={toastMessage}
+                visible={isToastVisible}
+                onHide={() => setIsToastVisible(false)}
+                isSuccess={toastSuccess}
+            />
+            <Header />
+            {showPopup && (
+                <PopupModal
+                    post_id={popupPostId as number}
+                    onClose={() => setShowPopup(false)}
+                    isCommentsEnabled={popupCommentsEnabled}
                 />
             )}
+
+            <FlatList
+                data={dataToRender}
+                onScrollBeginDrag={() => setActiveDropdownId(null)}
+                keyExtractor={item => item.id.toString()}
+                renderItem={renderItem}
+                contentContainerStyle={styles.listContainer}
+                onEndReached={() => {
+                    if (!loading && !loadingMore && hasMore && !isFetchingRef.current) {
+                        fetchPosts(true);
+                    }
+                }}
+                onEndReachedThreshold={0.5}
+                initialNumToRender={2}
+                maxToRenderPerBatch={2}
+                windowSize={3}
+                removeClippedSubviews={true}
+                showsVerticalScrollIndicator={false}
+                onViewableItemsChanged={onViewableItemsChangedRef.current}
+                viewabilityConfig={viewabilityConfig}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                ListFooterComponent={!loading ? renderFooter : null}
+            />
         </View>
     );
 }
