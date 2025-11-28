@@ -1,104 +1,58 @@
 import React, { useEffect, useRef } from "react";
-import { AppState } from "react-native";
-import GetApiUrl from "../utils/url_api";
-import { storage } from "../utils/storage";
-
-let ws: WebSocket | null = null;  // GLOBAL SOCKET
+import { AppState, AppStateStatus } from "react-native";
+import WebSocketService from "../services/WebSocketService"; 
 
 export const WebSocketProvider = ({
   userId,
   children,
 }: {
-  userId: number;
+  userId: number | null;
   children: React.ReactNode;
 }) => {
   const appState = useRef(AppState.currentState);
-
-  const getWebSocketUrl = async (): Promise<string | null> => {
-    try {
-      const token = await storage.getItem("access");
-      if (!token) {
-        console.error("❌ No access token found");
-        return null;
-      }
-
-      const baseUrl = GetApiUrl().split("/api/v1")[0];
-      const wsBaseUrl = baseUrl
-        .replace("http://", "ws://")
-        .replace("https://", "wss://")
-        .replace(":8000", ":8081");
-
-      const wsUrl = `${wsBaseUrl}/ws?token=${token}`;
-      console.log("🔌 WS URL:", wsUrl.replace(token, token.substring(0, 20) + "..."));
-
-      return wsUrl;
-    } catch (error) {
-      console.error("❌ Error building WS URL:", error);
-      return null;
-    }
-  };
-
-  const connect = async () => {
-    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-      console.log("⚠️ WebSocket already active");
-      return;
-    }
-
-    const wsUrl = await getWebSocketUrl();
-    if (!wsUrl) return;
-
-    console.log("🔌 Connecting WebSocket...");
-    ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log("✅ WebSocket connected");
-    };
-
-    ws.onerror = (e: any) => {
-      console.error("⚠️ WebSocket error:", e?.message);
-    };
-
-    ws.onclose = (event) => {
-      console.log(
-        `🔌 WebSocket closed (code: ${event.code}, reason: ${event.reason || "none"})`
-      );
-      ws = null; 
-    };
-  };
-
-  const disconnect = () => {
-    if (ws) {
-      console.log("👋 Closing WebSocket...");
-      ws.close();
-      ws = null;
-    }
-  };
+  const disconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    connect(); 
+    if (!userId) return;
 
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      console.log("📱 App state:", appState.current, "->", nextAppState);
+    // Fitst connect
+    WebSocketService.connect();
 
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === "active"
-      ) {
-        console.log("📱 App active → reconnecting WS");
-        connect();
-      }
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
 
-      if (nextAppState.match(/inactive|background/)) {
-        console.log("📱 App background → disconnect WS");
-        disconnect();
+      if (nextAppState === "active") {
+        if (disconnectTimer.current) {
+          console.log("⚡ Camera/Flicker detected: Canceling disconnect");
+          clearTimeout(disconnectTimer.current);
+          disconnectTimer.current = null;
+        }
+
+        WebSocketService.connect();
+      } 
+      
+      else if (nextAppState.match(/inactive|background/)) {
+        // Go to background
+
+        // If timer exist, don't create new
+        if (disconnectTimer.current) return;
+
+        console.log("⏳ App background → Scheduling disconnect in 5s...");
+        disconnectTimer.current = setTimeout(() => {
+          console.log("💤 App background timeout → Disconnecting now");
+          WebSocketService.disconnect();
+          disconnectTimer.current = null;
+        }, 5000); // time delay 5 seconds
       }
 
       appState.current = nextAppState;
-    });
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
 
     return () => {
+      if (disconnectTimer.current) clearTimeout(disconnectTimer.current);
       subscription.remove();
-      disconnect(); 
+      WebSocketService.disconnect();
     };
   }, [userId]);
 
