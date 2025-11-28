@@ -428,10 +428,9 @@ const MediaItemComponent = ({
     };
 
     useEffect(() => {
-        if (!isVideoMedia || !videoRef.current) return;
-        
+        if (!videoRef.current) return;
         if (!isVisible) {
-            videoRef.current.setPositionAsync(0);
+            videoRef.current.unloadAsync();
             setShowPreview(true);
         }
     }, [isVisible, isVideoMedia]);
@@ -443,26 +442,29 @@ const MediaItemComponent = ({
         >
             {isVideoMedia ? (
                 <>
-                    {showPreview && (
+                    {(showPreview || !isVisible) && (
                         <FastImage
                             source={{ 
                                 uri: preview,
                                 priority: FastImage.priority.high,
+                                cache: FastImage.cacheControl.immutable
                             }}
                             style={[styles.previewImage, isLoading && { opacity: 0.7 }]}
                             resizeMode={FastImage.resizeMode.cover}
                         />
                     )}
-                    <Video
-                        ref={videoRef}
-                        style={styles.fullMedia}
-                        source={{ uri: hd }}
-                        resizeMode={ResizeMode.COVER}
-                        isLooping
-                        isMuted={isMuted}
-                        shouldPlay={isVisible}
-                        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-                    />
+                    {isVideoMedia && isVisible && (
+                        <Video
+                            ref={videoRef}
+                            style={styles.fullMedia}
+                            source={{ uri: hd }}
+                            resizeMode={ResizeMode.COVER}
+                            isLooping
+                            isMuted={isMuted}
+                            shouldPlay={isVisible}
+                            onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+                        />
+                    )}
                     {isLoading && isVisible && (
                         <View style={styles.mediaLoading}>
                             <ActivityIndicator size="large" color="#ffffff" />
@@ -694,10 +696,10 @@ const UserPosts = () => {
         <View style={styles.postHeader}>
           {userData && (
             <>
-              <FastImage 
-                source={{ uri: `${userData.avatar}` }} 
-                style={styles.avatar} 
-              />
+              <FastImage source={{ uri:  `${userData.avatar}`,
+                    priority: FastImage.priority.normal,
+                    cache: FastImage.cacheControl.immutable 
+                }} style={styles.avatar} />
               <View style={styles.userInfo}>
                 <View style={styles.usernameContainer}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -815,6 +817,8 @@ const UserPosts = () => {
                 }}
                 scrollEventThrottle={16}
                 nestedScrollEnabled={true}
+                updateCellsBatchingPeriod={100}
+                removeClippedSubviews={true}
               />
               <View style={styles.pageIndicator}>
                 <Text style={styles.pageIndicatorText}>
@@ -907,8 +911,9 @@ const UserPosts = () => {
         onEndReached={() => fetchPosts()}
         onEndReachedThreshold={0.8}
         initialNumToRender={2}
-        maxToRenderPerBatch={2}
-        windowSize={3}
+        maxToRenderPerBatch={1}
+        windowSize={2}
+        updateCellsBatchingPeriod={100}
         removeClippedSubviews={true}
         showsVerticalScrollIndicator={false}
         onScrollBeginDrag={() => setDropdownVisible({})}   

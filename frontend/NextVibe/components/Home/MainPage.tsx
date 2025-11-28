@@ -477,10 +477,9 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
     };
 
     useEffect(() => {
-        if (!isVideoMedia || !videoRef.current) return;
-        
+        if (!videoRef.current) return;
         if (!isVisible) {
-            videoRef.current.setPositionAsync(0);
+            videoRef.current.unloadAsync();
             setShowPreview(true);
         }
     }, [isVisible, isVideoMedia]);
@@ -507,26 +506,30 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
         >
             {isVideoMedia ? (
                 <>
-                    {showPreview && (
+                    {(showPreview || !isVisible) && (
                         <FastImage
                             source={{
                                 uri: preview,
-                                priority: FastImage.priority.high
+                                priority: FastImage.priority.high,
+                                cache: FastImage.cacheControl.immutable
                             }}
                             style={styles.previewImage}
                             resizeMode={FastImage.resizeMode.cover}
                         />
                     )}
-                    <Video
-                        ref={videoRef}
-                        style={styles.fullMedia}
-                        source={{ uri: hd }}
-                        resizeMode={ResizeMode.COVER}
-                        isLooping
-                        isMuted={isMuted}
-                        shouldPlay={isVisible}
-                        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-                    />
+                    {isVideoMedia && isVisible && (
+                        <Video
+                            ref={videoRef}
+                            style={styles.fullMedia}
+                            source={{ uri: hd }}
+                            resizeMode={ResizeMode.COVER}
+                            isLooping
+                            isMuted={isMuted}
+                            shouldPlay={isVisible}
+                            onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+                        />
+                    )}
+
                     {isLoading && isVisible && (
                         <View style={styles.mediaLoading}>
                             <ActivityIndicator size="large" color="#ffffff" />
@@ -552,9 +555,10 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
                         uri: item.media_url,
                         priority: FastImage.priority.normal,
                         cache: FastImage.cacheControl.immutable
+                        
                     }}
                     style={styles.mediaImage}
-                    resizeMode={FastImage.resizeMode.cover}
+                    resizeMode={FastImage.resizeMode.cover}   
                 />
             )}
             {showHeart && (
@@ -603,7 +607,10 @@ const PostItem = memo(({
     return (
         <View style={styles.postContainer}>
             <View style={styles.postHeader}>
-                <FastImage source={{ uri: `${item.owner__avatar}` }} style={styles.avatar} />
+                <FastImage source={{ uri: `${item.owner__avatar}`,
+                    priority: FastImage.priority.normal,
+                    cache: FastImage.cacheControl.immutable 
+                }} style={styles.avatar} />
                 <TouchableOpacity
                     style={styles.userInfo}
                     onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
@@ -684,6 +691,8 @@ const PostItem = memo(({
                                     const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
                                     setCurrentMediaIndex(index);
                                 }}
+                                updateCellsBatchingPeriod={100}
+                                removeClippedSubviews={true}
                                 scrollEventThrottle={16}
                                 initialNumToRender={1}
                                 maxToRenderPerBatch={1}
@@ -933,8 +942,9 @@ export default function MainPage() {
                 }}
                 onEndReachedThreshold={0.5}
                 initialNumToRender={2}
-                maxToRenderPerBatch={2}
-                windowSize={3}
+                maxToRenderPerBatch={1}
+                windowSize={2}
+                updateCellsBatchingPeriod={100}
                 removeClippedSubviews={true}
                 showsVerticalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChangedRef.current}
