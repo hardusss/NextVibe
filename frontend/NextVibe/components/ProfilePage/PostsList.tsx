@@ -429,11 +429,8 @@ const MediaItemComponent = ({
 
     useEffect(() => {
         if (!isVideoMedia || !videoRef.current) return;
-
-        if (isVisible) {
-            videoRef.current.playAsync();
-        } else {
-            videoRef.current.pauseAsync();
+        
+        if (!isVisible) {
             videoRef.current.setPositionAsync(0);
             setShowPreview(true);
         }
@@ -463,7 +460,7 @@ const MediaItemComponent = ({
                         resizeMode={ResizeMode.COVER}
                         isLooping
                         isMuted={isMuted}
-                        shouldPlay={false}
+                        shouldPlay={isVisible}
                         onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                     />
                     {isLoading && isVisible && (
