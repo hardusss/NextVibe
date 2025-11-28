@@ -64,7 +64,7 @@ class OnlineUsersView(APIView):
         online_users = User.objects.filter(
             is_online=True,
             user_id__in=following_ids  
-        )
+        ).exclude(user_id=request.user.user_id)
 
         users_data = [{
             'user_id': user.user_id,
@@ -117,6 +117,14 @@ class DeleteChatView(APIView):
     
     def delete(self, request, chat_id):
         try:
+            try: 
+                users_in_chat = list(Chat.objects.filter(id=chat_id).select_related("participants").values_list("participants__user_id", flat=True))
+                if int(request.user.user_id) not in users_in_chat:
+                    return Response({
+                        "error": "You cannot delete a chat if you are not a member of it"
+                    }, status=403)
+            except Chat.DoesNotExist:
+                return Response({'error': 'Chat not found'}, status=404)
             chat = Chat.objects.get(id=chat_id, participants=request.user)
             chat.delete()
             return Response({'message': 'Chat deleted successfully'}, status=200)
