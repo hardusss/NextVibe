@@ -296,8 +296,29 @@ const getStyles = (theme: typeof darkTheme) => {
             textAlign: 'center',
             color: theme.textSecondary,
             padding: 20,
+            paddingBottom: 40,
             fontSize: 14
-        }
+        },
+        card: {
+            margin: 20,
+            marginBottom: 20,
+            padding: 15,
+            paddingBottom: 40,
+            backgroundColor: theme.background,
+            borderRadius: 12,
+            alignItems: 'center',
+        },
+        cardText: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.textPrimary,
+        },
+        cardSub: {
+            fontSize: 13,
+            color: '#666',
+            marginTop: 4,
+        },
+
     });
 }
 
@@ -457,10 +478,8 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
 
     useEffect(() => {
         if (!isVideoMedia || !videoRef.current) return;
-        if (isVisible) {
-            videoRef.current.playAsync();
-        } else {
-            videoRef.current.pauseAsync();
+        
+        if (!isVisible) {
             videoRef.current.setPositionAsync(0);
             setShowPreview(true);
         }
@@ -505,7 +524,7 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
                         resizeMode={ResizeMode.COVER}
                         isLooping
                         isMuted={isMuted}
-                        shouldPlay={false}
+                        shouldPlay={isVisible}
                         onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                     />
                     {isLoading && isVisible && (
@@ -844,7 +863,15 @@ export default function MainPage() {
 
     const renderFooter = () => {
         if (loadingMore) return <View style={styles.loadingMore}><CustomActivityIndicator size="small" color="#58a6ff" /></View>;
-        if (!hasMore && posts.length > 0) return <Text style={styles.endOfListText}>You've seen all the posts</Text>;
+        if (!hasMore && posts.length > 0) {
+            return (
+                <View style={styles.card}>
+                <Text style={styles.cardText}>🎉 No more posts for now</Text>
+                <Text style={styles.cardSub}>Check back later for new vibes!</Text>
+                </View>
+            );
+        }
+
         return <View style={{ height: 20 }} />;
     };
 
