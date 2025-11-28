@@ -25,19 +25,20 @@ class UpdateUserText(APIView):
         user_id = request.user.user_id
         username = request.query_params.get("username")
         about = request.query_params.get("about")
-        
+
         try:
             user = User.objects.get(user_id=user_id)
             
-            if username:
-                if User.objects.filter(username=username).exclude(user_id=user_id).exists():
+            if username is not None:
+                username = username.strip()
+                if username and User.objects.filter(username=username).exclude(user_id=user_id).exists():
                     return Response({"error": "Username already exists"}, status=400)
-                user.username = username.strip()
-            
-            if about:
-                user.about = about.strip()
+                user.username = username
 
-            if not username and not about:
+            if about is not None:
+                user.about = about.strip() 
+
+            if username is None and about is None:
                 return Response({"error": "No data provided"}, status=400)
             
             user.save()
@@ -45,3 +46,4 @@ class UpdateUserText(APIView):
         
         except ObjectDoesNotExist:
             return Response({"error": "User not found"}, status=404)
+

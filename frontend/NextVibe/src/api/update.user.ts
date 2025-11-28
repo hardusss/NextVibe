@@ -16,7 +16,6 @@ export default async function updateUser (username?: string, about?: string) {
                 about,
             },
         }); 
-
         return response;
     } catch (err) {
         return null;
