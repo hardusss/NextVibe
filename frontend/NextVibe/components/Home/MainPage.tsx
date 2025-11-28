@@ -761,7 +761,6 @@ export default function MainPage() {
     const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
     const [userID, setUserID] = useState<number>(0);
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
-    const [seenPostIds, setSeenPostIds] = useState<number[]>([]);
     const isFetchingRef = useRef(false);
 
     const getUserID = async () => {
@@ -772,7 +771,6 @@ export default function MainPage() {
     const onRefresh = useCallback(() => {
         if (isFetchingRef.current) return;
         setRefreshing(true);
-        setSeenPostIds([]);
         setHasMore(true);
         // Force reset
         fetchPosts(false, true).then(() => setRefreshing(false));
@@ -789,10 +787,9 @@ export default function MainPage() {
         else if (!reset) setLoading(true);
 
         try {
-            const currentSeenIds = reset ? [] : seenPostIds;
-            const response = await getRecomendatePosts(currentSeenIds);
+
+            const response = await getRecomendatePosts();
             const newPosts = response.results || [];
-            const newSeenIds = response.seen_ids || [];
 
             // If backend returns empty array, we are done.
             if (newPosts.length === 0) {
@@ -800,10 +797,8 @@ export default function MainPage() {
             } else {
                 if (loadMore && !reset) {
                     setPosts(prev => [...prev, ...newPosts]);
-                    setSeenPostIds(prev => [...prev, ...newSeenIds]);
                 } else {
                     setPosts(newPosts);
-                    setSeenPostIds(newSeenIds);
                 }
 
                 if (response.liked_posts) {
