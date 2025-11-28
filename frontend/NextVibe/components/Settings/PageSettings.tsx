@@ -20,6 +20,8 @@ import resetAvatar from "@/src/api/reset.avatar";
 import { PopupProvider, usePopup } from "../Popup";
 import updateUser from "@/src/api/update.user";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import ConfirmDialog from "../Shared/Toasts/ConfirmDialog";
+import Web3Toast from "../Shared/Toasts/Web3Toast";
 
 interface User {
     username: string;
@@ -67,6 +69,11 @@ function PageSettingsContent() {
     const [refreshing, setRefreshing] = useState(false);
     const [isSave, setIsSave] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState("");
+    const [toastSuccess, setToastSuccess] = useState(true);
+
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
     const styles = getStyles(isDark);
@@ -94,6 +101,22 @@ function PageSettingsContent() {
         setIsVisibleLogoutConfirmation(true);
     }
 
+    const handleBackPress = () => {
+        if (isSave) {
+            setShowConfirm(true); 
+        } else {
+            router.back();
+        }
+    };
+
+    const showToast = (message: string, isSuccess: boolean) => {
+        setToastMessage(message);
+        setToastSuccess(isSuccess);
+        setToastVisible(true);
+    };
+
+
+
     const fetchUserData = async () => {
         setLoading(true);
         try {
@@ -104,7 +127,7 @@ function PageSettingsContent() {
             setAbout(response.about);
         } catch (error) {
             console.error("Failed to fetch user data:", error);
-            showPopup('error', 'Error', 'Failed to load user data');
+            showToast('Failed to load user data', false);
         } finally {
             setLoading(false);
         }
@@ -112,8 +135,8 @@ function PageSettingsContent() {
 
     const handleSave = async () => {
         try {
-            if (!username || !about) {
-                showPopup('error', 'Error', 'Username and about cannot be empty');
+            if (!username) {
+                showToast('Username cannot be empty', false);
                 return;
             }
 
@@ -121,10 +144,10 @@ function PageSettingsContent() {
                 const usernameResponse = await updateUser(username, undefined);
                 if (usernameResponse?.status !== 200) {
                     if (usernameResponse === null) {
-                        showPopup('error', 'Error', 'Failed to update. Username are already taken!');
+                        showToast('Failed to update. Username are already taken!', false);
                         return;
                     }
-                    showPopup('error', 'Error', usernameResponse?.data.error);
+                    showToast(`${usernameResponse?.data.error}`, false);
                     return;
                 }
             }
@@ -132,12 +155,13 @@ function PageSettingsContent() {
 
             if (about !== user?.about) {
                 const aboutResponse = await updateUser(undefined, about);
+                console.log(aboutResponse)
                 if (aboutResponse === null) {
-                    showPopup('error', 'Error', 'Failed to update about');
+                    showToast('Failed to update about', false);
                     return;
                 }
                 if (aboutResponse?.status !== 200) {
-                    showPopup('error', 'Error', aboutResponse?.data.error);
+                    showToast(`${aboutResponse?.data.error}`, false);
                     return;
                 }
             }
@@ -145,21 +169,21 @@ function PageSettingsContent() {
             if (username !== user?.username && about!== user?.about) {
                 const response = await updateUser(username, about);
                 if (response === null) {
-                    showPopup('error', 'Error', 'Failed to update username and about');
+                    showToast('Failed to update profile', false);
                     return;
                 }
                 if (response?.status !== 200) {
-                    showPopup('error', 'Error', response?.data.erorr);
+                    showToast(`${response?.data.error}`, false);
                     return;
                 }
             }
 
             await fetchUserData();
-            showPopup('success', 'Success', 'Your profile has been successfully updated');
+            showToast('Your profile has been successfully updated', true);
             setIsSave(false);
         } catch (error) {
             console.error('Update error:', error);
-            showPopup('error', 'Error', 'Failed to update profile');
+            showToast('Failed to update profile', false);
         }
     }
     const handleOpenEdit = () => {
@@ -250,10 +274,34 @@ function PageSettingsContent() {
     );
 
     return (
-        <Animated.View style={[styles.container, { opacity: fadeAnim, position: "relative" }]}> 
+        <Animated.View style={[styles.container, { opacity: fadeAnim, position: "relative" }]}>
+            <ConfirmDialog
+                visible={showConfirm}
+                title="Save changes?"
+                message="You have unsaved changes. Do you want to save them before leaving?"
+                confirmLabel="Save"
+                cancelLabel="Discard"
+                onConfirm={async () => {
+                    await handleSave(); 
+                    setShowConfirm(false);
+                    router.back();
+                }}
+                onCancel={() => {
+                    setShowConfirm(false);
+                    router.back(); 
+                }}
+            />
+
+            <Web3Toast 
+                message={toastMessage} 
+                visible={toastVisible} 
+                isSuccess={toastSuccess} 
+                onHide={() => setToastVisible(false)} 
+            />
+
             <StatusBar backgroundColor={isDark ? darkColors.background : lightColors.background} />
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()}>
+                <TouchableOpacity onPress={handleBackPress}>
                     <MaterialCommunityIcons name="arrow-left" style={styles.icon} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Settings Profile</Text>
