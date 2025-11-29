@@ -775,7 +775,7 @@ export default function MainPage() {
         setRefreshing(true);
         setHasMore(true);
         // Force reset
-        fetchPosts(false, true).then(() => setRefreshing(false));
+        fetchPosts(false, true, true).then(() => setRefreshing(false));
     }, []);
 
     // Optimized fetch logic
