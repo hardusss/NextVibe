@@ -76,7 +76,7 @@ export default function RegisterView() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={{ position: 'absolute', top: 50, zIndex: 9999, width: '100%', alignItems: 'center' }}>
+            <View style={{ position: 'absolute', zIndex: 9999, width: '100%', alignItems: 'center' }}>
                 <Toast config={toastConfig} />
             </View>
             <StatusBar
