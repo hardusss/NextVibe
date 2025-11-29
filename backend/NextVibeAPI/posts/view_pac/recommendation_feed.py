@@ -64,6 +64,7 @@ class RecommendationFeedView(APIView):
             .select_related('owner')
             .prefetch_related('media')
             .exclude(owner__user_id=user.user_id)
+            .filter(moderation_status="approved")
         )
 
         if seen_ids:
@@ -93,6 +94,7 @@ class RecommendationFeedView(APIView):
             
             candidate_ids = list(
                 Post.objects
+                .filter(moderation_status="approved")
                 .exclude(owner__user_id=user.user_id)
                 .exclude(id__in=seen_ids)
                 .exclude(id__in=[p.id for p in posts_list])
@@ -107,7 +109,7 @@ class RecommendationFeedView(APIView):
                     Post.objects
                     .select_related('owner')
                     .prefetch_related('media')
-                    .filter(id__in=random_ids)
+                    .filter(id__in=random_ids, moderation_status="approved")
                 )
                 posts_list.extend(list(additional))
 
