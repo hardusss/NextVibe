@@ -1,100 +1,302 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-    Text,
-    View,
-    TextInput,
-    TouchableOpacity,
-    SafeAreaView,
-    StatusBar
+    Text, 
+    View, 
+    TextInput, 
+    TouchableOpacity, 
+    SafeAreaView, 
+    StatusBar, 
+    ScrollView, 
+    StyleSheet, 
+    KeyboardAvoidingView, 
+    Platform,
+    useColorScheme,
+    ActivityIndicator
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import loginDarkStyles from '../../styles/dark-theme/loginStyles';
-import loginLightStyles from '@/styles/light-theme/loginStyles';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '../../src/config/toast-config';
 import Login from '../../src/api/login';
 import { useRouter } from "expo-router";
-import { useColorScheme } from 'react-native';
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
 import FastImage from 'react-native-fast-image';
+import { BackHandler } from "react-native";
 
 export default function LoginView() {
     const router = useRouter();
     const colorScheme = useColorScheme();
-    const loginStyes = colorScheme == "dark" ? loginDarkStyles : loginLightStyles;
+    const isDark = colorScheme === 'dark';
+
+    const ACCENT_COLOR = isDark ? '#A78BFA' : '#7C3AED';
+
     const [hidePassword, setHidePassword] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [focusedInput, setFocusedInput] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const togglePasswordVisibility = () => {
-        setHidePassword(!hidePassword);
+    const { styles, colors } = getModernTheme(isDark, ACCENT_COLOR);
+
+    useEffect(() => {
+        const handler = BackHandler.addEventListener(
+            "hardwareBackPress",
+            () => true 
+        );
+
+        return () => handler.remove();
+    }, []);
+    
+
+    const handleLogin = async () => {
+        if (isLoading) return;
+        setIsLoading(true);
+        try {
+            await Login(email, password, router);
+        } catch (e) {
+            console.log(e);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
-        <SafeAreaView style={loginStyes.container}>
-            <View style={{ position: 'absolute', top: 0, justifyContent: 'center', width: '110%', zIndex: 9999 }}>
+        <SafeAreaView style={styles.container}>
+            <View style={{ position: 'absolute', top: 50, zIndex: 9999, width: '100%', alignItems: 'center' }}>
                 <Toast config={toastConfig} />
             </View>
-            <StatusBar animated={true} backgroundColor={colorScheme === 'dark' ? '#0A0410' : '#f0f0f0'} />
+            <StatusBar 
+                animated={true} 
+                barStyle={isDark ? 'light-content' : 'dark-content'}
+                backgroundColor={isDark ? '#0A0410' : '#ffffff'} 
+            />
             
-            <View style={{ alignItems: 'center', flexDirection: 'row' }}>
-                <Text style={loginStyes.title}>Login to NextVibe</Text>
-                <FastImage source={require('../../assets/logo.png')} style={loginStyes.logo} />
-            </View>
-
-            <View style={{ marginTop: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialIcons name="email" size={20} color="#A78BFA" style={{ marginRight: 10, paddingBottom: 10 }} />
-                    <Text style={loginStyes.inputLabel}>Email</Text>
-                </View>
-                <TextInput
-                    placeholder="Enter your email"
-                    style={loginStyes.input}
-                    placeholderTextColor={colorScheme === 'dark' ? '#fff' : '#000'}
-                    value={email}
-                    onChangeText={setEmail}
-                />
-            </View>
-
-            <View style={{ marginTop: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialIcons name="password" size={20} color="#A78BFA" style={{ marginRight: 10, paddingBottom: 10 }} />
-                    <Text style={loginStyes.inputLabel}>Password</Text>
-                </View>
-                <View>
-                    <TextInput
-                        placeholder="Enter your password"
-                        style={loginStyes.input}
-                        placeholderTextColor={colorScheme === 'dark' ? '#fff' : '#000'}
-                        secureTextEntry={hidePassword}
-                        value={password}
-                        onChangeText={setPassword}
-                    />
-                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={loginStyes.passwordIcon} onPress={togglePasswordVisibility}>
-                        <MaterialIcons
-                            name={hidePassword ? 'visibility' : 'visibility-off'}
-                            size={24}
-                            color={colorScheme === 'dark' ? '#A78BFA' : '#000'}
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+            >
+                <ScrollView 
+                    contentContainerStyle={styles.scrollContent} 
+                    keyboardShouldPersistTaps="handled" 
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View style={styles.headerContainer}>
+                        <FastImage 
+                            source={require('../../assets/logo.png')} 
+                            style={styles.logo} 
+                            resizeMode={FastImage.resizeMode.contain}
                         />
-                    </TouchableOpacity>
-                </View>
-            </View>
-            
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={loginStyes.loginButton} onPress={() => {Login(email, password, router)}}>
-                <Text style={[loginStyes.loginButtonText]}>Login</Text>
-            </TouchableOpacity>
+                        <Text style={styles.title}>Welcome Back!</Text>
+                        <Text style={styles.subtitle}>Login to continue your vibe</Text>
+                    </View>
 
-            <View style={loginStyes.hrcontainer}>
-                <View style={loginStyes.line} />
-                <Text style={loginStyes.hrtext}>OR</Text>
-                <View style={loginStyes.line} />
-            </View>
-            <GoogleButtonAuth page='login'/>
-            <View>
-                <Text style={loginStyes.bottomText}>
-                    Don't have an account? <Text style={loginStyes.bottomLink} onPress={() => router.replace("/register")}>Register</Text>
-                </Text>
-            </View>
+                    <View style={styles.formContainer}>
+                        
+                        {/* Email Input */}
+                        <View style={[styles.inputContainer, focusedInput === 'email' && styles.inputFocused]}>
+                            <MaterialCommunityIcons 
+                                name="email-outline" 
+                                size={22} 
+                                color={focusedInput === 'email' ? colors.iconActive : colors.iconInactive} 
+                                style={styles.inputIcon} 
+                            />
+                            <TextInput
+                                placeholder="Email Address"
+                                style={styles.input}
+                                placeholderTextColor={colors.placeholderColor}
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                onFocus={() => setFocusedInput('email')}
+                                onBlur={() => setFocusedInput(null)}
+                            />
+                        </View>
+
+                        {/* Password Input */}
+                        <View style={[styles.inputContainer, focusedInput === 'password' && styles.inputFocused]}>
+                            <MaterialCommunityIcons 
+                                name="lock-outline" 
+                                size={22} 
+                                color={focusedInput === 'password' ? colors.iconActive : colors.iconInactive} 
+                                style={styles.inputIcon} 
+                            />
+                            <TextInput
+                                placeholder="Password"
+                                style={styles.input}
+                                placeholderTextColor={colors.placeholderColor}
+                                secureTextEntry={hidePassword}
+                                value={password}
+                                onChangeText={setPassword}
+                                onFocus={() => setFocusedInput('password')}
+                                onBlur={() => setFocusedInput(null)}
+                            />
+                            <TouchableOpacity onPress={() => setHidePassword(!hidePassword)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <MaterialIcons
+                                    name={hidePassword ? 'visibility-off' : 'visibility'}
+                                    size={22}
+                                    color={colors.iconInactive}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        {/* Login Button */}
+                        <TouchableOpacity 
+                            style={styles.loginButton} 
+                            onPress={handleLogin}
+                            activeOpacity={0.8}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.loginButtonText}>Login</Text>
+                            )}
+                        </TouchableOpacity>
+
+                        {/* Divider */}
+                        <View style={styles.dividerContainer}>
+                            <View style={styles.dividerLine} />
+                            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
+                            <View style={styles.dividerLine} />
+                        </View>
+
+                        <GoogleButtonAuth page='login'/>
+
+                        {/* Footer */}
+                        <View style={styles.footerContainer}>
+                            <Text style={styles.footerText}>Don't have an account?</Text>
+                            <TouchableOpacity onPress={() => router.replace("/register")}>
+                                <Text style={styles.registerLink}>Register</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
-    )
+    );
 }
+
+
+const getModernTheme = (isDark: boolean, accentColor: string) => {
+    const colors = {
+        placeholderColor: isDark ? '#666' : '#999',
+        iconActive: accentColor,
+        iconInactive: isDark ? '#666' : '#999',
+    };
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: isDark ? '#0A0410' : '#ffffff',
+        },
+        scrollContent: {
+            flexGrow: 1,
+            paddingHorizontal: 24,
+            paddingBottom: 40,
+            paddingTop: 40, 
+        },
+        headerContainer: {
+            alignItems: 'center',
+            marginBottom: 32,
+            marginTop: 20,
+        },
+        logo: {
+            width: 80,
+            height: 80,
+            borderRadius: 20,
+            marginBottom: 16,
+        },
+        title: {
+            fontSize: 28,
+            fontWeight: '700',
+            color: isDark ? '#ffffff' : '#1a1a1a',
+            marginBottom: 8,
+        },
+        subtitle: {
+            fontSize: 14,
+            color: isDark ? '#a0a0a0' : '#666666',
+            textAlign: 'center',
+        },
+        formContainer: {
+            width: '100%',
+        },
+        inputContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: isDark ? '#1A1625' : '#f5f5f5',
+            borderRadius: 16,
+            paddingHorizontal: 16,
+            height: 56,
+            marginBottom: 20, 
+            borderWidth: 1.5,
+            borderColor: 'transparent',
+        },
+        inputFocused: {
+            borderColor: accentColor,
+            backgroundColor: isDark ? '#1F1B2E' : '#f3e8ff',
+        },
+        inputIcon: {
+            marginRight: 12,
+        },
+        input: {
+            flex: 1,
+            height: '100%',
+            color: isDark ? '#fff' : '#000',
+            fontSize: 16,
+        },
+
+        loginButton: {
+            backgroundColor: "#391b78ff",
+            borderRadius: 10,
+            paddingVertical: 15,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 20,
+            elevation: 7,
+        },
+        loginButtonText: {
+            color: '#ffffff',
+            fontSize: 16,
+            fontWeight: '700',
+            letterSpacing: 0.5,
+        },
+
+        // Divider
+        dividerContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginVertical: 30,
+        },
+        dividerLine: {
+            flex: 1,
+            height: 1,
+            backgroundColor: isDark ? '#333' : '#e0e0e0',
+        },
+        dividerText: {
+            paddingHorizontal: 16,
+            color: isDark ? '#666' : '#999',
+            fontSize: 12,
+            fontWeight: '600',
+        },
+
+        // Footer
+        footerContainer: {
+            flexDirection: 'row',
+            justifyContent: 'center',
+            marginTop: 30,
+        },
+        footerText: {
+            color: isDark ? '#888' : '#666',
+            fontSize: 14,
+        },
+        registerLink: {
+            color: accentColor,
+            fontWeight: '700',
+            marginLeft: 6,
+            fontSize: 14,
+        },
+    });
+
+    return { styles, colors };
+};
