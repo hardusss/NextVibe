@@ -155,7 +155,6 @@ function PageSettingsContent() {
 
             if (about !== user?.about) {
                 const aboutResponse = await updateUser(undefined, about);
-                console.log(aboutResponse)
                 if (aboutResponse === null) {
                     showToast('Failed to update about', false);
                     return;
