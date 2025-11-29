@@ -182,9 +182,9 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
 
   return (
     <View style={styles.overlay}>
-      <TouchableOpacity style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
+      <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
       <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.closeButton} onPress={onClose}>
           <View style={styles.closeButtonInner}>
             <MaterialCommunityIcons name="close" size={22} color="#fff" />
           </View>
@@ -230,7 +230,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
               <Text style={styles.orText}>Or enter manually</Text>
               <View style={styles.codeBox}>
                 <Text style={styles.codeText}>{qrValue || "..."}</Text>
-                <TouchableOpacity style={styles.copyIconButton} onPress={handleCopy}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.copyIconButton} onPress={handleCopy}>
                   <MaterialCommunityIcons
                     name={copied ? "check" : "content-copy"}
                     size={20}
@@ -241,7 +241,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
             </View>
 
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.downloadButton} onPress={handleDownload}>
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.downloadButton} onPress={handleDownload}>
                 <MaterialCommunityIcons 
                   name="google-play" 
                   size={20} 
@@ -250,7 +250,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
                 <Text style={styles.downloadButtonText}>Get App</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.nextButton} onPress={handleNext}>
                 <Text style={styles.nextButtonText}>Continue</Text>
                 <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
               </TouchableOpacity>
@@ -306,7 +306,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
               ))}
             </View>
 
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               onPress={handleBack}
               style={styles.backButton}
               activeOpacity={0.7}

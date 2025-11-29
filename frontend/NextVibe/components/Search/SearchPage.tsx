@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { FlatList, View, TextInput, Text, StyleSheet, useColorScheme, TouchableOpacity, Dimensions, StatusBar } from "react-native";
 import searchByName from "@/src/api/search";
-import GetApiUrl from "@/src/utils/url_api";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { MaterialIcons } from "@expo/vector-icons";
 import formatNumber from "@/src/utils/formatNumber";
@@ -11,7 +10,7 @@ import { useCallback } from "react";
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from 'expo-blur';
-
+import { storage } from "@/src/utils/storage";
 
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
@@ -61,7 +60,20 @@ export default function SearchPage() {
         const response = await getSearchHistory();
         setSearchHistoryUser(response.data);
     };
+    const checkUser = async (user_id: number) => {
+        const id = await storage.getItem("id")
+        return Number(id) == Number(user_id)
+    }
 
+    const handlePress = async (item: any) => {
+        setSearchHistory(item.user_id);
+        if (await checkUser(Number(item.user_id))){
+            router.push("/profile")
+        }
+        else {
+            router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: "search" }})
+        } 
+    }
     useFocusEffect(
         useCallback(() => {
             fetchHistory();
@@ -198,8 +210,9 @@ export default function SearchPage() {
                 <FlatList
                     data={searchHistoryUser}
                     keyExtractor={(item) => item.user_id.toString()}
+                    showsVerticalScrollIndicator={false}
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}  onPress={() => {setSearchHistory(item.user_id); router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: "search" } })}}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}  onPress={() => handlePress(item)}>
                             <FastImage source={{ uri: `${item.avatar}` }} style={styles.avatar} />
                             <View>
                                 <View style={{ flexDirection: "row" }}>
@@ -208,7 +221,7 @@ export default function SearchPage() {
                                 </View>
                                 <Text style={{ color: "gray", fontWeight: "800" }}>{formatNumber(item.readers_count)} Subs</Text>
                             </View>
-                            <TouchableOpacity onPress={() => handleDeleteUser(item.user_id)} style={{ position: "absolute", right: 10 }}>
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => handleDeleteUser(item.user_id)} style={{ position: "absolute", right: 10 }}>
                                 <MaterialIcons name="close" color={colors.textPrimary} size={24} />
                             </TouchableOpacity>
                         </TouchableOpacity>
@@ -226,10 +239,11 @@ export default function SearchPage() {
                 <FlatList
                     data={users}
                     keyExtractor={(item) => item.user_id.toString()}
+                    showsVerticalScrollIndicator={false}
                     onEndReachedThreshold={0.5}
                     initialNumToRender={2}
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={[styles.userContainer, { borderBottomColor: colors.border }]} onPress={() => {setSearchHistory(item.user_id); router.push({ pathname: "/user-profile", params: { id: item.user_id } })}}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.userContainer, { borderBottomColor: colors.border }]} onPress={() => handlePress(item)}>
                             <FastImage source={{ uri: `${item.avatar}` }} style={styles.avatar} />
                             <View>
                                 <View style={{ flexDirection: "row" }}>
@@ -256,6 +270,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 16,
+        paddingBottom: 80
     },
     input: {
         height: 50,

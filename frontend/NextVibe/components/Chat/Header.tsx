@@ -14,7 +14,7 @@ export default function Header({ title, leftIcon, onLeftPress }: HeaderProps) {
   return (
     <View style={styles.header}>
       {leftIcon && (
-        <TouchableOpacity onPress={onLeftPress} style={styles.leftButton}>
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={onLeftPress} style={styles.leftButton}>
           <MaterialIcons name={leftIcon as any} size={28} color={isDark ? '#fff' : '#000'} />
         </TouchableOpacity>
       )}

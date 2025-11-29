@@ -329,7 +329,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
         <Text style={styles.commentText}>
           {text.slice(0, 200)}...
         </Text>
-        <TouchableOpacity onPress={() => toggleText(id)}>
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleText(id)}>
           <Text style={styles.showMoreText}>Show more</Text>
         </TouchableOpacity>
       </View>
@@ -370,12 +370,12 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
               <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
                 <Text style={{color: "gray", fontWeight: "300"}}>{timeAgo(item.create_at)}</Text>
-                <TouchableOpacity onPress={() => handleReply(item)}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => handleReply(item)}>
                   <Text style={{color: "gray", fontWeight: "bold"}}>Reply</Text>
                 </TouchableOpacity>
               </View>
               <View>
-                <TouchableOpacity onPress={() => toggleLike(item)}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item)}>
                   <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
                     <Text style={{color: "gray", fontSize: 12}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
                     <MaterialIcons 
@@ -400,7 +400,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             {item.replies && item.replies.length > 0 && (
                 <View style={styles.repliesButtonContainer}>
                     {!areAllRepliesShown && (
-                        <TouchableOpacity onPress={() => showMoreReplies(item.id, totalReplies)} style={styles.replyButton}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => showMoreReplies(item.id, totalReplies)} style={styles.replyButton}>
                             <Text style={styles.toggleRepliesText}>
                                 {showMoreText}
                             </Text>
@@ -408,7 +408,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                         </TouchableOpacity>
                     )}
                     {currentVisibleCount > 0 && (
-                        <TouchableOpacity onPress={() => hideReplies(item.id)} style={[styles.replyButton, { marginLeft: 15 }]}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => hideReplies(item.id)} style={[styles.replyButton, { marginLeft: 15 }]}>
                             <Text style={styles.toggleRepliesText}>
                                 Hide Answers
                             </Text>
@@ -438,12 +438,12 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
           <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
             <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
               <Text style={{color: "gray", fontWeight: "300"}}>{timeAgo(item.create_at)}</Text>
-              <TouchableOpacity onPress={() => handleReply(item)}>
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => handleReply(item)}>
                 <Text style={{color: "gray", fontWeight: "bold"}}>Reply</Text>
               </TouchableOpacity>
             </View>
             <View>
-              <TouchableOpacity onPress={() => toggleLike(item)}>
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item)}>
                 <View style={{flexDirection: "row", gap: 10, marginTop: 5}}>
                   <Text style={{color: "gray", fontSize: 12}}>{item.count_likes > 0 ? item.count_likes : ""} </Text>
                   <MaterialIcons 
@@ -486,7 +486,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             <View style={styles.header}>
               <View style={styles.bar} />
               <Text style={styles.headerText}>Comments: {comments.reduce((total, comment) => total + 1 + (comment.replies?.length || 0), 0)}</Text>
-              <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={closeModal} style={styles.closeButton}>
                 <AntDesign name="close" size={24} color="#FFF" />
               </TouchableOpacity>
             </View>
@@ -518,7 +518,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             {replyingTo ? (
               <View style={styles.replyingToContainer}>
                 <Text style={styles.replyingToText}>Replying to {replyingTo.user.username}</Text>
-                <TouchableOpacity onPress={() => setReplyingTo(null)}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setReplyingTo(null)}>
                   <AntDesign name="close" size={16} color="#FFF" />
                 </TouchableOpacity>
               </View>
@@ -542,7 +542,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                       editable={isCommentsEnabled} 
                       onChange={(e) => setCommentText(e.nativeEvent.text)} 
                     />
-                    <TouchableOpacity style={styles.sendButton} onPress={handleSendComment} disabled={!commentText.trim() || !isCommentsEnabled}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.sendButton} onPress={handleSendComment} disabled={!commentText.trim() || !isCommentsEnabled}>
                       <LinearGradient
                           colors={['#A78BFA', '#5856D6']}
                           style={styles.sendButtonGradient}

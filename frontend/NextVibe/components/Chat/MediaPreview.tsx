@@ -94,7 +94,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
   const size = getThumbnailSize();
 
   const renderThumbnail = () => (
-    <TouchableOpacity onPress={handleOpenModal} activeOpacity={0.9}>
+    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleOpenModal} activeOpacity={0.9}>
       <View style={{
         // @ts-ignore
         width: size.width,
@@ -170,7 +170,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
       statusBarTranslucent
     >
       <View style={styles.modalContainer}>
-        <TouchableOpacity
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           style={styles.closeButton}
           onPress={handleCloseModal}
           activeOpacity={0.7}

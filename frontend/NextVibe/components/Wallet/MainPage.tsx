@@ -447,7 +447,7 @@ export default function WalletScreen() {
         </View>
 
         <View style={styles.topHeader}>
-          <TouchableOpacity
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             style={[styles.headerIconBackground, {width: 84}]}
             onPress={() => router.replace("/profile")}
           >
@@ -464,7 +464,7 @@ export default function WalletScreen() {
           </TouchableOpacity>
 
           <View style={styles.rightHeaderGroup}>
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               style={styles.headerIconBackground}
               onPress={() => setIsBalanceHidden(!isBalanceHidden)}
             >
@@ -480,7 +480,7 @@ export default function WalletScreen() {
               />
             </TouchableOpacity>
             
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               style={[styles.headerIconBackground, { marginLeft: 12 }]}
               onPress={() => router.push('/transactions')}
             >
@@ -512,7 +512,7 @@ export default function WalletScreen() {
 
         <View style={styles.actionButtonsContainer}>
           <View style={styles.actionButtonWrapper}>
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               style={styles.actionButton}
               onPress={() =>
                 router.push({
@@ -536,7 +536,7 @@ export default function WalletScreen() {
           </View>
 
           <View style={styles.actionButtonWrapper}>
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               style={styles.actionButton}
               onPress={() =>
                 router.push({
@@ -560,7 +560,7 @@ export default function WalletScreen() {
           </View>
 
           <View style={styles.actionButtonWrapper}>
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               style={styles.actionButton}
               onPress={() => setIsToastVisible(true)}
             >
@@ -579,7 +579,7 @@ export default function WalletScreen() {
           </View>
         </View>
       <View style={styles.recentActivityContainer}>
-          <TouchableOpacity
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             style={styles.recentActivityCard}
             onPress={() => {
               if (error) {

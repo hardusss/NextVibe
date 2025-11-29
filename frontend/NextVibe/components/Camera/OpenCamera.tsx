@@ -32,7 +32,7 @@ const CameraScreen = () => {
   const device = useCameraDevice(cameraSide);
   const format = useCameraFormat(device, [
     { videoResolution: { width: 1920, height: 1080 } },
-    { videoResolution: { width: 1280, height: 720 } }, 
+    { videoResolution: { width: 1920, height: 1080 } }, 
   ]);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const VIDEO_LENGHT = 30000
@@ -126,7 +126,7 @@ const CameraScreen = () => {
             : "Microphone permission is required"
           }
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
           style={styles.permissionButton} 
           onPress={requestPermissions}
         >
@@ -235,10 +235,10 @@ const CameraScreen = () => {
             enableZoomGesture={true}
             audio={true}
           />
-          <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.closeButton} onPress={() => router.back()}>
             <MaterialCommunityIcons name="close" color="white" size={28} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.flashButton} onPress={() => setShowFlashModal(true)}>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.flashButton} onPress={() => setShowFlashModal(true)}>
             <MaterialCommunityIcons 
               name={flashMode === 'on' ? "flash" : flashMode === 'auto' ? "flash-auto" : "flash-off"} 
               size={20} 
@@ -246,22 +246,22 @@ const CameraScreen = () => {
             />
           </TouchableOpacity>
           <Modal visible={showFlashModal} transparent animationType="fade">
-            <TouchableOpacity style={styles.flashModalOverlay} activeOpacity={1} onPress={() => setShowFlashModal(false)}>
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.flashModalOverlay} activeOpacity={1} onPress={() => setShowFlashModal(false)}>
               <View style={styles.flashModalContentHorizontal}>
-                <TouchableOpacity style={styles.flashOption} onPress={() => { setFlashMode('auto'); setShowFlashModal(false); }}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.flashOption} onPress={() => { setFlashMode('auto'); setShowFlashModal(false); }}>
                   <MaterialCommunityIcons name="flash-auto" size={20} color={flashMode === 'auto' ? '#FFD600' : 'white'} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.flashOption} onPress={() => { setFlashMode('on'); setShowFlashModal(false); }}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.flashOption} onPress={() => { setFlashMode('on'); setShowFlashModal(false); }}>
                   <MaterialCommunityIcons name="flash" size={20} color={flashMode === 'on' ? '#FFD600' : 'white'} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.flashOption} onPress={() => { setFlashMode('off'); setShowFlashModal(false); }}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.flashOption} onPress={() => { setFlashMode('off'); setShowFlashModal(false); }}>
                   <MaterialCommunityIcons name="flash-off" size={20} color={flashMode === 'off' ? '#FFD600' : 'white'} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
           </Modal>
           <View style={styles.bottomControls}>
-            <TouchableOpacity style={styles.switchButton} onPress={handleCameraSwitch}>
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.switchButton} onPress={handleCameraSwitch}>
               <Feather name="refresh-ccw" size={28} color="white" />
             </TouchableOpacity>
             <View style={styles.captureContainer}>
@@ -295,7 +295,7 @@ const CameraScreen = () => {
                   transform="rotate(-90, 40, 40)"
                 />
               </Svg>
-              <TouchableOpacity
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 style={styles.captureButton}
                 onPress={handleTakePhoto}
                 onLongPress={startRecording}
@@ -304,7 +304,7 @@ const CameraScreen = () => {
                 <View style={styles.captureInner} />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.galleryButton} onPress={openGallery}>
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.galleryButton} onPress={openGallery}>
               {lastPhoto ? (
                 <Image source={{ uri: lastPhoto }} style={styles.galleryThumbnail} />
               ) : (

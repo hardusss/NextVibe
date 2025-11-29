@@ -129,7 +129,7 @@ export default function PostCreate() {
         if (isVideo(item)) {
             return (
                 <View style={themedStyles.mediaContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                         onPress={() => handleDeleteImage(item)} 
                         style={themedStyles.deleteButton}
                     >
@@ -144,7 +144,7 @@ export default function PostCreate() {
         } else {
             return (
                 <View style={themedStyles.mediaContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                         onPress={() => handleDeleteImage(item)} 
                         style={themedStyles.deleteButton}
                     >
@@ -456,7 +456,7 @@ export default function PostCreate() {
             />
             
             <View style={themedStyles.header}>
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={themedStyles.backButton}
                     onPress={() => {
                         setMediaUrls([]);
@@ -555,7 +555,7 @@ export default function PostCreate() {
                 </View>
 
                 <View style={themedStyles.footer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                         style={[themedStyles.button, themedStyles.publishButton]} 
                         onPress={handlePublish}
                     >
@@ -574,7 +574,7 @@ export default function PostCreate() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={themedStyles.modalContainer}
                 >
-                    <TouchableOpacity 
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                         style={{ flex: 1 }} 
                         activeOpacity={1} 
                         onPress={() => setIsModalVisible(false)}
@@ -582,7 +582,7 @@ export default function PostCreate() {
                     <View style={themedStyles.modalContent}>
                         <View style={themedStyles.modalHeader}>
                             <Text style={themedStyles.modalTitle}>Generate with AI</Text>
-                            <TouchableOpacity 
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                 style={themedStyles.modalCloseButton}
                                 onPress={() => setIsModalVisible(false)}
                             >
@@ -597,7 +597,7 @@ export default function PostCreate() {
                                 value={aiPrompt}
                                 onChangeText={setAiPrompt}
                             />
-                            <TouchableOpacity 
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                 style={themedStyles.modalButton} 
                                 onPress={handleGenerateWithAI}
                                 disabled={aiPrompt.length ===  0}

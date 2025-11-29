@@ -18,7 +18,7 @@ const LogoutConfirmationSheet = ({ isVisible, onClose, onConfirm }: Props) => {
             animationType="fade"
             onRequestClose={onClose}
         >
-            <TouchableOpacity 
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                 style={styles.overlay}
                 activeOpacity={1}
                 onPress={onClose}
@@ -50,7 +50,7 @@ const LogoutConfirmationSheet = ({ isVisible, onClose, onConfirm }: Props) => {
                         </Text>
                         
                         <View style={styles.buttonContainer}>
-                            <TouchableOpacity
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 style={[styles.button, styles.cancelButton]}
                                 onPress={onClose}
                                 activeOpacity={0.7}
@@ -63,7 +63,7 @@ const LogoutConfirmationSheet = ({ isVisible, onClose, onConfirm }: Props) => {
                                 </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 style={[styles.button, styles.logoutButton]}
                                 onPress={onConfirm}
                                 activeOpacity={0.7}

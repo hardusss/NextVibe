@@ -104,7 +104,7 @@ const MessagePopup = ({ isVisible, onClose, type, title, message }: MessagePopup
 
     return (
         <View style={styles.overlay}>
-            <TouchableOpacity style={styles.overlayTouchable} onPress={closeModal} activeOpacity={1} />
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.overlayTouchable} onPress={closeModal} activeOpacity={1} />
             <Animated.View 
                 style={[styles.container, { transform: [{ translateY }] }]} 
                 {...panResponder.panHandlers}
@@ -112,14 +112,14 @@ const MessagePopup = ({ isVisible, onClose, type, title, message }: MessagePopup
                 <View style={styles.headerContainer}>
                     <MaterialCommunityIcons name={getIconName()} size={30} color={getIconColor()} />
                     <Text style={styles.title}>{title}</Text>
-                    <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={closeModal} style={styles.closeButton}>
                         <MaterialCommunityIcons name="close" size={24} color={isDark ? "#c9d1d9" : "#666"} />
                     </TouchableOpacity>
                 </View>
                 
                 <Text style={styles.message}>{message}</Text>
                 
-                <TouchableOpacity style={styles.button} onPress={closeModal}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.button} onPress={closeModal}>
                     <Text style={styles.buttonText}>OK</Text>
                 </TouchableOpacity>
             </Animated.View>

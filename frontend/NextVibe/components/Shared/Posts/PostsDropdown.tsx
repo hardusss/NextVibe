@@ -169,7 +169,7 @@ export default function DropDown({
         ]} />
 
         {items.map((item, i) => (
-          <TouchableOpacity
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             key={i}
             activeOpacity={0.7}
             onPress={item.onClick}

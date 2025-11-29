@@ -25,7 +25,7 @@ export default function MediaPickerModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
+      <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
         style={styles.overlay} 
         activeOpacity={1} 
         onPress={onClose}
@@ -52,7 +52,7 @@ export default function MediaPickerModal({
                     { color: isDark ? '#fff' : '#000' }
                 ]}>Select Media</Text>
                 
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={styles.option} 
                     onPress={onCameraPress}
                 >
@@ -67,7 +67,7 @@ export default function MediaPickerModal({
                     ]}>Take Photo</Text>
                 </TouchableOpacity>
                 
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={[styles.option, { borderBottomWidth: 0 }]} 
                     onPress={onGalleryPress}
                 >

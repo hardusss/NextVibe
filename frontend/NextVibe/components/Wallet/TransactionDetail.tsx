@@ -213,7 +213,7 @@ export default function TransactionDetail() {
                 <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/> 
 
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.backButton} onPress={() => router.back()}>
                         <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#FFFFFF' : '#000'} />
                     </TouchableOpacity>
                     <Text style={styles.title}>Transaction Details</Text>
@@ -251,7 +251,7 @@ export default function TransactionDetail() {
                             </View>
 
                             {from_address && isIncoming && (
-                                <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(from_address as string, 'From Address')}>
+                                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.infoRow} onPress={() => handleCopy(from_address as string, 'From Address')}>
                                     <Text style={styles.label}>From</Text>
                                     <View style={styles.valueContainer}>
                                         <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{from_address}</Text>
@@ -260,7 +260,7 @@ export default function TransactionDetail() {
                                 </TouchableOpacity>
                             )}
                             
-                            <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(to_address as string, 'To Address')}>
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.infoRow} onPress={() => handleCopy(to_address as string, 'To Address')}>
                                 <Text style={styles.label}>To</Text>
                                 <View style={styles.valueContainer}>
                                     <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{to_address}</Text>
@@ -268,7 +268,7 @@ export default function TransactionDetail() {
                                 </View>
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={styles.infoRow} onPress={() => handleCopy(tx_id as string, 'Transaction ID')}>
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.infoRow} onPress={() => handleCopy(tx_id as string, 'Transaction ID')}>
                                 <Text style={styles.label}>Transaction ID</Text>
                                 <View style={styles.valueContainer}>
                                     <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{tx_id}</Text>
@@ -277,7 +277,7 @@ export default function TransactionDetail() {
                             </TouchableOpacity>
 
                             {tx_url && (
-                                <TouchableOpacity style={[styles.infoRow, styles.infoRowLast]} onPress={() => handleOpenURL(tx_url)}>
+                                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.infoRow, styles.infoRowLast]} onPress={() => handleOpenURL(tx_url)}>
                                     <Text style={styles.label}>View on Explorer</Text>
                                     <View style={styles.valueContainer}>
                                         <Text style={styles.urlText}>Open Link</Text>

@@ -265,7 +265,7 @@ export default function SelectTokenPage() {
         <StatusBar backgroundColor={isDarkTheme ? "#0A0410" : "#fff"}/>  
 
         <View style={styles.titleWrapper}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()}>
             <MaterialCommunityIcons
               name="arrow-left"
               size={28}
@@ -311,7 +311,7 @@ export default function SelectTokenPage() {
             ))
           : filteredTokens.length > 0
           ? filteredTokens.map((token, index) => (
-              <TouchableOpacity
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 key={index}
                 style={styles.tokenItem}
                 onPress={() => Redirect(token)}

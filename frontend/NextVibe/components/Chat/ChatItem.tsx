@@ -146,7 +146,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
       <TouchableWithoutFeedback onPress={isPressed ? resetPosition : undefined}>
         <Animated.View style={[styles.wrapper, { opacity }]}>
           {isPressed && (
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               style={styles.deleteButton}
               onPress={handleDeletePress}
               disabled={isDeleting}
@@ -160,7 +160,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
           )}
 
           <Animated.View style={{ transform: [{ translateX }] }}>
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               style={[styles.container, { backgroundColor: isDark ? '#0A0410' : '#fff' }]}
               onPress={handlePress}
               onLongPress={handleLongPress}

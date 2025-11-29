@@ -322,14 +322,14 @@ export default function ChatScreen() {
       <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
       <View style={{ flex: 1 }}>
         <View style={styles.navbar}>
-          <TouchableOpacity 
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
             onPress={() => router.back()}
             style={styles.backButton}
           >
             <AntDesign name="arrowleft" size={24} color={isDark ? '#fff' : '#000'} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}`} })}>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}`} })}>
             <Image 
               source={{ 
                 uri: userDetails?.avatar 
@@ -395,7 +395,7 @@ export default function ChatScreen() {
                 {selectedMedia.map((media, index) => (
                   <View key={index} style={styles.previewContainer}>
                     <Image source={{ uri: media.uri }} style={styles.previewImage} />
-                    <TouchableOpacity 
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                       style={styles.removeButton}
                       onPress={() => setSelectedMedia(prev => 
                         prev.filter((_, i) => i !== index)
@@ -415,7 +415,7 @@ export default function ChatScreen() {
                     tint={isDark ? 'dark' : 'light'}
                     style={styles.blurViewAbsolute}
                 />
-                <TouchableOpacity onPress={pickMedia} style={styles.mediaButton}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={pickMedia} style={styles.mediaButton}>
                     <MaterialIcons 
                     name="camera-alt" 
                     size={24} 
@@ -432,7 +432,7 @@ export default function ChatScreen() {
                     multiline
                 />
                 
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     onPress={sendMessage}
                     style={[styles.sendButton, !text.trim() && !selectedMedia.length && styles.sendButtonDisabled]}
                     disabled={!text.trim() && !selectedMedia.length}

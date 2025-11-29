@@ -14,7 +14,7 @@ export default function ButtonRegister(props: RegisterButtonProps) {
     }
 
     return (
-        <TouchableOpacity style={registerStyles.registerButton} onPress={handleRegister}>
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={registerStyles.registerButton} onPress={handleRegister}>
             <Text style={registerStyles.registerButtonText}>Register</Text>
         </TouchableOpacity>
     );

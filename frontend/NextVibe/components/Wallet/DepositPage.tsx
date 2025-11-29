@@ -232,7 +232,7 @@ export default function DepositPage() {
       <View style={styles.container}>
         <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()}>
             <MaterialCommunityIcons
               name="arrow-left"
               size={28}
@@ -266,7 +266,7 @@ export default function DepositPage() {
             </Text>
           </View>
 
-          <TouchableOpacity
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             style={styles.addressContainer}
             onPress={handleCopy}
             activeOpacity={0.8}
@@ -283,7 +283,7 @@ export default function DepositPage() {
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             style={[styles.button, styles.primaryButton]}
             onPress={handleShare}
             activeOpacity={0.8}
@@ -293,7 +293,7 @@ export default function DepositPage() {
               Share
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             style={[styles.button, styles.secondaryButton]}
             onPress={handleCopy}
             activeOpacity={0.8}

@@ -111,11 +111,10 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: { mes
         </Text>
         
         {/* Close button */}
-        <TouchableOpacity 
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
           onPress={handleClose}
           style={styles.closeButton}
           activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <MaterialCommunityIcons
             name="close"
