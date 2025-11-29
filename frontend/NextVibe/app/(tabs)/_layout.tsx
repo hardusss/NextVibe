@@ -156,7 +156,7 @@ export default function Layout() {
               shadowColor: "transparent",
             }}>
               {tabs.map((tab) => (
-                <TouchableOpacity key={tab.name} onPress={() => goToTab(tab.name)}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} key={tab.name} onPress={() => goToTab(tab.name)}>
                   {tab.name === "profile" && imageProfile ? (
                     <FastImage
                       source={{ uri: imageProfile, priority: FastImage.priority.normal, cache: FastImage.cacheControl.immutable }}

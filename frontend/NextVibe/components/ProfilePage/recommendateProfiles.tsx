@@ -7,7 +7,6 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import FastImage from "react-native-fast-image";
 import { useRouter } from "expo-router";
 import getRoccomendationsProfiles from "@/src/api/recommendations.profiles";
-import GetApiUrl from "@/src/utils/url_api";
 import followUser from "@/src/api/follow";
 
 const screenWidth = Dimensions.get("window").width;
@@ -74,7 +73,7 @@ const RecommendedUsers = () => {
                 <Text style={[styles.title, { color: theme.textPrimary }]}>
                     Recommended for you
                 </Text>
-                <TouchableOpacity onPress={() => setExpanded(!expanded)} style={styles.iconButton}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setExpanded(!expanded)} style={styles.iconButton}>
                     <Ionicons 
                         name={expanded ? "chevron-up" : "chevron-down"} 
                         size={24} 
@@ -92,7 +91,7 @@ const RecommendedUsers = () => {
                     renderItem={({ item }) => {
                         const isFollowed = followedUsers.includes(item.id);
                         return (
-                            <TouchableOpacity 
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                 style={[
                                     styles.userCard, 
                                     { backgroundColor: theme.cardBackground, borderColor: theme.border }
@@ -127,7 +126,7 @@ const RecommendedUsers = () => {
                                         )}
                                     </View>
 
-                                    <TouchableOpacity 
+                                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                         onPress={() => handleFollowUnfollow(item.id)} 
                                         activeOpacity={0.8}
                                         style={[

@@ -138,7 +138,7 @@ const ProfileView = () => {
                     }
                 >
                     <Modal transparent visible={isVisibleContainer} animationType="fade">
-                        <TouchableOpacity
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={{flex: 1,
                                     justifyContent: "center",
                                     alignItems: "center",
@@ -163,7 +163,7 @@ const ProfileView = () => {
                         {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 1}} /> :  ""}
                     </View>
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
-                        <TouchableOpacity onPress={() => setVisible(true)}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setVisible(true)}>
                             <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
                         </TouchableOpacity>
                         <View style={{flexDirection: "row", marginTop: 35, marginLeft: 20, flex: 1, justifyContent: "space-around"}}>
@@ -171,13 +171,13 @@ const ProfileView = () => {
                                 <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.post_count)}</Text>
                                 <Text style={profileStyle.text}>Posts</Text>
                             </View>
-                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: {last_page: "/profile",  userId: id, username: userData.username, activeTab: "Readers" } })}>
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.push({ pathname: "/follows-screen", params: {last_page: "/profile",  userId: id, username: userData.username, activeTab: "Readers" } })}>
                                 <View>
                                     <Text style={[profileStyle.text, {fontWeight: "bold"}]}>{formatNumber(userData.readers_count)}</Text>
                                     <Text style={profileStyle.text}>Readers</Text>
                                 </View>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => router.push({ pathname: "/follows-screen", params: { last_page: "/profile", userId: id, username: userData.username, activeTab: "Follows" } })}>
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.push({ pathname: "/follows-screen", params: { last_page: "/profile", userId: id, username: userData.username, activeTab: "Follows" } })}>
                                 <View>
                                     <Text style={[profileStyle.text, {fontWeight: "bold"}]} >{formatNumber(userData.follows_count)}</Text>
                                     <Text style={profileStyle.text}>Follows</Text>

@@ -96,7 +96,7 @@ export default function ReportPostModal({ postId, visible, onClose }: { postId: 
             {step === 1 && (
               <View style={styles.optionsContainer}>
                 {REPORT_OPTIONS.map(opt => (
-                  <TouchableOpacity
+                  <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     key={opt.key}
                     style={[styles.option, selected === opt.key && (isDark ? styles.optionSelectedDark : styles.optionSelectedLight)]}
                     onPress={() => setSelected(opt.key)}
@@ -106,10 +106,10 @@ export default function ReportPostModal({ postId, visible, onClose }: { postId: 
                 ))}
 
                 <View style={styles.actionsRow}>
-                  <TouchableOpacity onPress={handleClose} style={styles.ghostButton}>
+                  <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleClose} style={styles.ghostButton}>
                     <Text style={styles.ghostText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleNext} disabled={!selected} style={[styles.primaryButton, !selected && styles.disabledButton]}>
+                  <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleNext} disabled={!selected} style={[styles.primaryButton, !selected && styles.disabledButton]}>
                     <Text style={styles.primaryText}>Next</Text>
                   </TouchableOpacity>
                 </View>
@@ -129,10 +129,10 @@ export default function ReportPostModal({ postId, visible, onClose }: { postId: 
                 />
 
                 <View style={styles.actionsRow}>
-                  <TouchableOpacity onPress={() => setStep(1)} style={styles.ghostButton}>
+                  <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setStep(1)} style={styles.ghostButton}>
                     <Text style={styles.ghostText}>Back</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={startSend} disabled={loading} style={[styles.primaryButton, loading && styles.disabledButton]}>
+                  <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={startSend} disabled={loading} style={[styles.primaryButton, loading && styles.disabledButton]}>
                     {loading ? <ActivityIndicator color="white" /> : <Text style={styles.primaryText}>Send report</Text>}
                   </TouchableOpacity>
                 </View>

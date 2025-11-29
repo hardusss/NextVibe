@@ -70,7 +70,7 @@ export default function LoginView() {
                         value={password}
                         onChangeText={setPassword}
                     />
-                    <TouchableOpacity style={loginStyes.passwordIcon} onPress={togglePasswordVisibility}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={loginStyes.passwordIcon} onPress={togglePasswordVisibility}>
                         <MaterialIcons
                             name={hidePassword ? 'visibility' : 'visibility-off'}
                             size={24}
@@ -80,7 +80,7 @@ export default function LoginView() {
                 </View>
             </View>
             
-            <TouchableOpacity style={loginStyes.loginButton} onPress={() => {Login(email, password, router)}}>
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={loginStyes.loginButton} onPress={() => {Login(email, password, router)}}>
                 <Text style={[loginStyes.loginButtonText]}>Login</Text>
             </TouchableOpacity>
 

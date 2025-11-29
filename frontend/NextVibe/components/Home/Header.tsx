@@ -60,7 +60,7 @@ export default function Header() {
         <View style={styles.row}>
           <Text style={styles.text}>NextVibe</Text>
           <View style={{flexDirection: "row", gap: 15}}>
-            <TouchableOpacity style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
               <MaterialCommunityIcons name="bell-outline" size={30} color="#fafafa" />
               {notificationsCount > 0 && (
                 <View style={[
@@ -98,7 +98,7 @@ export default function Header() {
           }
         ]}
       >
-        <TouchableOpacity style={styles.messageButton} onPress={() => router.push("/chats")}>
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.messageButton} onPress={() => router.push("/chats")}>
           <Text style={styles.messageButtonText}>Message</Text>
         </TouchableOpacity>
       </Animated.View>

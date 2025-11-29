@@ -105,7 +105,7 @@ export default function ConfirmDialog({
               </Text>
 
             <View style={styles.confirmButtons}>
-              <TouchableOpacity
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 style={[
                   styles.confirmButton,
                   styles.cancelButton,
@@ -122,7 +122,7 @@ export default function ConfirmDialog({
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 style={[styles.confirmButton, styles.deleteButton]}
                 onPress={onConfirm}
                 activeOpacity={0.7}

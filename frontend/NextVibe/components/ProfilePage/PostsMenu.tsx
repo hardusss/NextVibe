@@ -161,7 +161,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                         
                         const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
                         return (
-                            <TouchableOpacity 
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                 style={styles.postContainer} 
                                 onPress={() => item.moderation_status === "approved" && hasMedia ? router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}}) : null}
                                 activeOpacity={item.moderation_status === "approved" && hasMedia ? 0.7 : 1}

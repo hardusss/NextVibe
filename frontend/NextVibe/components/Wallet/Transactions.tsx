@@ -124,7 +124,7 @@ export default function TransactionsScreen() {
         const isIncoming = item.direction === 'incoming';
         
         return (
-            <TouchableOpacity 
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                 style={styles.transactionItem}
                 onPress={() => {
                     router.push({
@@ -309,7 +309,7 @@ export default function TransactionsScreen() {
                 <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"}/>  
                 
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.backButton} onPress={() => router.back()}>
                         <MaterialCommunityIcons 
                             name="arrow-left" 
                             size={28} 

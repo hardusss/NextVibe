@@ -235,7 +235,7 @@ export default function FollowsScreen() {
     }, [followsLoading, isFollowsEnd, followsInitialized, fetchFollows]);
     
     const renderUserItem = ({ item }: { item: UserData }) => (
-        <TouchableOpacity style={styles.userItem}  onPress={() => router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: `/follows-screen?userId=${userId}` } })}>
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.userItem}  onPress={() => router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: `/follows-screen?userId=${userId}` } })}>
             <FastImage 
                 style={styles.avatarPlaceholder} 
                 source={{
@@ -243,7 +243,7 @@ export default function FollowsScreen() {
                 }} 
             />
             <Text style={styles.userName}>{item.username}</Text>
-            <TouchableOpacity style={styles.messageButton} onPress={() => handleCreateChat(item.user_id)}>
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.messageButton} onPress={() => handleCreateChat(item.user_id)}>
                 <Text style={styles.messageButtonText}>Message</Text>
             </TouchableOpacity>
         </TouchableOpacity>
@@ -328,8 +328,97 @@ export default function FollowsScreen() {
         },
         footerLoader: {
             paddingVertical: 20,
-        }
+        },
+        emptyContainer: {
+        flex: 1,
+        paddingTop: 80,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 40,
+    },
+    iconCircle: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+    },
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    emptySubtitle: {
+        fontSize: 15,
+        color: '#A09CB8',
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 24,
+    },
+    emptyButton: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 24,
+        borderWidth: 1,
+    },
+    emptyButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+    }
     });
+
+    const EmptyState = ({ 
+        type, 
+        isDark, 
+        onRefresh 
+    }: { 
+        type: string, 
+        isDark: boolean, 
+        onRefresh: () => void 
+    }) => {
+        const config = type === 'Readers' ? {
+            icon: 'ghost-outline',
+            title: "It's quiet here...",
+            subtitle: "No followers yet. Share your profile to grow your audience!",
+            buttonText: "Refresh"
+        } : {
+            icon: 'telescope',
+            title: "No following yet",
+            subtitle: "Find interesting people to follow and see them here.",
+            buttonText: "Refresh"
+        };
+
+        return (
+            <View style={[styles.emptyContainer, { backgroundColor: isDark ? '#0A0410' : '#F5F5F7' }]}>
+                <View style={[styles.iconCircle, { backgroundColor: isDark ? '#180F2E' : '#EAEAEA' }]}>
+                    <MaterialCommunityIcons 
+                        name={config.icon as any} 
+                        size={64} 
+                        color={isDark ? '#A78BFA' : '#5856D6'} 
+                        style={{ opacity: 0.8 }}
+                    />
+                </View>
+                <Text style={[styles.emptyTitle, { color: isDark ? '#FFFFFF' : '#000' }]}>
+                    {config.title}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                    {config.subtitle}
+                </Text>
+                
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+                    style={[styles.emptyButton, { borderColor: isDark ? '#A78BFA' : '#5856D6' }]} 
+                    onPress={onRefresh}
+                >
+                    <Text style={[styles.emptyButtonText, { color: isDark ? '#A78BFA' : '#5856D6' }]}>
+                        {config.buttonText}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
+
     
     return (
         <View style={styles.container}>
@@ -338,7 +427,7 @@ export default function FollowsScreen() {
                 barStyle={isDark ? "light-content" : "dark-content"}
             />
             <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.backButton} onPress={() => router.back()}>
                     <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#FFFFFF' : '#000'} />
                 </TouchableOpacity>
                 <Text style={styles.nickname}>{username || 'Profile'}</Text>
@@ -346,14 +435,14 @@ export default function FollowsScreen() {
             
             <View style={styles.tabWrapper}>
                 <View style={styles.tabContainer}>
-                    <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTabState('Readers')}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.tabButton} onPress={() => setActiveTabState('Readers')}>
                         <Text style={[styles.tabButtonText, { 
                             color: activeTabState === 'Readers' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' 
                         }]}>
                             Readers
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTabState('Follows')}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.tabButton} onPress={() => setActiveTabState('Follows')}>
                         <Text style={[styles.tabButtonText, { 
                             color: activeTabState === 'Follows' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' 
                         }]}>
@@ -386,6 +475,11 @@ export default function FollowsScreen() {
                                 tintColor={isDark ? '#FFFFFF' : '#000'}
                             />
                         }
+                        ListEmptyComponent={
+                            !readersLoading && readersInitialized && readersData.length === 0 ? (
+                                <EmptyState type="Readers" isDark={isDark} onRefresh={onRefresh} />
+                            ) : null
+                        }
                     />
                 ) : (
                     <FlatList
@@ -405,6 +499,11 @@ export default function FollowsScreen() {
                                 onRefresh={onRefresh}
                                 tintColor={isDark ? '#FFFFFF' : '#000'}
                             />
+                        }
+                        ListEmptyComponent={
+                            !followsLoading && followsInitialized && followsData.length === 0 ? (
+                                <EmptyState type="Follows" isDark={isDark} onRefresh={onRefresh} />
+                            ) : null
                         }
                     />
                 )}

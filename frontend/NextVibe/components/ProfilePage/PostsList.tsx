@@ -722,7 +722,7 @@ const UserPosts = () => {
                 )}
               </View>
              <View style={{position: "relative"}}>
-              <TouchableOpacity 
+              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                 style={{position: "absolute", right: -2, top: -10, zIndex: 10}}
                 onPress={(e) => {
                   e.stopPropagation();
@@ -832,7 +832,7 @@ const UserPosts = () => {
             <View style={styles.postContent}>
               <Text style={styles.postText}>{displayText}</Text>
               {needsMoreButton && (
-                <TouchableOpacity onPress={() => toggleExpand(item.post_id)}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleExpand(item.post_id)}>
                   <Text style={{ color: theme.accentColor, marginTop: 5 }}>
                     {isExpanded ? "Show less" : "Read more"}
                   </Text>
@@ -843,7 +843,7 @@ const UserPosts = () => {
         
         
         <View style={styles.postFooter}>
-          <TouchableOpacity onPress={() => toggleLike(item.post_id)} style={styles.likesContainer}>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item.post_id)} style={styles.likesContainer}>
             <Icon 
               name={isLiked ? "heart" : "heart-outline"} 
               size={24} 
@@ -851,7 +851,7 @@ const UserPosts = () => {
             />
             <Text style={styles.likesCount}>{formatNumber(likeCount)}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => {
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => {
             setPopupCommentsEnabled(item.is_comments_enabled)
             setPopupPostId(item.post_id);
             setShowPopup(true);
@@ -876,7 +876,7 @@ const UserPosts = () => {
         isSuccess={toastSuccess}
       />
       <View style={styles.headerContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
           style={styles.backButton}
           onPress={() => router.back()}
         >

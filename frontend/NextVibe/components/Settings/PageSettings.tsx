@@ -301,12 +301,12 @@ function PageSettingsContent() {
 
             <StatusBar backgroundColor={isDark ? darkColors.background : lightColors.background} />
             <View style={styles.header}>
-                <TouchableOpacity onPress={handleBackPress}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleBackPress}>
                     <MaterialCommunityIcons name="arrow-left" style={styles.icon} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Settings Profile</Text>
 
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={{
                         backgroundColor: isSave ? "#3b0076ff" : "#262626",
                         padding: 5,
@@ -365,7 +365,7 @@ function PageSettingsContent() {
                                     />
                                 </TouchableWithoutFeedback>
                             </View>
-                            <TouchableOpacity onPress={handleOpenEdit}>
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleOpenEdit}>
                                 <Text style={styles.linkText}>Edit or remove avatar</Text>
                             </TouchableOpacity>
                         </View>
@@ -409,11 +409,11 @@ function PageSettingsContent() {
                                 thumbColor={twoFA ? "#fff" : "#f4f3f4"}>
                             </Switch>
                         </View>
-                        <TouchableOpacity style={{marginTop: 15}} onPress={() => setIsVisibleResetPassword(true)}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={{marginTop: 15}} onPress={() => setIsVisibleResetPassword(true)}>
                             <Text style={{color: "#7b05f1ff", fontWeight: "bold"}}>Reset password</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={{marginTop: 15}} onPress={handleLogout}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={{marginTop: 15}} onPress={handleLogout}>
                             <Text style={{color: "red", fontWeight: "bold"}}>Log out</Text>
                         </TouchableOpacity>
                     </>

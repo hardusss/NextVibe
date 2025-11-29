@@ -68,7 +68,7 @@ const ChatBubble: React.FC<Props> = ({ message }) => {
         />
         {isMyMessage && <View style={styles.myMessageTint} />}
         
-        <TouchableOpacity 
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
             style={styles.messageContent}
             onLongPress={handleLongPress}
             delayLongPress={300}

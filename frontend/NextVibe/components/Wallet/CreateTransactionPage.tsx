@@ -535,7 +535,7 @@ export default function CreateTransactionPage() {
                     )}
 
                     <View style={styles.header}>
-                        <TouchableOpacity onPress={() => router.back()}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()}>
                             <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#fff' : '#000'} />
                         </TouchableOpacity>
                         <Text style={styles.title}>Send {symbol}</Text>
@@ -551,7 +551,7 @@ export default function CreateTransactionPage() {
                             <FastImage source={{ uri: icon as string }} style={styles.tokenIcon} />
                             <View style={styles.tokenDetails}>
                                 <Text style={styles.tokenName}>{name}</Text>
-                                <TouchableOpacity style={styles.switchButton} onPress={() => router.push("/select-token")}>
+                                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.switchButton} onPress={() => router.push("/select-token")}>
                                     <Text style={styles.switchButtonText}>Switch token</Text>
                                 </TouchableOpacity>
                             </View>
@@ -597,7 +597,7 @@ export default function CreateTransactionPage() {
                                 placeholder={`0.00`}
                                 placeholderTextColor={isDark ? '#666' : '#999'}
                             />
-                            <TouchableOpacity style={styles.maxButton} onPress={handleMaxAmount}>
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.maxButton} onPress={handleMaxAmount}>
                                 <Text style={styles.maxButtonText}>Max</Text>
                             </TouchableOpacity>
                         </View>

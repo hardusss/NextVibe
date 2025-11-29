@@ -139,7 +139,7 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
 
     return (
         <View style={styles.overlay}>
-            <TouchableOpacity style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
             <Animated.View style={[styles.container, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
                 <View style={styles.headerContainer}>
                     <MaterialCommunityIcons name="lock-reset" size={30} color={isDark ? "#7b05f1ff" : "#007bff"} />
@@ -188,7 +188,7 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
                     
                     {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
                     
-                    <TouchableOpacity 
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                         style={styles.resetButton} 
                         onPress={handleResetPassword}
                         disabled={isLoading}

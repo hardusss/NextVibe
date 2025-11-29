@@ -196,7 +196,7 @@ export default function ResultTransaction() {
                                 <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{to}</Text>
                             </View>
 
-                            <TouchableOpacity style={[styles.infoRow, {borderBottomWidth: 0}]} onPress={() => handleOpenURL(tx_url as string)}>
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.infoRow, {borderBottomWidth: 0}]} onPress={() => handleOpenURL(tx_url as string)}>
                                 <Text style={styles.label}>View on Explorer</Text>
                                 <MaterialCommunityIcons name="open-in-new" size={18} color={isDark ? '#A78BFA' : '#5856D6'} />
                             </TouchableOpacity>
@@ -204,7 +204,7 @@ export default function ResultTransaction() {
                     </Animated.View>
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={() => router.push("/wallet")}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.button} onPress={() => router.push("/wallet")}>
                     <Text style={styles.buttonText}>Back to Wallet</Text>
                 </TouchableOpacity>
             </View>

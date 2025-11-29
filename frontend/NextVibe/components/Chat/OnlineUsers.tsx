@@ -40,7 +40,7 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
         ListEmptyComponent={EmptyState}
         contentContainerStyle={{ paddingHorizontal: 10 }}
         renderItem={({ item }) => (
-          <TouchableOpacity 
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
             style={styles.userCard}
             onPress={() => router.push({
               pathname: "/user-profile",

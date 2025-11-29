@@ -107,7 +107,7 @@ export default function RegisterView() {
                             value={password}
                             onChangeText={handlePasswordChange}
                         />
-                        <TouchableOpacity style={registerStyles.passwordIcon} onPress={togglePasswordVisibility}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={registerStyles.passwordIcon} onPress={togglePasswordVisibility}>
                             <MaterialIcons
                                 name={passwordIcon as keyof typeof MaterialIcons.glyphMap}
                                 size={24}

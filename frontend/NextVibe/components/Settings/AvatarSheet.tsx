@@ -84,13 +84,13 @@ const AvatarSheet = ({ isVisible, onClose,  onReset }: Props) => {
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity 
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
           style={styles.backdrop} 
           activeOpacity={1} 
           onPress={onClose}
         />
         <View style={[styles.content, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
-          <TouchableOpacity 
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
             style={[styles.option, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]} 
             onPress={handleCameraPress}
           >
@@ -100,7 +100,7 @@ const AvatarSheet = ({ isVisible, onClose,  onReset }: Props) => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
             style={[styles.option, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]} 
             onPress={handleGalleryPress}
           >
@@ -111,7 +111,7 @@ const AvatarSheet = ({ isVisible, onClose,  onReset }: Props) => {
           </TouchableOpacity>
 
           {onReset && (
-            <TouchableOpacity 
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
               style={[styles.option, styles.resetOption]} 
               onPress={handleReset}
             >

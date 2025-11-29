@@ -73,14 +73,14 @@ export default function UserBannedPage() {
             </View>
 
             <View style={styles.buttonContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={[styles.primaryButton, { backgroundColor: theme.primaryButton }]}
                     onPress={handleAppeal}
                 >
                     <Text style={styles.primaryButtonText}>Appeal Decision</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={styles.secondaryButton}
                     onPress={handleLogout}
                 >

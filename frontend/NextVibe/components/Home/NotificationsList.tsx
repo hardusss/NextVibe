@@ -581,7 +581,7 @@ export default function NotificationsListPage() {
       
       <View style={styles.header}>
         <View style={styles.titleWrapper}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()}>
             <MaterialCommunityIcons
               name="arrow-left"
               size={28}

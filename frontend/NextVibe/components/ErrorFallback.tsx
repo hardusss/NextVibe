@@ -68,7 +68,7 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
             </View>
 
             <View style={styles.buttonContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={[styles.primaryButton, { backgroundColor: theme.primaryButton }]}
                     onPress={handleRestart}
                 >
@@ -76,7 +76,7 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
                     <Text style={styles.primaryButtonText}>Restart App</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={styles.secondaryButton}
                     onPress={handleContactSupport}
                 >

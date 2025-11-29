@@ -611,7 +611,7 @@ const PostItem = memo(({
                     priority: FastImage.priority.normal,
                     cache: FastImage.cacheControl.immutable 
                 }} style={styles.avatar} />
-                <TouchableOpacity
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     style={styles.userInfo}
                     onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
                 >
@@ -630,7 +630,7 @@ const PostItem = memo(({
                     {item.location && <Text style={styles.location}>{item.location}</Text>}
                 </TouchableOpacity>
                 <View style={{ position: "relative" }}>
-                    <TouchableOpacity
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         style={{ position: "absolute", right: -2, top: -10, zIndex: 10, padding: 5 }}
                         onPress={(e) => {
                             e.stopPropagation();
@@ -717,7 +717,7 @@ const PostItem = memo(({
                 <View style={styles.postContent}>
                     <Text style={styles.postText}>{displayText}</Text>
                     {needsMoreButton && (
-                        <TouchableOpacity onPress={() => setIsExpanded(!isExpanded)}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setIsExpanded(!isExpanded)}>
                             <Text style={{ color: theme.accentColor, marginTop: 5 }}>
                                 {isExpanded ? "Show less" : "Read more"}
                             </Text>
@@ -727,11 +727,11 @@ const PostItem = memo(({
             )}
 
             <View style={styles.postFooter}>
-                <TouchableOpacity onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
                     <Icon name={isLiked ? "heart" : "heart-outline"} size={24} color={isLiked ? "red" : theme.textPrimary} />
                     <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => openComments(item)}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => openComments(item)}>
                     <Icon name="chatbubble-outline" size={20} style={{ marginTop: -3 }} color={theme.textPrimary} />
                 </TouchableOpacity>
             </View>
