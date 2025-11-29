@@ -27,7 +27,6 @@ class RecommendationFeedView(APIView):
             seen_ids = set()
         else:
             seen_ids = cache.get(cache_key, set())
-        print(seen_ids)
         
         # If the set becomes too huge (e.g. > 1000), performance drops.
         # Optional: Clear cache if it's too big to reset the feed
