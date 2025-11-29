@@ -740,7 +740,22 @@ const PostItem = memo(({
             <Text style={styles.postDate}>{timeAgo(item.create_at)}</Text>
         </View>
     );
-}, (prev, next) => prev.item.id === next.item.id && prev.item.count_likes === next.item.count_likes && prev.isLiked === next.isLiked && prev.isVisible === next.isVisible && prev.dropdownVisible === next.dropdownVisible && prev.theme === next.theme);
+}, (prev, next) => {
+        if (prev.item.id !== next.item.id) return false;
+
+        if (prev.isLiked !== next.isLiked) return false;
+
+        if (prev.isVisible !== next.isVisible) return false;
+
+        if (prev.dropdownVisible !== next.dropdownVisible) return false;
+
+        if (prev.item.count_likes !== next.item.count_likes) return false;
+
+        if (prev.item.media?.length !== next.item.media?.length) return false;
+
+        if (prev.item.about !== next.item.about) return false;
+        return true;
+    });
 
 // --- MAIN PAGE ---
 export default function MainPage() {
