@@ -75,7 +75,6 @@ const registerDarkStyles = StyleSheet.create({
         paddingVertical: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 20,
         elevation: 7,
     },
     registerButtonText: {
