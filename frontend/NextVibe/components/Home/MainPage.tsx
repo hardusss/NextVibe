@@ -923,7 +923,6 @@ export default function MainPage() {
                     isCommentsEnabled={popupCommentsEnabled}
                 />
             )}
-
             <FlatList
                 data={dataToRender}
                 onScrollBeginDrag={() => setActiveDropdownId(null)}
@@ -935,6 +934,11 @@ export default function MainPage() {
                         fetchPosts(true);
                     }
                 }}
+                ListEmptyComponent={(
+                <View style={styles.card}>
+                    <Text style={styles.cardText}>🎉 No more posts for now</Text>
+                    <Text style={styles.cardSub}>Check back later for new vibes!</Text>
+                </View>)}
                 onEndReachedThreshold={0.5}
                 initialNumToRender={2}
                 maxToRenderPerBatch={1}
@@ -947,6 +951,7 @@ export default function MainPage() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListFooterComponent={!loading ? renderFooter : null}
             />
+            
         </View>
     );
 }
