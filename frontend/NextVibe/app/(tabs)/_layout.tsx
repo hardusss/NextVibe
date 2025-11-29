@@ -4,7 +4,6 @@ import { useColorScheme, View, TouchableOpacity } from "react-native";
 import { useEffect, useState, useCallback, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
-import AsyncStorage from "@react-native-async-storage/async-storage"
 import { storage } from "@/src/utils/storage";
 import { WebSocketProvider } from "@/src/context/WebSocketContext";
 import axios from "axios";
@@ -58,60 +57,80 @@ export default function Layout() {
     { name: "profile", icon: FontAwesome5, iconName: ["user", "user"] }
   ];
 
-  const loadUserData = async () => {
-    try {
-      const id = await storage.getItem("id");
-      const avatar = await AsyncStorage.getItem("avatar");
-      
-      if (id) {
-        setUserID(Number(id));
-      }
-      
-      if (avatar) {
-        setImageProfile(avatar);
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadUserData();
-    }, [])
-  );
-
- useEffect(() => {
-  const interceptor = axios.interceptors.response.use(
-    (res) => res,
-    (error) => {
-      if (error.response?.status === 429) {
-        setToastMessage("You exceeded the request limit!");
-        setVisible(true);
-      }
-      return Promise.reject(error);
-    }
-  );
-
-  return () => axios.interceptors.response.eject(interceptor);
-}, []);
   useEffect(() => {
-    if (blacklist.includes(currentPage) || !userID) return;
-    
-    const getImageProfile = async () => {
+    const loadUserId = async () => {
       try {
-        const data = await getUserDetail();
-        if (data.avatar) {
-          setImageProfile(data.avatar);
-          await AsyncStorage.setItem("avatar", data.avatar);
+        const id = await storage.getItem("id");
+        if (id) {
+          setUserID(Number(id));
+        } else {
+          setUserID(null);
+          setImageProfile("");
         }
       } catch (error) {
-        setImageProfile("https://media.nextvibe.io/images/default.png");
-        console.error('Error getting profile image:', error);
+        console.error('Error loading user ID:', error);
       }
     };
     
-    getImageProfile();
+    loadUserId();
+  }, []);
+
+ useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (res) => res,
+      (error) => {
+        if (error.response?.status === 429) {
+          setToastMessage("You exceeded the request limit!");
+          setVisible(true);
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
+  useEffect(() => {
+    if (!userID) {
+      setImageProfile("");
+      return;
+    }
+
+    const fetchAvatar = async () => {
+      try {
+        const userData = await getUserDetail();
+        if (userData.avatar) {
+          setImageProfile(userData.avatar);
+        } else {
+          setImageProfile("https://media.nextvibe.io/images/default.png");
+        }
+      } catch (error) {
+        console.error('Error loading avatar:', error);
+        setImageProfile("https://media.nextvibe.io/images/default.png");
+      } 
+    };
+
+    fetchAvatar();
+  }, [userID]);
+
+   useEffect(() => {
+    if (currentPage === "home" || currentPage === "profile") {
+      const checkAndReloadUser = async () => {
+        const id = await storage.getItem("id");
+        const currentId = id ? Number(id) : null;
+
+        if (currentId !== userID) {
+          setUserID(currentId);
+          if (!currentId) {
+            setImageProfile(null);
+            await FastImage.clearMemoryCache();
+            await FastImage.clearDiskCache();
+          }
+        }
+      };
+      
+      checkAndReloadUser();
+    }
   }, [currentPage, userID]);
 
   const goToTab = (tab: string) => {
@@ -157,9 +176,14 @@ export default function Layout() {
             }}>
               {tabs.map((tab) => (
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} key={tab.name} onPress={() => goToTab(tab.name)}>
-                  {tab.name === "profile" && imageProfile ? (
+                  {tab.name === "profile" && imageProfile && userID ? (
                     <FastImage
-                      source={{ uri: imageProfile, priority: FastImage.priority.normal, cache: FastImage.cacheControl.immutable }}
+                      key={`avatar-${userID}`}
+                      source={{ 
+                        uri: imageProfile, 
+                        priority: FastImage.priority.normal, 
+                        cache: FastImage.cacheControl.web 
+                      }}
                       style={{
                         width: 25,
                         height: 25,
