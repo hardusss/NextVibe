@@ -33,6 +33,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width: screenWidth } = Dimensions.get("window");
 
+let isSessionActive = false;
+
 // --- THEME & STYLES ---
 const darkTheme = {
     background: "#0A0410",
@@ -777,18 +779,23 @@ export default function MainPage() {
     }, []);
 
     // Optimized fetch logic
-    const fetchPosts = async (loadMore = false, reset = false) => {
+    const fetchPosts = async (loadMore = false, reset = false, forceReset = false) => {
         if (isFetchingRef.current) return;
         if (!reset && loadMore && !hasMore) return;
 
         isFetchingRef.current = true; // LOCK
+        const shouldReset = forceReset || !isSessionActive;
+
+        if (shouldReset) {
+            isSessionActive = true;
+        };
 
         if (loadMore) setLoadingMore(true);
         else if (!reset) setLoading(true);
 
         try {
 
-            const response = await getRecomendatePosts();
+            const response = await getRecomendatePosts(shouldReset);
             const newPosts = response.results || [];
 
             // If backend returns empty array, we are done.
