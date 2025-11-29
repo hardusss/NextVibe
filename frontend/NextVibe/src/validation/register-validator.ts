@@ -3,15 +3,24 @@ import Toast from 'react-native-toast-message';
 
 
 const schema = Yup.object().shape({
-    username: Yup.string().required('Username is required')
+    username: Yup.string()
+        .required('Username is required')
         .min(3, 'Username must be at least 3 characters')
-        .max(20, 'Username must be at most 20 characters')
-        .matches(/^[a-zA-Z0-9]+$/, 'Username must contain only letters and numbers'),
-    email: Yup.string().email('Invalid email address').required('Email is required')
-        .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Invalid email address'),
-    password: Yup.string().required('Password is required')
+        .max(30, 'Username must be at most 30 characters')
+        .matches(
+        /^[a-zA-Z0-9._]+$/,
+        'Username can contain only letters, numbers, dots, and underscores'
+        ),
+    email: Yup.string()
+        .email('Invalid email address')
+        .required('Email is required'),
+    password: Yup.string()
+        .required('Password is required')
         .min(8, 'Password must be at least 8 characters')
-        .matches(/^(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 'Password requires english letters, number, and symbols')
+        .matches(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
+        'Password must include uppercase, lowercase, number, and special character'
+        ),
 });
 
 export default function validationInput (username: string, email: string, password: string) {
