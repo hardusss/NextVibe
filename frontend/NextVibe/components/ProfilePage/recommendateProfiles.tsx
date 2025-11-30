@@ -143,7 +143,7 @@ const RecommendedUsers = () => {
                                             styles.followGradient, 
                                             { 
                                                 backgroundColor: isFollowed 
-                                                    ? "transparent" 
+                                                    ? "#2d075eff" 
                                                     : theme.followButtonGradient[0]
                                             }
                                         ]}>
