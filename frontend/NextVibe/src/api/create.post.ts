@@ -55,46 +55,57 @@ export default async function createPost(
 
         if (mediaUrls.length > 0) {
             for (const [index, uri] of mediaUrls.entries()) {
-                const formData = new FormData();
+    const formData = new FormData();
+    const fileName = `media_${postId}_${index}.jpg`;
 
-                let fixedUri = uri;
-                if (Platform.OS === 'android' && !fixedUri.startsWith('file://')) {
-                    fixedUri = `file://${fixedUri}`;
-                }
+    let file;
 
-                const isVideo = fixedUri.match(/\.(mov|mp4|mkv|webm|ogg)$/i);
-                const fileType = getMimeType(fixedUri);
-                const fileName = isVideo ? `video_${postId}_${index}.mp4` : `image_${postId}_${index}.jpg`;
+    if (uri.startsWith("http")) {
+        // Remote image convert to Blob
+        console.log("Downloading remote image as blob:", uri);
+        const response = await fetch(uri);
+        const blob = await response.blob();
 
-                formData.append("media", {
-                    uri: fixedUri,
-                    name: fileName,
-                    type: fileType,
-                } as any);
+        file = {
+            name: fileName,
+            type: blob.type || "image/jpeg",
+            uri: uri,
+            blob,
+        } as any;
+    } else {
+        // Local file send as usual
+        file = {
+            uri,
+            name: fileName,
+            type: getMimeType(uri),
+        } as any;
+    }
 
-                formData.append("post", postId.toString());
+    formData.append("media", file);
+    formData.append("post", postId.toString());
 
-                try {
-                    console.log(`Uploading file ${index + 1}/${mediaUrls.length}...`);
-                    
-                    const mediaResponse = await fetch(mediaUploadUrl, {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${TOKEN}`,
-                        },
-                        body: formData,
-                    });
+    try {
+        console.log(`Uploading file ${index + 1}/${mediaUrls.length}...`);
 
-                    if (!mediaResponse.ok) {
-                        const errorText = await mediaResponse.text();
-                        console.error(`Failed to upload media ${index}:`, errorText)
-                    } else {
-                        console.log(`File ${index + 1} uploaded successfully.`);
-                    }
-                } catch (uploadError) {
-                    console.error(`Network error uploading file ${index}:`, uploadError);
-                }
-            }
+        const mediaResponse = await fetch(mediaUploadUrl, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${TOKEN}`,
+            },
+            body: formData,
+        });
+
+        if (!mediaResponse.ok) {
+            const errorText = await mediaResponse.text();
+            console.error(`Failed to upload media ${index}:`, errorText);
+        } else {
+            console.log(`File ${index + 1} uploaded successfully.`);
+        }
+    } catch (e) {
+        console.error(`Upload error:`, e);
+    }
+}
+
         }
 
         console.log("All media uploaded. Triggering moderation...");
