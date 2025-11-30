@@ -19,8 +19,6 @@ class PostViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
-        self.request.user.post_count += 1
-        self.request.user.save(update_fields=['post_count'])
 
     @action(detail=True, methods=['post'], url_path='finalize')
     def finalize_creation(self, request, pk=None):
