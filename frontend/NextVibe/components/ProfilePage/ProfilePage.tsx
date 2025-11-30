@@ -66,6 +66,7 @@ const ProfileView = () => {
         setTimeout(() => {setIsVisibleContainer(false)}, 200);
         };
     }, [visible]);
+
     const fetchUserData = async () => {
         try {
             const data = await getUserDetail(0);
@@ -93,6 +94,7 @@ const ProfileView = () => {
         setRefreshing(true);
         setRefreshKey(prev => prev + 1); // Increment refresh key to force re-render
         setRefreshing(false);
+        fetchUserData();
     }, []);
 
     useFocusEffect(
