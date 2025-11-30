@@ -49,6 +49,7 @@ const RecommendedUsers = () => {
             try {
                 const response = await getRoccomendationsProfiles();
                 setUsers(response.recommended_users);
+                setFollowedUsers(prev => [...prev, ...response.follow_for])
             } catch (error) {
                 console.error("Error fetching recommendations:", error);
             }
