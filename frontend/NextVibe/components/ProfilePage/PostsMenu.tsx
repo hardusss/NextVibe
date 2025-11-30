@@ -101,12 +101,6 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         }, [])
     );
 
-    useEffect(() => {
-        if (userID !== null && posts.length === 0 && !loading) {
-            
-        }
-    }, [userID]);
-
     const isVideo = (url: string): MediaCheck => {
         if (url.includes("/video/")) {
             return {
