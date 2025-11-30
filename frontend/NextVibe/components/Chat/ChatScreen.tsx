@@ -17,9 +17,9 @@ import {
 import { MaterialIcons, AntDesign, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import ChatBubble from './ChatBubble';
-import GetApiUrl from '@/src/utils/url_api';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getMessages, connectWebSocket, sendWebSocketMessage, sendReadStatus, notifyEnterChat } from '@/src/api/chat';
+import { getMessages, sendWebSocketMessage, notifyEnterChat } from '@/src/api/chat';
+import WebSocketService from '@/src/services/WebSocketService';
 import getUserDetail from '@/src/api/user.detail';
 import MediaPickerModal from './MediaPickerModal';
 import { storage } from '@/src/utils/storage';
@@ -39,7 +39,6 @@ interface Message {
   is_read: boolean;
   media: MediaAttachment[];
 }
-
 
 interface UserDetails {
   user_id: number;
@@ -63,14 +62,11 @@ export default function ChatScreen() {
   const [userDetailsLoading, setUserDetailsLoading] = useState(true);
   const [userIdState, setUserIdState] = useState<number | null>(null);
   const [lastMessageId, setLastMessageId] = useState<number | undefined>(undefined);
-  const [readStatus, setReadStatus] = useState<{timestamp: string | null, readerId: number | null}>({
-    timestamp: null,
-    readerId: null
-  });
   const flatListRef = useRef<FlatList>(null);
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
   const styles = getStyles(isDark);
+
   const fetchMessages = async (loadMore = false) => {
     if (loading || (!hasMore && loadMore)) return;
     
@@ -116,7 +112,9 @@ export default function ChatScreen() {
           avatar: '',
           created_at: new Date().toISOString(),
           readers_count: 0,
-          post_count: 0
+          post_count: 0,
+          official: false,
+          user_id: +userId
         });
       } catch (error) {
         console.error('Error fetching user details:', error);
@@ -196,45 +194,34 @@ export default function ChatScreen() {
     await sendWebSocketMessage(+id, messageText, mediaToSend);
   };
 
+  // WebSocket listener
   useEffect(() => {
-    if (userIdState) {
-      connectWebSocket((data) => {
-        if (data.type === "message_edited" && data.chat_id === +id) {
-          setMessages(prev => prev.map(msg => 
-            msg.message_id === data.message_id 
-              ? { ...msg, content: data.content, edited_at: data.edited_at }
-              : msg
-          ));
-        } else if (data.type === "message_deleted" && data.chat_id === +id) {
-          setMessages(prev => prev.filter(msg => msg.message_id !== data.message_id));
-        } else if (data.type === "messages_read" && data.chat_id === +id) {
-          if (data.reader_id !== userIdState) {
-            setReadStatus({
-              timestamp: data.timestamp,
-              readerId: data.reader_id
-            });
-          }
-        } else if (data.chat_id === +id) {
-          if (data.sender_id !== userIdState) {
-            setMessages(prev => {
-              const exists = prev.some(msg => msg.message_id === data.message_id);
-              if (exists) return prev;
-              
-              return [{
-                message_id: data.message_id,
-                sender_id: data.sender_id,
-                content: data.content,
-                created_at: data.created_at,
-                is_read: false,
-                media: data.media || []
-              }, ...prev];
-            });
-            
-            notifyEnterChat(+id);
-          }
-        }
-      });
-    }
+    if (!userIdState) return;
+
+    const handleWebSocketMessage = (data: any) => {
+      // Only fot messages this chat
+      if (data.chat_id !== +id) return;
+
+      // New message from other user
+      else if (data.message_id && data.sender_id !== userIdState) {
+        setMessages(prev => {
+          const exists = prev.some(msg => msg.message_id === data.message_id);
+          if (exists) return prev;
+          
+          return [{
+            message_id: data.message_id,
+            sender_id: data.sender_id,
+            content: data.content,
+            created_at: data.created_at,
+            is_read: false,
+            media: data.media || []
+          }, ...prev];
+        });
+      }
+    };
+
+    const unsubscribe = WebSocketService.addListener(handleWebSocketMessage);
+    return () => unsubscribe();
   }, [userIdState, id]);
 
   useEffect(() => {
@@ -249,18 +236,7 @@ export default function ChatScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    if (messages.length > 0 && userIdState) {
-      const unreadMessages = messages.some(
-        msg => !msg.is_read && msg.sender_id !== userIdState
-      );
-      
-      if (unreadMessages) {
-        sendReadStatus(+id);
-      }
-    }
-  }, [messages, userIdState]);
-
+  // Повідомляємо про вхід у чат
   useEffect(() => {
     if (userIdState && id) {
       notifyEnterChat(+id);
@@ -278,19 +254,19 @@ export default function ChatScreen() {
               source={{ 
                 uri: userDetails?.avatar 
                   ? `${userDetails.avatar}` 
-                  : `${GetApiUrl().slice(0, 25)}/media/images/default.png`
+                  : `https://media.nextvibe.io/images/default.png`
               }} 
               style={styles.profileImage} 
             />
             <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <Text style={[styles.username, { color: isDark ? '#fff' : '#000' }]}>
-              {userDetails?.username || 'User'}
-            </Text>
-            {userDetails?.official && (
-              <Ionicons name="checkmark-circle" size={20} color="#00CED1" style={styles.verifiedBadge} />
-            )}
-          </View>
+              <Text style={[styles.username, { color: isDark ? '#fff' : '#000' }]}>
+                {userDetails?.username || 'User'}
+              </Text>
+              {userDetails?.official && (
+                <Ionicons name="checkmark-circle" size={20} color="#00CED1" style={styles.verifiedBadge} />
+              )}
             </View>
+          </View>
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{userDetails?.readers_count || 0}</Text>
@@ -317,19 +293,27 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={ styles.container}
+      style={styles.container}
     >
       <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
       <View style={{ flex: 1 }}>
         <View style={styles.navbar}>
-          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+          <TouchableOpacity 
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
             onPress={() => router.back()}
             style={styles.backButton}
           >
             <AntDesign name="arrowleft" size={24} color={isDark ? '#fff' : '#000'} />
           </TouchableOpacity>
 
-          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.userInfo} onPress={() => router.push({ pathname: "/user-profile", params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}`} })}>
+          <TouchableOpacity 
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+            style={styles.userInfo} 
+            onPress={() => router.push({ 
+              pathname: "/user-profile", 
+              params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}`} 
+            })}
+          >
             <Image 
               source={{ 
                 uri: userDetails?.avatar 
@@ -356,32 +340,20 @@ export default function ChatScreen() {
         ) : messages.length === 0 ? (
           <EmptyChat />
         ) : (
-          <View style={styles.chatContainer}>
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              inverted
-              renderItem={({ item }) => (
-                <ChatBubble message={item} />
-              )}
-              keyExtractor={item => item.message_id.toString()}
-              onEndReached={() => fetchMessages(true)}
-              onEndReachedThreshold={0.6}
-              style={styles.messagesList}
-              contentContainerStyle={{ flexGrow: 1 }}
-              showsVerticalScrollIndicator={false}
-            />
-            {readStatus.timestamp && readStatus.readerId !== userIdState && (
-              <View style={styles.readStatusContainer}>
-                <Text style={styles.readStatusText}>
-                  Read {new Date(readStatus.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </Text>
-              </View>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            inverted
+            renderItem={({ item }) => (
+              <ChatBubble message={item} />
             )}
-          </View>
+            keyExtractor={item => item.message_id.toString()}
+            onEndReached={() => fetchMessages(true)}
+            onEndReachedThreshold={0.6}
+            style={styles.messagesList}
+            contentContainerStyle={{ flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
+          />
         )}
 
         <View style={[styles.inputContainer, Platform.OS === 'android' && { paddingBottom: 10 }]}>
@@ -395,7 +367,8 @@ export default function ChatScreen() {
                 {selectedMedia.map((media, index) => (
                   <View key={index} style={styles.previewContainer}>
                     <Image source={{ uri: media.uri }} style={styles.previewImage} />
-                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+                    <TouchableOpacity 
+                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                       style={styles.removeButton}
                       onPress={() => setSelectedMedia(prev => 
                         prev.filter((_, i) => i !== index)
@@ -407,43 +380,48 @@ export default function ChatScreen() {
                 ))}
               </ScrollView>
             )}
-            </View>
+          </View>
             
-            <View style={styles.inputRow}>
-                <BlurView
-                    intensity={isDark ? 30 : 90}
-                    tint={isDark ? 'dark' : 'light'}
-                    style={styles.blurViewAbsolute}
-                />
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={pickMedia} style={styles.mediaButton}>
-                    <MaterialIcons 
-                    name="camera-alt" 
-                    size={24} 
-                    color={isDark ? '#A09CB8' : '#333'} 
-                    />
-                </TouchableOpacity>
-                
-                <TextInput
-                    value={text}
-                    onChangeText={setText}
-                    placeholder="Message..."
-                    placeholderTextColor={isDark ? '#666' : '#999'}
-                    style={[styles.inputField, { color: isDark ? '#fff' : '#000' }]}
-                    multiline
-                />
-                
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                    onPress={sendMessage}
-                    style={[styles.sendButton, !text.trim() && !selectedMedia.length && styles.sendButtonDisabled]}
-                    disabled={!text.trim() && !selectedMedia.length}
-                >
-                    <LinearGradient
-                        colors={['#A78BFA', '#5856D6']}
-                        style={styles.sendButtonGradient}
-                    />
-                    <MaterialIcons name="send" size={22} color="#fff" />
-                </TouchableOpacity>
-            </View>
+          <View style={styles.inputRow}>
+            <BlurView
+              intensity={isDark ? 30 : 90}
+              tint={isDark ? 'dark' : 'light'}
+              style={styles.blurViewAbsolute}
+            />
+            <TouchableOpacity 
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+              onPress={pickMedia} 
+              style={styles.mediaButton}
+            >
+              <MaterialIcons 
+                name="camera-alt" 
+                size={24} 
+                color={isDark ? '#A09CB8' : '#333'} 
+              />
+            </TouchableOpacity>
+            
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder="Message..."
+              placeholderTextColor={isDark ? '#666' : '#999'}
+              style={[styles.inputField, { color: isDark ? '#fff' : '#000' }]}
+              multiline
+            />
+            
+            <TouchableOpacity 
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+              onPress={sendMessage}
+              style={[styles.sendButton, !text.trim() && !selectedMedia.length && styles.sendButtonDisabled]}
+              disabled={!text.trim() && !selectedMedia.length}
+            >
+              <LinearGradient
+                colors={['#A78BFA', '#5856D6']}
+                style={styles.sendButtonGradient}
+              />
+              <MaterialIcons name="send" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -546,10 +524,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   headerAvatar: {
     width: 32,
     height: 32,
@@ -645,22 +619,5 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   verifiedBadge: {
     marginLeft: 4,
-  },
-  readStatusContainer: {
-    position: 'absolute',
-    bottom: 10,
-    right: 20,
-    backgroundColor: isDark ? 'rgba(30, 30, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  readStatusText: {
-    color: isDark ? '#aaa' : '#333',
-    fontSize: 12,
-  },
-  chatContainer: {
-    flex: 1,
-    position: 'relative',
   },
 });
