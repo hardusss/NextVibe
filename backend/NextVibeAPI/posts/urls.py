@@ -5,7 +5,8 @@ from .view_pac import (
     GetCommentView, AddMediaToPostView,
     GenerateImage, RecomendationsView,
     ModerationCallbackView, RecommendationFeedView,
-    DeletePostView, SendReportForPostView
+    DeletePostView, SendReportForPostView,
+    GetGenerationImageStatusView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -22,6 +23,7 @@ urlpatterns = [
     path("comment-reply/<int:comment_id>/", CommentReplyView.as_view(), name="comment_reply"),
     path("get-comments/<int:post_id>/", GetCommentView.as_view(), name="get_comments"),
     path("generate-image/", GenerateImage.as_view(), name="generate_image"),
+    path("generate-image/status/", GetGenerationImageStatusView.as_view(), name="generate_image_status"),
     path("recomendations/", RecomendationsView.as_view(), name="recomendations"),
     path("moderation-callback/", ModerationCallbackView.as_view(), name="moderation_callback"),
     path("delete-post/", DeletePostView.as_view(), name="delete_post"),

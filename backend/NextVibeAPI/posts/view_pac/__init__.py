@@ -11,3 +11,4 @@ from .comment_like import LikeCommentView
 from .delete_post import DeletePostView
 from .send_post_report import SendReportForPostView
 from .recommendation_feed import RecommendationFeedView
+from .get_gen_image_status import GetGenerationImageStatusView
