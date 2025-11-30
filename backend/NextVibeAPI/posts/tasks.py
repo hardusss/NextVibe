@@ -14,6 +14,9 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 
+# Image generation 
+from posts.src.generate_image import generate
+
 GO_MODERATION_URL = "http://127.0.0.1:8080/moderation"
 User = get_user_model()
 
@@ -28,6 +31,17 @@ def get_s3_client():
         region_name='auto',
         config=boto3.session.Config(signature_version='s3v4')
     )
+
+# Task for image generation
+@shared_task(bind=True)
+def generate_image_task(self, prompt: str):
+    try:
+        return generate(prompt)
+    except Exception as e:
+        if "429" in str(e):
+            raise self.retry(exc=e, countdown=10)
+        raise e
+
 
 @shared_task
 def process_media_file(media_id):
