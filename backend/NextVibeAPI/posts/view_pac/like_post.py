@@ -38,7 +38,7 @@ class LikePostView(APIView):
         except Post.DoesNotExist:
             return Response({"data": "Post does not exist"}, status=status.HTTP_404_NOT_FOUND)
         try:
-            user = User.objects.get(user_id=id)
+            user = User.objects.get(user_id=request.user.user_id)
         except User.DoesNotExist:
             return Response({"data": "Error: user not exist"}, status=status.HTTP_404_NOT_FOUND)
 
