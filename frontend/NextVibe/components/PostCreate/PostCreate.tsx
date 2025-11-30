@@ -5,11 +5,13 @@ import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import createPost from '@/src/api/create.post';
 import generateImage from '@/src/api/generate.image';
+import generateImageStatus from '@/src/api/get.image.status';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import FastImage from 'react-native-fast-image';
 import ButtonAI from './GenerateAIButton';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
+import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 
 const lightColors = {
     background: '#FAFAFA',
@@ -84,8 +86,10 @@ export default function PostCreate() {
     const [toastMessage, setToastMessage] = useState<string>("");
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
+    const [generationStatus, setGenerationStatus] = useState<string>("");
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? darkColors : lightColors;
+    const pollingInterval = useRef<NodeJS.Timeout | number>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -186,23 +190,100 @@ export default function PostCreate() {
         router.replace("/profile");
     };
 
+    const pollImageStatus = async (taskId: string) => {
+        let attempts = 0;
+        const maxAttempts = 60; // 60 attempts * 2 seconds = 2 minutes max
+
+        pollingInterval.current = setInterval(async () => {
+            attempts++;
+            
+            try {
+                const statusResponse = await generateImageStatus(taskId);
+                
+                if (statusResponse.status === "success" && statusResponse.image_url) {
+                    clearInterval(pollingInterval.current!);
+                    setGenerationStatus("");
+                    setIsGenerating(false);
+                    setIsModalVisible(false);
+                    setMediaUrls(prev => [statusResponse.image_url as string, ...prev]);
+                    setIsAiGenerated(true);
+                    setToastMessage("Photo generated successfully 🥳");
+                    setToastSuccess(true);
+                    setIsVisibleToast(true);
+                    setAiPrompt("");
+                } else if (statusResponse.status === "failed" || statusResponse.error) {
+                    // Помилка генерації
+                    clearInterval(pollingInterval.current!);
+                    setGenerationStatus("");
+                    setIsGenerating(false);
+                    setToastMessage(statusResponse.error || "Image generation failed");
+                    setToastSuccess(false);
+                    setIsVisibleToast(true);
+                } else if (statusResponse.status === "processing") {
+                    // Все ще обробляється
+                    setGenerationStatus(`Generating your image... (${attempts}/${maxAttempts})`);
+                }
+                
+                // Якщо досягнуто максимальної кількості спроб
+                if (attempts >= maxAttempts) {
+                    clearInterval(pollingInterval.current!);
+                    setGenerationStatus("");
+                    setIsGenerating(false);
+                    setToastMessage("Image generation timeout. Please try again.");
+                    setToastSuccess(false);
+                    setIsVisibleToast(true);
+                }
+            } catch (error) {
+                console.error("Error checking image status:", error);
+                clearInterval(pollingInterval.current!);
+                setGenerationStatus("");
+                setIsGenerating(false);
+                setToastMessage("Error checking generation status");
+                setToastSuccess(false);
+                setIsVisibleToast(true);
+            }
+        }, 2000); // Перевіряти кожні 2 секунди
+    };
+
     const handleGenerateWithAI = async () => {
+        if (aiPrompt.trim().length === 0) return;
+
         setIsGenerating(true);
-        setIsModalVisible(false); 
-        const generatedImage = await generateImage(aiPrompt);
-        if (generatedImage.image_url) {
-            setToastMessage("Photo generated successfully🥳")
-            setToastSuccess(true)
-            setIsVisibleToast(true);
-            setMediaUrls(prev => [generatedImage.image_url as string, ...prev]);
-        } else {
-            setToastSuccess(false)
-            setToastMessage(generatedImage.error);
+        setGenerationStatus("Starting generation...");
+        
+        try {
+            const response = await generateImage(aiPrompt);
+            
+            if (response.taskId) {
+                // Отримали taskId, починаємо polling
+                setGenerationStatus("You are in queue for image generation. Please don't leave this page...");
+                pollImageStatus(response.taskId);
+            } else if (response.error) {
+                // Помилка при створенні завдання
+                setIsGenerating(false);
+                setGenerationStatus("");
+                setToastMessage(response.error);
+                setToastSuccess(false);
+                setIsVisibleToast(true);
+            }
+        } catch (error) {
+            console.error("Error generating image:", error);
+            setIsGenerating(false);
+            setGenerationStatus("");
+            setToastMessage("Failed to start image generation");
+            setToastSuccess(false);
             setIsVisibleToast(true);
         }
-        setIsAiGenerated(true);
-        setIsGenerating(false);
     };
+
+    // Очистити інтервал при розмонтуванні компонента
+    React.useEffect(() => {
+        return () => {
+            if (pollingInterval.current) {
+                clearInterval(pollingInterval.current);
+            }
+        };
+    }, []);
 
     const themedStyles = StyleSheet.create({
         container: {
@@ -345,7 +426,6 @@ export default function PostCreate() {
             fontWeight: '600',
             color: colors.textPrimary,
         },
-        
         footer: {
             padding: 16,
             paddingBottom: 32,
@@ -445,6 +525,23 @@ export default function PostCreate() {
             textTransform: 'uppercase',
             letterSpacing: 0.5,
         },
+        generationStatusContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            borderRadius: 12,
+            padding: 12,
+            marginTop: 12,
+            borderLeftWidth: 3,
+            borderLeftColor: colors.accent,
+        },
+        generationStatusText: {
+            color: colors.textPrimary,
+            fontSize: 14,
+            marginLeft: 10,
+            flex: 1,
+            fontWeight: '500',
+        },
     });
 
     return (
@@ -459,6 +556,12 @@ export default function PostCreate() {
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={themedStyles.backButton}
                     onPress={() => {
+                        if (isGenerating) {
+                            setToastMessage("Please wait for generation to complete");
+                            setToastSuccess(false);
+                            setIsVisibleToast(true);
+                            return;
+                        }
                         setMediaUrls([]);
                         setAiPrompt("");
                         setLocation("");
@@ -505,7 +608,6 @@ export default function PostCreate() {
                                 value={postText}
                                 onChangeText={setPostText}
                             />
-
                         </View>
                     </View>
 
@@ -558,8 +660,11 @@ export default function PostCreate() {
                     <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                         style={[themedStyles.button, themedStyles.publishButton]} 
                         onPress={handlePublish}
+                        disabled={isGenerating}
                     >
-                        <Text style={themedStyles.buttonText}>Publish Post</Text>
+                        <Text style={themedStyles.buttonText}>
+                            {isGenerating ? "Generating..." : "Publish Post"}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -568,7 +673,11 @@ export default function PostCreate() {
                 visible={isModalVisible}
                 transparent={true}
                 animationType="slide"
-                onRequestClose={() => setIsModalVisible(false)}
+                onRequestClose={() => {
+                    if (!isGenerating) {
+                        setIsModalVisible(false);
+                    }
+                }}
             >
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -577,14 +686,23 @@ export default function PostCreate() {
                     <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                         style={{ flex: 1 }} 
                         activeOpacity={1} 
-                        onPress={() => setIsModalVisible(false)}
+                        onPress={() => {
+                            if (!isGenerating) {
+                                setIsModalVisible(false);
+                            }
+                        }}
                     />
                     <View style={themedStyles.modalContent}>
                         <View style={themedStyles.modalHeader}>
                             <Text style={themedStyles.modalTitle}>Generate with AI</Text>
                             <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                 style={themedStyles.modalCloseButton}
-                                onPress={() => setIsModalVisible(false)}
+                                onPress={() => {
+                                    if (!isGenerating) {
+                                        setIsModalVisible(false);
+                                    }
+                                }}
+                                disabled={isGenerating}
                             >
                                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
                             </TouchableOpacity>
@@ -596,45 +714,59 @@ export default function PostCreate() {
                                 placeholderTextColor={colors.textSecondary}
                                 value={aiPrompt}
                                 onChangeText={setAiPrompt}
+                                editable={!isGenerating}
                             />
                             <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                 style={themedStyles.modalButton} 
                                 onPress={handleGenerateWithAI}
-                                disabled={aiPrompt.length ===  0}
+                                disabled={aiPrompt.length === 0 || isGenerating}
                             >
-                                <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+                                {isGenerating ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+                                )}
                             </TouchableOpacity>
                         </View>
+
+                        {isGenerating && generationStatus && (
+                            <View style={themedStyles.generationStatusContainer}>
+                                <ActivityIndicator size="small" color={colors.accent} />
+                                <Text style={themedStyles.generationStatusText}>
+                                    {generationStatus}
+                                </Text>
+                            </View>
+                        )}
+
                         <View
                             style={{
                                 flexDirection: "row",
                                 alignItems: "flex-start",
                                 gap: 8,
-                                marginTop: 8,
+                                marginTop: 12,
                                 backgroundColor: "rgba(255, 165, 0, 0.1)",
                                 borderRadius: 12,
                                 padding: 10,
                                 borderLeftWidth: 3,
                                 borderLeftColor: "orange",
                             }}
-                            >
+                        >
                             <Ionicons name="alert-circle-outline" size={22} color="orange" style={{ marginTop: 2 }} />
                             <Text
                                 style={{
-                                color: useColorScheme() === "dark" ? "#fafafa" : "black",
-                                fontSize: 13.5,
-                                lineHeight: 18,
-                                flex: 1,
-                                fontWeight: "400",
+                                    color: colorScheme === "dark" ? "#fafafa" : "black",
+                                    fontSize: 13.5,
+                                    lineHeight: 18,
+                                    flex: 1,
+                                    fontWeight: "400",
                                 }}
                             >
                                 <Text style={{ fontWeight: "700" }}>Beta:</Text> Only 1 generation is available for now. New
                                 generations will be added later — follow our social media.{"\n"}
-                                 <Text style={{ fontWeight: "700" }}>Prompt must be in English</Text>, otherwise the generation
+                                <Text style={{ fontWeight: "700" }}>Prompt must be in English</Text>, otherwise the generation
                                 will fail.
                             </Text>
                         </View>
-
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
