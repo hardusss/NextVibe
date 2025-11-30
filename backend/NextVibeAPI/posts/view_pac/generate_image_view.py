@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..src.generate_image import generate
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
+from posts.tasks import generate_image_task
 
 User = get_user_model()
 
@@ -37,7 +38,7 @@ class GenerateImage(APIView):
 
         Returns:
             Response: 
-                - 201 CREATED: Returns the generated image URL if the prompt is valid.
+                - 201 CREATED: Returns the task id in celery worker.
                 - 400 BAD REQUEST: Returns an error message if the prompt is empty or missing.
         
         Example Request:
@@ -45,7 +46,7 @@ class GenerateImage(APIView):
         
         Example Response (201 Created):
             {
-                "image_url": "https://replicate.delivery/generated-image.jpg"
+                "taskId": 1
             }
         
         Example Response (400 Bad Request):
@@ -53,18 +54,19 @@ class GenerateImage(APIView):
                 "error": "promt is empty"
             }
         """
-        user = User.objects.get(user_id=request.user.user_id)
-        if user.count_generations_ai >= 1:
-            promt: str = request.query_params.get("promt")
-            if promt is not None and promt.strip() != "":
-                try:
-                    image_url = generate(promt=promt)
-                except:
-                    return Response({"error": "Failed to generate photo. Please try again or check your prompt."}, status=200)
-                user.count_generations_ai -= 1
-                user.save()
-                return Response({"image_url": image_url}, status=status.HTTP_201_CREATED)
-        else:
+        user = request.user
+
+        if user.count_generations_ai <= 0:
             return Response({"error": "Unfortunately, you have run out of photo generation attempts."}, status=200)
-        
-        return Response({"error": "Promt is empty"}, status=status.HTTP_200_OK)
+
+        prompt = request.query_params.get("promt")
+        if not prompt or not prompt.strip():
+            return Response({"error": "promt is empty"}, status=400)
+
+        # Call Celery task
+        task = generate_image_task.delay(prompt)
+
+        user.count_generations_ai -= 1
+        user.save()
+
+        return Response({"taskId": task.id}, status=201)
