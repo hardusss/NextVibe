@@ -1,4 +1,4 @@
-import replicate
+from replicate.client import Client
 from dotenv import load_dotenv
 from os import getenv
 
@@ -8,7 +8,7 @@ REPLICATE_API_TOKEN = getenv("REPLICATE_API_TOKEN")
 
 def generate(promt: str) -> str:
     """
-    Generates an image based on the given text prompt using the Stability AI SDXL model.
+    Generates an image based on the given text prompt using the Bytedance AI SDXL model.
 
     Parameters:
         promt (str): The text prompt describing the desired image.
@@ -23,22 +23,18 @@ def generate(promt: str) -> str:
         image_url = generate("A futuristic cityscape at night, ultra-realistic")
         print(image_url)  # Outputs the URL of the generated image
     """
-    output = replicate.run(
-        "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
+    client = Client(api_token=REPLICATE_API_TOKEN)
+    output = client.run(
+        "bytedance/sdxl-lightning-4step:6f7a773af6fc3e8de9d5a3c00be77c17308914bf67772726aff83496ba1e3bbe",
         input={
             "width": 1024,
             "height": 1024,
             "prompt": promt,
-            "refine": "expert_ensemble_refiner",
             "scheduler": "K_EULER",
-            "lora_scale": 0.6,
             "num_outputs": 1,
-            "guidance_scale": 7.5,
-            "apply_watermark": False,
-            "high_noise_frac": 0.8,
-            "negative_prompt": "",
-            "prompt_strength": 0.8,
-            "num_inference_steps": 100
+            "guidance_scale": 0,
+            "negative_prompt": "worst quality, low quality",
+            "num_inference_steps": 4
         }
     )
     
