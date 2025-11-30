@@ -26,33 +26,26 @@ class FollowView(APIView):
         except ObjectDoesNotExist:
             return Response({"error": "User not found"}, status=404)
         
-        # If user already subscribed to this user (unfollow)
         if follow_id in user.follow_for:
-            user2.readers_count = max(0, user2.readers_count - 1)
-
-            if user2.readers:
-                try:
-                    user2.readers.remove(id)
-                except ValueError:
-                    pass  
-            else:
-                user2.readers = []
+            # Unfollow
+            if id in user2.readers:
+                user2.readers.remove(id)
+            user2.readers_count = len(user2.readers)
+            
             user.follow_for.remove(follow_id)
+            user.follows_count = len(user.follow_for)
 
             user.save()
             user2.save()
         else:
-            # Follow user
-            user.follows_count += 1
+            # Follow
             user.follow_for.append(follow_id)
+            user.follows_count = len(user.follow_for)
+
+            user2.readers.append(id)
+            user2.readers_count = len(user2.readers)
             
-            user2.readers_count += 1
-            try:
-                user2.readers.append(id)
-            except:
-                user2.readers = [id]
-            
-            # Check notify per one day and create notification
+            # Notification logic
             recent = Notification.objects.filter(
                 sender=user,
                 recipient=user2,
@@ -68,16 +61,12 @@ class FollowView(APIView):
                     text_preview=f"{user.username} followed you!"
                 )
                 clear_notification_cache(user2)
-            
-            user2.save()
-            
-            # Ensure consistency
-            if len(user.follow_for) != user.follows_count: 
-                user.follows_count = len(user.follow_for)
+
             user.save()
+            user2.save()
         
-        # Clear cache - just delete first few pages, that's usually enough
-        for page in range(5):  # Clear first 5 pages
+        # Clear cache
+        for page in range(5):
             for end in ['True', 'False']:
                 cache.delete(f"readers_{follow_id}_page_{page}_end_{end}")
                 cache.delete(f"follows_{id}_page_{page}_end_{end}")
