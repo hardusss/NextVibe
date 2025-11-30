@@ -351,7 +351,13 @@ def send_post_for_moderation(self, post_id):
         passed = result.get("passed", False)
         post.is_approved = passed
         post.moderation_status = "approved" if passed else "denied"
-        
+
+        # add post count if post passed true
+        if passed:
+            user = User.objects.get(user_id=post.owner.user_id)
+            user.post_count += 1
+            user.save(update_fields=['post_count'])
+
         text_details = result.get("text", {}).get("details", {})
         categories = text_details.get("categories", ["universal"])
         post.categories = categories
@@ -382,13 +388,13 @@ def send_post_for_moderation(self, post_id):
         
     except requests.exceptions.RequestException as e:
         print(f"[MODERATION] Request error for post {post_id}: {e}")
-        post.moderation_status = "error"
+        post.moderation_status = "pending"
         post.save(update_fields=['moderation_status'])
         raise self.retry(countdown=120, exc=e)
         
     except Exception as e:
         print(f"[MODERATION] Unexpected error for post {post_id}: {e}")
-        post.moderation_status = "error"
+        post.moderation_status = "pending"
         post.save(update_fields=['moderation_status'])
         import traceback
         traceback.print_exc()
