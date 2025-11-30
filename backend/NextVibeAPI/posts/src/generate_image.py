@@ -1,10 +1,21 @@
 from replicate.client import Client
 from dotenv import load_dotenv
 from os import getenv
+from random import randint
 
 # Load environment variables
 load_dotenv()
 REPLICATE_API_TOKEN = getenv("REPLICATE_API_TOKEN")
+
+QUALITY_PROMPT = (
+    "ultra-detailed, hyper-realistic, 8k, 16k, cinematic lighting, "
+    "volumetric lighting, photorealistic textures, intricate details, "
+    "highly detailed, masterpiece, award-winning, realistic shadows, "
+    "vibrant colors, sharp focus, cinematic composition, dynamic lighting, "
+    "soft global illumination, realistic reflections, depth of field, "
+    "beautifully lit, epic scene, ultra high resolution, trending on ArtStation"
+)
+
 
 def generate(promt: str) -> str:
     """
@@ -24,17 +35,16 @@ def generate(promt: str) -> str:
         print(image_url)  # Outputs the URL of the generated image
     """
     client = Client(api_token=REPLICATE_API_TOKEN)
+    rand_seed = randint(0, 2147483647)
+
+    full_prompt = f"{promt}, {QUALITY_PROMPT}, seed {rand_seed}"
+
     output = client.run(
-        "bytedance/sdxl-lightning-4step:6f7a773af6fc3e8de9d5a3c00be77c17308914bf67772726aff83496ba1e3bbe",
+        "black-forest-labs/flux-schnell",
         input={
-            "width": 1024,
-            "height": 1024,
-            "prompt": promt,
-            "scheduler": "K_EULER",
+            "seed": rand_seed,
+            "prompt": full_prompt,
             "num_outputs": 1,
-            "guidance_scale": 0,
-            "negative_prompt": "worst quality, low quality",
-            "num_inference_steps": 4
         }
     )
     
