@@ -1,13 +1,6 @@
 import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
-import { Platform } from "react-native";
-
-const getMimeType = (uri: string) => {
-    if (uri.match(/\.(jpeg|jpg)$/i)) return "image/jpeg";
-    if (uri.match(/\.png$/i)) return "image/png";
-    if (uri.match(/\.(mp4|mov|mkv)$/i)) return "video/mp4";
-    return "application/octet-stream";
-};
+import * as FileSystem from 'expo-file-system';
 
 export default async function createPost(
     content: string,
@@ -54,58 +47,54 @@ export default async function createPost(
         console.log(`Post created with ID: ${postId}. Starting media upload...`);
 
         if (mediaUrls.length > 0) {
+            console.log(mediaUrls);
+            
             for (const [index, uri] of mediaUrls.entries()) {
-    const formData = new FormData();
-    const fileName = `media_${postId}_${index}.jpg`;
-
-    let file;
-
-    if (uri.startsWith("http")) {
-        // Remote image convert to Blob
-        console.log("Downloading remote image as blob:", uri);
-        const response = await fetch(uri);
-        const blob = await response.blob();
-
-        file = {
-            name: fileName,
-            type: blob.type || "image/jpeg",
-            uri: uri,
-            blob,
-        } as any;
-    } else {
-        // Local file send as usual
-        file = {
-            uri,
-            name: fileName,
-            type: getMimeType(uri),
-        } as any;
-    }
-
-    formData.append("media", file);
-    formData.append("post", postId.toString());
-
-    try {
-        console.log(`Uploading file ${index + 1}/${mediaUrls.length}...`);
-
-        const mediaResponse = await fetch(mediaUploadUrl, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${TOKEN}`,
-            },
-            body: formData,
-        });
-
-        if (!mediaResponse.ok) {
-            const errorText = await mediaResponse.text();
-            console.error(`Failed to upload media ${index}:`, errorText);
-        } else {
-            console.log(`File ${index + 1} uploaded successfully.`);
-        }
-    } catch (e) {
-        console.error(`Upload error:`, e);
-    }
-}
-
+                try {
+                    console.log(`Uploading file ${index + 1}/${mediaUrls.length}...`);
+                    
+                    // Якщо це віддалене зображення, спочатку завантажуємо його локально
+                    let uploadUri = uri;
+                    
+                    if (uri.startsWith("http")) {
+                        console.log("Downloading remote image:", uri);
+                        const localUri = `${FileSystem.cacheDirectory}temp_${postId}_${index}.jpg`;
+                        const downloadResult = await FileSystem.downloadAsync(uri, localUri);
+                        uploadUri = downloadResult.uri;
+                    }
+                    
+                    // uploadAsync сам формує multipart запит
+                    const uploadResponse = await FileSystem.uploadAsync(
+                        mediaUploadUrl,
+                        uploadUri,
+                        {
+                            fieldName: 'media',
+                            httpMethod: 'POST',
+                            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+                            headers: {
+                                "Authorization": `Bearer ${TOKEN}`,
+                            },
+                            parameters: {
+                                "post": postId.toString() // Додаткові поля FormData
+                            }
+                        }
+                    );
+                    
+                    if (uploadResponse.status !== 200 && uploadResponse.status !== 201) {
+                        console.error(`Failed to upload media ${index}:`, uploadResponse.body);
+                    } else {
+                        console.log(`File ${index + 1} uploaded successfully.`);
+                    }
+                    
+                    // Видаляємо тимчасовий файл, якщо завантажували віддалене зображення
+                    if (uri.startsWith("http")) {
+                        await FileSystem.deleteAsync(uploadUri, { idempotent: true });
+                    }
+                    
+                } catch (e) {
+                    console.error(`Upload error:`, e);
+                }
+            }
         }
 
         console.log("All media uploaded. Triggering moderation...");
