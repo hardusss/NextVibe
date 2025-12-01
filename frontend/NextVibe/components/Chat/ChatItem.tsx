@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import GetApiUrl from '@/src/utils/url_api';
 import timeAgo from '@/src/utils/formatTime';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import Web3Toast from '../Shared/Toasts/Web3Toast';

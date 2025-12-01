@@ -17,7 +17,6 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import getComments from '@/src/api/get.comments';
-import GetApiUrl from '@/src/utils/url_api';
 import { MaterialIcons, Entypo, AntDesign } from '@expo/vector-icons';
 import timeAgo from '@/src/utils/formatTime';
 import { ActivityIndicator } from '../CustomActivityIndicator';
