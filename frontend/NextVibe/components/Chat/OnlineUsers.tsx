@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
-import GetApiUrl from '@/src/utils/url_api';
 import { useRouter } from 'expo-router';
 import FastImage from 'react-native-fast-image';
 import { BlurView } from 'expo-blur';

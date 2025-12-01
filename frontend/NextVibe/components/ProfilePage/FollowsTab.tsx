@@ -5,7 +5,6 @@ import { useRouter, useLocalSearchParams, useFocusEffect, RelativePathString } f
 import getFollows from '@/src/api/get.follows'; 
 import getReaders from '@/src/api/get.readers'; 
 import FastImage from 'react-native-fast-image';
-import GetApiUrl from '@/src/utils/url_api';
 import CreateChat from '@/src/api/create.chat';
 
 type UserData = {

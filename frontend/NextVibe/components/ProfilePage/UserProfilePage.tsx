@@ -3,7 +3,6 @@ import { View, SafeAreaView, Text, StatusBar,Modal, ScrollView, RefreshControl, 
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
-import GetApiUrl from "@/src/utils/url_api";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import formatNumber from "@/src/utils/formatNumber";

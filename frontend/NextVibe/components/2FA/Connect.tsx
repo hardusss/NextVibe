@@ -17,7 +17,6 @@ import { connect2FA, auth } from "@/src/api/2fa";
 import GetApiUrl from "@/src/utils/url_api";
 import LottieView from "lottie-react-native";
 import FastImage from 'react-native-fast-image';
-import { LinearGradient } from 'expo-linear-gradient';
 
 interface Props {
   isVisible: boolean;
