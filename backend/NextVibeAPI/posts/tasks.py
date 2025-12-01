@@ -105,22 +105,30 @@ def compress_video(media):
         
         # 2. Run FFmpeg compression
         try:
-            stream = ffmpeg.input(temp_input.name)
-            
-            # Scale logic: width 1280, height automatic (divisible by 2)
-            stream = ffmpeg.filter(stream, 'scale', 1280, -2)
+            input_stream = ffmpeg.input(temp_input.name)
+
+            video = (
+                input_stream.video
+                .filter('scale', 1280, -2)
+            )
+
+            audio = input_stream.audio
             
             stream = ffmpeg.output(
-                stream, 
+                video,  # вже виставлений відео стрім
+                audio,  # вже виставлений аудіо стрім
                 temp_output.name,
-                vcodec='libx264',
-                crf=23,             # Constant Rate Factor (18-28 is good, 28 is smaller size)
-                preset='fast',      # Encoding speed
-                acodec='aac',       # Audio codec
-                audio_bitrate='128k',
-                movflags='faststart', # Critical for web streaming!
-                loglevel='error'
+                vcodec="libx264",
+                acodec="aac",
+                preset="fast",
+                crf="23",
+                **{
+                    "b:a": "128k",
+                    "movflags": "+faststart",
+                    "loglevel": "error"
+                }
             )
+
             
             ffmpeg.run(stream, overwrite_output=True)
             
