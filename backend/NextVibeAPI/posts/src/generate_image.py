@@ -19,7 +19,7 @@ QUALITY_PROMPT = (
 
 def generate(promt: str) -> str:
     """
-    Generates an image based on the given text prompt using the Bytedance AI SDXL model.
+    Generates an image based on the given text prompt using the black-forest-labs/flux-schnell model.
 
     Parameters:
         promt (str): The text prompt describing the desired image.
