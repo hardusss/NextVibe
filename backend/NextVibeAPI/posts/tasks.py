@@ -115,8 +115,8 @@ def compress_video(media):
             audio = input_stream.audio
             
             stream = ffmpeg.output(
-                video,  # вже виставлений відео стрім
-                audio,  # вже виставлений аудіо стрім
+                video, 
+                audio,  
                 temp_output.name,
                 vcodec="libx264",
                 acodec="aac",
