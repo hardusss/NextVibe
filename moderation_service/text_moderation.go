@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
 )
 
-// ModerateText checks text content using Sightengine API
 func ModerateText(text string) FileResult {
 	if text == "" {
 		return FileResult{
@@ -40,9 +40,10 @@ func ModerateText(text string) FileResult {
 	}
 
 	var lastErr error
-	rateLimitCount := 0
-	for attempt := 0; attempt < 5; attempt++ {
+	
+	for attempt := 1; attempt <= 5; attempt++ {
 		apiUser, apiSecret := GetRandomSightengineCredentials()
+		
 		var b bytes.Buffer
 		w := multipart.NewWriter(&b)
 		w.WriteField("text", text)
@@ -56,6 +57,14 @@ func ModerateText(text string) FileResult {
 		req, err := http.NewRequest("POST", "https://api.sightengine.com/1.0/text/check.json", &b)
 		if err != nil {
 			lastErr = err
+			log.Printf("   Text attempt %d/%d: Request creation failed: %v", attempt, 5, err)
+			
+			if attempt == 5 {
+				if shouldPass, errType, reason := ShouldAutoPass(err, nil, 0); shouldPass {
+					LogAutoPass("text", errType, attempt)
+					return CreateAutoPassResult("text", errType, reason, nil)
+				}
+			}
 			continue
 		}
 
@@ -64,6 +73,14 @@ func ModerateText(text string) FileResult {
 		resp, err := client.Do(req)
 		if err != nil {
 			lastErr = err
+			log.Printf("   Text attempt %d/%d: Request failed: %v", attempt, 5, err)
+			
+			if attempt == 5 {
+				if shouldPass, errType, reason := ShouldAutoPass(err, nil, 0); shouldPass {
+					LogAutoPass("text", errType, attempt)
+					return CreateAutoPassResult("text", errType, reason, nil)
+				}
+			}
 			continue
 		}
 		defer resp.Body.Close()
@@ -71,45 +88,45 @@ func ModerateText(text string) FileResult {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			lastErr = err
+			log.Printf("   Text attempt %d/%d: Failed to read response: %v", attempt, 5, err)
 			continue
 		}
 
-		fmt.Printf("Response status: %d\n", resp.StatusCode)
-		fmt.Printf("Response body: %s\n", string(body))
+		log.Printf("   Text moderation response status: %d", resp.StatusCode)
 
 		var result map[string]interface{}
 		err = json.Unmarshal(body, &result)
 		if err != nil {
 			lastErr = err
+			log.Printf("   Text attempt %d/%d: JSON parse failed: %v", attempt, 5, err)
 			continue
 		}
 
-		if errMsg, ok := result["error"].(string); ok && (strings.Contains(errMsg, "rate limit") || strings.Contains(errMsg, "limit")) {
+		// Check for API errors
+		if shouldPass, errType, reason := ShouldAutoPass(lastErr, result, resp.StatusCode); shouldPass {
+			LogAutoPass("text", errType, attempt)
+			return CreateAutoPassResult("text", errType, reason, result)
+		}
+
+		// Check rate limit
+		if errMsg, ok := result["error"].(string); ok && 
+			(strings.Contains(strings.ToLower(errMsg), "rate limit") || 
+			 strings.Contains(strings.ToLower(errMsg), "limit")) {
 			lastErr = fmt.Errorf("rate limit: %s", errMsg)
-			rateLimitCount++
-			if rateLimitCount > 3 {
-				return FileResult{
-					Filename: "text",
-					Passed:   true,
-					Errors: []ModerationError{
-						{
-							Type:    "rate_limit",
-							Message: "Rate limit exceeded, auto-passing content",
-						},
-					},
-					Details: map[string]interface{}{
-						"auto_passed": true,
-						"reason":      "rate limit",
-					},
-				}
+			log.Printf("   Text attempt %d/%d: Rate limit", attempt, 5)
+			
+			if attempt == 5 {
+				LogAutoPass("text", ErrorRateLimit, attempt)
+				return CreateAutoPassResult("text", ErrorRateLimit, 
+					"All API keys exceeded rate limit", result)
 			}
 			continue
 		}
 
+		// Success - evaluate
 		modResult := EvaluateTextFlexible(result, ModerationModerate)
 		passed := modResult.Passed
 
-		// Collect all moderation errors
 		var errors []ModerationError
 
 		// Check for nudity
@@ -156,12 +173,10 @@ func ModerateText(text string) FileResult {
 			}
 		}
 
-		// Detect categories for the text
 		categories := DetectCategories(text)
-
-		// Add categories to the result details
 		result["categories"] = categories
 
+		log.Printf("   ✅ Text moderation successful on attempt %d", attempt)
 		return FileResult{
 			Filename: "text",
 			Passed:   passed,
@@ -170,18 +185,10 @@ func ModerateText(text string) FileResult {
 		}
 	}
 
-	return FileResult{
-		Filename: "text",
-		Passed:   false,
-		Errors: []ModerationError{
-			{
-				Type:    "system",
-				Message: "All API keys exceeded rate limit",
-			},
-		},
-		Details: map[string]interface{}{
-			"error":      "All keys exceeded rate limit",
-			"last_error": lastErr.Error(),
-		},
-	}
+	// All failed
+	log.Printf("❌ All text moderation attempts failed")
+	LogAutoPass("text", ErrorUnknown, 5)
+	return CreateAutoPassResult("text", ErrorUnknown, 
+		"All retry attempts failed - allowing content", 
+		map[string]interface{}{"last_error": fmt.Sprint(lastErr)})
 }
