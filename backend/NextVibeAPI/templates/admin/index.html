@@ -1,0 +1,110 @@
+{% extends "admin/index.html" %}
+
+{% block extrahead %}
+
+<style>
+/* Dark theme dashboard */
+#custom-dashboard {
+    display: flex;
+    flex-wrap: wrap; 
+    gap: 20px;
+    padding: 15px;
+    background-color: #2b2b3f;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    color: #ffffff;
+    font-weight: bold;
+    font-family: sans-serif;
+}
+
+/* Individual metric box */
+.dashboard-metric {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #3a3a5c;
+    padding: 10px 15px;
+    border-radius: 8px;
+    min-width: 150px;      
+    flex: 1 1 200px;       
+}
+
+/* Green circle for online users */
+.online-circle {
+    width: 12px;
+    height: 12px;
+    background-color: #4caf50;
+    border-radius: 50%;
+}
+
+/* Labels and values */
+.metric-label {
+    font-size: 0.9em;
+    color: #cccccc;
+}
+
+.metric-value {
+    font-size: 1.2em;
+    color: #ffffff;
+}
+
+@media (max-width: 600px) {
+    #custom-dashboard {
+        flex-direction: column;
+    }
+    .dashboard-metric {
+        justify-content: flex-start;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="custom-dashboard">
+    <div class="dashboard-metric">
+        <div class="online-circle"></div>
+        <div>
+            <div class="metric-label">Online Users</div>
+            <div class="metric-value">{{ online_users_count }}</div>
+        </div>
+    </div>
+
+    <div class="dashboard-metric">
+        <div>
+            <div class="metric-label">New Registrations</div>
+            <div class="metric-value">{{ today_registrations }}</div>
+        </div>
+    </div>
+
+    <div class="dashboard-metric">
+        <div>
+            <div class="metric-label">Posts Today</div>
+            <div class="metric-value">{{ posts_today }}</div>
+        </div>
+    </div>
+
+    <div class="dashboard-metric">
+        <div>
+            <div class="metric-label">Post Reports Today</div>
+            <div class="metric-value">{{ post_reports_today }}</div>
+        </div>
+    </div>
+
+    <div class="dashboard-metric">
+        <div>
+            <div class="metric-label">Comments Today</div>
+            <div class="metric-value">{{ comments_today }}</div>
+        </div>
+    </div>
+
+    <div class="dashboard-metric">
+        <div>
+            <div class="metric-label">Total Users Banned</div>
+            <div class="metric-value">{{ total_users_banned }}</div>
+        </div>
+    </div>
+    
+</div>
+
+{{ block.super }}
+{% endblock %}
