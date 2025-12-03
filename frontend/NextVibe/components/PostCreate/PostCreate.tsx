@@ -90,15 +90,6 @@ export default function PostCreate() {
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? darkColors : lightColors;
     const pollingInterval = useRef<NodeJS.Timeout | number>(null);
-
-    useFocusEffect(
-        useCallback(() => {
-            const newMediaUrls = typeof params.urls === 'string' ? JSON.parse(params.urls) : [];
-            setMediaUrls((prevUrls) => {
-                return JSON.stringify(prevUrls) !== JSON.stringify(newMediaUrls) ? newMediaUrls : prevUrls;
-            });
-        }, [params.urls]) 
-    );
     
     const isVideo = (uri: string): boolean => {
         return uri.match(/\.(mp4|mov|mkv|webm|ogg)$/i) !== null;
@@ -205,14 +196,19 @@ export default function PostCreate() {
                     setGenerationStatus("");
                     setIsGenerating(false);
                     setIsModalVisible(false);
-                    setMediaUrls(prev => [statusResponse.image_url as string, ...prev]);
+                    setMediaUrls(prev => {
+                    const imageUrl = statusResponse.image_url as string;
+                        if (prev.includes(imageUrl)) {
+                            return prev; 
+                        }
+                        return [imageUrl, ...prev]; 
+                    });
                     setIsAiGenerated(true);
                     setToastMessage("Photo generated successfully 🥳");
                     setToastSuccess(true);
                     setIsVisibleToast(true);
                     setAiPrompt("");
                 } else if (statusResponse.status === "failed" || statusResponse.error) {
-                    // Помилка генерації
                     clearInterval(pollingInterval.current!);
                     setGenerationStatus("");
                     setIsGenerating(false);
@@ -220,11 +216,9 @@ export default function PostCreate() {
                     setToastSuccess(false);
                     setIsVisibleToast(true);
                 } else if (statusResponse.status === "processing") {
-                    // Все ще обробляється
                     setGenerationStatus(`Generating your image... (${attempts}/${maxAttempts})`);
                 }
-                
-                // Якщо досягнуто максимальної кількості спроб
+
                 if (attempts >= maxAttempts) {
                     clearInterval(pollingInterval.current!);
                     setGenerationStatus("");
@@ -242,7 +236,7 @@ export default function PostCreate() {
                 setToastSuccess(false);
                 setIsVisibleToast(true);
             }
-        }, 2000); // Перевіряти кожні 2 секунди
+        }, 2000);  
     };
 
     const handleGenerateWithAI = async () => {
@@ -255,11 +249,9 @@ export default function PostCreate() {
             const response = await generateImage(aiPrompt);
             
             if (response.taskId) {
-                // Отримали taskId, починаємо polling
                 setGenerationStatus("You are in queue for image generation. Please don't leave this page...");
                 pollImageStatus(response.taskId);
             } else if (response.error) {
-                // Помилка при створенні завдання
                 setIsGenerating(false);
                 setGenerationStatus("");
                 setToastMessage(response.error);
@@ -276,7 +268,6 @@ export default function PostCreate() {
         }
     };
 
-    // Очистити інтервал при розмонтуванні компонента
     React.useEffect(() => {
         return () => {
             if (pollingInterval.current) {
