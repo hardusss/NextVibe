@@ -77,8 +77,8 @@ export const getMessages = async (chatId: number, lastMessageId?: number) => {
   
   try {
     const url = lastMessageId 
-      ? `${GetApiUrl().replace(":8000", ":8081")}/messages/${chatId}?last_message_id=${lastMessageId}&user_id=${user_id}`
-      : `${GetApiUrl().replace(":8000", ":8081")}/messages/${chatId}?user_id=${user_id}`;
+      ? `${GetApiUrl().replace(":8000", ":8081").replace("v1", "v2")}/messages/${chatId}?last_message_id=${lastMessageId}&user_id=${user_id}`
+      : `${GetApiUrl().replace(":8000", ":8081").replace("v1", "v2")}/messages/${chatId}?user_id=${user_id}`;
     
     const response = await axios.get(url, {
       headers: {
