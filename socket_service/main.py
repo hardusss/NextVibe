@@ -42,7 +42,7 @@ app = FastAPI()
 manager = ConnectionManager()  
 r = redis.Redis(host='localhost', port=6379, db=0)
 
-app.include_router(messages_router, prefix="/api/v1", tags=["Messages"])
+app.include_router(messages_router, prefix="/api/v2", tags=["Messages"])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
