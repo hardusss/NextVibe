@@ -7,6 +7,7 @@ from rest_framework.throttling import ScopedRateThrottle
 
 class RegisterUserView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
 
