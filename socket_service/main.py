@@ -10,9 +10,13 @@ from src.models import Message, MediaAttachment, User, Chat
 from src.messages import router as messages_router
 from r2_storage import r2_storage  
 from auth import auth_jwt
+from config import settings
 
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development") 
+ENVIRONMENT = settings.ENVIRONMENT
+LOG_LEVEL = settings.LOG_LEVEL
+MAX_MEDIA_SIZE_MB = settings.MAX_MEDIA_SIZE_MB
+MAX_CONNECTIONS_PER_USER = settings.MAX_CONNECTIONS_PER_USER
+CORS_ORIGINS = settings.CORS_ORIGINS
 
 if not os.path.exists('logs'):
     os.makedirs('logs')
@@ -40,20 +44,22 @@ logger.info(f"🚀 WebSocket server starting in {ENVIRONMENT} mode (log level: {
 
 app = FastAPI()
 manager = ConnectionManager()  
-r = redis.Redis(host='localhost', port=6379, db=0)
+r = redis.Redis(
+    host=settings.REDIS_HOST,
+    port=settings.REDIS_PORT,
+    db=settings.REDIS_DB
+)
 
 app.include_router(messages_router, prefix="/api/v2", tags=["Messages"])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=CORS_ORIGINS,  
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
     allow_headers=["*"],
     expose_headers=["*"] 
 )
 
-MAX_MEDIA_SIZE_MB = 100
-MAX_CONNECTIONS_PER_USER = 5
 
 def get_db():
     db = SessionLocal()
