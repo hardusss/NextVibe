@@ -55,6 +55,8 @@
     </dict>
     <key>NSCameraUsageDescription</key>
     <string>NextVibe needs access to your Camera.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>NextVibe needs access to your Microphone.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
