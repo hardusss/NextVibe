@@ -24,7 +24,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
             const userInfo = await GoogleSignin.signIn();
             const userData = userInfo.data?.user;
             if (userInfo.type === "success" && page === "register") {
-                GoogleRegister(`${userData?.givenName}${userData?.familyName ? "." : ""}${userData?.familyName != null ? userData?.familyName : ""}`, `${userData?.email}`, `${userData?.photo ? userData?.photo : "https://media.nextvibe.io/images/default.png"}`, router);
+                GoogleRegister(`${userData?.givenName}${userData?.familyName != null ? userData?.familyName : ""}`, `${userData?.email}`, `${userData?.photo ? userData?.photo : "https://media.nextvibe.io/images/default.png"}`, router);
             }
             if (userInfo.type === "success" && page === "login") {
                 GoogleLogin(`${userData?.email}`, router);
