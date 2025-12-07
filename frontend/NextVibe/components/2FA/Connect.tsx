@@ -51,7 +51,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
   useEffect(() => {
     const fetchData = async () => {
       const response = await connect2FA();
-      setQrUrl(`${GetApiUrl().slice(0, 25)}${response.data.qrcode}`);
+      setQrUrl(`${response.data.qrcode}`);
       setQrValue(response.data.code);
     };
     fetchData();
