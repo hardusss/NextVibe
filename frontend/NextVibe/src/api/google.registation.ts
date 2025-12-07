@@ -27,6 +27,7 @@ export default function GoogleRegister(username: string, email: string, avatar_u
 
     })
     .catch(error => {;
+        console.log(error)
         Toast.show({
             type: 'error',
             text1: 'Registration failed',

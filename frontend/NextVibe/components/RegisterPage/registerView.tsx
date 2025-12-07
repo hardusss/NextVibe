@@ -50,8 +50,8 @@ export default function RegisterView() {
         setStrengthLabel(strengthLevels[result.score]);
     };
 
-    const handleOpenPrivacyPolicy = () => Linking.openURL('https://nextvibe.io');
-    const handleOpenTerms = () => Linking.openURL('https://nextvibe.io');
+    const handleOpenPrivacyPolicy = () => Linking.openURL('https://nextvibe.io/privacy');
+    const handleOpenTerms = () => Linking.openURL('https://nextvibe.io/terms');
 
     const getStrengthColor = () => {
         if (password.length === 0) return isDark ? '#333' : '#e0e0e0';
