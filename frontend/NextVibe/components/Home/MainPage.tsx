@@ -18,7 +18,7 @@ import getRecomendatePosts from "@/src/api/get.recomendate.posts";
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
 import { MaterialIcons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/Ionicons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
@@ -508,7 +508,12 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
         if (!isVisible) {
             videoRef.current.unloadAsync();
             setShowPreview(true);
-        }
+        };
+        return () => {
+            if (videoRef.current) {
+                videoRef.current.unloadAsync().catch(() => {});
+            };
+        };
     }, [isVisible, isVideoMedia]);
 
     const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
@@ -863,6 +868,14 @@ export default function MainPage() {
         getUserID();
         fetchPosts(false, true); // Initial load treated as reset
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                setVisiblePostId(null);
+            };
+        }, [])
+    );
 
     const toggleLike = useCallback((postId: number) => {
         likePost(postId);
