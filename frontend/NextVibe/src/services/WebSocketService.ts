@@ -33,7 +33,8 @@ class WebSocketService {
       const wsBaseUrl = baseUrl
         .replace("http://", "ws://")
         .replace("https://", "wss://")
-        .replace(":8000", ":8081");
+        .replace(":8000", ":8081")
+        .replace("api", "realtime");
 
       return `${wsBaseUrl}/ws?token=${token}`;
     } catch (error) {
