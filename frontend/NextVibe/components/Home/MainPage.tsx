@@ -452,11 +452,36 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
     const videoRef = useRef<Video>(null);
+    const tapCount = useRef<number>(0);
+    const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const handleDoublePress = useCallback(() => {
-        animateHeart();
-        if (!isLiked) onLike(postId);
-    }, [isLiked, postId]);
+    const handleDoublePress = () => {
+        tapCount.current += 1;
+        
+        if (tapTimer.current) {
+            clearTimeout(tapTimer.current);
+        }
+        
+        if (tapCount.current === 2) {
+            animateHeart();
+            if (!isLiked) {
+                onLike(postId);
+            }
+            tapCount.current = 0;
+        } else {
+            tapTimer.current = setTimeout(() => {
+                tapCount.current = 0;
+            }, 300);
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            if (tapTimer.current) {
+                clearTimeout(tapTimer.current);
+            }
+        };
+    }, []);
 
     const animateHeart = () => {
         setShowHeart(true);
@@ -496,14 +521,7 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
 
     return (
         <Pressable
-            onPress={() => {
-                let lastTap = 0;
-                return () => {
-                    const now = Date.now();
-                    if (now - lastTap < 300) handleDoublePress();
-                    lastTap = now;
-                };
-            }}
+            onPress={handleDoublePress}
             style={styles.mediaContainer}
         >
             {isVideoMedia ? (
