@@ -1,7 +1,7 @@
-import { RelativePathString, Stack, useRouter, useSegments, useFocusEffect } from "expo-router";
+import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
 import { FontAwesome5, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColorScheme, View, TouchableOpacity } from "react-native";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
 import { storage } from "@/src/utils/storage";
@@ -37,6 +37,8 @@ if (__DEV__ && typeof global !== 'undefined') {
   };
 }
 
+let cachedAvatarUrl: string | null = null;
+
 export default function Layout() {
   const theme = useColorScheme();
   const router = useRouter();
@@ -65,7 +67,8 @@ export default function Layout() {
           setUserID(Number(id));
         } else {
           setUserID(null);
-          setImageProfile("");
+          setImageProfile(null);
+          cachedAvatarUrl = null;
         }
       } catch (error) {
         console.error('Error loading user ID:', error);
@@ -75,7 +78,7 @@ export default function Layout() {
     loadUserId();
   }, []);
 
- useEffect(() => {
+  useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (res) => res,
       (error) => {
@@ -92,28 +95,57 @@ export default function Layout() {
 
   useEffect(() => {
     if (!userID) {
-      setImageProfile("");
+      setImageProfile(null);
+      cachedAvatarUrl = null;
       return;
     }
 
-    const fetchAvatar = async () => {
+    let isMounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const fetchAvatarWithRetry = async () => {
       try {
         const userData = await getUserDetail();
-        if (userData.avatar) {
-          setImageProfile(userData.avatar);
-        } else {
-          setImageProfile("https://media.nextvibe.io/images/default.png");
+        const newAvatarUrl = userData.avatar || "https://media.nextvibe.io/images/default.png";
+        
+        if (isMounted) {
+          if (newAvatarUrl !== cachedAvatarUrl) {
+            if (cachedAvatarUrl !== null) {
+              await FastImage.clearMemoryCache();
+            }
+            
+            FastImage.preload([{
+              uri: newAvatarUrl,
+              priority: FastImage.priority.high,
+            }]);
+
+            cachedAvatarUrl = newAvatarUrl;
+            setImageProfile(newAvatarUrl);
+          }
         }
       } catch (error) {
-        console.error('Error loading avatar:', error);
-        setImageProfile("https://media.nextvibe.io/images/default.png");
-      } 
+        console.error(`Error loading avatar (attempt ${retryCount + 1}):`, error);
+        
+        if (retryCount < maxRetries && isMounted) {
+          retryCount++;
+          setTimeout(fetchAvatarWithRetry, 1000 * Math.pow(2, retryCount - 1));
+        } else if (isMounted) {
+          const defaultUrl = "https://media.nextvibe.io/images/default.png";
+          cachedAvatarUrl = defaultUrl;
+          setImageProfile(defaultUrl);
+        }
+      }
     };
 
-    fetchAvatar();
+    fetchAvatarWithRetry();
+
+    return () => {
+      isMounted = false;
+    };
   }, [userID]);
 
-   useEffect(() => {
+  useEffect(() => {
     if (currentPage === "home" || currentPage === "profile") {
       const checkAndReloadUser = async () => {
         const id = await storage.getItem("id");
@@ -123,8 +155,22 @@ export default function Layout() {
           setUserID(currentId);
           if (!currentId) {
             setImageProfile(null);
+            cachedAvatarUrl = null;
             await FastImage.clearMemoryCache();
             await FastImage.clearDiskCache();
+          }
+        } else if (currentId && userID) {
+          try {
+            const userData = await getUserDetail();
+            const newAvatarUrl = userData.avatar || "https://media.nextvibe.io/images/default.png";
+            
+            if (newAvatarUrl !== cachedAvatarUrl) {
+              await FastImage.clearMemoryCache();
+              cachedAvatarUrl = newAvatarUrl;
+              setImageProfile(newAvatarUrl);
+            }
+          } catch (error) {
+            console.error('Error checking avatar update:', error);
           }
         }
       };
@@ -175,14 +221,18 @@ export default function Layout() {
               shadowColor: "transparent",
             }}>
               {tabs.map((tab) => (
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} key={tab.name} onPress={() => goToTab(tab.name)}>
+                <TouchableOpacity 
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+                  key={tab.name} 
+                  onPress={() => goToTab(tab.name)}
+                >
                   {tab.name === "profile" && imageProfile && userID ? (
                     <FastImage
-                      key={`avatar-${userID}`}
+                      key={`avatar-${userID}-${imageProfile}`}
                       source={{ 
-                        uri: imageProfile, 
-                        priority: FastImage.priority.normal, 
-                        cache: FastImage.cacheControl.web 
+                        uri: imageProfile,
+                        priority: FastImage.priority.high,
+                        cache: FastImage.cacheControl.immutable,
                       }}
                       style={{
                         width: 25,
@@ -190,7 +240,14 @@ export default function Layout() {
                         borderRadius: 50,
                         borderWidth: currentPage === "profile" ? 2 : 0,
                         borderColor: "#7305f0ff",
+                        backgroundColor: theme === "dark" ? "#2A2A3F" : "#E9E9E9",
                       }}
+                      onError={() => {
+                        const defaultUrl = "https://media.nextvibe.io/images/default.png";
+                        cachedAvatarUrl = defaultUrl;
+                        setImageProfile(defaultUrl);
+                      }}
+                      resizeMode={FastImage.resizeMode.cover}
                     />
                   ) : tab.name === "search" ? (
                     <View style={{
