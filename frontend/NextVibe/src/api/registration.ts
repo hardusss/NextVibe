@@ -17,7 +17,7 @@ export default async function Register (username: string, email: string, passwor
     }
 
 
-    if (strength === 'Good' || strength === 'Strong' || strength === 'Very Strong') {
+    if (strength === 'Good' || strength === 'Strong' || strength === 'Excellent') {
         if (!privacy) {
             Toast.show({
                 type: 'error',
