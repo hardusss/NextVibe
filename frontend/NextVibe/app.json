@@ -14,8 +14,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.harrddddd.NextVibe",
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow NextVibe access your camera",
-        "NSMicrophoneUsageDescription": "Allow NextVibe access your microphone",
+        "NSCameraUsageDescription": "NextVibe needs access to your Camera.",
+        "NSMicrophoneUsageDescription": "NextVibe needs access to your Microphone.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -29,7 +29,11 @@
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -88,6 +92,10 @@
         "projectId": "4c7d8842-f989-419d-b3ec-49ceece00b6e"
       }
     },
-    "owner": "nextvibe"
+    "owner": "nextvibe",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/4c7d8842-f989-419d-b3ec-49ceece00b6e"
+    }
   }
 }
