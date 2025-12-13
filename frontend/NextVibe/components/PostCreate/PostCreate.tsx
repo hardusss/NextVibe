@@ -6,12 +6,11 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import createPost from '@/src/api/create.post';
 import generateImage from '@/src/api/generate.image';
 import generateImageStatus from '@/src/api/get.image.status';
-import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
 import FastImage from 'react-native-fast-image';
 import ButtonAI from './GenerateAIButton';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
+import { Vibration } from 'react-native';
 
 const lightColors = {
     background: '#FAFAFA',
@@ -42,6 +41,10 @@ const darkColors = {
 };
 
 const {width, height} = Dimensions.get("window")
+
+// vibration patterns
+const SUCCESS_VIBRATION_PATTERN = [30, 60, 30, 80, 50];
+const FAIL_VIBRATION_PATTERN = [150, 70, 50, 200];
 
 function VideoPlayer({ uri, isActive }: { uri: string; isActive: boolean }) {
     const video = useRef<Video>(null);
@@ -85,6 +88,7 @@ export default function PostCreate() {
     const [isVisibleToast, setIsVisibleToast] = useState<boolean>(false);
     const [toastMessage, setToastMessage] = useState<string>("");
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
+    const [isVisibleConfirm, setIsVisibleConfirm] = useState<boolean>(false);
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
     const [generationStatus, setGenerationStatus] = useState<string>("");
     const colorScheme = useColorScheme();
@@ -160,18 +164,36 @@ export default function PostCreate() {
     };
 
     const handlePublish = () => {
+        if (postText.length > 255) {
+            Vibration.vibrate(FAIL_VIBRATION_PATTERN);
+            setToastMessage("Post text must be less than 255 characters!");
+            setToastSuccess(false);
+            setIsVisibleToast(true);
+            return;
+        };
+        if (location.length > 50) {
+            Vibration.vibrate(FAIL_VIBRATION_PATTERN);
+            setToastMessage("Location must be less than 50 characters!");
+            setToastSuccess(false);
+            setIsVisibleToast(true);
+            return;
+        };
         if (mediaUrls.length < 1) {
+            Vibration.vibrate(FAIL_VIBRATION_PATTERN);
             setToastMessage("Error. You can't publish post without media!");
-            setToastSuccess(false)
+            setToastSuccess(false);
             setIsVisibleToast(true);
             return;
-        }
+        };
         if (mediaUrls.length > 3){
+            Vibration.vibrate(FAIL_VIBRATION_PATTERN);
             setToastMessage("Error. A post can contain a maximum of 3 media files!");
-            setToastSuccess(false)
+            setToastSuccess(false);
             setIsVisibleToast(true);
             return;
-        }
+        };
+
+        Vibration.vibrate(SUCCESS_VIBRATION_PATTERN);
         createPost(postText, mediaUrls, location, isAiGenerated, enableComments);
         setMediaUrls([]);
         setAiPrompt("");
@@ -267,6 +289,25 @@ export default function PostCreate() {
             setIsVisibleToast(true);
         }
     };
+
+    const handleLeave = () => { 
+        if (isGenerating) {
+            Vibration.vibrate(FAIL_VIBRATION_PATTERN)
+            setToastMessage("Please wait for generation to complete");
+            setToastSuccess(false);
+            setIsVisibleToast(true);
+            return;
+        }
+        if (mediaUrls || postText.length > 0 || location.length > 0) {
+            setIsVisibleConfirm(true);
+            return;
+        };
+        setMediaUrls([]);
+        setAiPrompt("");
+        setLocation("");
+        setPostText("");
+        router.back()
+    }
 
     React.useEffect(() => {
         return () => {
@@ -538,6 +579,29 @@ export default function PostCreate() {
     return (
         <View style={{ flex: 1, backgroundColor: colors.background }}>
             <Web3Toast message={toastMessage} visible={isVisibleToast} onHide={() => {setIsVisibleToast(false)}} isSuccess={toastSuccess}/>
+            <ConfirmDialog 
+                visible={isVisibleConfirm}
+                onConfirm={() => {
+                    if (isGenerating) {
+                        Vibration.vibrate(FAIL_VIBRATION_PATTERN)
+                        setToastMessage("Please wait for generation to complete");
+                        setToastSuccess(false);
+                        setIsVisibleToast(true);
+                        return;
+                    }
+                    setMediaUrls([]);
+                    setAiPrompt("");
+                    setLocation("");
+                    setPostText("");
+                    router.back()
+                }}
+                onCancel={() => {setIsVisibleConfirm(false)}}
+                title='Leave without publish?'
+                message='Your post isn’t finished yet. Leaving the page will delete your changes.'
+                confirmLabel='Leave'
+                confirmGradient={["red", "red"]}
+
+            />
             <StatusBar 
                 backgroundColor={colors.background}
                 barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
@@ -546,19 +610,7 @@ export default function PostCreate() {
             <View style={themedStyles.header}>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                     style={themedStyles.backButton}
-                    onPress={() => {
-                        if (isGenerating) {
-                            setToastMessage("Please wait for generation to complete");
-                            setToastSuccess(false);
-                            setIsVisibleToast(true);
-                            return;
-                        }
-                        setMediaUrls([]);
-                        setAiPrompt("");
-                        setLocation("");
-                        setPostText("");
-                        router.back()
-                    }}
+                    onPress={handleLeave}
                 >
                     <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
@@ -599,6 +651,9 @@ export default function PostCreate() {
                                 value={postText}
                                 onChangeText={setPostText}
                             />
+                            <View style={{position: "absolute", zIndex: 9999, right: 17, bottom: 15}}>
+                                <Text style={{color: postText.length < 255 ? colors.accent : "red", fontSize: 12}}>{postText.length}/255</Text>
+                            </View>
                         </View>
                     </View>
 
