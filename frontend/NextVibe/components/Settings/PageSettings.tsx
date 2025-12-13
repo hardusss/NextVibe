@@ -22,6 +22,7 @@ import updateUser from "@/src/api/update.user";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import ConfirmDialog from "../Shared/Toasts/ConfirmDialog";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
+import validationUsername from "@/src/validation/username-update-validator";
 
 interface User {
     username: string;
@@ -139,6 +140,11 @@ function PageSettingsContent() {
                 showToast('Username cannot be empty', false);
                 return;
             }
+            const validUsername = validationUsername(username);
+            if (!validUsername.ok){
+                showToast(validUsername.error as string, false)
+                return;
+            }
 
             if (username !== user?.username) {
                 const usernameResponse = await updateUser(username, undefined);
@@ -154,6 +160,10 @@ function PageSettingsContent() {
 
 
             if (about !== user?.about) {
+                if (about.length > 255) {
+                    showToast("The about can be a maximum of 255 characters!", false)
+                    return;
+                }
                 const aboutResponse = await updateUser(undefined, about);
                 if (aboutResponse === null) {
                     showToast('Failed to update about', false);
