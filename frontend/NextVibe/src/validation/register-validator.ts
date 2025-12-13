@@ -20,10 +20,10 @@ const schema = Yup.object().shape({
     password: Yup.string()
         .required('Password is required')
         .min(8, 'Password must be at least 8 characters')
-        .matches(/[a-z]/, 'Must include a lowercase letter')
-        .matches(/[A-Z]/, 'Must include an uppercase letter')
-        .matches(/\d/, 'Must include a number')
-        .matches(/[@$!%*?&]/, 'Must include a special character (@$!%*?&)')
+        .matches(/[a-z]/, 'Password must a lowercase letter')
+        .matches(/[A-Z]/, 'Password must an uppercase letter')
+        .matches(/\d/, 'Password must include a number')
+        .matches(/[@$!%*?&]/, 'Password must include a special character (@$!%*?&)')
         .matches(/^[A-Za-z0-9@$!%*?&]+$/, 'Contains invalid characters')
 
 });
