@@ -4,7 +4,7 @@ export const toastConfig: ToastConfig = {
         return (
             <BaseToast
                 {...props}
-                style={{backgroundColor: 'black', borderLeftColor: 'lightgreen'}}
+                style={{backgroundColor: 'black', borderLeftColor: 'lightgreen', flexWrap: "wrap"}}
                 contentContainerStyle={{paddingHorizontal: 15}}
                 text1Style={{color: 'lightgreen'}}
                 text2Style={{color: 'darkgray'}}
@@ -15,7 +15,7 @@ export const toastConfig: ToastConfig = {
         return (
             <ErrorToast
                 {...props}
-                style={{backgroundColor: 'black', borderLeftColor: 'red'}}
+                style={{backgroundColor: 'black', borderLeftColor: 'red', flexWrap: "wrap"}}
                 contentContainerStyle={{paddingHorizontal: 15}}
                 text1Style={{color: 'red'}}
                 text2Style={{color: 'darkgray'}}
