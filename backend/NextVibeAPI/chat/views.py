@@ -23,6 +23,8 @@ class ChatListView(APIView):
             chat_data = []
             for chat in chats:
                 other_user = chat.participants.exclude(user_id=user.user_id).first()
+                if not other_user:
+                    continue
                 last_message = Message.objects.filter(chat=chat).order_by('-created_at').first()
                 
                 chat_data.append({
