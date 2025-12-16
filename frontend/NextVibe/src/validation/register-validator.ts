@@ -24,7 +24,7 @@ const schema = Yup.object().shape({
         .matches(/[A-Z]/, 'Password must an uppercase letter')
         .matches(/\d/, 'Password must include a number')
         .matches(/[@$!%*?&]/, 'Password must include a special character (@$!%*?&)')
-        .matches(/^[A-Za-z0-9@$!%*?&]+$/, 'Contains invalid characters')
+        .matches(/^[A-Za-z0-9@$!%*?&]+$/, 'Password contains invalid characters')
 
 });
 
