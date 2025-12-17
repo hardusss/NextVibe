@@ -4,7 +4,7 @@ import { Camera, useCameraDevice, useCameraFormat } from "react-native-vision-ca
 import { MaterialCommunityIcons, Feather, Ionicons } from "@expo/vector-icons";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useNavigation } from "expo-router";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import * as FileSystem from 'expo-file-system';
 
@@ -15,6 +15,7 @@ const IMAGE_MAX_SIZE_MB = 30;
 
 const CameraScreen = () => {
   const router = useRouter();
+  const navigation = useNavigation();
   const [cameraSide, setCameraSide] = useState<"front" | "back">("back");
   const [cameraPermission, setCameraPermission] = useState<boolean>(false);
   const [microphonePermission, setMicrophonePermission] = useState<boolean>(false);
@@ -87,7 +88,7 @@ const CameraScreen = () => {
     useCallback(() => {
       if (mediaURLS.length === 0) return;
       if (mediaURLS.length > 3) return;
-      router.push({ pathname: "/create-post", params: {urls: JSON.stringify(mediaURLS)} });
+      router.replace({ pathname: "/create-post", params: {urls: JSON.stringify(mediaURLS)} });
       setMediaURLS([]);
     }, [mediaURLS])
   );
@@ -185,7 +186,7 @@ const CameraScreen = () => {
         progressAnim.setValue(0);
         setMediaURLS((prev) => {
           const newURLs = [...prev, video.path];
-          router.push({ pathname: "/create-post", params: { urls: JSON.stringify(newURLs) } });
+          router.replace({ pathname: "/create-post", params: { urls: JSON.stringify(newURLs) } });
           return [];
         });
       },
