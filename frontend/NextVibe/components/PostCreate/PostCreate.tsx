@@ -298,7 +298,7 @@ export default function PostCreate() {
             setIsVisibleToast(true);
             return;
         }
-        if (mediaUrls || postText.length > 0 || location.length > 0) {
+        if (mediaUrls.length > 0 || postText.length > 0 || location.length > 0) {
             setIsVisibleConfirm(true);
             return;
         };
@@ -307,7 +307,24 @@ export default function PostCreate() {
         setLocation("");
         setPostText("");
         router.back()
+        router.back()
     }
+
+    React.useEffect(() => {
+        if (params?.urls) {
+            try {
+                const newUrls = typeof params.urls === 'string' ? JSON.parse(params.urls) : params.urls;
+                setMediaUrls(prev => {
+                    if (JSON.stringify(newUrls) !== JSON.stringify(prev)) {
+                        return newUrls;
+                    }
+                    return prev;
+                });
+            } catch (e) {
+                console.error("Error parsing URLs:", e);
+            }
+        }
+    }, [params?.urls]);
 
     React.useEffect(() => {
         return () => {
@@ -326,7 +343,7 @@ export default function PostCreate() {
             flexDirection: 'row',
             alignItems: 'center',
             paddingHorizontal: 16,
-            paddingVertical: 16,
+            paddingVertical: height < 700 ? 12 : 16,
             backgroundColor: colors.background,
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
@@ -346,22 +363,24 @@ export default function PostCreate() {
             marginRight: 12,
         },
         headerText: {
-            fontSize: 22,
+            fontSize: height < 700 ? 20 : 22,
             fontWeight: '700',
             color: colors.textPrimary,
             letterSpacing: 0.3,
         },
         contentContainer: {
-            marginTop: -15,
-            padding: 16,
+            padding: height < 700 ? 12 : 16,
+            paddingBottom: 8,
         },
         flatListContent: {
+            width: mediaUrls.length <= 1 ? width - 15 : undefined,
+            justifyContent: "center",
             paddingVertical: 8,
-            width: mediaUrls.length === 1 ? "100%" : "auto"
+            marginTop: 4,
         },
         mediaContainer: {
             width: width * 0.65,
-            height: height * 0.3,
+            height: height < 700 ? height * 0.25 : height * 0.3,
             position: "relative",
             marginRight: 12,
             borderRadius: 16,
@@ -388,11 +407,42 @@ export default function PostCreate() {
             alignItems: 'center',
             zIndex: 9990,
         },
+        cameraCard: {
+            width: width * 0.65,
+            height: height < 700 ? height * 0.25 : height * 0.3,
+            marginRight: 12,
+            borderRadius: 16,
+            backgroundColor: colors.inputBackground,
+            borderWidth: 2,
+            borderColor: colors.border,
+            borderStyle: 'dashed',
+            justifyContent: 'center',
+            alignItems: 'center',
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.1,
+            shadowRadius: 8,
+        },
+        cameraIconContainer: {
+            width: height < 700 ? 56 : 64,
+            height: height < 700 ? 56 : 64,
+            borderRadius: height < 700 ? 28 : 32,
+            backgroundColor: colorScheme === 'dark' ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 12,
+        },
+        cameraCardText: {
+            fontSize: height < 700 ? 14 : 16,
+            fontWeight: '600',
+            color: colors.textPrimary,
+            marginTop: 4,
+        },
         inputCard: {
             backgroundColor: colors.cardBackground,
             borderRadius: 16,
             padding: 12,
-            marginBottom: 12,
+            marginBottom: 10,
             shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.05,
@@ -400,7 +450,7 @@ export default function PostCreate() {
             elevation: 2,
         },
         textArea: {
-            minHeight: 80,
+            minHeight: 70,
             borderColor: colors.border,
             borderWidth: 1,
             borderRadius: 12,
@@ -446,7 +496,7 @@ export default function PostCreate() {
             backgroundColor: colors.cardBackground,
             borderRadius: 12,
             padding: 12,
-            marginBottom: 12,
+            marginBottom: 10,
             shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.05,
@@ -459,17 +509,16 @@ export default function PostCreate() {
             color: colors.textPrimary,
         },
         footer: {
-            padding: 16,
-            paddingBottom: 32,
+            padding: height < 700 ? 12 : 16,
+            paddingBottom: Platform.OS === 'ios' ? (height < 700 ? 20 : 24) : (height < 700 ? 12 : 16),
             backgroundColor: colors.background,
             borderTopWidth: 1,
             borderTopColor: colors.border,
         },
         button: {
-            padding: 16,
+            padding: height < 700 ? 14 : 16,
             borderRadius: 14,
             alignItems: 'center',
-            shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.2,
             shadowRadius: 8,
@@ -554,6 +603,7 @@ export default function PostCreate() {
             fontWeight: '600',
             color: colors.textSecondary,
             marginLeft: 4,
+            marginBottom: 6,
             textTransform: 'uppercase',
             letterSpacing: 0.5,
         },
@@ -577,7 +627,11 @@ export default function PostCreate() {
     });
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <KeyboardAvoidingView 
+            style={{ flex: 1, backgroundColor: colors.background }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
             <Web3Toast message={toastMessage} visible={isVisibleToast} onHide={() => {setIsVisibleToast(false)}} isSuccess={toastSuccess}/>
             <ConfirmDialog 
                 visible={isVisibleConfirm}
@@ -594,11 +648,12 @@ export default function PostCreate() {
                     setLocation("");
                     setPostText("");
                     router.back()
+                    router.back()
                 }}
                 onCancel={() => {setIsVisibleConfirm(false)}}
-                title='Leave without publish?'
-                message='Your post isn’t finished yet. Leaving the page will delete your changes.'
-                confirmLabel='Leave'
+                title="Leave without publish?"
+                message="Your post isn't finished yet. Leaving the page will delete your changes."
+                confirmLabel="Leave"
                 confirmGradient={["red", "red"]}
 
             />
@@ -619,30 +674,42 @@ export default function PostCreate() {
 
             <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                 <View style={themedStyles.contentContainer}>
-                    {mediaUrls.length > 0 && (
-                        <View style={{ marginBottom: 5 }}>
-                            <Text style={themedStyles.sectionTitle}>Media</Text>
-                            <FlatList
-                                data={mediaUrls}
-                                renderItem={renderMedia}
-                                keyExtractor={(item, index) => index.toString()}
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={[
-                                    themedStyles.flatListContent,
-                                    mediaUrls.length === 1 && { justifyContent: 'center' },
-                                ]}
-                                onViewableItemsChanged={onViewableItemsChanged}
-                                viewabilityConfig={viewabilityConfig}
-                            />
-                        </View>
-                    )}
+                    <View style={{ marginBottom: 5 }}>
+                        <Text style={themedStyles.sectionTitle}>Media</Text>
+                        <FlatList
+                            data={mediaUrls.length > 0 ? mediaUrls : ['camera']}
+                            renderItem={({ item, index }) => {
+                                if (item === 'camera') {
+                                    return (
+                                        <TouchableOpacity 
+                                            style={themedStyles.cameraCard}
+                                            activeOpacity={0.7}
+                                            onPress={() => router.navigate("/camera")}
+                                        >
+                                            <View style={themedStyles.cameraIconContainer}>
+                                                <MaterialIcons name="add-a-photo" size={height < 700 ? 28 : 32} color={colors.primary} />
+                                            </View>
+                                            <Text style={themedStyles.cameraCardText}>Add Media</Text>
+                                        </TouchableOpacity>
+                                    );
+                                }
+                                return renderMedia({ item, index: index - 1 });
+                            }}
+                            keyExtractor={(item, index) => index.toString()}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={themedStyles.flatListContent}
+                            onViewableItemsChanged={onViewableItemsChanged}
+                            viewabilityConfig={viewabilityConfig}
+                        />
+                    </View>
 
-                    <View>
+                    {/* Sections of inputs data */}
+                    <View style={{ marginTop: 12 }}>
                         <Text style={themedStyles.sectionTitle}>Description</Text>
                         <View style={themedStyles.inputCard}>
                             <TextInput
-                                style={[themedStyles.textArea, { maxHeight: 80 }]}
+                                style={[themedStyles.textArea, { maxHeight: 70 }]}
                                 multiline
                                 scrollEnabled={true}
                                 textAlignVertical="top"
@@ -816,6 +883,6 @@ export default function PostCreate() {
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
