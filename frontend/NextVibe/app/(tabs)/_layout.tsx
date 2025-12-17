@@ -55,7 +55,7 @@ export default function Layout() {
   const tabs = [
     { name: "home", icon: MaterialCommunityIcons, iconName: ["home-outline", "home"] },
     { name: "search", icon: MaterialIcons, iconName: ["search", "search"] },
-    { name: "camera", icon: MaterialIcons, iconName: ["add-circle-outline", "add-circle"] },
+    { name: "create-post", icon: MaterialIcons, iconName: ["add-circle-outline", "add-circle"] },
     { name: "profile", icon: FontAwesome5, iconName: ["user", "user"] }
   ];
 
