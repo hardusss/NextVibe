@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { View, SafeAreaView, Text, StatusBar, Modal, ScrollView, TouchableOpacity, RefreshControl, Animated } from "react-native";
+import { View, SafeAreaView, Text, StatusBar, Modal, ScrollView, TouchableOpacity, RefreshControl, Animated, Easing } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
@@ -16,6 +16,8 @@ import { storage } from '@/src/utils/storage';
 import { useRef } from "react";
 import FastImage from 'react-native-fast-image';
 import { useRouter } from 'expo-router';
+import LottieView from 'lottie-react-native';
+import { BlurView } from "expo-blur";
 
 type UserData = {
     username: string;
@@ -43,7 +45,10 @@ const ProfileView = () => {
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const [visible, setVisible] = useState<boolean>(false);
     const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
+    const [showVerifiedToast, setShowVerifiedToast] = useState(false);
     const [id, setId] = useState<number>();
+    const lottieRef = useRef<LottieView>(null);
+    const scaleAnimToast = useRef(new Animated.Value(0)).current;
     const colorScheme = useColorScheme();
     const profileStyle = colorScheme === "dark" ? profileDarkStyles : profileLightStyles;
     const router = useRouter();
@@ -116,6 +121,32 @@ const ProfileView = () => {
         }, [])
     )
 
+    const onPressVerified = () => {
+        setShowVerifiedToast(true);
+
+        setTimeout(() => {
+            setShowVerifiedToast(false);
+        }, 2800);
+    };
+
+    useEffect(() => {
+        if (showVerifiedToast) {
+            Animated.spring(scaleAnim, {
+            toValue: 1,
+            friction: 4,      
+            tension: 150,     
+            useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.timing(scaleAnim, {
+            toValue: 0,
+            duration: 400,      
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+            }).start();
+        }
+        }, [showVerifiedToast]);
+
     return (
         <SafeAreaView style={profileStyle.container}>
             <StatusBar
@@ -160,10 +191,91 @@ const ProfileView = () => {
                             </Animated.View>
                         </TouchableOpacity>
                     </Modal>
-                    <View style={{flexDirection: "row"}}>
+                    <View style={{flexDirection: "row", justifyContent: "center", "alignItems": "center"}}>
                         <Text style={profileStyle.username}>{userData.username}</Text>
-                        {userData.official ? <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{marginTop: 1}} /> :  ""}
+                        {userData.official ? (
+                            <TouchableOpacity
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                activeOpacity={0.7}
+                                onPress={onPressVerified}
+                            >
+                                <LottieView
+                                    ref={lottieRef}
+                                    source={require('../../assets/lottie/verified.json')}
+                                    autoPlay
+                                    loop={false}
+                                    style={{ width: 24, height: 24 }}
+                                    onAnimationFinish={() => {
+                                        lottieRef.current?.play(30, 110);
+                                    }}
+                                />
+                            </TouchableOpacity>
+                        ) : null}
                     </View>
+                    {showVerifiedToast && (
+                        <Animated.View
+                            pointerEvents="none"
+                            style={{
+                            position: "absolute",
+                            top: 32,
+                            alignSelf: "center",
+                            zIndex: 9999,
+                            alignItems: "center",
+                            borderRadius: 20,
+                            transform: [{ scale: scaleAnim }],
+                            opacity: scaleAnim,  
+                            }}
+                        >
+                            <View
+                            style={{
+                                width: 12,
+                                height: 12,
+                                backgroundColor: "rgba(255,255,255,0.15)",
+                                transform: [{ rotate: "45deg" }],
+                                marginBottom: -6,
+                                borderRadius: 2,
+                            }}
+                            />
+
+                            <BlurView
+                            intensity={55}
+                            tint="dark"
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 8,
+                                overflow: 'hidden',
+                                paddingHorizontal: 14,
+                                paddingVertical: 10,
+                                borderRadius: 20,
+                                backgroundColor: "rgba(255,255,255,0.08)",
+                                borderWidth: 1,
+                                borderColor: "rgba(255,255,255,0.18)",
+                                shadowColor: "#5405bbff",
+                                shadowOpacity: 0.35,
+                                shadowRadius: 12,
+                                elevation: 10,
+                            }}
+                            >
+                            <Text
+                                style={{
+                                color: "#fff",
+                                fontSize: 13,
+                                fontWeight: "600",
+                                letterSpacing: 0.3,
+                                }}
+                            >
+                                ✔ Verified User of{" "}
+                                <Text style={{ color: "#a364f5ff", fontWeight: "700" }}>
+                                NextVibe
+                                </Text>
+                            </Text>
+                            </BlurView>
+                        </Animated.View>
+                        )}
+
+
+
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
                         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setVisible(true)}>
                             <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string}} />
