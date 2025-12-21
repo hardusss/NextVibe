@@ -90,7 +90,7 @@ class EncryptAEAD(AEADCipherBase):
         aad: bytes = self._generate_aad(user_id=user_id, token=token)
         if private_key[:2] == "0x":
             private_key = private_key.replace("0x", "")
-        print("Private key", private_key)
+
         try:
             bytes.fromhex(private_key)
         except ValueError:
