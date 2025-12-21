@@ -117,7 +117,7 @@ const RecommendedUsers = () => {
                                         justifyContent: "center",
                                     }}>
                                         <Text 
-                                            style={[styles.username, {color: theme.textPrimary}]}
+                                            style={[styles.username, {color: "red"}]}
                                             numberOfLines={1}
                                             ellipsizeMode="tail"
                                         >
