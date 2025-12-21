@@ -109,12 +109,12 @@ const RecommendedUsers = () => {
                                     style={styles.avatar} 
                                 />
                                 <View style={styles.userInfo}>
-                                    <View style={{flexDirection: "row", "alignItems": "center"}}>
-                                                    <Text style={[styles.username, {color: theme.textPrimary}]}>{item.username}</Text>
-                                                    {item.official ? (
-                                                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
-                                                    ) : null}
-                                                </View>
+                                    <View style={{flexDirection: "row", "alignItems": "center", paddingBottom: 10}}>
+                                        <Text style={[styles.username, {color: theme.textPrimary}]}>{item.username}</Text>
+                                        {item.official ? (
+                                            <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
+                                        ) : null}
+                                    </View>
 
                                     <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                         onPress={() => handleFollowUnfollow(item.id)} 
