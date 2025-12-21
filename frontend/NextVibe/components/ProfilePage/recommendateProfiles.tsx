@@ -109,10 +109,30 @@ const RecommendedUsers = () => {
                                     style={styles.avatar} 
                                 />
                                 <View style={styles.userInfo}>
-                                    <View style={{flexDirection: "row", "alignItems": "center", paddingBottom: 10}}>
-                                        <Text style={[styles.username, {color: theme.textPrimary}]}>{item.username}</Text>
+                                    <View style={{
+                                        flexDirection: "row", 
+                                        alignItems: "center", 
+                                        paddingBottom: 10,
+                                        width: "100%",
+                                        justifyContent: "center",
+                                    }}>
+                                        <Text 
+                                            style={[styles.username, {color: theme.textPrimary}]}
+                                            numberOfLines={1}
+                                            ellipsizeMode="tail"
+                                        >
+                                            {item.username}
+                                        </Text>
                                         {item.official ? (
-                                            <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
+                                            <View style={{ marginLeft: 4 }}>
+                                                <VerifyBadge 
+                                                    isLooped={false} 
+                                                    isVisible={true} 
+                                                    haveModal={false} 
+                                                    isStatic={true} 
+                                                    size={16}
+                                                />
+                                            </View>
                                         ) : null}
                                     </View>
 
@@ -201,6 +221,7 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         fontSize: 14,
         maxWidth: 100,
+        flexShrink: 1,
     },
     followButton: {
         borderRadius: 12,
