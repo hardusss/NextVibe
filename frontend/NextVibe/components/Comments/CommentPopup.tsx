@@ -27,7 +27,7 @@ import commentLike from '@/src/api/comment.like';
 import FastImage from 'react-native-fast-image';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import VerifyBadge from '../VerifyBadge';
 const { height, width } = Dimensions.get('window');
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -360,10 +360,12 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
           />
           <View style={styles.commentContent}>
             <View style={styles.userDetails}>
-              <Text style={styles.username}>{item.user.username}</Text>
-              {item.user.official && (
-                <MaterialIcons name="check-circle" size={12} color="#58a6ff" style={{ marginLeft: 5 }} />
-              )}
+              <View style={{flexDirection: "row", "alignItems": "center"}}>
+                  <Text style={[styles.username]}>{item.user?.username}</Text>
+                  {item.user?.official ? (
+                      <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
+                  ) : null}
+              </View>
             </View>
             {renderCommentText(item.content, `comment-${item.id}`)}
             <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>
@@ -428,10 +430,12 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
         <FastImage source={{ uri: `${item.user.avatar}` }} style={styles.avatar} />
         <View style={styles.commentContent}>
           <View style={styles.userDetails}>
-            <Text style={styles.username}>{item.user.username}</Text>
-            {item.user.official && (
-              <MaterialIcons name="check-circle" size={12} color="#58a6ff" style={{ marginLeft: 5 }} />
-            )}
+            <View style={{flexDirection: "row", "alignItems": "center"}}>
+                  <Text style={[styles.username]}>{item.user?.username}</Text>
+                  {item.user?.official ? (
+                      <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
+                  ) : null}
+              </View>
           </View>
           {renderCommentText(item.content, `reply-${item.reply_id}`)}
           <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>

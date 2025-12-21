@@ -30,6 +30,7 @@ import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { storage } from '@/src/utils/storage';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import VerifyBadge from "../VerifyBadge";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -641,9 +642,11 @@ const PostItem = memo(({
                     onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
                 >
                     <View style={styles.usernameContainer}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{flexDirection: "row", "alignItems": "center"}}>
                             <Text style={styles.username}>{item.owner__username}</Text>
-                            {item.owner__official && <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5 }} />}
+                            {item.owner__official ? (
+                                <VerifyBadge isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16}/>
+                            ) : null}
                         </View>
                         {item.is_ai_generated && (
                             <View style={styles.aiBadge}>

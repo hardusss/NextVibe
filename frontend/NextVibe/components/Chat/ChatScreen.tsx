@@ -25,6 +25,7 @@ import MediaPickerModal from './MediaPickerModal';
 import { storage } from '@/src/utils/storage';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import VerifyBadge from '../VerifyBadge';
 
 interface MediaAttachment {
   id: number;
@@ -236,7 +237,6 @@ export default function ChatScreen() {
     }
   }, [id]);
 
-  // Повідомляємо про вхід у чат
   useEffect(() => {
     if (userIdState && id) {
       notifyEnterChat(+id);
@@ -258,13 +258,11 @@ export default function ChatScreen() {
               }} 
               style={styles.profileImage} 
             />
-            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-              <Text style={[styles.username, { color: isDark ? '#fff' : '#000' }]}>
-                {userDetails?.username || 'User'}
-              </Text>
-              {userDetails?.official && (
-                <Ionicons name="checkmark-circle" size={20} color="#00CED1" style={styles.verifiedBadge} />
-              )}
+            <View style={{flexDirection: "row", "alignItems": "center"}}>
+                <Text style={[styles.username, {color: isDark ?  "white" : "black" }]}>{userDetails?.username}</Text>
+                {userDetails?.official ? (
+                    <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={24}/>
+                ) : null}
             </View>
           </View>
           <View style={styles.statsContainer}>
@@ -322,13 +320,11 @@ export default function ChatScreen() {
               }} 
               style={styles.headerAvatar} 
             />
-            <View style={styles.headerUsernameContainer}>
-              <Text style={[styles.headerUsername, { color: isDark ? '#fff' : '#000' }]}>
-                {userDetails?.username || ''}
-              </Text>
-              {userDetails?.official && (
-                <Ionicons name="checkmark-circle" size={16} color="#00CED1" style={styles.headerVerifiedBadge} />
-              )}
+            <View style={{flexDirection: "row", "alignItems": "center"}}>
+                <Text style={[styles.headerUsername, {color: isDark ?  "white" : "black" }]}>{userDetails?.username}</Text>
+                {userDetails?.official ? (
+                    <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={false} size={24}/>
+                ) : null}
             </View>
           </TouchableOpacity>
 

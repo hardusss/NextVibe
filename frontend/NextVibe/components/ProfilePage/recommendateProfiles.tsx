@@ -8,7 +8,7 @@ import FastImage from "react-native-fast-image";
 import { useRouter } from "expo-router";
 import getRoccomendationsProfiles from "@/src/api/recommendations.profiles";
 import followUser from "@/src/api/follow";
-
+import VerifyBadge from "../VerifyBadge";
 const screenWidth = Dimensions.get("window").width;
 
 const lightTheme = {
@@ -109,23 +109,12 @@ const RecommendedUsers = () => {
                                     style={styles.avatar} 
                                 />
                                 <View style={styles.userInfo}>
-                                    <View style={styles.nameContainer}>
-                                        <Text 
-                                            style={[styles.username, { color: theme.textPrimary }]}
-                                            numberOfLines={1}
-                                            ellipsizeMode="tail"
-                                        >
-                                            {item.username}
-                                        </Text>
-                                        {item.official && (
-                                            <MaterialIcons 
-                                                name="check-circle" 
-                                                size={16} 
-                                                color="#58a6ff" 
-                                                style={{ marginLeft: 4 }}
-                                            />
-                                        )}
-                                    </View>
+                                    <View style={{flexDirection: "row", "alignItems": "center"}}>
+                                                    <Text style={[styles.username, {color: theme.textPrimary}]}>{item.username}</Text>
+                                                    {item.official ? (
+                                                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
+                                                    ) : null}
+                                                </View>
 
                                     <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                         onPress={() => handleFollowUnfollow(item.id)} 
