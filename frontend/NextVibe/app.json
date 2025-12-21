@@ -93,9 +93,7 @@
       }
     },
     "owner": "nextvibe",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.1-beta",
     "updates": {
       "url": "https://u.expo.dev/4c7d8842-f989-419d-b3ec-49ceece00b6e"
     }
