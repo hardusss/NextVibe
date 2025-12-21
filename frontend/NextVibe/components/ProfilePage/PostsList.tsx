@@ -24,6 +24,7 @@ import PopupModal from "../Comments/CommentPopup";
 import FastImage from 'react-native-fast-image';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
+import VerifyBadge from "../VerifyBadge";
 import { storage } from '@/src/utils/storage';
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -702,11 +703,11 @@ const UserPosts = () => {
                 }} style={styles.avatar} />
               <View style={styles.userInfo}>
                 <View style={styles.usernameContainer}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.username}>{userData?.username}</Text>
-                    {userData?.official && (
-                      <MaterialIcons name="check-circle" size={16} color="#58a6ff" style={{ marginLeft: 5 }} />
-                    )}
+                  <View style={{flexDirection: "row", "alignItems": "center"}}>
+                      <Text style={styles.username}>{userData.username}</Text>
+                      {userData.official ? (
+                          <VerifyBadge isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16}/>
+                      ) : null}
                   </View>
                   {item.is_ai_generated && (
                     <View style={styles.aiBadge}>

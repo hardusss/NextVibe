@@ -17,7 +17,8 @@ import { useRef } from "react";
 import FastImage from 'react-native-fast-image';
 import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
-import { BlurView } from "expo-blur";
+
+import VerifyBadge from "../VerifyBadge";
 
 type UserData = {
     username: string;
@@ -191,89 +192,12 @@ const ProfileView = () => {
                             </Animated.View>
                         </TouchableOpacity>
                     </Modal>
-                    <View style={{flexDirection: "row", justifyContent: "center", "alignItems": "center"}}>
+                    <View style={{flexDirection: "row", "alignItems": "center"}}>
                         <Text style={profileStyle.username}>{userData.username}</Text>
                         {userData.official ? (
-                            <TouchableOpacity
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                activeOpacity={0.7}
-                                onPress={onPressVerified}
-                            >
-                                <LottieView
-                                    ref={lottieRef}
-                                    source={require('../../assets/lottie/verified.json')}
-                                    autoPlay
-                                    loop={false}
-                                    style={{ width: 24, height: 24 }}
-                                    onAnimationFinish={() => {
-                                        lottieRef.current?.play(30, 110);
-                                    }}
-                                />
-                            </TouchableOpacity>
+                            <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={24}/>
                         ) : null}
                     </View>
-                    {showVerifiedToast && (
-                        <Animated.View
-                            pointerEvents="none"
-                            style={{
-                            position: "absolute",
-                            top: 32,
-                            alignSelf: "center",
-                            zIndex: 9999,
-                            alignItems: "center",
-                            borderRadius: 20,
-                            transform: [{ scale: scaleAnim }],
-                            opacity: scaleAnim,  
-                            }}
-                        >
-                            <View
-                            style={{
-                                width: 12,
-                                height: 12,
-                                backgroundColor: "rgba(255,255,255,0.15)",
-                                transform: [{ rotate: "45deg" }],
-                                marginBottom: -6,
-                                borderRadius: 2,
-                            }}
-                            />
-
-                            <BlurView
-                            intensity={55}
-                            tint="dark"
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 8,
-                                overflow: 'hidden',
-                                paddingHorizontal: 14,
-                                paddingVertical: 10,
-                                borderRadius: 20,
-                                backgroundColor: "rgba(255,255,255,0.08)",
-                                borderWidth: 1,
-                                borderColor: "rgba(255,255,255,0.18)",
-                                shadowColor: "#5405bbff",
-                                shadowOpacity: 0.35,
-                                shadowRadius: 12,
-                                elevation: 10,
-                            }}
-                            >
-                            <Text
-                                style={{
-                                color: "#fff",
-                                fontSize: 13,
-                                fontWeight: "600",
-                                letterSpacing: 0.3,
-                                }}
-                            >
-                                ✔ Verified User of{" "}
-                                <Text style={{ color: "#a364f5ff", fontWeight: "700" }}>
-                                NextVibe
-                                </Text>
-                            </Text>
-                            </BlurView>
-                        </Animated.View>
-                        )}
-
 
 
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>

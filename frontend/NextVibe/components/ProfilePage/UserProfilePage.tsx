@@ -14,6 +14,7 @@ import followUser from "@/src/api/follow";
 import CreateChat from "@/src/api/create.chat";
 import FastImage from 'react-native-fast-image';
 import RecommendedUsers from "./recommendateProfiles";
+import VerifyBadge from "../VerifyBadge";
 
 type UserData = {
     user_id: number;
@@ -257,8 +258,12 @@ const UserProfileView = () => {
                             />
                         </TouchableOpacity>
 
-                        <Text style={[profileStyle.username]}>{userData.username}</Text>
-                        {userData.official && <MaterialIcons name="check-circle" size={24} color="#58a6ff" style={{ marginLeft: 2}} />}
+                        <View style={{flexDirection: "row", "alignItems": "center"}}>
+                                                <Text style={profileStyle.username}>{userData.username}</Text>
+                                                {userData.official ? (
+                                                    <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={24}/>
+                                                ) : null}
+                                            </View>
                     </View>
 
                     {/* Stats Section */}

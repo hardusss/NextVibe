@@ -11,7 +11,7 @@ import FastImage from 'react-native-fast-image';
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from 'expo-blur';
 import { storage } from "@/src/utils/storage";
-
+import VerifyBadge from "../VerifyBadge";
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
 const darkColors = {
@@ -215,9 +215,11 @@ export default function SearchPage() {
                         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}  onPress={() => handlePress(item)}>
                             <FastImage source={{ uri: `${item.avatar}` }} style={styles.avatar} />
                             <View>
-                                <View style={{ flexDirection: "row" }}>
-                                    <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
-                                    {item.official && <MaterialIcons name="check-circle" color="#58a6ff" style={{ marginTop: 5, marginLeft: 5 }} />}
+                                <View style={{flexDirection: "row", "alignItems": "center"}}>
+                                    <Text style={[styles.username, {color: colors.textPrimary}]}>{item.username}</Text>
+                                    {item.official ? (
+                                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
+                                    ) : null}
                                 </View>
                                 <Text style={{ color: "gray", fontWeight: "800" }}>{formatNumber(item.readers_count)} Subs</Text>
                             </View>
@@ -246,9 +248,11 @@ export default function SearchPage() {
                         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.userContainer, { borderBottomColor: colors.border }]} onPress={() => handlePress(item)}>
                             <FastImage source={{ uri: `${item.avatar}` }} style={styles.avatar} />
                             <View>
-                                <View style={{ flexDirection: "row" }}>
-                                    <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
-                                    {item.official && <MaterialIcons name="check-circle" color="#58a6ff" style={{ marginTop: 5, marginLeft: 5 }} />}
+                                <View style={{flexDirection: "row", "alignItems": "center"}}>
+                                    <Text style={[styles.username, {color: colors.textPrimary}]}>{item.username}</Text>
+                                    {item.official ? (
+                                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
+                                    ) : null}
                                 </View>
                                 <Text style={{ color: "gray", fontWeight: "800" }}>{formatNumber(item.readers_count)} Subs</Text>
                             </View>
