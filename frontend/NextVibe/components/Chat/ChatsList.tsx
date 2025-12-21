@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,28 @@ import { deleteChat } from '@/src/api/chat';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
+const SearchBar = React.memo(({ placeholder, value, onChangeText, isDark }: any) => {
+  const styles = useMemo(() => getSearchStyles(isDark), [isDark]);
+  
+  return (
+    <View style={styles.searchContainer}>
+      <BlurView
+        intensity={isDark ? 30 : 30}
+        tint={isDark ? 'dark' : 'light'}
+        style={styles.blurViewAbsolute}
+      />
+      <MaterialIcons name="search" size={24} color={isDark ? '#666' : '#605f5fff'} />
+      <TextInput
+        placeholder={placeholder}
+        placeholderTextColor={isDark ? '#666' : '#605f5fff'}
+        style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
+        value={value}
+        onChangeText={onChangeText}
+      />
+    </View>
+  );
+});
+
 export default function ChatsList() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
@@ -34,7 +56,7 @@ export default function ChatsList() {
   const [refreshing, setRefreshing] = useState(false);
 
   const isDark = useColorScheme() === 'dark';
-  const styles = getStyles(isDark);
+  const styles = useMemo(() => getStyles(isDark), [isDark]);
 
   const checkAndUpdateUserId = useCallback(async () => {
     const storedId = await storage.getItem('id');
@@ -109,25 +131,7 @@ export default function ChatsList() {
     );
   }, [searchQuery, chats]);
 
-  const SearchBar = ({ placeholder, value, onChangeText }: any) => (
-    <View style={styles.searchContainer}>
-      <BlurView
-        intensity={isDark ? 30 : 30}
-        tint={isDark ? 'dark' : 'light'}
-        style={styles.blurViewAbsolute}
-      />
-      <MaterialIcons name="search" size={24} color={isDark ? '#666' : '#605f5fff'} />
-      <TextInput
-        placeholder={placeholder}
-        placeholderTextColor={isDark ? '#666' : '#605f5fff'}
-        style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
-        value={value}
-        onChangeText={onChangeText}
-      />
-    </View>
-  );
-
-  const ListHeader = () => (
+  const ListHeader = useMemo(() => (
     <LinearGradient
       colors={
         isDark
@@ -144,6 +148,7 @@ export default function ChatsList() {
         placeholder="Search messages..."
         value={searchQuery}
         onChangeText={setSearchQuery}
+        isDark={isDark}
       />
       {onlineLoading ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -162,7 +167,7 @@ export default function ChatsList() {
         </View>
       )}
     </LinearGradient>
-  );
+  ), [isDark, searchQuery, onlineLoading, onlineUsers, chatLoading]);
 
   return (
     <View
@@ -230,6 +235,10 @@ const getStyles = (isDark: boolean) =>
       fontSize: 14,
       textAlign: 'center',
     },
+  });
+
+const getSearchStyles = (isDark: boolean) =>
+  StyleSheet.create({
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
