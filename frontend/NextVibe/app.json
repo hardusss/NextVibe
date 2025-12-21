@@ -52,6 +52,9 @@
         }
       ],
       [
+        "expo-updates"
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
@@ -90,10 +93,10 @@
       },
       "eas": {
         "projectId": "4c7d8842-f989-419d-b3ec-49ceece00b6e"
-      }
+    }
     },
     "owner": "nextvibe",
-    "runtimeVersion": "1.0.1-beta",
+    "runtimeVersion": "0.0.1-beta",
     "updates": {
       "url": "https://u.expo.dev/4c7d8842-f989-419d-b3ec-49ceece00b6e"
     }
