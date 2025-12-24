@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { View, SafeAreaView, Text, StatusBar,Modal, ScrollView, RefreshControl, TouchableOpacity, Animated } from "react-native";
+import { View, SafeAreaView, Text, StatusBar,Modal, ScrollView, RefreshControl, TouchableOpacity, Animated, Linking } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
@@ -15,6 +15,7 @@ import CreateChat from "@/src/api/create.chat";
 import FastImage from 'react-native-fast-image';
 import RecommendedUsers from "./recommendateProfiles";
 import VerifyBadge from "../VerifyBadge";
+import Hyperlink from "react-native-hyperlink";
 
 type UserData = {
     user_id: number;
@@ -292,7 +293,14 @@ const UserProfileView = () => {
                     </View>
 
                     {/* About Section */}
-                    {userData.about && <Text style={[profileStyle.about, {}]}>{userData.about}</Text>}
+                    {userData.about && <Hyperlink
+                                            linkStyle={{ color: "#A78BFA", fontWeight: "500" }}
+                                            onPress={(url: string) => Linking.openURL(url)}
+                                        >
+                                            <Text style={profileStyle.about}>{userData.about}</Text> 
+                                        </Hyperlink>
+                                            
+                    }
 
                     {/* Action Buttons */}
                     <View style={{

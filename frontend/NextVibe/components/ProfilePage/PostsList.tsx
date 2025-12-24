@@ -10,7 +10,8 @@ import {
   StatusBar,
   Animated,
   ActivityIndicator,
-  Pressable
+  Pressable,
+  Linking
 } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import Icon from "react-native-vector-icons/Ionicons";
@@ -25,6 +26,7 @@ import FastImage from 'react-native-fast-image';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import VerifyBadge from "../VerifyBadge";
+import Hyperlink from "react-native-hyperlink";
 import { storage } from '@/src/utils/storage';
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -831,7 +833,12 @@ const UserPosts = () => {
         </View>
         {displayText && (
             <View style={styles.postContent}>
-              <Text style={styles.postText}>{displayText}</Text>
+              <Hyperlink 
+                  linkStyle={{ color: "#A78BFA", fontWeight: "500" }}
+                  onPress={(url: string) => Linking.openURL(url)}>
+                  <Text style={styles.postText}>{displayText}</Text>
+              </Hyperlink>
+              
               {needsMoreButton && (
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleExpand(item.post_id)}>
                   <Text style={{ color: theme.accentColor, marginTop: 5 }}>
