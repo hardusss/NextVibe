@@ -10,7 +10,8 @@ import {
     Animated,
     RefreshControl,
     ActivityIndicator,
-    Pressable
+    Pressable,
+    Linking
 } from "react-native";
 import Header from "./Header";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
@@ -31,6 +32,7 @@ import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { storage } from '@/src/utils/storage';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import VerifyBadge from "../VerifyBadge";
+import Hyperlink from "react-native-hyperlink";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -743,7 +745,11 @@ const PostItem = memo(({
             )}
             {displayText && (
                 <View style={styles.postContent}>
-                    <Text style={styles.postText}>{displayText}</Text>
+                    <Hyperlink 
+                        linkStyle={{ color: "#A78BFA", fontWeight: "500" }}
+                        onPress={(url: string) => Linking.openURL(url)}>
+                        <Text style={styles.postText}>{displayText}</Text>
+                    </Hyperlink>
                     {needsMoreButton && (
                         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setIsExpanded(!isExpanded)}>
                             <Text style={{ color: theme.accentColor, marginTop: 5 }}>

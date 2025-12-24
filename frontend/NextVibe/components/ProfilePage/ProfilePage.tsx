@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { View, SafeAreaView, Text, StatusBar, Modal, ScrollView, TouchableOpacity, RefreshControl, Animated, Easing } from "react-native";
+import { View, SafeAreaView, Text, StatusBar, Modal, ScrollView, TouchableOpacity, RefreshControl, Animated, Easing, Linking } from "react-native";
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
 import { useColorScheme } from 'react-native';
@@ -17,7 +17,7 @@ import { useRef } from "react";
 import FastImage from 'react-native-fast-image';
 import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
-
+import Hyperlink from 'react-native-hyperlink';
 import VerifyBadge from "../VerifyBadge";
 
 type UserData = {
@@ -224,7 +224,15 @@ const ProfileView = () => {
                         </View>
                     </View>
                     <View>
-                        {userData.about !== "" ? <Text style={profileStyle.about}>{userData.about}</Text> : ""}
+                        {userData.about !== "" ? 
+                        <Hyperlink
+                            linkStyle={{ color: "#A78BFA", fontWeight: "500" }}
+                            onPress={(url: string) => Linking.openURL(url)}
+                        >
+                            <Text style={profileStyle.about}>{userData.about}</Text> 
+                        </Hyperlink>
+                        
+                        : ""}
                         
                     </View>
                     <View style={{flexDirection: "row", marginTop: 20, gap: "1.5%", justifyContent: "center", marginLeft: -15}}>
