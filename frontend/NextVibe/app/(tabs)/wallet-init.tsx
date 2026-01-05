@@ -1,3 +1,3 @@
-import WalletIntroScreen from "@/components/Wallet/WalletInit";
+import WalletIntroScreen from "@/components/Wallet/lazorkit/InitWallet";
 
 export default WalletIntroScreen;

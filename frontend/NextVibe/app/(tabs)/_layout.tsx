@@ -52,7 +52,14 @@ export default function Layout() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [visible, setVisible] = useState<boolean>(false);
 
-  const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "wallet", "select-token", "deposit", "transaction", "user-profile", "create-wallet", "result-transaction", "transactions", "transaction-detail", "chat-room", "chats", "follows-screen", "notifications", "user-banned", "wallet-init", "confirm-email"];
+  const blacklist = ["register", "login", "postslist",
+                    "splash", "index", "create-post",
+                    "settings", "wallet", "select-token",
+                    "deposit", "transaction", "user-profile",
+                    "create-wallet", "result-transaction", "transactions",
+                    "transaction-detail", "chat-room", "chats",
+                    "follows-screen", "notifications", "user-banned",
+                    "wallet-init", "confirm-email", "wallet-dash"];
 
   const tabs = [
     { name: "home", icon: MaterialCommunityIcons, iconName: ["home-outline", "home"] },
