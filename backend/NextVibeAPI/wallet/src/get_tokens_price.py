@@ -1,43 +1,48 @@
 import httpx
 from collections.abc import Sequence
 from django.core.cache import cache
+from typing import Dict
 
 DEFAULT_TOKENS = ["solana", "tron", "ethereum"]
 
-async def get_tokens_prices(tokens: Sequence[str] | None = None, vs_currencies: str = "usd", last: bool = False) -> dict[str, float] | None:
-    if tokens is None:
-        tokens = DEFAULT_TOKENS
-
-    if last and len(tokens) != 1:
-        raise ValueError("Parameter 'last=True' is only supported for a single token.")
-
-    if not last and tokens == DEFAULT_TOKENS:
-        data = cache.get("prices")
-        if data:
-            return data
-
+def get_tokens_prices(tokens: Sequence[str] | None = None, vs_currencies: str = "usd", last: bool = False) -> Dict[str, float]:
+    requested_tokens = sorted(tokens) if tokens else DEFAULT_TOKENS
+    
+    tokens_string = "_".join(requested_tokens)
+    cache_key = f"prices_{vs_currencies}_{tokens_string}"
+    
     if last:
-        data_last = cache.get(f"price_last_{tokens[0]}")
-        if data_last:
-            return data_last
+        if len(requested_tokens) != 1:
+            raise ValueError("Parameter 'last=True' is only supported for a single token.")
+        cache_key = f"price_last_{requested_tokens[0]}_{vs_currencies}"
+
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return cached_data
 
     url = "https://api.coingecko.com/api/v3/simple/price"
     params = {
-        "ids": ",".join(tokens),
+        "ids": ",".join(requested_tokens),
         "vs_currencies": vs_currencies,
     }
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(url, params=params)
-        if response.status_code == 200:
-            prices = response.json()
-            data = {token: prices[token][vs_currencies] for token in tokens}
+    try:
+        with httpx.Client(timeout=10) as client:
+            response = client.get(url, params=params)
+            if response.status_code == 200:
+                prices = response.json()
+                
+                data = {}
+                for token in requested_tokens:
+                    token_info = prices.get(token)
+                    if token_info:
+                        data[token] = float(token_info.get(vs_currencies, 0))
 
-            if last and len(data) == 1:
-                cache.set(f"price_last_{tokens[0]}", data, timeout=60)
-            else:
-                cache.set("prices", data, timeout=60)
+                if data:
+                    cache.set(cache_key, data, timeout=60)
+                
+                return data
+    except Exception:
+        pass 
 
-            return data
-        else:
-            return cache.get("prices")
+    return cached_data or {}
