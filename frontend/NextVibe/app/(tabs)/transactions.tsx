@@ -1,3 +1,3 @@
-import TransactionsScreen from "@/components/Wallet/Transactions";
+import TransactionsScreen from "@/components/Wallet/lazorkit/Transactions";
 
 export default TransactionsScreen;
