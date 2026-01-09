@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -10,13 +10,18 @@ import {
     useColorScheme,
     StatusBar,
 } from "react-native";
-import { useWallet } from "@lazorkit/wallet-mobile-adapter";
 import usePortfolio, { TokenAsset } from "@/hooks/usePortfolio";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
+import SolanaService from "@/src/services/SolanaService";
+import { FormattedTransaction } from "@/src/services/SolanaService";
+import { useWallet } from "@lazorkit/wallet-mobile-adapter";
+import { TOKENS } from "@/constants/Tokens";
+import timeAgo from '@/src/utils/formatTime';
+import getTokensPrice from "@/src/api/get.tokens.price";
 
 /**
  * Shortens a wallet address to a readable format
@@ -57,16 +62,13 @@ const shortenAddress = (address: string): string => {
  * <WalletDashboard />
  */
 export default function WalletDashboard() {
-    
+    const { connection, smartWalletPubkey } = useWallet();
     /** System color scheme for theme-aware styling */
     const colorScheme = useColorScheme();
     const isDarkMode = colorScheme === "dark";
     
     /** Navigation router for screen transitions */
     const router = useRouter();
-    
-    /** Wallet connection context from LazorKit */
-    const { smartWalletPubkey } = useWallet();
     
     /** Portfolio data and refresh function from custom hook */
     const { data, isLoading, refresh } = usePortfolio();
@@ -80,6 +82,11 @@ export default function WalletDashboard() {
     /** Toast visibility for feature coming soon messages */
     const [isToastVisible, setIsToastVisible] = useState(false);
     
+    /** States for last transaction */
+    const [lastTransaction, setLastTransaction] = useState<FormattedTransaction | null>(null);
+    const [isLoadTransaction, setIsLoadTransaction] = useState<boolean>(false);
+    const [lastTransactionTokenPrice, setLastTransactionTokenPrice] = useState<number>(0);
+    const [error, setError] = useState<string | null>(null);
     /**
      * Handles pull-to-refresh action
      * Triggers portfolio data refresh and manages loading state
@@ -89,6 +96,7 @@ export default function WalletDashboard() {
     const onRefresh = async () => {
         setRefreshing(true);
         await refresh();
+        await getLastTransaction();
         setRefreshing(false);
     };
     
@@ -100,6 +108,51 @@ export default function WalletDashboard() {
         setIsToastVisible(true);
     };
     
+    /**
+     * Gets last transaction
+     */
+    const getLastTransaction = async () => {
+        if (!smartWalletPubkey || !connection) return;
+
+        setIsLoadTransaction(true);
+        setError(null);
+        try {
+            const transactions = await SolanaService.getTransactionsHistory(
+                connection, 
+                smartWalletPubkey.toString(), 
+                true
+            );
+            if (transactions && transactions.length > 0) {
+                const tx = transactions[0];
+                let price = 0;
+
+                const tokenKey = tx.token as keyof typeof TOKENS;
+                const tokenInfo = TOKENS[tokenKey];
+
+                if (tokenInfo) {
+                    const apiId = tokenInfo.name === "USD Coin" ? "usd-coin" : tokenInfo.name.toLowerCase();
+                    try {
+                        const priceData = await getTokensPrice([apiId]);
+                        price = priceData?.prices[apiId] ?? 0;
+                    } catch (err) {
+                        console.warn("Failed to fetch price for activity:", err);
+                    }
+                } else {
+                    console.warn(`Token ${tx.token} not found in TOKENS constant`);
+                }
+
+                setLastTransactionTokenPrice(price);
+                setLastTransaction(tx);
+            } else {
+                setLastTransaction(null);
+            }
+        } catch (e) {
+            console.error("getLastTransaction Error:", e);
+            setError("Failed to load activity"); 
+        } finally {
+            setIsLoadTransaction(false);
+        }
+    }
     /**
      * Renders a single token item in the portfolio list
      * Displays token icon, name, amount, price, and USD value
@@ -137,7 +190,7 @@ export default function WalletDashboard() {
                         : item.amount.toFixed(8).replace(/\.?0+$/, "")}
                 </Text>
                 <Text style={styles.tokenValue}>
-                    {isBalanceHidden ? "****" : `${item.valueUsd.toFixed(2)}`}
+                    {isBalanceHidden ? "****" : `$${item.valueUsd.toFixed(2)}`}
                 </Text>
             </View>
         </View>
@@ -170,6 +223,9 @@ export default function WalletDashboard() {
     /** Creates theme-aware stylesheet */
     const styles = createStyles(isDarkMode);
     
+    useEffect(() => {
+        getLastTransaction()
+    }, [])
     return (
         <LinearGradient
             colors={
@@ -254,7 +310,7 @@ export default function WalletDashboard() {
                         <TouchableOpacity
                             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={[styles.headerIconBackground, { marginLeft: 12 }]}
-                            onPress={showComingSoonToast}
+                            onPress={() => {router.push("/transactions")}}
                         >
                             <BlurView
                                 intensity={isDarkMode ? 40 : 80}
@@ -303,7 +359,7 @@ export default function WalletDashboard() {
                         <TouchableOpacity
                             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={styles.actionButton}
-                            onPress={showComingSoonToast}
+                            onPress={() => router.push("/deposit")}
                         >
                             <BlurView
                                 intensity={isDarkMode ? 40 : 40}
@@ -364,32 +420,79 @@ export default function WalletDashboard() {
                 
                 {/* ========== Recent Activity Section ========== */}
                 <View style={styles.recentActivityContainer}>
-                    <View style={styles.recentActivityCard}>
-                        <BlurView
-                            intensity={isDarkMode ? 30 : 40}
-                            tint={isDarkMode ? "dark" : "light"}
-                            style={styles.blurViewAbsolute}
-                        />
-                        <View style={styles.recentActivityInnerContent}>
-                            {/* No transactions placeholder */}
-                            <View style={styles.recentActivityErrorContainer}>
-                                <Ionicons
-                                    name="document-text-outline"
-                                    size={24}
-                                    color={isDarkMode ? "#A09CB8" : "#666"}
-                                />
-                                <Text
-                                    style={[
-                                        styles.recentActivityErrorText,
-                                        { color: isDarkMode ? "#A09CB8" : "#666" },
-                                    ]}
-                                >
-                                    No recent transactions yet
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            style={styles.recentActivityCard}
+            onPress={() => {
+              if (error) {
+                onRefresh(); 
+              } else if (lastTransaction) {
+                router.push('/transactions');
+              }
+            }}
+            disabled={isLoadTransaction}
+          >
+            <BlurView
+              intensity={isDarkMode ? 30 : 40}
+              tint={isDarkMode ? 'dark' : 'light'}
+              style={styles.blurViewAbsolute}
+            />
+            <View style={styles.recentActivityInnerContent}>
+              {isLoadTransaction ? (
+                <>
+                  <View style={styles.recentActivityIconBackground}>
+                    <View style={[styles.skeletonTokenIcon, {width: 30, height: 30, borderRadius: 15, marginRight: 0}]} />
+                  </View>
+                  <View style={styles.recentActivityTextContainer}>
+                    <View style={[styles.skeletonTokenName, { marginBottom: 6, height: 16 }]} />
+                    <View style={[styles.skeletonTokenPrice, { height: 13 }]} />
+                  </View>
+                  <View style={[styles.skeletonTokenPrice, { width: 50, height: 12 }]} />
+                </>
+              ) : error ? (
+                <View style={styles.recentActivityErrorContainer}>
+                  <Ionicons name="alert-circle-outline" size={24} color={isDarkMode ? '#FF6B6B' : '#E74C3C'} />
+                  <Text style={styles.recentActivityErrorText}>Failed to load activity</Text>
                 </View>
+              ) : lastTransaction ? (
+                <>
+                  <View style={styles.recentActivityIconBackground}>
+                    <Image
+                      source={{
+                        uri: TOKENS[lastTransaction.token as keyof typeof TOKENS].logoURL,
+                      }}
+                      style={{ width: 30, height: 30, borderRadius: 50 }}
+                    />
+                  </View>
+                  <View style={styles.recentActivityTextContainer}>
+                    <Text style={styles.recentActivityTitle}>
+                      {isBalanceHidden
+                        ? 'Recent Transaction'
+                        : `You ${lastTransaction.type} ${Number(lastTransaction.amount.toFixed(8))} ${lastTransaction.token}`
+                      }
+                    </Text>
+                    <Text style={styles.recentActivityDetails}>
+                      {isBalanceHidden ? '****' : 
+                        `~${Number(Number(Number(lastTransaction.amount.toFixed(8)) * Number(lastTransactionTokenPrice)).toFixed(8))} USD`
+                      }
+                    </Text>
+                  </View>
+                  <Text style={styles.recentActivityTime}>
+                    {lastTransaction.time 
+                      ? timeAgo(new Date(lastTransaction.time).toISOString())
+                      : ''}
+                  </Text>
+                </>
+              ) : (
+                <View style={styles.recentActivityErrorContainer}>
+                  <Ionicons name="document-text-outline" size={24} color={isDarkMode ? '#A09CB8' : '#666'} />
+                  <Text style={[styles.recentActivityErrorText, { color: isDarkMode ? '#A09CB8' : '#666' }]}>
+                    No recent activity
+                  </Text>
+                </View>
+              )}
+            </View>
+         </TouchableOpacity>
+        </View>
                 
                 {/* ========== Portfolio Section ========== */}
                 <View style={styles.portfolioHeader}>
@@ -567,6 +670,39 @@ const createStyles = (isDarkMode: boolean) =>
         },
         
         // ========== Recent Activity ==========
+        recentActivityIconBackground: {
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: isDarkMode
+                ? 'rgba(167, 139, 250, 0.2)'
+                : 'rgba(88, 86, 214, 0.15)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 15,
+            borderWidth: 1,
+            borderColor: isDarkMode
+                ? 'rgba(167, 139, 250, 0.4)'
+                : 'rgba(88, 86, 214, 0.3)',
+        },
+        recentActivityTextContainer: {
+            flex: 1,
+        },
+        recentActivityTitle: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: isDarkMode ? '#FFFFFF' : '#000000',
+            marginBottom: 4,
+        },
+        recentActivityDetails: {
+            fontSize: 13,
+            fontWeight: '500',
+            color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.5)',
+        },
+            recentActivityTime: {
+            fontSize: 12,
+            color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+        },
         recentActivityContainer: {
             paddingHorizontal: 20,
             marginBottom: 30,
