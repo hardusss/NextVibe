@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@lazorkit/wallet-mobile-adapter"; 
 import SolanaService from "@/src/services/SolanaService"; 
+import getTokensPrice from "@/src/api/get.tokens.price";
+import { TOKENS } from "@/constants/Tokens";
 
 /**
  * Represents a single token asset in the user's portfolio
@@ -148,7 +150,6 @@ export default function usePortfolio(): UsePortfolioReturn {
         if (!addressString || !connection) return;
 
         try {
-            console.log("Fetching for:", addressString);
             setIsLoading(true);
 
             /**
@@ -170,7 +171,7 @@ export default function usePortfolio(): UsePortfolioReturn {
              * - Jupiter Price API: Native Solana prices, fast updates
              * - Pyth Network: Real-time oracle prices on-chain
              */
-            const prices = { SOL: 145.50, USDC: 1.00 };
+            const prices = await getTokensPrice(["solana", "usd-coin"]);
 
             // Array to accumulate non-zero token holdings
             const assets: TokenAsset[] = [];
@@ -179,40 +180,31 @@ export default function usePortfolio(): UsePortfolioReturn {
             let total = 0;
 
             /**
-             * Process SOL balance
-             * Only include if balance > 0 to avoid cluttering UI
+             * Creating array with data on balances, which we get
              */
-            if (solAmount > 0) {
-                const val = solAmount * prices.SOL;
-                total += val;
-                assets.push({
-                    symbol: 'SOL',
-                    name: 'Solana',
-                    amount: solAmount,
-                    price: prices.SOL,
-                    valueUsd: val,
-                    // Official Solana token logo from token-list repository
-                    logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
-                });
-            }
+            const balances = [
+                { amount: solAmount, info: TOKENS.SOL, priceKey: "solana" },
+                { amount: usdcAmount, info: TOKENS.USDC, priceKey: 'usd-coin' },
+            ];
 
-            /**
-             * Process USDC balance
-             * Only include if balance > 0
-             */
-            if (usdcAmount > 0) {
-                const val = usdcAmount * prices.USDC;
+
+            // In forEach we get price and value and add this to asset with info about token
+            balances.forEach(({amount, info, priceKey}) => {
+                const price = prices?.prices?.[priceKey] ?? 0;
+
+                // Value in Usd
+                const val = amount * price;
+
                 total += val;
                 assets.push({
-                    symbol: 'USDC',
-                    name: 'USD Coin',
-                    amount: usdcAmount,
-                    price: prices.USDC,
+                    symbol: info.symbol,
+                    name: info.name,
+                    amount: amount,
+                    price: price,
                     valueUsd: val,
-                    // USDC logo from cryptologos CDN
-                    logoURI: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=040'
+                    logoURI: info.logoURL
                 });
-            }
+            });
 
             /**
              * Update state with computed portfolio data
