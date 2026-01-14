@@ -73,7 +73,7 @@ export default class SolanaService {
     ): Promise<FormattedTransaction[] | null> {
         try {
             const signaturesOptions: SignaturesForAddressOptions = {
-                limit: isLastTransaction ? 1 : 5,
+                limit: isLastTransaction ? 1 : 20,
                 before: lastSignature // Pagination cursor
             };
             
@@ -133,10 +133,10 @@ export default class SolanaService {
             
             // Resolve ATAs
             const senderATA = await getAssociatedTokenAddress(
-                mintPubkey, senderPubkey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID
+                mintPubkey, senderPubkey, true, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID
             );
             const recipientATA = await getAssociatedTokenAddress(
-                mintPubkey, recipientPubkey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID
+                mintPubkey, recipientPubkey, true, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID
             );
 
             // Check if Recipient ATA exists, create if not
