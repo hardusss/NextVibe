@@ -1,2 +1,2 @@
-import WalletDashboard from "@/components/Wallet/lazorkit/WalletDashboard";
-export default WalletDashboard;
+import WalletDashboardScreen from "@/components/Wallet/Dashboard/DashboardScreen";
+export default WalletDashboardScreen;

@@ -19,7 +19,7 @@ const ButtonWallet = () => {
   };
 
   const handlePressOut = () => {
-    router.push("/create-wallet");
+    router.push("/wallet-init");
     Animated.spring(scale, {
       toValue: 1,
       friction: 3,

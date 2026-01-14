@@ -1,5 +1,2 @@
-import CreateTransactionPage from "@/components/Wallet/CreateTransactionPage";
-
-export default function CreateTransactionScreen () {
-    return <CreateTransactionPage />;
-};
+import CreateTransactionScreen from "@/components/Wallet/Transaction/CreateTransactionPage";
+export default CreateTransactionScreen

@@ -54,12 +54,12 @@ export default function Layout() {
 
   const blacklist = ["register", "login", "postslist",
                     "splash", "index", "create-post",
-                    "settings", "wallet", "select-token",
+                    "settings", "select-token",
                     "deposit", "transaction", "user-profile",
-                    "create-wallet", "result-transaction", "transactions",
+                    "result-transaction", "transactions",
                     "transaction-detail", "chat-room", "chats",
                     "follows-screen", "notifications", "user-banned",
-                    "wallet-init", "confirm-email", "wallet-dash"];
+                    "wallet-init", "wallet-dash"];
 
   const tabs = [
     { name: "home", icon: MaterialCommunityIcons, iconName: ["home-outline", "home"] },
@@ -196,7 +196,7 @@ export default function Layout() {
 
   return (
      <LazorKitProvider
-      rpcUrl="https://api.devnet.solana.com"
+      rpcUrl="https://devnet.helius-rpc.com/?api-key=b350b993-1ca8-4557-95aa-9e96897cce14"
       portalUrl="https://portal.lazor.sh"
       configPaymaster={{ 
         paymasterUrl: "https://kora.devnet.lazorkit.com" 

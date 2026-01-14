@@ -1,5 +1,2 @@
-import SelectTokenPage from "@/components/Wallet/SelectToken";
-
-export default function SelectTokenScreen () {
-    return <SelectTokenPage />
-}
+import SelectTokenScreen from "@/components/Wallet/SelectToken/SelectTokenScreen";
+export default SelectTokenScreen;
