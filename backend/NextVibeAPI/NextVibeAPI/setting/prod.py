@@ -33,7 +33,7 @@ CLOUDINARY_STORAGE = {
 # Cloudflare
 STORAGES = {
     "default": {
-        "BACKEND": "NextVibeAPI.storage.R2Storage",  #
+        "BACKEND": "NextVibeAPI.storage.R2Storage",  
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
@@ -61,7 +61,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = "/root/NextVibe/backend/staticfiles"
 
 
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -78,6 +78,7 @@ CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
@@ -223,7 +224,7 @@ ROOT_URLCONF = 'NextVibeAPI.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [BASE_DIR.parent / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
