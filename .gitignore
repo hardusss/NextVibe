@@ -20,3 +20,12 @@ backend/NextVibeAPI/NextVibeAPI/.env
 .idea
 
 .idea/*
+
+**/__pycache__/
+*.pyc
+
+# Celery
+*.dat
+
+# Logs
+*.log
