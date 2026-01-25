@@ -61,7 +61,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = "/root/NextVibe/backend/staticfiles"
 
 
 # Quick-start development settings - unsuitable for production
