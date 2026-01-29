@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
-
+from datetime import timedelta
 
 class UserQuerySet(models.QuerySet):
     def visible(self):
@@ -114,3 +114,30 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.sender if self.sender is not None else 'System'} -> {self.recipient} ({self.notification_type})"
+    
+
+class UserOnlineSession(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="online_sessions"
+    )
+
+    connected_at = models.DateTimeField(auto_now_add=True)
+    disconnected_at = models.DateTimeField(null=True, blank=True)
+
+    def session_duration(self) -> timedelta:
+        """
+        Return session duration
+        """
+        end_time = self.disconnected_at or timezone.now()
+        return end_time - self.connected_at
+
+
+
+
+
+
+
