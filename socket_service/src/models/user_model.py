@@ -1,4 +1,15 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON
+from datetime import datetime
+from sqlalchemy import (
+    String,
+    JSON,
+    Boolean,
+    Column,
+    Integer,
+    DateTime,
+    ForeignKey,
+)
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from .base import Base
 import datetime
 
@@ -24,3 +35,30 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     is_online =  Column(Boolean, default=False)
+
+    
+class UserOnlineSession(Base):
+    __tablename__ = "user_user_online_session"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(
+        Integer,
+        ForeignKey("auth_user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
+    connected_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+
+    disconnected_at = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    user = relationship("User", lazy="joined")
+
