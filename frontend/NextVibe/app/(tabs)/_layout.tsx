@@ -10,6 +10,7 @@ import axios from "axios";
 import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
 import ErrorBoundary from 'react-native-error-boundary';
 import ErrorFallback from "@/components/ErrorFallback";
+import { BlurView } from "expo-blur";
 
 if (__DEV__ && typeof global !== 'undefined') {
   const originalError = console.error;
@@ -44,13 +45,18 @@ export default function Layout() {
   const router = useRouter();
   const segments = useSegments();
   const currentPage = segments[segments.length - 1];
-  const inactiveColor = theme === "dark" ? "#fafafa" : "black";
   const [imageProfile, setImageProfile] = useState<string | null>(null);
   const [userID, setUserID] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [visible, setVisible] = useState<boolean>(false);
 
-  const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "wallet", "select-token", "deposit", "transaction", "user-profile", "create-wallet", "result-transaction", "transactions", "transaction-detail", "chat-room", "chats", "follows-screen", "notifications", "user-banned"];
+  const blacklist = [
+    "register", "login", "postslist", "splash", "index", 
+    "create-post", "settings", "wallet", "select-token", 
+    "deposit", "transaction", "user-profile", "create-wallet", 
+    "result-transaction", "transactions", "transaction-detail", 
+    "chat-room", "chats", "follows-screen", "notifications", "user-banned"
+  ];
 
   const tabs = [
     { name: "home", icon: MaterialCommunityIcons, iconName: ["home-outline", "home"] },
@@ -196,7 +202,8 @@ export default function Layout() {
             isSuccess={false}
           />
         )}
-        <View style={{ flex: 1 }}>
+        
+        <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
           <Stack screenOptions={{ headerShown: false, animation: "none" }} >
             <Stack.Screen name="home" />
             <Stack.Screen name="search" />
@@ -206,94 +213,106 @@ export default function Layout() {
           </Stack>
 
           {showTabBar && (
-            <View style={{
-              position: "absolute",
-              bottom: 10,
-              width: "90%",
-              marginLeft: "5%",
-              height: 60,
-              flexDirection: "row",
-              justifyContent: "space-around",
-              alignItems: "center",
-              borderRadius: 20,
-              borderColor: theme === "dark" ? "rgba(26,26,47,0.95)" : "#D9D9D9",
-              backgroundColor: theme === "dark" ? "#1A1A2F" : "#D9D9D9",
-              shadowColor: "transparent",
-            }}>
-              {tabs.map((tab) => (
-                <TouchableOpacity 
-                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                  key={tab.name} 
-                  onPress={() => goToTab(tab.name)}
-                >
-                  {tab.name === "profile" && imageProfile && userID ? (
-                    <FastImage
-                      key={`avatar-${userID}-${imageProfile}`}
-                      source={{ 
-                        uri: imageProfile,
-                        priority: FastImage.priority.high,
-                        cache: FastImage.cacheControl.immutable,
-                      }}
-                      style={{
-                        width: 25,
-                        height: 25,
-                        borderRadius: 50,
-                        borderWidth: currentPage === "profile" ? 2 : 0,
-                        borderColor: "#7305f0ff",
-                        backgroundColor: theme === "dark" ? "#2A2A3F" : "#E9E9E9",
-                      }}
-                      onError={() => {
-                        const defaultUrl = "https://media.nextvibe.io/images/default.png";
-                        cachedAvatarUrl = defaultUrl;
-                        setImageProfile(defaultUrl);
-                      }}
-                      resizeMode={FastImage.resizeMode.cover}
-                    />
-                  ) : tab.name === "search" ? (
-                    <View style={{
-                      position: "relative",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      backgroundColor: currentPage === "search" ? (theme === "dark" ? "#D9D9D9" : "#1A1A2F") : (theme === "dark" ? "#1A1A2F" : "#D9D9D9"),
-                      width: 40,
-                      height: 40,
-                      borderRadius: 50,
-                    }}>
+            <BlurView
+              intensity={40}
+              tint={theme === "dark" ? "dark" : "light"}
+              style={{
+                position: "absolute",
+                bottom: 10,
+                width: "90%",
+                marginLeft: "5%",
+                height: 60,
+                flexDirection: "row",
+                justifyContent: "space-around",
+                alignItems: "center",
+                borderRadius: 20,
+                overflow: 'hidden',
+                borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                backgroundColor: theme === "dark" ? "#1e163ccd" : "#D9D9D9", 
+                borderWidth: 1,
+              }}
+            >
+              {tabs.map((tab) => {
+                const isActive = currentPage === tab.name;
+                
+                const activeBgColor = theme === "dark" ? "#a18ed587" : "#1A1A2F";
+                const inactiveBgColor = "transparent";
+                
+                const activeIconColor = theme === "dark" ? "#fefefe" : "#FFFFFF";
+                const inactiveIconColor = theme === "dark" ? "#C4C4C4" : "#555555";
+
+                const currentBgColor = isActive ? activeBgColor : inactiveBgColor;
+                const currentIconColor = isActive ? activeIconColor : inactiveIconColor;
+
+                return (
+                  <TouchableOpacity 
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+                    key={tab.name} 
+                    onPress={() => goToTab(tab.name)}
+                    style={{ zIndex: 1 }}
+                  >
+                    {tab.name === "profile" && imageProfile && userID ? (
+                      <FastImage
+                        key={`avatar-${userID}-${imageProfile}`}
+                        source={{ 
+                          uri: imageProfile,
+                          priority: FastImage.priority.high,
+                          cache: FastImage.cacheControl.immutable,
+                        }}
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 15, 
+                          borderWidth: isActive ? 1 : 0,
+                          borderColor: "#a18ed587",
+                          backgroundColor: theme === "dark" ? "#2A2A3F" : "#E9E9E9",
+                        }}
+                        onError={() => {
+                          const defaultUrl = "https://media.nextvibe.io/images/default.png";
+                          cachedAvatarUrl = defaultUrl;
+                          setImageProfile(defaultUrl);
+                        }}
+                        resizeMode={FastImage.resizeMode.cover}
+                      />
+                    ) : tab.name === "search" ? (
                       <View style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 20,
-                        backgroundColor: currentPage === "search" ? (theme === "dark" ? "#1A1A2F" : "#D9D9D9") : "transparent",
-                        position: "absolute",
-                        left: -6,
-                        bottom: -2
-                      }} />
-                      <MaterialIcons
-                        name="search"
-                        size={20}
-                        color={currentPage === "search" ? (theme === "dark" ? "#1A1A2F" : "#D9D9D9") : (theme === "dark" ? "#D9D9D9" : "#1A1A2F")}
-                        style={{ zIndex: 9999 }}
-                      />
-                    </View>
-                  ) : (
-                    <View style={{
-                      backgroundColor: currentPage === tab.name ? (theme === "dark" ? "#D9D9D9" : "#1A1A2F") : (theme === "dark" ? "#1A1A2F" : "#D9D9D9"),
-                      width: 40,
-                      height: 40,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      borderRadius: 50,
-                    }}>
-                      <tab.icon
-                        name={currentPage === tab.name ? tab.iconName[1] : tab.iconName[0]}
-                        size={20}
-                        color={currentPage === tab.name ? (theme === "dark" ? "#1A1A2F" : "#D9D9D9") : inactiveColor}
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+                        position: "relative",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        backgroundColor: currentBgColor,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20, 
+                        overflow: 'hidden', 
+                      }}>
+                        <MaterialIcons
+                          name="search"
+                          size={22}
+                          color={currentIconColor}
+                          style={{ zIndex: 9999 }}
+                        />
+                      </View>
+                    ) : (
+                      <View style={{
+                        backgroundColor: currentBgColor,
+                        width: 40,
+                        height: 40,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        borderRadius: 20, 
+                        overflow: 'hidden', 
+                      }}>
+                        <tab.icon
+                          name={isActive ? tab.iconName[1] : tab.iconName[0]}
+                          size={22}
+                          color={currentIconColor}
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </BlurView>
           )}
         </View>
       </WebSocketProvider>
