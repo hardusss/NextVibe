@@ -1,101 +1,125 @@
-import { Pressable, StyleSheet, Animated, Dimensions, useColorScheme } from "react-native";
-import { useState } from "react";
+import { TouchableOpacity, Animated, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from "react-native-svg";
-import { View } from "react-native";
-const screenWidth = Dimensions.get("window").width;
+import usePortfolio from "@/hooks/usePortfolio";
 
 const ButtonWallet = () => {
-  const router = useRouter();
-  const [scale] = useState(new Animated.Value(1));
-  const isDark = useColorScheme() === "dark" 
+    const router = useRouter();
+    const scale = useRef(new Animated.Value(1)).current;
+    const shimmerAnim = useRef(new Animated.Value(0)).current;
+    const { data, isLoading } = usePortfolio();
 
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.95,
-      useNativeDriver: true,
-    }).start();
-  };
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(shimmerAnim, {
+                    toValue: 1,
+                    duration: 2000,
+                    useNativeDriver: true,
+                }),
+                Animated.delay(1000),
+            ])
+        );
+        animation.start();
+        return () => animation.stop();
+    }, []);
 
-  const handlePressOut = () => {
-    router.push("/wallet-init");
-    Animated.spring(scale, {
-      toValue: 1,
-      friction: 3,
-      useNativeDriver: true,
-    }).start();
-  };
+    const translateX = shimmerAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-100, 200],
+    });
 
-  return (
-    <Animated.View style={[styles.buttonWrapper, { transform: [{ scale }] }]}>
-    <View style={{position: "absolute", left: 0,}}>
-        <LinearGradient
-          colors={["#1DEFEF", "#DE0FE9"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.gradientBorder}
-        />
-        <Pressable
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          style={[styles.innerButton, {
-            backgroundColor: isDark ?  "rgb(20, 0, 29)" : "#fafafa"
-          }]}
-        >
-          <Svg height="36" width="100%" style={{ backgroundColor: "transparent" }}>
-            <Defs>
-              <SvgGradient id="grad" x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0" stopColor={isDark ? "#1DEFEF" : "#199f9fff"} />
-                <Stop offset="1" stopColor="#DE0FE9" />
-              </SvgGradient>
-            </Defs>
-            <SvgText
-              fill="url(#grad)"
-              fontSize="14"
-              fontWeight="bold"
-              x="51%"
-              y="24"
-              textAnchor="middle"
+    const handlePressIn = () => {
+        Animated.spring(scale, {
+            toValue: 0.95,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const handlePressOut = () => {
+        Animated.spring(scale, {
+            toValue: 1,
+            friction: 4,
+            useNativeDriver: true,
+        }).start();
+        router.push("/wallet-init");
+    };
+
+    const formattedBalance = data?.totalUsdBalance 
+        ? data.totalUsdBalance.toFixed(2) 
+        : "0.00";
+
+    return (
+        <Animated.View style={[styles.container, { transform: [{ scale }] }]}>
+            <TouchableOpacity
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                activeOpacity={0.9}
             >
-              Web3 Hub
-            </SvgText>
-          </Svg>
-        </Pressable>
-    </View>  
-    
-  
-</Animated.View>
+                <LinearGradient
+                    colors={["#6A00F4", "#8100dd"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.badge}
+                >
+                    {/* Анімація бліка на фоні */}
+                    <Animated.View
+                        style={[
+                            StyleSheet.absoluteFill,
+                            { transform: [{ translateX }] }
+                        ]}
+                    >
+                        <LinearGradient
+                            colors={["transparent", "rgba(255,255,255,0.3)", "transparent"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={{ flex: 1, transform: [{ skewX: "-20deg" }] }}
+                        />
+                    </Animated.View>
 
-  );
+                    <MaterialCommunityIcons name="wallet-outline" color="white" size={18} />
+                    
+                    {isLoading ? (
+                        <View style={styles.skeleton} />
+                    ) : (
+                        <Text style={styles.balanceText}>{formattedBalance} USD</Text>
+                    )}
+                </LinearGradient>
+            </TouchableOpacity>
+        </Animated.View>
+    );
 };
 
 const styles = StyleSheet.create({
-  buttonWrapper: {
-    width: (screenWidth * 0.42) ,
-    alignItems: "center",
-    position: "relative",
-    
-  },
-  gradientBorder: {        
-    borderRadius: 10,  
-    overflow: "hidden",
-    height: 40,
-    position: "absolute",
-    left: 0,
-    width: (screenWidth * 0.42) ,
-     
-  },
-  innerButton: {
-    width: (screenWidth * 0.42) - 4,
-    left: 2,
-    top: 2.2,
-    height: 36,
-    position: "absolute",
-    borderRadius: 8,   
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    container: {
+        alignSelf: "flex-start",
+        marginRight: 10,
+    },
+    badge: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        overflow: "hidden",
+        gap: 8,
+        minWidth: 90,
+        height: 34,
+    },
+    balanceText: {
+        color: "white",
+        fontSize: 13,
+        fontWeight: "700",
+        zIndex: 1,
+    },
+    skeleton: {
+        width: 60,
+        height: 14,
+        backgroundColor: "rgba(0,0,0,0.2)",
+        borderRadius: 4,
+    },
 });
 
 export default ButtonWallet;

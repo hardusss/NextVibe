@@ -1,11 +1,11 @@
-import { Pressable, Text, StyleSheet, Animated, Dimensions} from "react-native";
+import {Animated, TouchableOpacity, useColorScheme} from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-
-const screenWidth = Dimensions.get("window").width;
 const ButtonSsetings = () => {
     const [scale] = useState(new Animated.Value(1));
+    const isDark = useColorScheme() === "dark" 
     const router = useRouter();
     const handlePressIn = () => {
         Animated.spring(scale, {
@@ -24,34 +24,16 @@ const ButtonSsetings = () => {
     };
 
     return (
-        <Animated.View style={[{ transform: [{ scale }] }]}>
-            <Pressable
+        <Animated.View style={[{marginRight: 10}, { transform: [{ scale }] }]}>
+            <TouchableOpacity
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
-                style={({ pressed }) => [
-                    styles.button,
-                    { backgroundColor: pressed ? "rgb(48, 28, 60)" : "#3B0971" }, //rgb(6, 174, 157)
-                ]}
             >
-                <Text style={styles.text}>Settings</Text>
-            </Pressable>
+                <MaterialCommunityIcons name="menu" color={isDark ? "#c9d1d9" : "black"} size={25}/>
+            </TouchableOpacity>
         </Animated.View>
     );
 };
 
-const styles = StyleSheet.create({
-    button: {
-        width: (screenWidth * 0.45) - 15,
-        height: 40,
-        paddingVertical: 10,
-        alignItems: "center",
-        borderRadius: 8,
-    },
-    text: {
-        color: "white",
-        fontWeight: "bold",
-        fontSize: 14,
-    }
-});
 
 export default ButtonSsetings;
