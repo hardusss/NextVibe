@@ -16,6 +16,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "NextVibe needs access to your Camera.",
         "NSMicrophoneUsageDescription": "NextVibe needs access to your Microphone.",
+        "NFCReaderUsageDescription": "NextVibe needs NFC to connect you with friends.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -26,14 +27,41 @@
         "backgroundColor": "#0A0410"
       },
       "package": "com.harrddddd.NextVibe",
+      "launchMode": "singleTask",
       "googleServicesFile": "./google-services.json",
       "permissions": [
+        "android.permission.NFC",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.VIBRATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "nextvibe.io",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": {
+            "scheme": "myapp"
+          }
+        }
       ]
     },
     "web": {
@@ -71,6 +99,12 @@
           "microphonePermissionText": "NextVibe needs access to your Microphone."
         }
       ],
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "NextVibe needs NFC to connect you with friends."
+        }
+      ],
       "expo-image-picker",
       [
         "expo-video",
@@ -93,7 +127,7 @@
       },
       "eas": {
         "projectId": "4c7d8842-f989-419d-b3ec-49ceece00b6e"
-    }
+      }
     },
     "owner": "nextvibe",
     "runtimeVersion": "0.0.1-lazorkit",
