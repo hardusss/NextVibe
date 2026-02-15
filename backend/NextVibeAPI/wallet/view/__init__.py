@@ -4,4 +4,8 @@ from .transaction import BtcTransactionView, SolTransactionView, TrxTrasactionVi
 from .wallet_initializer import WalletInitializer
 from .get_transaction_fee import GetTransactionFee
 from .get_last_transaction import GetLastTransactionView
+<<<<<<< HEAD
 from .get_tokens_price_view import GetTokensPriceView
+=======
+from .get_tokens_price_view import GetTokensPriceView
+>>>>>>> feature/lazorkit-wallet
