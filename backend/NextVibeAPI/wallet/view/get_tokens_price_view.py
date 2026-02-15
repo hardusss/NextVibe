@@ -7,7 +7,11 @@ from rest_framework import status
 
 from typing import Any, Dict
 
+<<<<<<< HEAD
 from wallet.src.tokens_price import tokens_price
+=======
+from wallet.src.get_tokens_price import get_tokens_prices
+>>>>>>> feature/lazorkit-wallet
 from wallet.serializers.tokens_price_serializer import TokensPriceSerializer
 
 class GetTokensPriceView(APIView):
@@ -34,14 +38,22 @@ class GetTokensPriceView(APIView):
         currency = validated_data.get("currency", "usd")
 
         try:
+<<<<<<< HEAD
             prices = tokens_price(tokens=tokens, vs_currencies=currency, last=False)
+=======
+            prices = get_tokens_prices(tokens=tokens, vs_currencies=currency, last=False)
+>>>>>>> feature/lazorkit-wallet
             return Response({
                 "prices": prices,
                 "message": f"Success get prices for tokens: {tokens}"
             }, status=status.HTTP_200_OK)
         
+<<<<<<< HEAD
         except Exception as e:
             print(e)
+=======
+        except Exception:
+>>>>>>> feature/lazorkit-wallet
             return Response({
                 "message": f"Service temporarily unavailable"
             }, status=status.HTTP_503_SERVICE_UNAVAILABLE)

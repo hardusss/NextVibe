@@ -10,7 +10,12 @@ import axios from "axios";
 import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
 import ErrorBoundary from 'react-native-error-boundary';
 import ErrorFallback from "@/components/ErrorFallback";
+<<<<<<< HEAD
 import { BlurView } from "expo-blur";
+=======
+// Add LazorKit provider
+import { LazorKitProvider } from '@lazorkit/wallet-mobile-adapter';
+>>>>>>> feature/lazorkit-wallet
 
 if (__DEV__ && typeof global !== 'undefined') {
   const originalError = console.error;
@@ -50,13 +55,14 @@ export default function Layout() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [visible, setVisible] = useState<boolean>(false);
 
-  const blacklist = [
-    "register", "login", "postslist", "splash", "index", 
-    "create-post", "settings", "wallet", "select-token", 
-    "deposit", "transaction", "user-profile", "create-wallet", 
-    "result-transaction", "transactions", "transaction-detail", 
-    "chat-room", "chats", "follows-screen", "notifications", "user-banned"
-  ];
+  const blacklist = ["register", "login", "postslist",
+                    "splash", "index", "create-post",
+                    "settings", "select-token",
+                    "deposit", "transaction", "user-profile",
+                    "result-transaction", "transactions",
+                    "transaction-detail", "chat-room", "chats",
+                    "follows-screen", "notifications", "user-banned",
+                    "wallet-init", "wallet-dash"];
 
   const tabs = [
     { name: "home", icon: MaterialCommunityIcons, iconName: ["home-outline", "home"] },
@@ -192,6 +198,13 @@ export default function Layout() {
   const showTabBar = ![...blacklist, "camera"].includes(currentPage);
 
   return (
+     <LazorKitProvider
+      rpcUrl="https://devnet.helius-rpc.com/?api-key=b350b993-1ca8-4557-95aa-9e96897cce14"
+      portalUrl="https://portal.lazor.sh"
+      configPaymaster={{ 
+        paymasterUrl: "https://kora.devnet.lazorkit.com" 
+      }}
+    >
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <WebSocketProvider userId={userID || 0}>
         {toastMessage && (
@@ -317,5 +330,6 @@ export default function Layout() {
         </View>
       </WebSocketProvider>
     </ErrorBoundary>
+    </LazorKitProvider>
   );
 }
