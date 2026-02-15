@@ -6,7 +6,7 @@ from connection_manager import ConnectionManager
 import json, base64, redis
 from db import SessionLocal
 from datetime import datetime
-from src.models import Message, MediaAttachment, User, Chat
+from src.models import Message, MediaAttachment, User, Chat, UserOnlineSession
 from src.messages import router as messages_router
 from r2_storage import r2_storage  
 from auth import auth_jwt
@@ -144,6 +144,8 @@ async def websocket_endpoint(websocket: WebSocket):
     user = db.query(User).filter(User.user_id == user_id).first()
     if user:
         user.is_online = True
+        session = UserOnlineSession(user_id=user_id, connected_at=datetime.utcnow())
+        db.add(session)
         db.commit()
 
     try:

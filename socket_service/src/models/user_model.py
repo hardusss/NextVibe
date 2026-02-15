@@ -38,20 +38,19 @@ class User(Base):
 
     
 class UserOnlineSession(Base):
-    __tablename__ = "user_user_online_session"
+    __tablename__ = "user_useronlinesession"
 
     id = Column(Integer, primary_key=True, index=True)
 
     user_id = Column(
         Integer,
-        ForeignKey("auth_user.id", ondelete="SET NULL"),
+        ForeignKey("user_user.user_id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )
 
     connected_at = Column(
         DateTime(timezone=True),
-        server_default=func.now(),
         nullable=False
     )
 
