@@ -21,7 +21,8 @@ const profileDarkStyles = StyleSheet.create({
     },
     username: {
         color: colors.textPrimary,
-        fontSize: 22
+        fontSize: 22,
+        includeFontPadding: false
         },
     avatar: {
         marginLeft: 10,
