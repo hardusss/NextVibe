@@ -31,5 +31,5 @@ export default function Index() {
       }
     })();
   }, []);
-    return <Redirect href="/wallet-init" />;
+    return <Redirect href="/splash" />;
 }
