@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import Hyperlink from 'react-native-hyperlink';
 import VerifyBadge from "../VerifyBadge";
+import { ShareViaNFC } from "./ButtonShareViaNFC";
 
 type UserData = {
     username: string;
@@ -192,12 +193,19 @@ const ProfileView = () => {
                             </Animated.View>
                         </TouchableOpacity>
                     </Modal>
-                    <View style={{flexDirection: "row", "alignItems": "center"}}>
-                        <Text style={profileStyle.username}>{userData.username}</Text>
-                        {userData.official ? (
-                            <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={24}/>
-                        ) : null}
+                    <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
+                        <View style={{flexDirection: "row", alignItems: "center"}}>
+                            <Text style={profileStyle.username}>{userData.username}</Text>
+                            {userData.official ? (
+                                <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={24}/>
+                            ) : null}
+                        </View>
+                        <View style={{flexDirection: "row", alignItems: "center"}}>
+                            <ButtonWallet />
+                            <ButtonSettings />
+                        </View>
                     </View>
+                    
 
 
                     <View style={{flexDirection: "row", marginTop: 20, marginLeft: -5}}>
@@ -233,14 +241,8 @@ const ProfileView = () => {
                         </Hyperlink>
                         
                         : ""}
-                        
                     </View>
-                    <View style={{flexDirection: "row", marginTop: 20, gap: "1.5%", justifyContent: "center", marginLeft: -15}}>
-                        <ButtonSettings />
-                        <ButtonWallet />
-                    </View>
-
-                    <RecommendedUsers key={`recommended-${refreshKey}`} />
+                    <ShareViaNFC />
 
                     {userData.post_count === 0 ? 
                         <View style={{borderTopWidth: 1, borderColor: "#5A31F4", marginTop: 20}}>
