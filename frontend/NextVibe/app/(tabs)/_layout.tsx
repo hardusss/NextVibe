@@ -14,6 +14,8 @@ import { BlurView } from "@react-native-community/blur";
 import { LazorKitProvider } from '@lazorkit/wallet-mobile-adapter';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -156,55 +158,59 @@ export default function Layout() {
   const showTabBar = ![...blacklist, "camera"].includes(currentPage);
 
   return (
-    <LazorKitProvider
-      rpcUrl="https://devnet.helius-rpc.com/?api-key=b350b993-1ca8-4557-95aa-9e96897cce14"
-      portalUrl="https://portal.lazor.sh"
-      configPaymaster={{ paymasterUrl: "https://kora.devnet.lazorkit.com" }}
-    >
-      <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <WebSocketProvider userId={userID || 0}>
-          {toastMessage && (
-            <Web3Toast message={toastMessage} visible={visible} onHide={() => setVisible(false)} isSuccess={false} />
-          )}
-          <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
-            <Stack screenOptions={{ headerShown: false, animation: "none" }} >
-              <Stack.Screen name="home" />
-              <Stack.Screen name="search" />
-              <Stack.Screen name="camera" />
-              <Stack.Screen name="profile" />
-              {blacklist.map((item) => <Stack.Screen key={item} name={item} />)}
-            </Stack>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <LazorKitProvider
+          rpcUrl="https://devnet.helius-rpc.com/?api-key=b350b993-1ca8-4557-95aa-9e96897cce14"
+          portalUrl="https://portal.lazor.sh"
+          configPaymaster={{ paymasterUrl: "https://kora.devnet.lazorkit.com" }}
+        >
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <WebSocketProvider userId={userID || 0}>
+              {toastMessage && (
+                <Web3Toast message={toastMessage} visible={visible} onHide={() => setVisible(false)} isSuccess={false} />
+              )}
+              <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
+                <Stack screenOptions={{ headerShown: false, animation: "none" }} >
+                  <Stack.Screen name="home" />
+                  <Stack.Screen name="search" />
+                  <Stack.Screen name="camera" />
+                  <Stack.Screen name="profile" />
+                  {blacklist.map((item) => <Stack.Screen key={item} name={item} />)}
+                </Stack>
 
-            {showTabBar && (
-              <View style={styles.tabBarContainer}>
-                <BlurView blurType={theme === "dark" ? "dark" : "light"} blurAmount={10} style={StyleSheet.absoluteFill} />
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: theme === "dark" ? "rgba(20, 8, 41, 0.4)" : "rgba(255, 255, 255, 0.4)" }]} />
-                <View style={styles.tabsWrapper}>
-                  {tabs.map((tab) => {
-                    const isActive = currentPage === tab.name;
-                    const activeBgColor = theme === "dark" ? "rgba(154, 109, 191, 0.15)" : "rgba(0, 0, 0, 0.05)";
-                    const currentIconColor = isActive ? (theme === "dark" ? "#FFFFFF" : "#000000") : (theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)");
-                    return (
-                      <TouchableOpacity key={tab.name} onPress={() => goToTab(tab.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        {tab.name === "profile" && imageProfile && userID ? (
-                          <View style={styles.iconContainerProfile}>
-                              <FastImage source={{ uri: imageProfile }} style={[styles.avatar, { borderWidth: isActive ? 1 : 0 }]} />
-                          </View>
-                        ) : (
-                          <View style={[styles.iconContainer, { backgroundColor: isActive ? activeBgColor : "transparent", borderColor: isActive ? "rgba(255,255,255,0.2)" : "transparent" }]}>
-                            <tab.icon name={isActive ? tab.iconName[1] : tab.iconName[0]} size={24} color={currentIconColor} />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                {showTabBar && (
+                  <View style={styles.tabBarContainer}>
+                    <BlurView blurType={theme === "dark" ? "dark" : "light"} blurAmount={10} style={StyleSheet.absoluteFill} />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: theme === "dark" ? "rgba(20, 8, 41, 0.4)" : "rgba(255, 255, 255, 0.4)" }]} />
+                    <View style={styles.tabsWrapper}>
+                      {tabs.map((tab) => {
+                        const isActive = currentPage === tab.name;
+                        const activeBgColor = theme === "dark" ? "rgba(154, 109, 191, 0.15)" : "rgba(0, 0, 0, 0.05)";
+                        const currentIconColor = isActive ? (theme === "dark" ? "#FFFFFF" : "#000000") : (theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)");
+                        return (
+                          <TouchableOpacity key={tab.name} onPress={() => goToTab(tab.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            {tab.name === "profile" && imageProfile && userID ? (
+                              <View style={styles.iconContainerProfile}>
+                                  <FastImage source={{ uri: imageProfile }} style={[styles.avatar, { borderWidth: isActive ? 1 : 0 }]} />
+                              </View>
+                            ) : (
+                              <View style={[styles.iconContainer, { backgroundColor: isActive ? activeBgColor : "transparent", borderColor: isActive ? "rgba(255,255,255,0.2)" : "transparent" }]}>
+                                <tab.icon name={isActive ? tab.iconName[1] : tab.iconName[0]} size={24} color={currentIconColor} />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-        </WebSocketProvider>
-      </ErrorBoundary>
-    </LazorKitProvider>
+            </WebSocketProvider>
+          </ErrorBoundary>
+        </LazorKitProvider>
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }
 

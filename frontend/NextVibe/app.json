@@ -5,14 +5,14 @@
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/new_icon.png",
-    "scheme": "myapp",
+    "scheme": "nextvibe", 
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "jsEngine": "hermes",
     "ios": {
       "jsEngine": "hermes",
       "supportsTablet": true,
-      "bundleIdentifier": "com.harrddddd.NextVibe",
+      "bundleIdentifier": "com.nextvibe.app",
       "infoPlist": {
         "NSCameraUsageDescription": "NextVibe needs access to your Camera.",
         "NSMicrophoneUsageDescription": "NextVibe needs access to your Microphone.",
@@ -26,9 +26,9 @@
         "foregroundImage": "./assets/new_icon.png",
         "backgroundColor": "#0A0410"
       },
-      "package": "com.harrddddd.NextVibe",
+      "package": "com.nextvibe.app",
       "launchMode": "singleTask",
-      "googleServicesFile": "./google-services.json",
+      "googleServicesFile": "./google-services.json", 
       "permissions": [
         "android.permission.NFC",
         "android.permission.CAMERA",
@@ -44,23 +44,13 @@
             {
               "scheme": "https",
               "host": "nextvibe.io",
-              "pathPrefix": "/"
+              "pathPrefix": "/u"
             }
           ],
           "category": [
             "BROWSABLE",
             "DEFAULT"
           ]
-        },
-        {
-          "action": "VIEW",
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
-          "data": {
-            "scheme": "myapp"
-          }
         }
       ]
     },
@@ -79,9 +69,7 @@
           }
         }
       ],
-      [
-        "expo-updates"
-      ],
+      "expo-updates",
       [
         "expo-splash-screen",
         {
@@ -130,7 +118,7 @@
       }
     },
     "owner": "nextvibe",
-    "runtimeVersion": "0.0.1-lazorkit",
+    "runtimeVersion": "0.0.1-collections",
     "updates": {
       "url": "https://u.expo.dev/4c7d8842-f989-419d-b3ec-49ceece00b6e"
     }
