@@ -3,10 +3,13 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 
-export function ShareViaNFC(){
+export function ShareViaNFC({
+    handlePress 
+}: { handlePress: () => void }
+){
     const styles = getStyles();
     return (
-        <TouchableOpacity >
+        <TouchableOpacity onPress={handlePress}>
             <LinearGradient
                 style={styles.button}
                 colors={["#6A00F4", "#8100dd"]}

@@ -8,7 +8,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import formatNumber from "@/src/utils/formatNumber";
 import ButtonSettings from "./ButtonSettings";
 import ButtonWallet from "./ButtonWallet";
-import RecommendedUsers from "./recommendateProfiles";
 import PostGallery from "./PostsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { useFocusEffect } from 'expo-router';
@@ -19,7 +18,11 @@ import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import Hyperlink from 'react-native-hyperlink';
 import VerifyBadge from "../VerifyBadge";
-import { ShareViaNFC } from "./ButtonShareViaNFC";
+import { ShareViaNFC } from "./ShareViaNFC/ButtonShare";
+import ShareModal, { ShareModalRef } from './ShareViaNFC/ShareBottomModal';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+
 
 type UserData = {
     username: string;
@@ -104,6 +107,13 @@ const ProfileView = () => {
         fetchUserData();
     }, []);
 
+    const modalRef = useRef<ShareModalRef>(null);
+
+    // Func for open bottom sheet for share profile via nfc
+    const handleOpenModal = () => {
+        modalRef.current?.present();
+    };
+
     useFocusEffect(
         useCallback(() => {
             getId();
@@ -121,15 +131,7 @@ const ProfileView = () => {
                     official: false})
             }
         }, [])
-    )
-
-    const onPressVerified = () => {
-        setShowVerifiedToast(true);
-
-        setTimeout(() => {
-            setShowVerifiedToast(false);
-        }, 2800);
-    };
+    );
 
     useEffect(() => {
         if (showVerifiedToast) {
@@ -183,9 +185,9 @@ const ProfileView = () => {
                             onPress={() => setVisible(false)}
                         >
                             <Animated.View style={[{ backgroundColor: "transparent",
-                                                     justifyContent: "center",
-                                                     alignItems: "center",},
-                                                     { transform: [{ scale: scaleAnim }] }]}>
+                                                    justifyContent: "center",
+                                                    alignItems: "center",},
+                                                    { transform: [{ scale: scaleAnim }] }]}>
                             <FastImage
                                 style={{ width: 200, height: 200, borderRadius: 100 }}
                                 source={{ uri: userData.avatar_url as string }}
@@ -242,7 +244,8 @@ const ProfileView = () => {
                         
                         : ""}
                     </View>
-                    <ShareViaNFC />
+                    <ShareViaNFC handlePress={handleOpenModal}/>
+                    <ShareModal ref={modalRef} avatarUrl={userData.avatar_url}/>
 
                     {userData.post_count === 0 ? 
                         <View style={{borderTopWidth: 1, borderColor: "#5A31F4", marginTop: 20}}>
