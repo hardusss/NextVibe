@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
-import { Text, StyleSheet, View, useColorScheme, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useCallback, useMemo, useRef, forwardRef, useImperativeHandle, useState, useEffect } from 'react';
+import { Text, StyleSheet, View, useColorScheme, TouchableOpacity } from 'react-native';
 import {
     BottomSheetModal,
     BottomSheetView,
@@ -9,13 +9,24 @@ import FastImage from 'react-native-fast-image';
 import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+// Replaced nfc-manager with HCE library
+import HCESession, { NFCContentType, NFCTagType4 } from 'react-native-hce';
 
+/**
+ * Interface for the ShareModal reference methods.
+ */
 export interface ShareModalRef {
+    /** Presents the bottom sheet modal */
     present: () => void;
+    /** Dismisses the bottom sheet modal */
     dismiss: () => void;
 }
 
+/**
+ * Props for the ShareModal component.
+ */
 export interface ShareModalProps {
+    /** URL of the user's avatar to display */
     avatarUrl: string | null;
 }
 
@@ -39,12 +50,18 @@ const lightColors = {
     iconColor: '#7c3aed' 
 };
 
+/**
+ * ShareModal Component
+ * * Uses Host Card Emulation (HCE) to broadcast the user's profile URL via NFC.
+ * When the modal is open, the phone acts as an NFC tag.
+ */
 const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const theme = useColorScheme(); 
     const isDark = theme === 'dark';
     const colors = isDark ? darkColors : lightColors;
 
     const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const [isBroadcasting, setIsBroadcasting] = useState(false);
 
     const snapPoints = useMemo(() => ['50%', '65%'], []); 
 
@@ -52,6 +69,15 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         present: () => bottomSheetModalRef.current?.present(),
         dismiss: () => bottomSheetModalRef.current?.dismiss(),
     }));
+
+    /**
+     * Clean up HCE session when component unmounts to prevent battery drain.
+     */
+    useEffect(() => {
+        return () => {
+            stopHceBroadcast();
+        };
+    }, []);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -65,7 +91,67 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         []
     );
 
+    /**
+     * Starts the NFC Host Card Emulation (HCE).
+     * Configures the device to act as a Type 4 NFC Tag containing the profile URL.
+     */
+    const startHceBroadcast = async () => {
+        if (isBroadcasting) return;
+
+        try {
+            console.log("Initializing HCE Session...");
+            
+            // 1. Define the tag content (NDEF URL)
+            const tag = new NFCTagType4({
+                type: NFCContentType.URL,
+                content: "https://nextvibe.io/u/132", // Replace with dynamic prop if needed
+                writable: false 
+            });
+
+            // 2. Set the application content
+            await HCESession.setApplication(tag);
+
+            // 3. Enable the emulation
+            await HCESession.setEnabled(true);
+
+            setIsBroadcasting(true);
+            console.log("✅ HCE Broadcasting started. Phone is now an NFC Tag.");
+
+        } catch (error) {
+            console.error("❌ Failed to start HCE:", error);
+        }
+    };
+
+    /**
+     * Stops the NFC Host Card Emulation.
+     */
+    const stopHceBroadcast = async () => {
+        try {
+            await HCESession.setEnabled(false);
+            setIsBroadcasting(false);
+            console.log("🛑 HCE Broadcasting stopped.");
+        } catch (error) {
+            console.warn("Error stopping HCE:", error);
+        }
+    };
+
+    /**
+     * Callback to handle BottomSheet state changes.
+     * Automatically starts/stops HCE based on visibility.
+     * * @param index - The index of the snap point (-1 means closed)
+     */
+    const handleSheetChanges = useCallback((index: number) => {
+        if (index >= 0) {
+            // Sheet is open -> Start Broadcasting
+            startHceBroadcast();
+        } else {
+            // Sheet is closed -> Stop Broadcasting
+            stopHceBroadcast();
+        }
+    }, []);
+
     const handleClose = () => {
+        stopHceBroadcast();
         bottomSheetModalRef.current?.dismiss();
     };
 
@@ -75,24 +161,35 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
             index={1}
             snapPoints={snapPoints}
             backdropComponent={renderBackdrop} 
+            onChange={handleSheetChanges}
+            onDismiss={stopHceBroadcast}
             backgroundStyle={{ backgroundColor: colors.background }}
             handleIndicatorStyle={{ backgroundColor: colors.handleColor, width: 40, opacity: 0.5 }} 
         >
             <BottomSheetView style={[styles.contentContainer, { backgroundColor: colors.background }]}>
 
                 <View style={styles.headerRow}>
-                    <Text style={[styles.title, { color: colors.textColor }]}>NFC Share Active</Text>
-                    <MaterialCommunityIcons name="broadcast" size={20} color={colors.success} style={{marginLeft: 8}} />
+                    <Text style={[styles.title, { color: colors.textColor }]}>
+                        {isBroadcasting ? "Broadcasting Signal..." : "Ready to Share"}
+                    </Text>
+                    <MaterialCommunityIcons 
+                        name={isBroadcasting ? "broadcast" : "nfc-off"} 
+                        size={20} 
+                        color={isBroadcasting ? colors.success : colors.subText} 
+                        style={{marginLeft: 8}} 
+                    />
                 </View>
 
                 <View style={styles.avatarSection}>
                     <View style={styles.avatarWrapper}>
-                        <LottieView 
-                            autoPlay
-                            loop
-                            style={styles.lottie}
-                            source={require('@/assets/lottie/pulse.json')}
-                        />
+                        {isBroadcasting && (
+                            <LottieView 
+                                autoPlay
+                                loop
+                                style={styles.lottie}
+                                source={require('@/assets/lottie/pulse.json')}
+                            />
+                        )}
                         
                         {props.avatarUrl && (
                             <FastImage 
@@ -106,21 +203,21 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
                 <View style={[styles.infoCard, { backgroundColor: colors.cardBg }]}>
                     <Text style={[styles.subtitle, { color: colors.subText }]}>
-                        Keep tapping! Multiple friends can collect.
+                        Bring another phone close to share your profile.
                     </Text>
 
                     <View style={styles.statsRow}>
                         <View style={styles.statItem}>
-                             <MaterialCommunityIcons name="account-group-outline" size={22} color={colors.iconColor} />
-                             <Text style={[styles.statValue, { color: colors.success }]}>0</Text>
-                             <Text style={[styles.statLabel, { color: colors.subText }]}>vibes shared</Text>
+                             <MaterialCommunityIcons name="nfc-tap" size={22} color={colors.iconColor} />
+                             <Text style={[styles.statValue, { color: colors.success }]}>Active</Text>
+                             <Text style={[styles.statLabel, { color: colors.subText }]}>Mode</Text>
                         </View>
                     </View>
                 </View>
 
                 <View style={{flex: 1}} />
 
-                {/* Кнопка DONE */}
+                {/* Done Button */}
                 <TouchableOpacity 
                     onPress={handleClose}
                     activeOpacity={0.8}
@@ -132,8 +229,8 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                         end={{ x: 1, y: 0 }}
                         style={styles.gradientButton}
                     >
-                        <Text style={styles.buttonText}>Done</Text>
-                        <MaterialCommunityIcons name="check-circle-outline" size={20} color="white" style={{marginLeft: 8}}/>
+                        <Text style={styles.buttonText}>Stop Sharing</Text>
+                        <MaterialCommunityIcons name="close-circle-outline" size={20} color="white" style={{marginLeft: 8}}/>
                     </LinearGradient>
                 </TouchableOpacity>
 
