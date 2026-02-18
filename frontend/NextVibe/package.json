@@ -72,6 +72,7 @@
     "react-native-fast-image": "^8.6.3",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-get-random-values": "^1.11.0",
+    "react-native-hce": "^0.3.0",
     "react-native-hyperlink": "^0.1.2",
     "react-native-intersection-observer": "^0.2.0",
     "react-native-nfc-manager": "^3.17.2",

@@ -15,7 +15,7 @@ import SwipeButton from '@/components/Wallet/WalletIntro/SwipeButton';
  * Deep link scheme for wallet dashboard navigation
  * Used to redirect users back to the app after wallet connection
  */
-const APP_SCHEME = 'myapp://wallet-dash';
+const APP_SCHEME = 'nextvibe://wallet-dash';
 
 /**
  * Timeout duration for detecting user cancellation
