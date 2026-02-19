@@ -17,3 +17,4 @@ from .count_unread_notifications import GetCountUnreadNotificationsView
 from .get_notifications import GetNotificationsView
 from .read_notifications import ReadNotificationsView
 from .check_status import CheckStatusView
+from .public_user import PublicUserDetailView
