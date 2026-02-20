@@ -20,8 +20,6 @@ import Hyperlink from 'react-native-hyperlink';
 import VerifyBadge from "../VerifyBadge";
 import { ShareViaNFC } from "./ShareViaNFC/ButtonShare";
 import ShareModal, { ShareModalRef } from './ShareViaNFC/ShareBottomModal';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 
 
 type UserData = {
@@ -245,7 +243,7 @@ const ProfileView = () => {
                         : ""}
                     </View>
                     <ShareViaNFC handlePress={handleOpenModal}/>
-                    <ShareModal ref={modalRef} avatarUrl={userData.avatar_url}/>
+                    <ShareModal ref={modalRef} avatarUrl={userData.avatar_url} profileUrl={`https://nextvibe.io/u/${id}`}/>
 
                     {userData.post_count === 0 ? 
                         <View style={{borderTopWidth: 1, borderColor: "#5A31F4", marginTop: 20}}>

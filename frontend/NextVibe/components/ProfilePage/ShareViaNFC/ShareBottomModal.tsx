@@ -14,109 +14,95 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { HCESession, NFCTagType4, NFCTagType4NDEFContentType } from 'react-native-hce';
 
-/**
- * Exposes imperative methods to control the visibility of the ShareModal.
- */
 export interface ShareModalRef {
-    /** Opens the bottom sheet modal. */
     present: () => void;
-    /** Closes the bottom sheet modal. */
     dismiss: () => void;
 }
 
-/**
- * Properties for the ShareModal component.
- */
 export interface ShareModalProps {
-    /** The URL of the user's avatar image to display. Null if no avatar is set. */
     avatarUrl: string | null;
-    /** The profile URL to be broadcasted via NFC. Defaults to a fallback URL if not provided. */
     profileUrl?: string;
 }
 
-/**
- * A full-screen overlay that renders an animated neon glow effect around the screen edges.
- * Uses a transparent Modal to ensure it renders above all other UI elements (like BottomSheets),
- * and utilizes `pointerEvents="none"` so it doesn't block user interactions.
- * * @param {Object} props - Component properties.
- * @param {Animated.Value} props.opacity - The animated value controlling the visibility/fade of the glow.
- */
 const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
-    const GLOW_SIZE = 80; 
+    // Менший розмір — елегантніший ефект
+    const SIDE = 55;   // ширина бокових смуг
+    const BOTTOM = 70; // висота нижньої смуги
+    const CORNER = 65; // кутові акценти
 
     return (
         <Modal
             visible
             transparent
             animationType="none"
-            statusBarTranslucent 
-            pointerEvents="none" 
+            statusBarTranslucent
+            pointerEvents="none"
         >
             <Animated.View
                 pointerEvents="none"
                 style={[StyleSheet.absoluteFillObject, { opacity }]}
             >
-                {/* Left Edge Glow */}
+                {/* Ліва смуга — тонка, виражений градієнт */}
                 <LinearGradient
                     colors={[
-                        'rgba(139, 92, 246, 0.85)',
-                        'rgba(139, 92, 246, 0.4)',
+                        'rgba(124, 58, 237, 0.55)',
+                        'rgba(139, 92, 246, 0.18)',
                         'rgba(139, 92, 246, 0)',
                     ]}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
-                    style={[StyleSheet.absoluteFillObject, { right: undefined, width: GLOW_SIZE }]}
+                    style={[StyleSheet.absoluteFillObject, { right: undefined, width: SIDE }]}
                 />
 
-                {/* Right Edge Glow */}
+                {/* Права смуга */}
                 <LinearGradient
                     colors={[
                         'rgba(139, 92, 246, 0)',
-                        'rgba(139, 92, 246, 0.4)',
-                        'rgba(139, 92, 246, 0.85)',
+                        'rgba(139, 92, 246, 0.18)',
+                        'rgba(124, 58, 237, 0.55)',
                     ]}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
-                    style={[StyleSheet.absoluteFillObject, { left: undefined, width: GLOW_SIZE }]}
+                    style={[StyleSheet.absoluteFillObject, { left: undefined, width: SIDE }]}
                 />
 
-                {/* Bottom Edge Glow */}
+                {/* Нижня смуга — найвиразніша */}
                 <LinearGradient
                     colors={[
                         'rgba(109, 40, 217, 0)',
-                        'rgba(109, 40, 217, 0.5)',
-                        'rgba(109, 40, 217, 0.9)',
+                        'rgba(109, 40, 217, 0.22)',
+                        'rgba(91, 33, 182, 0.6)',
                     ]}
                     start={{ x: 0.5, y: 0 }}
                     end={{ x: 0.5, y: 1 }}
-                    style={[StyleSheet.absoluteFillObject, { top: undefined, height: GLOW_SIZE }]}
+                    style={[StyleSheet.absoluteFillObject, { top: undefined, height: BOTTOM }]}
                 />
 
-                {/* Bottom-Left Corner Accent */}
+                {/* Нижній лівий кут */}
                 <LinearGradient
-                    colors={['rgba(167, 139, 250, 0.5)', 'rgba(167, 139, 250, 0)']}
+                    colors={['rgba(139, 92, 246, 0.38)', 'rgba(139, 92, 246, 0)']}
                     start={{ x: 0, y: 1 }}
                     end={{ x: 1, y: 0 }}
                     style={{
                         position: 'absolute',
                         bottom: 0,
                         left: 0,
-                        width: GLOW_SIZE * 1.5,
-                        height: GLOW_SIZE * 1.5,
+                        width: CORNER,
+                        height: CORNER,
                     }}
                 />
 
-                {/* Bottom-Right Corner Accent */}
+                {/* Нижній правий кут */}
                 <LinearGradient
-                    colors={['rgba(167, 139, 250, 0)', 'rgba(167, 139, 250, 0.5)']}
+                    colors={['rgba(139, 92, 246, 0)', 'rgba(139, 92, 246, 0.38)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={{
                         position: 'absolute',
                         bottom: 0,
                         right: 0,
-                        width: GLOW_SIZE * 1.5,
-                        height: GLOW_SIZE * 1.5,
+                        width: CORNER,
+                        height: CORNER,
                     }}
                 />
             </Animated.View>
@@ -124,15 +110,10 @@ const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
     );
 };
 
-/**
- * A BottomSheet modal component that facilitates sharing a user profile via NFC (Host Card Emulation).
- * Features a visual neon glow animation and status bar color change upon successful NFC reads.
- */
 const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const theme = useColorScheme();
     const isDark = theme === 'dark';
 
-    // Theme-dependent styling
     const colors = isDark ? {
         background: '#0f021c',
         cardBg: 'rgba(255, 255, 255, 0.05)',
@@ -142,7 +123,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         accent: '#a855f7',
         iconColor: '#d8b4fe',
         statusBarStyle: 'light-content' as const,
-        statusBarBg: '#000000',
+        statusBarBg: '#0A0410',
     } : {
         background: '#ffffff',
         cardBg: 'rgba(0, 0, 0, 0.03)',
@@ -169,13 +150,11 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
     const snapPoints = useMemo(() => ['50%', '65%'], []);
 
-    // Sync status bar styling with the current device theme
     useEffect(() => {
         StatusBar.setBarStyle(colors.statusBarStyle, true);
         StatusBar.setBackgroundColor(colors.statusBarBg, true);
     }, [isDark]);
 
-    // Cleanup HCE session on unmount
     useEffect(() => {
         return () => { stopHceBroadcast(); };
     }, []);
@@ -185,9 +164,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         dismiss: () => bottomSheetModalRef.current?.dismiss(),
     }));
 
-    /**
-     * Resets the local state, effectively clearing read counts and hiding animations.
-     */
     const resetState = () => {
         setVibes(0);
         setIsBroadcasting(false);
@@ -196,53 +172,45 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         glowOpacity.setValue(0);
     };
 
-    /**
-     * Triggers the full-screen neon glow and momentarily flashes the status bar
-     * to provide visual feedback for a successful NFC read.
-     */
     const triggerNeonGlow = () => {
         glowAnimRef.current?.stop();
-
         setShowGlow(true);
         glowOpacity.setValue(0);
 
-        // Momentarily change status bar color to match the glow
+        // Статусбар: м'який фіолетовий спалах на 1 секунду
         StatusBar.setBarStyle('light-content', true);
-        StatusBar.setBackgroundColor('#6d28d9', true);
+        StatusBar.setBackgroundColor('#5b21b6', true);
         setTimeout(() => {
             StatusBar.setBarStyle(colors.statusBarStyle, true);
             StatusBar.setBackgroundColor(colors.statusBarBg, true);
         }, 1000);
 
-        // Play the fade in/out animation sequence
         const anim = Animated.sequence([
+            // Швидкий спалах
             Animated.timing(glowOpacity, {
                 toValue: 1,
-                duration: 150,
+                duration: 180,
                 useNativeDriver: true,
             }),
+            // Повільне, плавне згасання
             Animated.timing(glowOpacity, {
                 toValue: 0,
-                duration: 1000,
-                delay: 200,
+                duration: 1100,
+                delay: 150,
                 useNativeDriver: true,
             }),
         ]);
 
         glowAnimRef.current = anim;
         anim.start(({ finished }) => {
-            if (finished) setShowGlow(false); 
+            if (finished) setShowGlow(false);
         });
     };
 
-    /**
-     * Initializes and starts the Host Card Emulation (HCE) broadcasting.
-     * Sets up listeners for NFC read events and debounces duplicate scans.
-     */
     const startHceBroadcast = async () => {
         if (isBroadcasting) return;
         try {
-            const urlToShare = props.profileUrl || "https://nextvibe.io/u/132";
+            const urlToShare = props.profileUrl || "https://nextvibe.io/u/39";
             const tag = new NFCTagType4({
                 type: NFCTagType4NDEFContentType.URL,
                 content: urlToShare,
@@ -253,10 +221,8 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
             await session.setApplication(tag);
             await session.setEnabled(true);
 
-            // Listen for successful NFC reads by another device
             removeListenerRef.current = session.on(HCESession.Events.HCE_STATE_READ, () => {
                 const now = Date.now();
-                // Debounce reads to prevent spamming triggers (2 seconds cooldown)
                 if (now - lastReadTimestamp.current > 2000) {
                     console.log("✅ Valid read! Incrementing vibes.");
                     setVibes(prev => prev + 1);
@@ -274,9 +240,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         }
     };
 
-    /**
-     * Stops the HCE broadcasting session and removes event listeners.
-     */
     const stopHceBroadcast = async () => {
         try {
             if (hceSessionRef.current) {
@@ -292,11 +255,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         }
     };
 
-    /**
-     * Handles changes to the bottom sheet's snap index.
-     * Starts broadcasting when opened, and cleans up when fully closed.
-     * * @param {number} index - The current snap index of the bottom sheet.
-     */
     const handleSheetChanges = useCallback((index: number) => {
         if (index >= 0) {
             startHceBroadcast();
@@ -306,9 +264,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         }
     }, [props.profileUrl]);
 
-    /**
-     * Programmatically dismisses the modal and stops broadcasting.
-     */
     const handleClose = () => {
         stopHceBroadcast();
         bottomSheetModalRef.current?.dismiss();
@@ -338,7 +293,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                 backgroundStyle={{ backgroundColor: colors.background }}
                 handleIndicatorStyle={{ backgroundColor: colors.handleColor, width: 40, opacity: 0.5 }}
             >
-                {/* UI Implementation */}
                 <BottomSheetView style={[styles.contentContainer, { backgroundColor: colors.background }]}>
                     <View style={styles.headerRow}>
                         <Text style={[styles.title, { color: colors.textColor }]}>
@@ -440,7 +394,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 50,
-        marginTop: 20
+        marginTop: 30,
     },
     avatarWrapper: {
         width: 120,
