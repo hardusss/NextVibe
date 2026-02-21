@@ -61,6 +61,7 @@
     },
     "plugins": [
       "expo-router",
+      "@solana-mobile/mobile-wallet-adapter-protocol",
       [
         "expo-build-properties",
         {
