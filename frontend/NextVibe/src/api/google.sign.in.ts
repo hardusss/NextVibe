@@ -4,14 +4,15 @@ import Toast from "react-native-toast-message";
 import { storage } from "../utils/storage";
 import { Router } from "expo-router";
 
-export default function GoogleRegister(username: string, email: string, avatar_url: string, router: Router) {
+export default function GoogleSignIn(username: string, email: string, avatar_url: string, router: Router, idToken: string) {
 
     const data = {
         username: username,
         email: email,
-        avatar_url: avatar_url
+        avatar_url: avatar_url,
+        idToken: idToken
     }
-    axios.post(`${GetApiUrl()}/users/google-register/`, data)
+    axios.post(`${GetApiUrl()}/users/google-sign-in/`, data)
     .then(response => {
         storage.setItem("id", `${response.data.user_id}`)
         storage.setItem("access", response.data.token.access)
