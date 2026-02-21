@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from user.src.validate_google_token_id import validate
 
 class GoogleUserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)

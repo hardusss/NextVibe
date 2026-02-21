@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.core.files.base import ContentFile
+import uuid
 
 User = get_user_model()
 
@@ -24,13 +25,16 @@ class GoogleRegister(serializers.ModelSerializer):
 
     def create(self, validated_data):
         avatar_url = validated_data.pop("avatar_url", None)  
-        user = User.objects.create_user(username=validated_data["username"], email=validated_data["email"])
+        user, created = User.objects.get_or_create(email=validated_data["email"], defaults={"username": validated_data["username"]})
 
-        if avatar_url:
-            response = requests.get(avatar_url)
-            if response.status_code == 200:
-                file_name = f"user_{user.user_id}.jpg"
+        if created and avatar_url:
+            try:
+                response = requests.get(avatar_url, timeout=5)
+                response.raise_for_status()
+                file_name = f"user_{user.user_id}_{uuid.uuid4().hex}.jpg"
                 user.avatar.save(file_name, ContentFile(response.content), save=True)
+            except requests.RequestException:
+                pass
 
         return user
     
