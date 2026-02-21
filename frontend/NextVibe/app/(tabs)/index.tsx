@@ -8,6 +8,10 @@ import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 import { Buffer } from 'buffer';
 
+// WMA
+import './polyfill';
+import 'expo-router/entry';
+
 global.Buffer = global.Buffer || Buffer;
 
 setupAxiosInterceptor();
