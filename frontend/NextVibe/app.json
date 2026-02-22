@@ -7,7 +7,7 @@
     "icon": "./assets/new_icon.png",
     "scheme": "nextvibe", 
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "jsEngine": "hermes",
     "ios": {
       "jsEngine": "hermes",
@@ -61,7 +61,6 @@
     },
     "plugins": [
       "expo-router",
-      "@solana-mobile/mobile-wallet-adapter-protocol",
       [
         "expo-build-properties",
         {
