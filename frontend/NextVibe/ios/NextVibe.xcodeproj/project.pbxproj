@@ -257,7 +257,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.harrddddd.NextVibe";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.nextvibe.app";
 				PRODUCT_NAME = "NextVibe";
 				SWIFT_OBJC_BRIDGING_HEADER = "NextVibe/NextVibe-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -286,7 +286,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.harrddddd.NextVibe";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.nextvibe.app";
 				PRODUCT_NAME = "NextVibe";
 				SWIFT_OBJC_BRIDGING_HEADER = "NextVibe/NextVibe-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
