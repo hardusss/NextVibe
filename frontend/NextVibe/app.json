@@ -105,7 +105,8 @@
       "expo-audio",
       "expo-secure-store",
       "react-native-compressor",
-      "./withSolanaMWA.js"
+      "./withSolanaMWA.js",
+      "./withHCE.js"
     ],
     "experiments": {
       "typedRoutes": true
