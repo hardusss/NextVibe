@@ -107,7 +107,14 @@ export default function Layout() {
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [visible, setVisible] = useState<boolean>(false);
 
-    const blacklist = ["register", "login", "postslist", "splash", "index", "create-post", "settings", "select-token", "deposit", "transaction", "user-profile", "result-transaction", "transactions", "transaction-detail", "chat-room", "chats", "follows-screen", "notifications", "user-banned", "wallet-init", "wallet-dash"];
+    const blacklist = ["register", "login", "postslist",
+        "splash", "index", "create-post",
+        "settings", "select-token", "deposit", 
+        "transaction", "user-profile", "result-transaction", 
+        "transactions", "transaction-detail", "chat-room", 
+        "chats", "follows-screen", "notifications", 
+        "user-banned", "wallet-init", "wallet-dash", 
+        "wallet-select"];
 
     const tabs = [
         { name: "home", icon: MaterialCommunityIcons, iconName: ["home-outline", "home"] },
@@ -176,7 +183,7 @@ export default function Layout() {
             <BottomSheetModalProvider>
                 <MobileWalletProvider chain={chain} endpoint={endpoint} identity={identity}>
                     <LazorKitProvider
-                        rpcUrl="https://devnet.helius-rpc.com/?api-key=b350b993-1ca8-4557-95aa-9e96897cce14"
+                        rpcUrl="https://devnet.helius-rpc.com/?api-key=8b5d26aa-3554-4d0c-b716-c04029ca49c9"
                         portalUrl="https://portal.lazor.sh"
                         configPaymaster={{ paymasterUrl: "https://kora.devnet.lazorkit.com" }}
                     >

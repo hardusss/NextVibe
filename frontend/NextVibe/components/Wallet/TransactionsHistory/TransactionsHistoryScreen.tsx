@@ -18,6 +18,7 @@ import TransactionItem from './TransactionItem';
 // Utils & Styles
 import { groupTransactionsByDate } from '@/src/utils/solana/transactionUtils';
 import createTransactionsStyles from '@/styles/transactions.styles';
+import useWalletAddress from '@/hooks/useWalletAddress';
 
 /**
  * Main Transactions History Screen
@@ -42,8 +43,8 @@ export default function TransactionsHistoryScreen() {
     const [hasMore, setHasMore] = useState<boolean>(true);
     const [prices, setPrices] = useState<{ [key: string]: number }>({ solana: 170, "usd-coin": 1 });
 
-    const { connection, smartWalletPubkey } = useWallet();
-    const walletAddress = smartWalletPubkey?.toString();
+    const { connection, address } = useWalletAddress();
+    const walletAddress = address?.toString();
 
     // --- Data Fetching Logic ---
 
@@ -55,7 +56,9 @@ export default function TransactionsHistoryScreen() {
                 setHasMore(true);
             }
             setError(null);
-
+            if (!connection) {
+                throw new Error("Don't have a connection...")
+            }
             const data = await SolanaService.getTransactionsHistory(
                 connection,
                 walletAddress as string,

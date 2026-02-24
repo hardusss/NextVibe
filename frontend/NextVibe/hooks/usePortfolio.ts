@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useWallet } from "@lazorkit/wallet-mobile-adapter"; 
+import useWalletAddress from "./useWalletAddress";
 import SolanaService from "@/src/services/SolanaService"; 
 import getTokensPrice from "@/src/api/get.tokens.price";
 import { TOKENS } from "@/constants/Tokens";
@@ -107,7 +107,7 @@ export default function usePortfolio(): UsePortfolioReturn {
      * smartWalletPubkey: The user's Solana wallet address
      * connection: RPC connection instance for blockchain queries
      */
-    const { smartWalletPubkey, connection } = useWallet(); 
+    const { address, connection } = useWalletAddress(); 
 
     
     /** Loading state - true during initial fetch and manual refreshes */
@@ -146,7 +146,7 @@ export default function usePortfolio(): UsePortfolioReturn {
      */
     const fetchData = async () => {
         // Convert PublicKey to string, early return if not available
-        const addressString = smartWalletPubkey?.toString();
+        const addressString = address?.toString();
         if (!addressString || !connection) return;
 
         try {
@@ -252,7 +252,7 @@ export default function usePortfolio(): UsePortfolioReturn {
      */
     useEffect(() => {
         fetchData();
-    }, [smartWalletPubkey?.toString()]);
+    }, [address?.toString()]);
     
     /**
      * Manual refresh function
@@ -277,7 +277,7 @@ export default function usePortfolio(): UsePortfolioReturn {
      */
     const refresh = useCallback(async () => {
         await fetchData();
-    }, [smartWalletPubkey, connection]);
+    }, [address, connection]);
 
     // Return hook interface
     return { data, isLoading, refresh };

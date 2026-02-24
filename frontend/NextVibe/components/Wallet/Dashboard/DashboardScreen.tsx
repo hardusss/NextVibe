@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "react-native";
 
-import { useWallet } from "@lazorkit/wallet-mobile-adapter";
+import useWalletAddress from "@/hooks/useWalletAddress";
 import usePortfolio from "@/hooks/usePortfolio";
 import { useLastTransaction } from "@/hooks/useLastTransaction";
 
@@ -46,7 +46,7 @@ export default function WalletDashboardScreen() {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
   
-  const { connection, disconnect, smartWalletPubkey } = useWallet();
+  const { connection, address } = useWalletAddress();
   const { data, isLoading, refresh } = usePortfolio();
   const { 
     lastTransaction, 
@@ -54,7 +54,7 @@ export default function WalletDashboardScreen() {
     isLoadTransaction, 
     error: activityError,
     refetch: refetchActivity 
-  } = useLastTransaction(connection, smartWalletPubkey);
+  } = useLastTransaction(connection, address);
 
   // UI state management
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
@@ -143,7 +143,7 @@ export default function WalletDashboardScreen() {
           isDarkMode={isDarkMode}
           isBalanceHidden={isBalanceHidden}
           onToggleBalance={toggleBalanceVisibility}
-          onNavigateBack={() => {disconnect(); router.back()}}
+          onNavigateBack={() => router.back()}
           onNavigateToTransactions={navigateToTransactions}
         />
 
