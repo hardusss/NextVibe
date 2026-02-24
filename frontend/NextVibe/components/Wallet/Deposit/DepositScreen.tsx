@@ -23,6 +23,7 @@ import WarningBanner from './WarningBanner';
 import ShareButton from './ShareButton';
 
 import createDepositStyles from '@/styles/deposit.styles';
+import useWalletAddress from '@/hooks/useWalletAddress';
 
 /**
  * Token type derived from the TOKENS constant
@@ -65,8 +66,7 @@ export default function DepositScreen() {
     const slideAnim = useRef(new Animated.Value(30)).current;
 
     // Wallet integration
-    const { smartWalletPubkey } = useWallet();
-    const address = smartWalletPubkey?.toString();
+    const { address } = useWalletAddress();
     const supportedTokens: Token[] = [TOKENS.SOL, TOKENS.USDC];
 
     // Entrance animation on mount

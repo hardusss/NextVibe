@@ -26,5 +26,5 @@ export default function Index() {
         })();
     }, []);
 
-    return <Redirect href="/splash" />;
+    return <Redirect href="/wallet-select" />;
 }

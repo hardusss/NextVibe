@@ -44,7 +44,7 @@ interface UseLastTransactionReturn {
  */
 export function useLastTransaction(
   connection: Connection | null,
-  walletPubkey: PublicKey | null
+  walletPubkey: string | null
 ): UseLastTransactionReturn {
   const [lastTransaction, setLastTransaction] = useState<FormattedTransaction | null>(null);
   const [lastTransactionTokenPrice, setLastTransactionTokenPrice] = useState<number>(0);
