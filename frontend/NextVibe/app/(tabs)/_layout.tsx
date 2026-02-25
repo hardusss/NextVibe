@@ -16,7 +16,8 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-
+// Icons
+import { House, Search, BadgePlus, UserRound } from "lucide-react-native"
 // WMA
 import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
 import { clusterApiUrl } from '@solana/web3.js';
@@ -109,18 +110,18 @@ export default function Layout() {
 
     const blacklist = ["register", "login", "postslist",
         "splash", "index", "create-post",
-        "settings", "select-token", "deposit", 
-        "transaction", "user-profile", "result-transaction", 
-        "transactions", "transaction-detail", "chat-room", 
-        "chats", "follows-screen", "notifications", 
-        "user-banned", "wallet-init", "wallet-dash", 
+        "settings", "select-token", "deposit",
+        "transaction", "user-profile", "result-transaction",
+        "transactions", "transaction-detail", "chat-room",
+        "chats", "follows-screen", "notifications",
+        "user-banned", "wallet-init", "wallet-dash",
         "wallet-select"];
 
     const tabs = [
-        { name: "home", icon: MaterialCommunityIcons, iconName: ["home-outline", "home"] },
-        { name: "search", icon: MaterialIcons, iconName: ["search", "search"] },
-        { name: "create-post", icon: MaterialIcons, iconName: ["add-circle-outline", "add-circle"] },
-        { name: "profile", icon: FontAwesome5, iconName: ["user", "user"] }
+        { name: "home", IconOutline: House, IconFilled: House },
+        { name: "search", IconOutline: Search, IconFilled: Search },
+        { name: "create-post", IconOutline: BadgePlus, IconFilled: BadgePlus },
+        { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
     ];
 
     useEffect(() => {
@@ -208,17 +209,36 @@ export default function Layout() {
                                             <View style={styles.tabsWrapper}>
                                                 {tabs.map((tab) => {
                                                     const isActive = currentPage === tab.name;
-                                                    const activeBgColor = theme === "dark" ? "rgba(154, 109, 191, 0.15)" : "rgba(0, 0, 0, 0.05)";
-                                                    const currentIconColor = isActive ? (theme === "dark" ? "#FFFFFF" : "#000000") : (theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)");
+                                                    const activeBgColor = theme === "dark"
+                                                        ? "rgba(154, 109, 191, 0.15)"
+                                                        : "rgba(0, 0, 0, 0.05)";
+                                                    const iconColor = isActive
+                                                        ? (theme === "dark" ? "#FFFFFF" : "#000000")
+                                                        : (theme === "dark" ? "rgb(144, 141, 141)" : "rgb(0,0,0)");
+                                                    const Icon = isActive ? tab.IconFilled : tab.IconOutline;
+
                                                     return (
-                                                        <TouchableOpacity key={tab.name} onPress={() => goToTab(tab.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                                        <TouchableOpacity
+                                                            key={tab.name}
+                                                            onPress={() => goToTab(tab.name)}
+                                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                        >
                                                             {tab.name === "profile" && imageProfile && userID ? (
                                                                 <View style={styles.iconContainerProfile}>
-                                                                    <FastImage source={{ uri: imageProfile }} style={[styles.avatar, { borderWidth: isActive ? 1 : 0 }]} />
+                                                                    <FastImage
+                                                                        source={{ uri: imageProfile }}
+                                                                        style={[styles.avatar, { borderWidth: isActive ? 1 : 0 }]}
+                                                                    />
                                                                 </View>
                                                             ) : (
-                                                                <View style={[styles.iconContainer, { backgroundColor: isActive ? activeBgColor : "transparent", borderColor: isActive ? "rgba(255,255,255,0.2)" : "transparent" }]}>
-                                                                    <tab.icon name={isActive ? tab.iconName[1] : tab.iconName[0]} size={24} color={currentIconColor} />
+                                                                <View style={[
+                                                                    styles.iconContainer,
+                                                                    {
+                                                                        backgroundColor: isActive ? activeBgColor : "transparent",
+                                                                        borderColor: isActive ? "rgba(255,255,255,0.2)" : "transparent"
+                                                                    }
+                                                                ]}>
+                                                                    <Icon size={24} color={iconColor} strokeWidth={isActive ? 2.5 : 1.8} />
                                                                 </View>
                                                             )}
                                                         </TouchableOpacity>
