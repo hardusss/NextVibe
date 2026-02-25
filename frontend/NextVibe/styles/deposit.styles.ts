@@ -4,8 +4,7 @@ import { EdgeInsets } from "react-native-safe-area-context";
 const createDepositStyles = (isDark: boolean, insets: EdgeInsets) => StyleSheet.create({
     container: {
       flex: 1,
-      paddingTop: insets.top,
-      paddingBottom: insets.bottom + 10,
+
       paddingHorizontal: 24,
     },
     blurViewAbsolute: {
