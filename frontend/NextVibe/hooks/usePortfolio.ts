@@ -147,7 +147,10 @@ export default function usePortfolio(): UsePortfolioReturn {
     const fetchData = async () => {
         // Convert PublicKey to string, early return if not available
         const addressString = address?.toString();
-        if (!addressString || !connection) return;
+        if (!addressString || !connection) {
+            setIsLoading(false);
+            return;
+        };
 
         try {
             setIsLoading(true);
@@ -227,6 +230,7 @@ export default function usePortfolio(): UsePortfolioReturn {
              * 
              * TODO: Implement proper error state and user notification
              */
+            setIsLoading(false);
             console.error(e);
         } finally {
             /**
