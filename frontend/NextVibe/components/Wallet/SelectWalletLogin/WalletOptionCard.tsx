@@ -330,17 +330,18 @@ const styles = StyleSheet.create({
   },
   textGroup: {
     flex: 1,
-    gap: 5,
+    gap: 1,
   },
   cardTitle: {
     fontSize: 17,
-    fontFamily: 'DankMono-Bold',
+    fontFamily: 'Dank Mono Bold',
+    includeFontPadding: false,
     letterSpacing: -0.2,
   },
   cardSubtitle: {
     fontSize: 13,
-    fontFamily: 'DankMono',
-    lineHeight: 18,
+    fontFamily: 'Dank Mono',
+    includeFontPadding: false,
     letterSpacing: 0.1,
   },
   divider: {
@@ -366,7 +367,8 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 11,
-    fontFamily: 'DankMono-Bold',
+    fontFamily: 'Dank Mono Bold',
+    includeFontPadding: false,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
@@ -390,7 +392,8 @@ const styles = StyleSheet.create({
   ctaLabel: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontFamily: 'DankMono-Bold',
+    fontFamily: 'Dank Mono Bold',
+    includeFontPadding: false,
     letterSpacing: 0.2,
   },
 });

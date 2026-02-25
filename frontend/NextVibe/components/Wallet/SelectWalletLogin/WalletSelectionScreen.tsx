@@ -108,7 +108,7 @@ const WalletSelectionScreen: React.FC = () => {
             router.push("/wallet-dash");
         }
     }, [address]);
-    
+
     return (
         <GestureHandlerRootView style={styles.flex}>
             <LinearGradient colors={bgColors} style={styles.flex}>
@@ -194,14 +194,15 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 32,
-        fontFamily: 'DankMono-Bold',
-        letterSpacing: -0.5,
+        fontFamily: 'Dank Mono Bold',
+        includeFontPadding: false,
         textAlign: 'center',
         lineHeight: 40,
     },
     headerSubtitle: {
         fontSize: 14,
-        fontFamily: 'DankMono',
+        fontFamily: 'Dank Mono',
+        includeFontPadding: false,
         textAlign: 'center',
         marginTop: 10,
         lineHeight: 22,
@@ -221,7 +222,8 @@ const styles = StyleSheet.create({
     },
     solanaBadgeText: {
         fontSize: 11,
-        fontFamily: 'DankMono-Bold',
+        fontFamily: 'Dank Mono Bold',
+        includeFontPadding: false,
         letterSpacing: 1.4,
         textTransform: 'uppercase',
         color: '#9945FF',
@@ -243,7 +245,8 @@ const styles = StyleSheet.create({
     },
     footerText: {
         fontSize: 11,
-        fontFamily: 'DankMono',
+        fontFamily: 'Dank Mono',
+        includeFontPadding: false,
         letterSpacing: 0.3,
         opacity: 0.4,
         textAlign: 'center',
