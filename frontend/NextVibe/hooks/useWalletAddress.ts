@@ -21,7 +21,9 @@ export type WalletState =
       }
     | { 
         address: null; 
-        connection: null; 
+        connection: null;
+        disconnect: () => Promise<void>; // Updated to Promise<void>
+        signAndSendTransaction: (transaction: Transaction | VersionedTransaction, minContextSlot: number) => Promise<TransactionSignature>;  
         walletType: 'none' 
       };
 
