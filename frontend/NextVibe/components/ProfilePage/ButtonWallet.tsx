@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import usePortfolio from "@/hooks/usePortfolio";
+import { WalletMinimal } from "lucide-react-native"
+
 
 const ButtonWallet = () => {
     const router = useRouter();
@@ -44,12 +46,12 @@ const ButtonWallet = () => {
             friction: 4,
             useNativeDriver: true,
         }).start();
-        router.push("/wallet-init");
+        router.push("/wallet-select");
     };
 
     const formattedBalance = data?.totalUsdBalance 
-        ? data.totalUsdBalance.toFixed(2) 
-        : "0.00";
+        ? `${data.totalUsdBalance.toFixed(2)} USD` 
+        : "Connect";
 
     return (
         <Animated.View style={[styles.container, { transform: [{ scale }] }]}>
@@ -64,7 +66,6 @@ const ButtonWallet = () => {
                     end={{ x: 1, y: 0 }}
                     style={styles.badge}
                 >
-                    {/* Анімація бліка на фоні */}
                     <Animated.View
                         style={[
                             StyleSheet.absoluteFill,
@@ -79,12 +80,12 @@ const ButtonWallet = () => {
                         />
                     </Animated.View>
 
-                    <MaterialCommunityIcons name="wallet-outline" color="white" size={18} />
+                    <WalletMinimal color="white" size={18} />
                     
                     {isLoading ? (
                         <View style={styles.skeleton} />
                     ) : (
-                        <Text style={styles.balanceText}>{formattedBalance} USD</Text>
+                        <Text style={styles.balanceText}>{data ? `${formattedBalance}` : "Connect"}</Text>
                     )}
                 </LinearGradient>
             </TouchableOpacity>
