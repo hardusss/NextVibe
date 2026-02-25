@@ -10,7 +10,6 @@ const createTransactionsStyles = (isDark: boolean, insets: EdgeInsets) => StyleS
     container: {
         flex: 1,
         paddingHorizontal: 16,
-        paddingTop: insets.top, // Handle status bar automatically
     },
     // List Handling
     listContent: {
