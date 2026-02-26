@@ -21,23 +21,29 @@ const profileLightStyles = StyleSheet.create({
     },
     username: {
         color: colors.textPrimary,
-        fontSize: 22
+        fontSize: 22,
+        includeFontPadding: false,
+        fontFamily: "Dank Mono Bold"
     },
     avatar: {
         width: 110,
         height: 110,
         borderRadius: 60,
         objectFit: "cover",
-        marginLeft: 10
+        marginLeft: 10,
+        
     },
     text: {
         color: colors.textPrimary,
-        textAlign: "center"
+        textAlign: "center",
+        includeFontPadding: false,
+        fontFamily: "Dank Mono"
     },
     about: {
         color: colors.textPrimary,
-        fontWeight: "600",
-        marginTop: 20
+        marginTop: 20,
+        includeFontPadding: false,
+        fontFamily: "Dank Mono"
     }
 });
 
