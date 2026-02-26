@@ -2,89 +2,132 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
 interface BalanceSectionProps {
-  /** Controls dark/light theme styling */
-  isDarkMode: boolean;
-  /** Determines if balance should be masked */
-  isBalanceHidden: boolean;
-  /** Total portfolio balance in USD */
-  totalBalance: number;
-  /** Loading state for skeleton display */
-  isLoading: boolean;
+    isDarkMode: boolean;
+    isBalanceHidden: boolean;
+    totalBalance: number;
+    isLoading: boolean;
 }
 
-/**
- * BalanceSection Component
- * 
- * Displays total portfolio balance with optional masking.
- * Shows skeleton loader during data fetch.
- * 
- * Design Decisions:
- * - Large, prominent typography for quick balance check
- * - Letter-spacing optimization for readability
- * - Skeleton matches text dimensions for smooth transition
- * - USD label uses reduced opacity for hierarchy
- * 
- * @component
- */
 const BalanceSection: React.FC<BalanceSectionProps> = ({
-  isDarkMode,
-  isBalanceHidden,
-  totalBalance,
-  isLoading,
+    isDarkMode,
+    isBalanceHidden,
+    totalBalance,
+    isLoading,
 }) => {
-  const styles = createStyles(isDarkMode);
+    const labelColor = isDarkMode ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.32)";
+    const mainColor = isDarkMode ? "#FFFFFF" : "#000000";
+    const dimColor = isDarkMode ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.28)";
+    const borderColor = isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+    const skBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Balance</Text>
-      
-      {isLoading ? (
-        <View style={styles.skeleton} />
-      ) : (
-        <Text style={styles.balance}>
-          {isBalanceHidden ? "* * * * * " : `${totalBalance.toFixed(2)} `}
-          <Text style={styles.currency}>USD</Text>
-        </Text>
-      )}
-    </View>
-  );
+    const intPart = Math.floor(totalBalance).toLocaleString("en-US");
+    const decPart = (totalBalance % 1).toFixed(2).slice(1);
+
+    return (
+        <View style={styles.container}>
+            <Text style={[styles.label, { color: labelColor }]}>BALANCE</Text>
+            <View style={[styles.divider, { backgroundColor: borderColor }]} />
+
+            {/* Fixed height wrapper — prevents layout shift on toggle */}
+            <View style={styles.valueWrapper}>
+                {isLoading ? (
+                    <View style={[styles.skeleton, { backgroundColor: skBg }]} />
+                ) : isBalanceHidden ? (
+                    <Text style={[styles.hidden, { color: mainColor }]}>● ● ● ●</Text>
+                ) : (
+                    <View style={styles.amountRow}>
+                        <Text style={[styles.currencySign, { color: dimColor }]}>$</Text>
+                        <Text style={[styles.intPart, { color: mainColor }]}>{intPart}</Text>
+                        <Text style={[styles.decPart, { color: dimColor }]}>{decPart}</Text>
+                    </View>
+                )}
+            </View>
+
+            <View style={styles.bottomRow}>
+                <View style={[styles.bottomLine, { backgroundColor: borderColor }]} />
+                <Text style={[styles.usdLabel, { color: dimColor }]}>USD</Text>
+                <View style={[styles.bottomLine, { backgroundColor: borderColor }]} />
+            </View>
+        </View>
+    );
 };
 
-const createStyles = (isDarkMode: boolean) =>
-  StyleSheet.create({
+const styles = StyleSheet.create({
     container: {
-      alignItems: "center",
-      marginBottom: 16,
+        alignItems: "center",
+        marginBottom: 24,
+        paddingHorizontal: 20,
     },
     label: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: isDarkMode
-        ? "rgba(255, 255, 255, 0.7)"
-        : "rgba(0, 0, 0, 0.6)",
-      marginBottom: 8,
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        letterSpacing: 3,
+        marginBottom: 14,
     },
-    balance: {
-      fontSize: 48,
-      fontWeight: "800",
-      color: isDarkMode ? "#FFFFFF" : "#000000",
-      letterSpacing: -2,
-      marginBottom: 4,
+    divider: {
+        width: 32,
+        height: 1,
+        borderRadius: 1,
+        marginBottom: 16,
     },
-    currency: {
-      color: isDarkMode
-        ? "rgba(255, 255, 255, 0.7)"
-        : "rgba(0, 0, 0, 0.6)",
-      fontSize: 32,
+    // Fixed height = intPart lineHeight (62) — same for all states
+    valueWrapper: {
+        height: 62,
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 16,
+    },
+    amountRow: {
+        flexDirection: "row",
+        alignItems: "flex-end",
+    },
+    currencySign: {
+        fontFamily: "Dank Mono",
+        fontSize: 28,
+        includeFontPadding: false,
+        lineHeight: 52,
+        marginRight: 2,
+    },
+    intPart: {
+        fontFamily: "Dank Mono",
+        fontSize: 58,
+        includeFontPadding: false,
+        letterSpacing: -3,
+        lineHeight: 62,
+    },
+    decPart: {
+        fontFamily: "Dank Mono",
+        fontSize: 24,
+        includeFontPadding: false,
+        lineHeight: 40,
+        marginBottom: 6,
+        letterSpacing: -1,
+    },
+    hidden: {
+        fontFamily: "Dank Mono",
+        fontSize: 32,
+        letterSpacing: 8,
     },
     skeleton: {
-      width: 200,
-      height: 48,
-      borderRadius: 12,
-      backgroundColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.1)"
-        : "rgba(0, 0, 0, 0.1)",
+        width: 220,
+        height: 48,
+        borderRadius: 12,
     },
-  });
+    bottomRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+    },
+    bottomLine: {
+        flex: 1,
+        height: 1,
+        borderRadius: 1,
+    },
+    usdLabel: {
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        letterSpacing: 3,
+    },
+});
 
 export default BalanceSection;

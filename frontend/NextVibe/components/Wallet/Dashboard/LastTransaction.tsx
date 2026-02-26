@@ -1,309 +1,267 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
+import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, MoveHorizontal } from "lucide-react-native";
 import { FormattedTransaction } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
 import timeAgo from "@/src/utils/formatTime";
 
 interface LastTransactionProps {
-  /** Controls dark/light theme styling */
-  isDarkMode: boolean;
-  /** Determines if transaction amounts should be masked */
-  isBalanceHidden: boolean;
-  /** Most recent transaction data */
-  transaction: FormattedTransaction | null;
-  /** Current price of transaction token */
-  tokenPrice: number;
-  /** Loading state for skeleton display */
-  isLoading: boolean;
-  /** Error message if fetch failed */
-  error: string | null;
-  /** Callback when card is pressed */
-  onPress: () => void;
+    isDarkMode: boolean;
+    isBalanceHidden: boolean;
+    transaction: FormattedTransaction | null;
+    tokenPrice: number;
+    isLoading: boolean;
+    error: string | null;
+    onPress: () => void;
 }
 
-/**
- * LastTransaction Component
- * 
- * Displays most recent wallet transaction in a glassmorphic card.
- * Handles loading, error, and empty states gracefully.
- * 
- * States:
- * - Loading: Shows skeleton loaders
- * - Error: Displays error message with retry option
- * - Empty: Shows "no activity" message
- * - Success: Displays transaction details
- * 
- * Interaction:
- * - Press on error: Triggers refresh
- * - Press on transaction: Navigates to full history
- * - Press on empty: No action
- * 
- * @component
- */
-const LastTransaction: React.FC<LastTransactionProps> = ({
-  isDarkMode,
-  isBalanceHidden,
-  transaction,
-  tokenPrice,
-  isLoading,
-  error,
-  onPress,
-}) => {
-  const styles = createStyles(isDarkMode);
-
-  /**
-   * Renders content based on current state
-   */
-  const renderContent = () => {
-    if (isLoading) {
-      return <LoadingSkeleton isDarkMode={isDarkMode} />;
+/** Pick icon + accent color by transaction type */
+function getTxMeta(type: string, isDarkMode: boolean) {
+    switch (type?.toLowerCase()) {
+        case "received":
+        case "receive":
+            return {
+                Icon: ArrowDownLeft,
+                accent: isDarkMode ? "rgba(52,211,153,0.85)" : "rgba(5,150,105,0.85)",
+                accentBg: isDarkMode ? "rgba(52,211,153,0.1)" : "rgba(5,150,105,0.08)",
+            };
+        case "sent":
+        case "send":
+            return {
+                Icon: ArrowUpRight,
+                accent: isDarkMode ? "rgba(244,114,182,0.85)" : "rgba(219,39,119,0.85)",
+                accentBg: isDarkMode ? "rgba(244,114,182,0.1)" : "rgba(219,39,119,0.08)",
+            };
+        default:
+            return {
+                Icon: MoveHorizontal,
+                accent: isDarkMode ? "rgba(196,167,255,0.85)" : "rgba(109,40,217,0.85)",
+                accentBg: isDarkMode ? "rgba(196,167,255,0.1)" : "rgba(109,40,217,0.08)",
+            };
     }
+}
 
-    if (error) {
-      return <ErrorState isDarkMode={isDarkMode} />;
-    }
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
-    if (!transaction) {
-      return <EmptyState isDarkMode={isDarkMode} />;
-    }
+const TransactionContent: React.FC<{
+    isDarkMode: boolean;
+    isBalanceHidden: boolean;
+    transaction: FormattedTransaction;
+    tokenPrice: number;
+}> = ({ isDarkMode, isBalanceHidden, transaction, tokenPrice }) => {
+    const tokenKey = transaction.token as keyof typeof TOKENS;
+    const tokenInfo = TOKENS[tokenKey];
+    const amount = Number(transaction.amount.toFixed(8));
+    const usdValue = Number((amount * tokenPrice).toFixed(2));
+    const { Icon, accent, accentBg } = getTxMeta(transaction.type, isDarkMode);
+
+    const mutedText = isDarkMode ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.38)";
+    const titleColor = isDarkMode ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.82)";
+    const subColor = isDarkMode ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
 
     return (
-      <TransactionContent
-        isDarkMode={isDarkMode}
-        isBalanceHidden={isBalanceHidden}
-        transaction={transaction}
-        tokenPrice={tokenPrice}
-      />
+        <>
+            {/* Token image + type icon badge */}
+            <View style={styles.avatarWrap}>
+                <Image source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
+                <View style={[styles.typeBadge, { backgroundColor: accentBg, borderColor: accent + "40" }]}>
+                    <Icon size={10} color={accent} strokeWidth={2} />
+                </View>
+            </View>
+
+            {/* Text */}
+            <View style={styles.textBlock}>
+                <Text style={[styles.title, { color: titleColor }]} numberOfLines={1}>
+                    {isBalanceHidden ? "Recent transaction" : `${transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)} ${amount} ${transaction.token}`}
+                </Text>
+                <Text style={[styles.sub, { color: subColor }]}>
+                    {isBalanceHidden ? "••••" : `≈ $${usdValue} USD`}
+                </Text>
+            </View>
+
+            <Text style={[styles.time, { color: mutedText }]}>
+                {transaction.time ? timeAgo(new Date(transaction.time).toISOString()) : ""}
+            </Text>
+        </>
     );
-  };
-
-  return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-        style={styles.card}
-        onPress={onPress}
-        disabled={isLoading || (!error && !transaction)}
-      >
-        <BlurView
-          intensity={isDarkMode ? 30 : 40}
-          tint={isDarkMode ? "dark" : "light"}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.content}>{renderContent()}</View>
-      </TouchableOpacity>
-    </View>
-  );
 };
 
-/**
- * TransactionContent Subcomponent
- * Displays transaction details when data is available
- */
-const TransactionContent: React.FC<{
-  isDarkMode: boolean;
-  isBalanceHidden: boolean;
-  transaction: FormattedTransaction;
-  tokenPrice: number;
-}> = ({ isDarkMode, isBalanceHidden, transaction, tokenPrice }) => {
-  const styles = createStyles(isDarkMode);
-  const tokenKey = transaction.token as keyof typeof TOKENS;
-  const tokenInfo = TOKENS[tokenKey];
-
-  const amount = Number(transaction.amount.toFixed(8));
-  const usdValue = Number((amount * tokenPrice).toFixed(8));
-
-  return (
-    <>
-      <View style={styles.iconBackground}>
-        <Image
-          source={{ uri: tokenInfo.logoURL }}
-          style={styles.tokenImage}
-        />
-      </View>
-      
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>
-          {isBalanceHidden
-            ? "Recent Transaction"
-            : `You ${transaction.type} ${amount} ${transaction.token}`}
-        </Text>
-        <Text style={styles.details}>
-          {isBalanceHidden ? "****" : `~${usdValue} USD`}
-        </Text>
-      </View>
-      
-      <Text style={styles.time}>
-        {transaction.time ? timeAgo(new Date(transaction.time).toISOString()) : ""}
-      </Text>
-    </>
-  );
-};
-
-/**
- * LoadingSkeleton Subcomponent
- * Shows animated placeholders during data fetch
- */
 const LoadingSkeleton: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
-  const styles = createStyles(isDarkMode);
-  
-  return (
-    <>
-      <View style={styles.iconBackground}>
-        <View style={[styles.skeleton, styles.skeletonIcon]} />
-      </View>
-      <View style={styles.textContainer}>
-        <View style={[styles.skeleton, styles.skeletonTitle]} />
-        <View style={[styles.skeleton, styles.skeletonDetails]} />
-      </View>
-      <View style={[styles.skeleton, styles.skeletonTime]} />
-    </>
-  );
+    const skBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+    return (
+        <>
+            <View style={[styles.skeletonCircle, { backgroundColor: skBg }]} />
+            <View style={styles.textBlock}>
+                <View style={[styles.skeletonLine, { width: 130, height: 14, backgroundColor: skBg }]} />
+                <View style={[styles.skeletonLine, { width: 80, height: 11, backgroundColor: skBg, marginTop: 8 }]} />
+            </View>
+            <View style={[styles.skeletonLine, { width: 38, height: 11, backgroundColor: skBg }]} />
+        </>
+    );
 };
 
-/**
- * ErrorState Subcomponent
- * Displays error message with icon
- */
-const ErrorState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
-  const styles = createStyles(isDarkMode);
-  
-  return (
-    <View style={styles.stateContainer}>
-      <Ionicons
-        name="alert-circle-outline"
-        size={24}
-        color={isDarkMode ? "#FF6B6B" : "#E74C3C"}
-      />
-      <Text style={[styles.stateText, { color: isDarkMode ? "#FF6B6B" : "#E74C3C" }]}>
-        Failed to load activity
-      </Text>
+const ErrorState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => (
+    <View style={styles.stateRow}>
+        <AlertCircle size={18} color={isDarkMode ? "#F87171" : "#EF4444"} strokeWidth={1.5} />
+        <Text style={[styles.stateText, { color: isDarkMode ? "#F87171" : "#EF4444", fontFamily: "Dank Mono" }]}>
+            Failed to load activity
+        </Text>
     </View>
-  );
-};
+);
 
-/**
- * EmptyState Subcomponent
- * Displays message when no transactions exist
- */
 const EmptyState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
-  const styles = createStyles(isDarkMode);
-  
-  return (
-    <View style={styles.stateContainer}>
-      <Ionicons
-        name="document-text-outline"
-        size={24}
-        color={isDarkMode ? "#A09CB8" : "#666"}
-      />
-      <Text style={[styles.stateText, { color: isDarkMode ? "#A09CB8" : "#666" }]}>
-        No recent activity
-      </Text>
-    </View>
-  );
+    const color = isDarkMode ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
+    return (
+        <View style={styles.stateRow}>
+            <FileText size={18} color={color} strokeWidth={1.5} />
+            <Text style={[styles.stateText, { color, fontFamily: "Dank Mono" }]}>
+                No recent activity
+            </Text>
+        </View>
+    );
 };
 
-const createStyles = (isDarkMode: boolean) =>
-  StyleSheet.create({
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+const LastTransaction: React.FC<LastTransactionProps> = ({
+    isDarkMode,
+    isBalanceHidden,
+    transaction,
+    tokenPrice,
+    isLoading,
+    error,
+    onPress,
+}) => {
+    const bg = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+    const border = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
+
+    // Accent bar color when we have a real transaction
+    const accentBarColor = transaction
+        ? getTxMeta(transaction.type, isDarkMode).accent
+        : "transparent";
+
+    const isDisabled = isLoading || (!error && !transaction);
+
+    return (
+        <View style={styles.container}>
+            <TouchableOpacity
+                style={[styles.card, { backgroundColor: bg, borderColor: border }]}
+                onPress={onPress}
+                disabled={isDisabled}
+                activeOpacity={0.65}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+                {/* Left accent bar — thin stripe that shows tx direction */}
+                <View style={[styles.accentBar, { backgroundColor: accentBarColor }]} />
+
+                <View style={styles.inner}>
+                    {isLoading && <LoadingSkeleton isDarkMode={isDarkMode} />}
+                    {!isLoading && error && <ErrorState isDarkMode={isDarkMode} />}
+                    {!isLoading && !error && !transaction && <EmptyState isDarkMode={isDarkMode} />}
+                    {!isLoading && !error && transaction && (
+                        <TransactionContent
+                            isDarkMode={isDarkMode}
+                            isBalanceHidden={isBalanceHidden}
+                            transaction={transaction}
+                            tokenPrice={tokenPrice}
+                        />
+                    )}
+                </View>
+            </TouchableOpacity>
+        </View>
+    );
+};
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
     container: {
-      paddingHorizontal: 20,
-      marginBottom: 30,
+        paddingHorizontal: 20,
+        marginBottom: 30,
     },
     card: {
-      borderRadius: 20,
-      overflow: "hidden",
-      borderWidth: 0.7,
-      borderColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.15)"
-        : "rgba(220, 220, 220, 0.5)",
+        borderRadius: 20,
+        borderWidth: 1,
+        overflow: "hidden",
+        flexDirection: "row",
+        minHeight: 76,
     },
-    content: {
-      flexDirection: "row",
-      alignItems: "center",
-      padding: 16,
-      minHeight: 82,
+    // Thin left bar — signature accent line
+    accentBar: {
+        width: 3,
+        borderTopLeftRadius: 20,
+        borderBottomLeftRadius: 20,
     },
-    iconBackground: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: isDarkMode
-        ? "rgba(167, 139, 250, 0.2)"
-        : "rgba(88, 86, 214, 0.15)",
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: 15,
-      borderWidth: 1,
-      borderColor: isDarkMode
-        ? "rgba(167, 139, 250, 0.4)"
-        : "rgba(88, 86, 214, 0.3)",
+    inner: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+    },
+    avatarWrap: {
+        width: 44,
+        height: 44,
+        marginRight: 14,
     },
     tokenImage: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
     },
-    textContainer: {
-      flex: 1,
+    typeBadge: {
+        position: "absolute",
+        bottom: -1,
+        right: -1,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 1,
+    },
+    textBlock: {
+        flex: 1,
     },
     title: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: isDarkMode ? "#FFFFFF" : "#000000",
-      marginBottom: 4,
+        fontFamily: "Dank Mono",
+        fontSize: 14,
+        includeFontPadding: false,
+        marginBottom: 5,
     },
-    details: {
-      fontSize: 13,
-      fontWeight: "500",
-      color: isDarkMode
-        ? "rgba(255, 255, 255, 0.6)"
-        : "rgba(0, 0, 0, 0.5)",
+    sub: {
+        fontFamily: "Dank Mono",
+        fontSize: 12,
+        includeFontPadding: false,
+    },
+    rightCol: {
+        alignItems: "flex-end",
+        marginLeft: 8,
     },
     time: {
-      fontSize: 12,
-      color: isDarkMode
-        ? "rgba(255, 255, 255, 0.4)"
-        : "rgba(0, 0, 0, 0.4)",
+        fontFamily: "Dank Mono",
+        fontSize: 11,
     },
-    stateContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 16,
-      paddingHorizontal: 10,
-      justifyContent: "center",
-      flex: 1,
+    stateRow: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        paddingVertical: 8,
     },
     stateText: {
-      fontSize: 16,
-      fontWeight: "600",
-      marginLeft: 12,
+        fontSize: 14,
     },
-    skeleton: {
-      backgroundColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.1)"
-        : "rgba(0, 0, 0, 0.1)",
-      borderRadius: 4,
+    skeletonCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        marginRight: 14,
     },
-    skeletonIcon: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
+    skeletonLine: {
+        borderRadius: 6,
     },
-    skeletonTitle: {
-      width: 120,
-      height: 16,
-      marginBottom: 6,
-    },
-    skeletonDetails: {
-      width: 80,
-      height: 13,
-    },
-    skeletonTime: {
-      width: 50,
-      height: 12,
-    },
-  });
+});
 
 export default LastTransaction;

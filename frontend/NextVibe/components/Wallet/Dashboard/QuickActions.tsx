@@ -1,127 +1,128 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
+import React, { useEffect, useRef } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
+import { ArrowDown, ArrowUp, ArrowLeftRight, Nfc } from "lucide-react-native";
 
 interface QuickActionsProps {
-  /** Controls dark/light theme styling */
-  isDarkMode: boolean;
-  /** Callback for receive action */
-  onReceive: () => void;
-  /** Callback for send action */
-  onSend: () => void;
-  /** Callback for swap action */
-  onSwap: () => void;
+    isDarkMode: boolean;
+    onReceive: () => void;
+    onSend: () => void;
+    onSwap: () => void;
+    onNfcDeposit: () => void;
 }
 
-interface ActionButtonData {
-  id: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
+function PulseDot({ isDarkMode }: { isDarkMode: boolean }) {
+    const opacity = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, { toValue: 0.2, duration: 900, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 1, duration: 900, useNativeDriver: true }),
+            ])
+        ).start();
+    }, []);
+
+    const color = isDarkMode ? "rgba(167,139,250,0.9)" : "rgba(109,40,217,0.7)";
+
+    return (
+        <Animated.View style={[styles.pulseDot, { backgroundColor: color, opacity }]} />
+    );
 }
 
-/**
- * QuickActions Component
- * 
- * Horizontal row of primary wallet actions.
- * Uses glassmorphic buttons with consistent spacing.
- * 
- * Actions:
- * - Receive: Navigate to deposit screen
- * - Send: Navigate to token selection for sending
- * - Swap: Shows coming soon notification
- * 
- * Design:
- * - Equal spacing for visual balance
- * - Icon-first design for quick recognition
- * - Blur backgrounds for depth
- * - Subtle borders for definition
- * 
- * @component
- */
+const ACTIONS = [
+    { id: "receive", Icon: ArrowDown, label: "Receive", pulse: false },
+    { id: "send", Icon: ArrowUp, label: "Send", pulse: false },
+    { id: "swap", Icon: ArrowLeftRight, label: "Swap", pulse: false },
+    { id: "nfc", Icon: Nfc, label: "NFC Deposit", pulse: true },
+];
+
 const QuickActions: React.FC<QuickActionsProps> = ({
-  isDarkMode,
-  onReceive,
-  onSend,
-  onSwap,
+    isDarkMode,
+    onReceive,
+    onSend,
+    onSwap,
+    onNfcDeposit,
 }) => {
-  const styles = createStyles(isDarkMode);
-  const iconColor = isDarkMode ? "#A78BFA" : "#5856D6";
+    const handlers = [onReceive, onSend, onSwap, onNfcDeposit];
 
-  const actions: ActionButtonData[] = [
-    {
-      id: "receive",
-      icon: "arrow-down-outline",
-      label: "Receive",
-      onPress: onReceive,
-    },
-    {
-      id: "send",
-      icon: "arrow-up-outline",
-      label: "Send",
-      onPress: onSend,
-    },
-    {
-      id: "swap",
-      icon: "swap-horizontal-outline",
-      label: "Swap",
-      onPress: onSwap,
-    },
-  ];
+    const bg = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+    const border = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
+    const iconColor = isDarkMode ? "rgba(196,167,255,0.9)" : "rgba(109,40,217,0.85)";
+    const labelColor = isDarkMode ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
 
-  return (
-    <View style={styles.container}>
-      {actions.map((action) => (
-        <View key={action.id} style={styles.actionWrapper}>
-          <TouchableOpacity
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            style={styles.actionButton}
-            onPress={action.onPress}
-          >
-            <BlurView
-              intensity={isDarkMode ? 40 : 40}
-              tint={isDarkMode ? "dark" : "light"}
-              style={StyleSheet.absoluteFill}
-            />
-            <Ionicons name={action.icon} size={26} color={iconColor} />
-          </TouchableOpacity>
-          <Text style={styles.actionLabel}>{action.label}</Text>
+    return (
+        <View style={styles.container}>
+            {ACTIONS.map((action, i) => (
+                <View key={action.id} style={styles.wrapper}>
+                    <TouchableOpacity
+                        onPress={handlers[i]}
+                        activeOpacity={0.6}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <View style={[styles.button, { backgroundColor: bg, borderColor: border }]}>
+                            <action.Icon size={22} color={iconColor} strokeWidth={1.5} />
+                            {action.pulse && <PulseDot isDarkMode={isDarkMode} />}
+                        </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.labelWrap}>
+                        <Text
+                            style={[styles.label, { color: labelColor }]}
+                            numberOfLines={1}
+                            textBreakStrategy="simple"
+                        >
+                            {action.label}
+                        </Text>
+                    </View>
+                </View>
+            ))}
         </View>
-      ))}
-    </View>
-  );
+    );
 };
 
-const createStyles = (isDarkMode: boolean) =>
-  StyleSheet.create({
+const BTN = 72;
+const RADIUS = 20;
+
+const styles = StyleSheet.create({
     container: {
-      flexDirection: "row",
-      justifyContent: "space-around",
-      paddingHorizontal: 10,
-      marginBottom: 30,
+        flexDirection: "row",
+        justifyContent: "space-around",
+        paddingHorizontal: 8,
+        marginBottom: 30,
+        alignItems: "flex-start",
     },
-    actionWrapper: {
-      alignItems: "center",
+    wrapper: {
+        alignItems: "center",
+        width: BTN,
     },
-    actionButton: {
-      width: 82,
-      height: 72,
-      borderRadius: 20,
-      justifyContent: "center",
-      alignItems: "center",
-      marginBottom: 8,
-      overflow: "hidden",
-      borderWidth: 0.7,
-      borderColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.2)"
-        : "rgba(220, 220, 220, 0.5)",
+    button: {
+        width: BTN,
+        height: 68,
+        borderRadius: RADIUS,
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 1,
+        marginBottom: 10,
     },
-    actionLabel: {
-      color: isDarkMode ? "#FFFFFF" : "#000000",
-      fontSize: 14,
-      fontWeight: "600",
+    pulseDot: {
+        position: "absolute",
+        top: 10,
+        right: 11,
+        width: 5,
+        height: 5,
+        borderRadius: 3,
     },
-  });
+    labelWrap: {
+        height: 17,
+        justifyContent: "flex-start",
+        alignItems: "center",
+    },
+    label: {
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        textAlign: "center",
+        lineHeight: 17,
+    },
+});
 
 export default QuickActions;
