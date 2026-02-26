@@ -1,7 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-
+import { Nfc } from "lucide-react-native"
 
 export function ShareViaNFC({
     handlePress 
@@ -18,7 +17,7 @@ export function ShareViaNFC({
                 >   
                     <View style={{flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5}}>
                         <Text style={styles.buttonText}>Share via NFC</Text>
-                        <MaterialCommunityIcons name="nfc" color={"white"} size={16}/>
+                        <Nfc color={"white"} size={16}/>
                     </View>
                     
             </LinearGradient>
@@ -42,7 +41,6 @@ const getStyles = () => StyleSheet.create({
     buttonText: {
         includeFontPadding: false,
         color: "white",
-        fontWeight: 600,
         fontSize: 16
     }
 })

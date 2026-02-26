@@ -25,10 +25,9 @@ export interface ShareModalProps {
 }
 
 const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
-    // Менший розмір — елегантніший ефект
-    const SIDE = 55;   // ширина бокових смуг
-    const BOTTOM = 70; // висота нижньої смуги
-    const CORNER = 65; // кутові акценти
+    const SIDE = 55;   
+    const BOTTOM = 70; 
+    const CORNER = 65; 
 
     return (
         <Modal
@@ -42,7 +41,6 @@ const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
                 pointerEvents="none"
                 style={[StyleSheet.absoluteFillObject, { opacity }]}
             >
-                {/* Ліва смуга — тонка, виражений градієнт */}
                 <LinearGradient
                     colors={[
                         'rgba(124, 58, 237, 0.55)',
@@ -54,7 +52,6 @@ const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
                     style={[StyleSheet.absoluteFillObject, { right: undefined, width: SIDE }]}
                 />
 
-                {/* Права смуга */}
                 <LinearGradient
                     colors={[
                         'rgba(139, 92, 246, 0)',
@@ -66,7 +63,6 @@ const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
                     style={[StyleSheet.absoluteFillObject, { left: undefined, width: SIDE }]}
                 />
 
-                {/* Нижня смуга — найвиразніша */}
                 <LinearGradient
                     colors={[
                         'rgba(109, 40, 217, 0)',
@@ -78,7 +74,6 @@ const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
                     style={[StyleSheet.absoluteFillObject, { top: undefined, height: BOTTOM }]}
                 />
 
-                {/* Нижній лівий кут */}
                 <LinearGradient
                     colors={['rgba(139, 92, 246, 0.38)', 'rgba(139, 92, 246, 0)']}
                     start={{ x: 0, y: 1 }}
@@ -92,7 +87,6 @@ const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
                     }}
                 />
 
-                {/* Нижній правий кут */}
                 <LinearGradient
                     colors={['rgba(139, 92, 246, 0)', 'rgba(139, 92, 246, 0.38)']}
                     start={{ x: 0, y: 0 }}
@@ -177,7 +171,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         setShowGlow(true);
         glowOpacity.setValue(0);
 
-        // Статусбар: м'який фіолетовий спалах на 1 секунду
         StatusBar.setBarStyle('light-content', true);
         StatusBar.setBackgroundColor('#5b21b6', true);
         setTimeout(() => {
@@ -186,13 +179,11 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         }, 1000);
 
         const anim = Animated.sequence([
-            // Швидкий спалах
             Animated.timing(glowOpacity, {
                 toValue: 1,
                 duration: 180,
                 useNativeDriver: true,
             }),
-            // Повільне, плавне згасання
             Animated.timing(glowOpacity, {
                 toValue: 0,
                 duration: 1100,
