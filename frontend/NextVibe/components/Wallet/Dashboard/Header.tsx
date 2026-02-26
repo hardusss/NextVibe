@@ -1,132 +1,92 @@
 import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
+import { ArrowLeft, Eye, EyeOff, ScrollText } from "lucide-react-native";
 
 interface HeaderProps {
-  /** Controls dark/light theme styling */
-  isDarkMode: boolean;
-  /** Current balance visibility state */
-  isBalanceHidden: boolean;
-  /** Callback to toggle balance visibility */
-  onToggleBalance: () => void;
-  /** Callback to navigate back */
-  onNavigateBack: () => void;
-  /** Callback to navigate to transactions screen */
-  onNavigateToTransactions: () => void;
+    isDarkMode: boolean;
+    isBalanceHidden: boolean;
+    onToggleBalance: () => void;
+    onNavigateBack: () => void;
+    onNavigateToTransactions: () => void;
 }
 
-/**
- * Header Component
- * 
- * Top navigation bar with glassmorphic design.
- * Provides navigation controls and utility actions.
- * 
- * Features:
- * - Back navigation button
- * - Balance visibility toggle
- * - Transactions history access
- * - Blur effect backgrounds
- * - Theme-aware colors
- * 
- * @component
- */
 const Header: React.FC<HeaderProps> = ({
-  isDarkMode,
-  isBalanceHidden,
-  onToggleBalance,
-  onNavigateBack,
-  onNavigateToTransactions,
+    isDarkMode,
+    isBalanceHidden,
+    onToggleBalance,
+    onNavigateBack,
+    onNavigateToTransactions,
 }) => {
-  const styles = createStyles(isDarkMode);
-  const iconColor = isDarkMode ? "#A78BFA" : "#5856D6";
+    const iconColor = isDarkMode ? "rgba(196,167,255,0.9)" : "rgba(109,40,217,0.85)";
+    const bg = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+    const border = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
 
-  return (
-    <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity
-        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-        style={[styles.iconButton, styles.backButton]}
-        onPress={onNavigateBack}
-      >
-        <BlurView
-          intensity={isDarkMode ? 40 : 80}
-          tint={isDarkMode ? "dark" : "light"}
-          style={StyleSheet.absoluteFill}
-        />
-        <Ionicons name="arrow-back" size={24} color={iconColor} />
-      </TouchableOpacity>
+    return (
+        <View style={styles.container}>
+            {/* Back Button — wider pill */}
+            <TouchableOpacity
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                style={[styles.button, styles.backButton, { backgroundColor: bg, borderColor: border }]}
+                onPress={onNavigateBack}
+                activeOpacity={0.6}
+            >
+                <ArrowLeft size={20} color={iconColor} strokeWidth={1.5} />
+            </TouchableOpacity>
 
-      {/* Right Actions Group */}
-      <View style={styles.rightGroup}>
-        {/* Balance Visibility Toggle */}
-        <TouchableOpacity
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          style={styles.iconButton}
-          onPress={onToggleBalance}
-        >
-          <BlurView
-            intensity={isDarkMode ? 40 : 80}
-            tint={isDarkMode ? "dark" : "light"}
-            style={StyleSheet.absoluteFill}
-          />
-          <Ionicons
-            name={isBalanceHidden ? "eye-off-outline" : "eye-outline"}
-            size={24}
-            color={iconColor}
-          />
-        </TouchableOpacity>
+            {/* Right group */}
+            <View style={styles.rightGroup}>
+                <TouchableOpacity
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    style={[styles.button, { backgroundColor: bg, borderColor: border }]}
+                    onPress={onToggleBalance}
+                    activeOpacity={0.6}
+                >
+                    {isBalanceHidden
+                        ? <EyeOff size={20} color={iconColor} strokeWidth={1.5} />
+                        : <Eye size={20} color={iconColor} strokeWidth={1.5} />
+                    }
+                </TouchableOpacity>
 
-        {/* Transactions Button */}
-        <TouchableOpacity
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          style={[styles.iconButton, styles.transactionsButton]}
-          onPress={onNavigateToTransactions}
-        >
-          <BlurView
-            intensity={isDarkMode ? 40 : 80}
-            tint={isDarkMode ? "dark" : "light"}
-            style={StyleSheet.absoluteFill}
-          />
-          <Ionicons name="receipt-outline" size={24} color={iconColor} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+                <TouchableOpacity
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    style={[styles.button, styles.rightGap, { backgroundColor: bg, borderColor: border }]}
+                    onPress={onNavigateToTransactions}
+                    activeOpacity={0.6}
+                >
+                    <ScrollText size={20} color={iconColor} strokeWidth={1.5} />
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
 };
 
-const createStyles = (isDarkMode: boolean) =>
-  StyleSheet.create({
+const styles = StyleSheet.create({
     container: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      marginBottom: 30,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        marginBottom: 30,
     },
     rightGroup: {
-      flexDirection: "row",
-      alignItems: "center",
+        flexDirection: "row",
+        alignItems: "center",
     },
-    iconButton: {
-      width: 50,
-      height: 54,
-      borderRadius: 22,
-      justifyContent: "center",
-      alignItems: "center",
-      overflow: "hidden",
-      borderWidth: 1,
-      borderColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.15)"
-        : "rgba(220, 220, 220, 0.5)",
+    button: {
+        height: 54,
+        width: 54,
+        borderRadius: 20,
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 1,
     },
     backButton: {
-      width: 84,
+        width: 84,
     },
-    transactionsButton: {
-      marginLeft: 12,
+    rightGap: {
+        marginLeft: 12,
     },
-  });
+});
 
 export default Header;

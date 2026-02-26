@@ -1,65 +1,43 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { FlaskConical } from "lucide-react-native";
 
 interface DevnetBannerProps {
-  /** Controls dark/light theme styling */
-  isDarkMode: boolean;
+    isDarkMode: boolean;
 }
 
-/**
- * DevnetBanner Component
- * 
- * Informational banner indicating the app is running on devnet.
- * Provides clear visual distinction from production environment.
- * 
- * Design:
- * - Orange color scheme for attention without alarm
- * - Flask icon for laboratory/testing context
- * - Semi-transparent background for subtlety
- * - Rounded corners matching overall design language
- * 
- * Usage:
- * - Always visible in devnet/testnet mode
- * - Should be removed or hidden in production
- * 
- * @component
- */
 const DevnetBanner: React.FC<DevnetBannerProps> = ({ isDarkMode }) => {
-  const styles = createStyles(isDarkMode);
+    const bg = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+    const border = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
+    const color = isDarkMode ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.32)";
 
-  return (
-    <View style={styles.container}>
-      <Ionicons
-        name="flask-outline"
-        size={18}
-        color={isDarkMode ? "#FFA500" : "#D2691E"}
-      />
-      <Text style={styles.text}>Devnet Mode</Text>
-    </View>
-  );
+    return (
+        <View style={[styles.container, { backgroundColor: bg, borderColor: border }]}>
+            <FlaskConical size={13} color={color} strokeWidth={1.5} />
+            <Text style={[styles.text, { color }]}>devnet</Text>
+        </View>
+    );
 };
 
-const createStyles = (isDarkMode: boolean) =>
-  StyleSheet.create({
+const styles = StyleSheet.create({
     container: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 10,
-      backgroundColor: isDarkMode
-        ? "rgba(255, 165, 0, 0.2)"
-        : "rgba(255, 165, 0, 0.3)",
-      borderRadius: 12,
-      marginHorizontal: 20,
-      marginTop: 10,
+        flexDirection: "row",
+        alignItems: "center",
+        alignSelf: "center",
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginTop: 10,
+        marginBottom: 4,
     },
     text: {
-      color: isDarkMode ? "#FFA500" : "#D2691E",
-      fontSize: 14,
-      fontWeight: "600",
-      marginLeft: 8,
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        letterSpacing: 1.5,
+        includeFontPadding: false,
     },
-  });
+});
 
 export default DevnetBanner;

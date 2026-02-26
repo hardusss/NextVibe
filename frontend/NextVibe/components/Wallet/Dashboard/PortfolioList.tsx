@@ -1,205 +1,190 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, StyleSheet, Dimensions } from "react-native";
+import { Wallet, BriefcaseBusiness } from "lucide-react-native";
 import { TokenAsset } from "@/hooks/usePortfolio";
 import TokenItem from "./TokenItem";
 
+const SCREEN_H = Dimensions.get("window").height;
+// Approximate height of content above PortfolioList
+const ABOVE_H = 480;
+
 interface PortfolioListProps {
-  /** Controls dark/light theme styling */
-  isDarkMode: boolean;
-  /** Determines if token amounts should be masked */
-  isBalanceHidden: boolean;
-  /** Array of token assets to display */
-  tokens: TokenAsset[];
-  /** Loading state for skeleton display */
-  isLoading: boolean;
+    isDarkMode: boolean;
+    isBalanceHidden: boolean;
+    tokens: TokenAsset[];
+    isLoading: boolean;
 }
 
-/**
- * PortfolioList Component
- * * Renders scrollable list of user's token holdings.
- * Handles loading and empty states appropriately.
- */
-const PortfolioList: React.FC<PortfolioListProps> = ({
-  isDarkMode,
-  isBalanceHidden,
-  tokens,
-  isLoading,
-}) => {
-  const styles = createStyles(isDarkMode);
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-  return (
-    <View>
-      <View style={styles.header}>
-        <Text style={styles.title}>Portfolio</Text>
-      </View>
+const SkeletonItem: React.FC<{ isDarkMode: boolean; isLast?: boolean }> = ({ isDarkMode, isLast }) => {
+    const sk = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+    const divider = isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
 
-      {isLoading ? (
-        <SkeletonList styles={styles} />
-      ) : tokens.length === 0 ? (
-        <EmptyState isDarkMode={isDarkMode} />
-      ) : (
-        tokens.map((token) => (
-          <TokenItem
-            key={token.symbol}
-            token={token}
-            isDarkMode={isDarkMode}
-            isBalanceHidden={isBalanceHidden}
-          />
-        ))
-      )}
-    </View>
-  );
-};
-
-// Interface for subcomponents that need access to the computed styles
-interface StyleProps {
-  styles: ReturnType<typeof createStyles>;
-}
-
-/**
- * SkeletonList Subcomponent
- * Renders multiple placeholder rows during loading
- */
-const SkeletonList: React.FC<StyleProps> = ({ styles }) => {
-  return (
-    <>
-      {Array(3)
-        .fill(null)
-        .map((_, index) => (
-          <SkeletonItem key={`skeleton-${index}`} styles={styles} />
-        ))}
-    </>
-  );
-};
-
-/**
- * SkeletonItem Subcomponent
- * Single animated placeholder row
- */
-const SkeletonItem: React.FC<StyleProps> = ({ styles }) => {
-  return (
-    <View style={styles.skeletonItem}>
-      <View style={styles.skeletonLeft}>
-        <View style={styles.skeletonIcon} />
-        <View>
-          <View style={[styles.skeleton, styles.skeletonName]} />
-          <View style={[styles.skeleton, styles.skeletonPrice]} />
+    return (
+        <View style={[
+            styles.skItem,
+            !isLast && { borderBottomWidth: 1, borderBottomColor: divider },
+        ]}>
+            <View style={[styles.skCircle, { backgroundColor: sk }]} />
+            <View style={styles.skCenter}>
+                <View style={[styles.skLine, { width: 80, height: 13, backgroundColor: sk }]} />
+                <View style={[styles.skLine, { width: 55, height: 10, backgroundColor: sk, marginTop: 6 }]} />
+            </View>
+            <View style={styles.skRight}>
+                <View style={[styles.skLine, { width: 58, height: 13, backgroundColor: sk }]} />
+                <View style={[styles.skLine, { width: 40, height: 10, backgroundColor: sk, marginTop: 6 }]} />
+            </View>
         </View>
-      </View>
-      <View style={styles.skeletonRight}>
-        <View style={[styles.skeleton, styles.skeletonAmount]} />
-        <View style={[styles.skeleton, styles.skeletonValue]} />
-      </View>
-    </View>
-  );
+    );
 };
 
-/**
- * EmptyState Subcomponent
- * Displays message when portfolio is empty
- */
+// ─── Empty ────────────────────────────────────────────────────────────────────
+
 const EmptyState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
-  const styles = createStyles(isDarkMode);
-  
-  return (
-    <View style={styles.emptyContainer}>
-      <Ionicons
-        name="wallet-outline"
-        size={48}
-        color={isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.3)"}
-      />
-      <Text style={styles.emptyText}>No assets found</Text>
-    </View>
-  );
+    const color = isDarkMode ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.2)";
+    return (
+        <View style={styles.emptyWrap}>
+            <Wallet size={32} color={color} strokeWidth={1.2} />
+            <Text style={[styles.emptyText, { color }]}>No assets found</Text>
+        </View>
+    );
 };
 
-const createStyles = (isDarkMode: boolean) =>
-  StyleSheet.create({
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+const PortfolioList: React.FC<PortfolioListProps> = ({
+    isDarkMode,
+    isBalanceHidden,
+    tokens,
+    isLoading,
+}) => {
+    const sheetBg = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
+    const border = isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.09)";
+    const titleColor = isDarkMode ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.82)";
+    const mutedColor = isDarkMode ? "rgba(255,255,255,0.32)" : "rgba(0,0,0,0.28)";
+    const iconColor = isDarkMode ? "rgba(196,167,255,0.8)" : "rgba(109,40,217,0.75)";
+    const handleColor = isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)";
+
+    const count = !isLoading ? tokens.length : null;
+
+    return (
+        <View style={[styles.sheet, { backgroundColor: sheetBg, borderColor: border }]}>
+            {/* Drag handle */}
+            <View style={[styles.handle, { backgroundColor: handleColor }]} />
+
+            {/* Header */}
+            <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                    <BriefcaseBusiness size={15} color={iconColor} strokeWidth={1.5} />
+                    <Text style={[styles.title, { color: titleColor }]}>Portfolio</Text>
+                </View>
+                {count !== null && (
+                    <Text style={[styles.count, { color: mutedColor }]}>
+                        {count} token{count !== 1 ? "s" : ""}
+                    </Text>
+                )}
+            </View>
+
+            {/* Content */}
+            <View style={styles.content}>
+                {isLoading ? (
+                    <>
+                        <SkeletonItem isDarkMode={isDarkMode} />
+                        <SkeletonItem isDarkMode={isDarkMode} />
+                        <SkeletonItem isDarkMode={isDarkMode} isLast />
+                    </>
+                ) : tokens.length === 0 ? (
+                    <EmptyState isDarkMode={isDarkMode} />
+                ) : (
+                    tokens.map((token, i) => (
+                        <TokenItem
+                            key={token.symbol}
+                            token={token}
+                            isDarkMode={isDarkMode}
+                            isBalanceHidden={isBalanceHidden}
+                            isLast={i === tokens.length - 1}
+                        />
+                    ))
+                )}
+            </View>
+        </View>
+    );
+};
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+    sheet: {
+        marginHorizontal: 0,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        borderWidth: 1,
+        borderBottomWidth: 0,
+        minHeight: SCREEN_H - ABOVE_H,
+    },
+    handle: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        alignSelf: "center",
+        marginTop: 12,
+        marginBottom: 4,
+    },
     header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 20,
-      marginBottom: 16,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+    },
+    headerLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
     },
     title: {
-      fontSize: 20,
-      fontWeight: "700",
-      color: isDarkMode ? "#FFFFFF" : "#000000",
+        fontFamily: "Dank Mono Bold",
+        fontSize: 16,
+        includeFontPadding: false,
     },
-    emptyContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 40,
+    count: {
+        fontFamily: "Dank Mono",
+        fontSize: 12,
+        includeFontPadding: false,
+    },
+    content: {
+        paddingHorizontal: 4,
+    },
+
+    // Skeleton
+    skItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+    },
+    skCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        marginRight: 12,
+    },
+    skCenter: { flex: 1 },
+    skRight: { alignItems: "flex-end" },
+    skLine: { borderRadius: 5 },
+
+    // Empty
+    emptyWrap: {
+        alignItems: "center",
+        paddingVertical: 40,
+        gap: 10,
     },
     emptyText: {
-      textAlign: "center",
-      marginTop: 16,
-      fontSize: 16,
-      color: isDarkMode
-        ? "rgba(255, 255, 255, 0.4)"
-        : "rgba(0, 0, 0, 0.4)",
+        fontFamily: "Dank Mono",
+        fontSize: 13,
+        includeFontPadding: false,
     },
-    // --- Skeleton Styles ---
-    skeletonItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingVertical: 15,
-      paddingHorizontal: 20,
-      borderBottomWidth: 0.5,
-      borderBottomColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.1)"
-        : "rgba(0, 0, 0, 0.08)",
-    },
-    skeletonLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    skeletonRight: {
-      alignItems: "flex-end",
-    },
-    // Base skeleton style (background color)
-    skeleton: {
-      backgroundColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.1)"
-        : "rgba(0, 0, 0, 0.1)",
-      borderRadius: 4,
-    },
-    skeletonIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.1)"
-        : "rgba(0, 0, 0, 0.1)",
-      marginRight: 15,
-    },
-    skeletonName: {
-      width: 80,
-      height: 16,
-      marginBottom: 6,
-    },
-    skeletonPrice: {
-      width: 60,
-      height: 13,
-      backgroundColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.05)"
-        : "rgba(0, 0, 0, 0.05)",
-    },
-    skeletonAmount: {
-      width: 70,
-      height: 16,
-      marginBottom: 6,
-    },
-    skeletonValue: {
-      width: 90,
-      height: 13,
-      backgroundColor: isDarkMode
-        ? "rgba(255, 255, 255, 0.05)"
-        : "rgba(0, 0, 0, 0.05)",
-    },
-  });
+});
 
 export default PortfolioList;
