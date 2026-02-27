@@ -45,6 +45,11 @@
               "scheme": "https",
               "host": "nextvibe.io",
               "pathPrefix": "/u"
+            },
+            {
+              "scheme": "https",
+              "host": "nextvibe.io",
+              "pathPrefix": "/transaction"
             }
           ],
           "category": [
