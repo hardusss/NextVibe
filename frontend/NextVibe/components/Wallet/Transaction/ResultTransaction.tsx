@@ -1,79 +1,55 @@
 import React, { useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, useColorScheme, TouchableOpacity, Animated, StatusBar } from 'react-native';
+import {
+    View, Text, StyleSheet, useColorScheme,
+    TouchableOpacity, Animated, StatusBar, Platform
+} from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowLeft } from 'lucide-react-native';
 import usePortfolio from '@/hooks/usePortfolio';
 import { TransactionDetailsCard } from './TransactionDetailsCard';
 
-/**
- * Transaction Result Screen
- * * Displays a success animation and detailed information about a completed transaction.
- * Animates elements into view upon mounting.
- * * @screen
- */
 export default function ResultTransaction() {
-    // --- 1. Get Params & Data ---
     const params = useLocalSearchParams();
     const { from, to, amount, tx_url } = params;
-    
-    // Handle potential array format for symbol param
     const symbolStr = Array.isArray(params.symbol) ? params.symbol[0] : params.symbol;
 
     const { data } = usePortfolio();
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
-    
-    // Memoize styles to prevent recreation on every render
-    const styles = useMemo(() => createScreenStyles(isDark), [isDark]);
 
-    // --- 2. Calculate Transaction Metadata ---
-    // Find the relevant token to get price and icon
     const tokenInfo = data.tokens.find(t => t.symbol === symbolStr);
     const icon = tokenInfo?.logoURI;
-    const price = tokenInfo?.price || 0;
-    
-    // Calculate value of the transaction at current price
-    const transactionValueUsd = (Number(amount) * price).toFixed(2);
+    const transactionValue = ((Number(amount) * (tokenInfo?.price || 0))).toFixed(2);
 
-    // --- 3. Animations ---
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(50)).current;
+    const slideAnim = useRef(new Animated.Value(32)).current;
 
-    /**
-     * Trigger entry animations when screen gains focus
-     */
-    useFocusEffect(
-        useCallback(() => {
-            Animated.parallel([
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 800,
-                    delay: 300,
-                    useNativeDriver: true,
-                }),
-                Animated.spring(slideAnim, {
-                    toValue: 0,
-                    tension: 50,
-                    friction: 7,
-                    delay: 300,
-                    useNativeDriver: true,
-                })
-            ]).start();
-        }, [fadeAnim, slideAnim])
-    );
+    useFocusEffect(useCallback(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, { toValue: 1, duration: 700, delay: 250, useNativeDriver: true }),
+            Animated.spring(slideAnim, { toValue: 0, tension: 55, friction: 8, delay: 250, useNativeDriver: true }),
+        ]).start();
+    }, []));
+
+    const mainColor = isDark ? 'rgba(255,255,255,0.88)' : 'rgba(0,0,0,0.82)';
+    const mutedColor = isDark ? 'rgba(255,255,255,0.38)' : 'rgba(0,0,0,0.35)';
+    const btnBg = isDark ? 'rgba(196,167,255,0.15)' : 'rgba(109,40,217,0.1)';
+    const btnBorder = isDark ? 'rgba(196,167,255,0.35)' : 'rgba(109,40,217,0.25)';
+    const btnText = isDark ? 'rgba(196,167,255,0.95)' : 'rgba(109,40,217,0.9)';
 
     return (
         <LinearGradient
             colors={isDark ? ['#0A0410', '#1a0a2e', '#0A0410'] : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']}
-            style={{flex: 1}}
+            style={styles.root}
         >
-            <View style={styles.container}>
-                 <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
+            <StatusBar backgroundColor={isDark ? '#0A0410' : '#fff'} barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-                <View style={styles.contentContainer}>
-                    {/* Success Animation */}
-                    <View style={styles.lottieContainer}>
+            <View style={styles.container}>
+                <View style={styles.content}>
+                    {/* Lottie */}
+                    <View style={styles.lottieWrap}>
                         <LottieView
                             source={require('@/assets/lottie/success.json')}
                             autoPlay
@@ -81,23 +57,19 @@ export default function ResultTransaction() {
                             style={{ width: '100%', height: '100%' }}
                         />
                     </View>
-                    
-                    <Text style={styles.title}>Transaction Successful!</Text>
-                    <Text style={styles.subtitle}>Your funds have been sent.</Text>
 
-                    {/* Animated Details Card */}
-                    <Animated.View 
-                        style={{ 
-                            width: '100%', 
-                            opacity: fadeAnim, 
-                            transform: [{ translateY: slideAnim }] 
-                        }}
-                    >
-                        <TransactionDetailsCard 
+                    <Animated.View style={{ alignItems: 'center', opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+                        <Text style={[styles.title, { color: mainColor }]}>Sent successfully</Text>
+                        <Text style={[styles.subtitle, { color: mutedColor }]}>Your funds are on their way</Text>
+                    </Animated.View>
+
+                    {/* Details card */}
+                    <Animated.View style={{ width: '100%', opacity: fadeAnim, transform: [{ translateY: slideAnim }], marginTop: 24 }}>
+                        <TransactionDetailsCard
                             amount={amount as string}
                             symbol={symbolStr as string}
                             icon={icon}
-                            usdValue={transactionValueUsd}
+                            usdValue={transactionValue}
                             from={from as string}
                             to={to as string}
                             txUrl={tx_url as string}
@@ -106,62 +78,53 @@ export default function ResultTransaction() {
                     </Animated.View>
                 </View>
 
-                {/* Return Button */}
-                <TouchableOpacity 
-                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                    style={styles.button} 
-                    onPress={() => router.push("/wallet-dash")}
+                {/* Back button */}
+                <TouchableOpacity
+                    style={[styles.backBtn, { backgroundColor: btnBg, borderColor: btnBorder }]}
+                    onPress={() => router.push('/wallet-dash')}
+                    activeOpacity={0.65}
                 >
-                    <Text style={styles.buttonText}>Back to Wallet</Text>
+                    <ArrowLeft size={16} color={btnText} strokeWidth={1.8} />
+                    <Text style={[styles.backText, { color: btnText }]}>Back to Wallet</Text>
                 </TouchableOpacity>
             </View>
         </LinearGradient>
     );
 }
 
-/**
- * Screen-level styles
- */
-const createScreenStyles = (isDark: boolean) => StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: 'transparent',
-        padding: 20,
-        justifyContent: 'space-between',
-    },
-    contentContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    lottieContainer: {
-        width: 200,
-        height: 200,
-    },
+const styles = StyleSheet.create({
+    root: { flex: 1 },
+    container: { flex: 1, paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 44, paddingBottom: Platform.OS === 'ios' ? 36 : 24, justifyContent: 'space-between' },
+    content: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+    lottieWrap: { width: 160, height: 160, marginBottom: 8 },
+
     title: {
-        color: isDark ? '#FFFFFF' : '#000',
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginTop: 20,
-        marginBottom: 10,
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 22,
+        includeFontPadding: false,
+        marginBottom: 6,
     },
     subtitle: {
-        color: isDark ? '#A09CB8' : '#666',
-        fontSize: 16,
+        fontFamily: 'Dank Mono',
+        fontSize: 13,
+        includeFontPadding: false,
         textAlign: 'center',
-        marginBottom: 30,
     },
-    button: {
-        width: '100%',
-        backgroundColor: '#A78BFA',
-        padding: 16,
-        borderRadius: 16,
+
+    backBtn: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 20,
+        justifyContent: 'center',
+        gap: 8,
+        height: 54,
+        borderRadius: 27,
+        borderWidth: 1,
+        width: '100%',
     },
-    buttonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold',
+    backText: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 14,
+        includeFontPadding: false,
     },
 });
