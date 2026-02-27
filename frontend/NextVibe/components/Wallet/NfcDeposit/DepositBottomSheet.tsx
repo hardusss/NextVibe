@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
 import {
     useColorScheme, StyleSheet, Text, TextInput,
-    TouchableOpacity, View, Pressable, Vibration, Alert
+    TouchableOpacity, View, Pressable, Vibration
 } from 'react-native';
 import {
     BottomSheetModal,
@@ -20,6 +20,8 @@ import { BlurView } from '@react-native-community/blur';
 import useWalletAddress from '@/hooks/useWalletAddress';
 import { HCESession, NFCTagType4, NFCTagType4NDEFContentType } from 'react-native-hce';
 
+import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
+
 export interface DepositSheetRef {
     present: () => void;
     dismiss: () => void;
@@ -28,7 +30,6 @@ export interface DepositSheetRef {
 const AVAILABLE_TOKENS = [TOKENS.SOL, TOKENS.USDC];
 const DECIMAL_LIMIT = 8;
 
-// Create animatable NFC icon
 const AnimatedNfc = Animated.createAnimatedComponent(Nfc);
 
 export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProps) => {
@@ -75,17 +76,25 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
     const [selectedToken, setSelectedToken] = useState(TOKENS.SOL.symbol);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
 
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastIsSuccess, setToastIsSuccess] = useState(true);
+
     const { address } = useWalletAddress();
 
     const hceSessionRef = useRef<any>(null);
     const removeListenerRef = useRef<(() => void) | null>(null);
     const lastReadTimestamp = useRef<number>(0);
 
-    // Reanimated shared values for pulsing effect
     const pulseScale = useSharedValue(1);
     const pulseOpacity = useSharedValue(1);
 
-    // Handle pulse animation based on broadcasting state
+    const showToast = (message: string, isSuccess: boolean) => {
+        setToastMessage(message);
+        setToastIsSuccess(isSuccess);
+        setToastVisible(true);
+    };
+
     useEffect(() => {
         if (isBroadcasting) {
             pulseScale.value = withRepeat(
@@ -109,7 +118,6 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
         opacity: pulseOpacity.value,
     }));
 
-    // Safely stop HCE session
     const stopHceTransaction = async () => {
         try {
             if (removeListenerRef.current) {
@@ -166,19 +174,18 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
 
             removeListenerRef.current = session.on(HCESession.Events.HCE_STATE_READ, () => {
                 const now = Date.now();
-                // Debounce reads
                 if (now - lastReadTimestamp.current > 2000) {
                     console.log("✅ Valid read!");
                     lastReadTimestamp.current = now;
 
                     Vibration.vibrate([0, 100, 100, 100]);
-                    Alert.alert("Success!", "NFC details sent to the other phone.");
+                    showToast("NFC details sent successfully!", true);
                     stopHceTransaction();
                 }
             });
 
         } catch (error: any) {
-            Alert.alert("Error", "Failed to start NFC. Please try again.");
+            showToast("Failed to start NFC. Please try again.", false);
             setIsBroadcasting(false);
             console.error("❌ Failed to start HCE:", error);
         }
@@ -211,6 +218,13 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
             onDismiss={stopHceTransaction}
         >
             <BottomSheetView style={[styles.container, { backgroundColor: bg }]}>
+
+                <Web3Toast
+                    visible={toastVisible}
+                    message={toastMessage}
+                    isSuccess={toastIsSuccess}
+                    onHide={() => setToastVisible(false)}
+                />
 
                 <View style={styles.header}>
                     <Nfc size={16} color={iconColor} strokeWidth={1.5} />
@@ -270,7 +284,6 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
                     })}
                 </View>
 
-                {/* Main Action Button */}
                 <TouchableOpacity
                     onPress={isBroadcasting ? stopHceTransaction : startHceTransaction}
                     style={[
@@ -287,7 +300,6 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
                 >
                     {isBroadcasting ? (
                         <>
-                            {/* Animated NFC Icon */}
                             <AnimatedNfc
                                 size={18}
                                 color={isDark ? '#d8b4fe' : '#7c3aed'}
