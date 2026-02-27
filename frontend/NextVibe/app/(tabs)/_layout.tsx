@@ -115,7 +115,7 @@ export default function Layout() {
         "transactions", "transaction-detail", "chat-room",
         "chats", "follows-screen", "notifications",
         "user-banned", "wallet-init", "wallet-dash",
-        "wallet-select"];
+        "wallet-select", "send"];
 
     const tabs = [
         { name: "home", IconOutline: House, IconFilled: House },
