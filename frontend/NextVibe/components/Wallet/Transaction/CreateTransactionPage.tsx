@@ -1,245 +1,313 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, Text, TextInput, useColorScheme, Animated, TouchableOpacity, ScrollView, RefreshControl, Vibration, Keyboard, StatusBar } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import {
+    View, Text, TextInput, StyleSheet,
+    Animated, TouchableOpacity, ScrollView, RefreshControl,
+    Vibration, Keyboard, StatusBar, Platform, Modal
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useColorScheme } from 'react-native';
+import { ArrowLeft, AlertCircle, ArrowDown, ChevronDown } from 'lucide-react-native';
 
-// Hooks
-import useTransaction from '@/hooks/useTransaction'; 
-import usePortfolio from '@/hooks/usePortfolio'; 
-import { useWallet } from '@lazorkit/wallet-mobile-adapter';
-import { useTransactionForm } from '@/hooks/useTransactionForm'; 
+import useTransaction from '@/hooks/useTransaction';
+import usePortfolio from '@/hooks/usePortfolio';
+import { useTransactionForm } from '@/hooks/useTransactionForm';
 
-// Components
 import { SwipeButton } from './SwipeButton';
 import TokenInfoCard from './TokenInfoCard';
 import LazorKitShield from './LazorKitShield';
+import useWalletAddress from '@/hooks/useWalletAddress';
 
-// Styles
-import createTransactionStyles from '@/styles/create.transaction.style';
-
-/**
- * Create Transaction Screen
- * Allows users to send crypto assets with a swipe-to-confirm UX.
- * @screen
- */
 export default function CreateTransactionScreen() {
-    const { symbol } = useLocalSearchParams();
+    const { token, symbol, address, amount: queryAmount } = useLocalSearchParams();
     const isDark = useColorScheme() === 'dark';
-    const styles = createTransactionStyles(isDark);
     const router = useRouter();
 
-    // Hooks & Context
     const { sendTransaction } = useTransaction();
     const { data, refresh } = usePortfolio();
-    const { smartWalletPubkey } = useWallet();
+    const { address: smartWalletPubkey, walletType } = useWalletAddress();
 
-    // 1. Token Resolution Logic
-    const incomingSymbol = Array.isArray(symbol) ? symbol[0] : symbol;
-    const liveToken = data.tokens.find(t => t.symbol === incomingSymbol);
-    
-    // Anti-Flicker: Cache token data to prevent UI jumps during refresh
+    const rawSymbol = token || symbol;
+    const incomingSymbol = Array.isArray(rawSymbol) ? rawSymbol[0] : rawSymbol;
+    const incomingAddress = Array.isArray(address) ? address[0] : address;
+    const incomingAmount = Array.isArray(queryAmount) ? queryAmount[0] : queryAmount;
+
+    const [selectedTokenSymbol, setSelectedTokenSymbol] = useState(incomingSymbol || (data.tokens[0]?.symbol));
+    const [tokenPickerVisible, setTokenPickerVisible] = useState(false);
+
+    const liveToken = data.tokens.find(t => t.symbol === selectedTokenSymbol);
     const [cachedToken, setCachedToken] = useState(liveToken);
+
     useEffect(() => { if (liveToken) setCachedToken(liveToken); }, [liveToken]);
 
     const activeToken = liveToken || cachedToken;
-    const tokenSymbolStr = incomingSymbol || activeToken?.symbol || "";
-    
-    // UI Safe Values
+    const tokenSymbolStr = selectedTokenSymbol || activeToken?.symbol || "";
     const currentBalance = activeToken?.amount ?? 0;
     const currentUsdValue = activeToken?.valueUsd ?? 0;
-    const tokenName = activeToken?.name ?? tokenSymbolStr; 
+    const tokenName = activeToken?.name ?? tokenSymbolStr;
     const tokenIcon = activeToken?.logoURI;
 
-    // 2. Form Logic (via Custom Hook) 
-    const { 
-        recipient, 
-        setRecipient, 
-        amount, 
-        setAmount, 
-        handleMax, 
-        validate: validateForm, 
-        resetForm: clearInputs 
-    } = useTransactionForm();
+    const tokenPrice = currentBalance > 0 ? currentUsdValue / currentBalance : 0;
 
-    // 3. UI State
+    const { recipient, setRecipient, amount, setAmount, handleMax, validate, resetForm } = useTransactionForm();
+
+    const typedAmountNum = Number(amount) || 0;
+    const typedAmountUsd = (typedAmountNum * tokenPrice).toFixed(2);
+
+    useEffect(() => {
+        if (incomingAddress) setRecipient(incomingAddress);
+        if (incomingAmount) setAmount(incomingAmount);
+    }, [incomingAddress, incomingAmount]);
+
+    const handleTokenSelect = (newSymbol: string) => {
+        setSelectedTokenSymbol(newSymbol);
+        setAmount('');
+        setTokenPickerVisible(false);
+        Vibration.vibrate(50);
+    };
+
+    const handlePercentage = (percent: number) => {
+        if (currentBalance <= 0) return;
+        const calc = (currentBalance * percent).toFixed(6);
+        const finalVal = parseFloat(calc).toString();
+        setAmount(finalVal);
+        Vibration.vibrate(30);
+    };
+
     const [isSuccess, setIsSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isFailed, setIsFailed] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
+    const [errorMsg, setErrorMsg] = useState('');
     const [refreshing, setRefreshing] = useState(false);
-    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const [kbVisible, setKbVisible] = useState(false);
 
-    // Refs for stability in callbacks
     const recipientRef = useRef(recipient);
     const amountRef = useRef(amount);
     const symbolRef = useRef(tokenSymbolStr);
 
-    // Sync refs with state
     useEffect(() => { recipientRef.current = recipient; }, [recipient]);
     useEffect(() => { amountRef.current = amount; }, [amount]);
     useEffect(() => { if (tokenSymbolStr) symbolRef.current = tokenSymbolStr; }, [tokenSymbolStr]);
 
-    // Keyboard Listeners
     useEffect(() => {
-        const showSubscription = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-        const hideSubscription = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
-        return () => { showSubscription.remove(); hideSubscription.remove(); };
+        const show = Keyboard.addListener('keyboardDidShow', () => setKbVisible(true));
+        const hide = Keyboard.addListener('keyboardDidHide', () => setKbVisible(false));
+        return () => { show.remove(); hide.remove(); };
     }, []);
 
-    // 4. Animation Setup
-    const errorAnimation = useRef(new Animated.Value(0)).current;
+    const errorAnim = useRef(new Animated.Value(0)).current;
 
-    const showErrorMessage = (message: string) => {
-        setErrorMessage(message);
+    const showError = (msg: string) => {
+        setErrorMsg(msg);
         Animated.sequence([
-            Animated.timing(errorAnimation, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.spring(errorAnim, { toValue: 1, useNativeDriver: true, friction: 7 }),
             Animated.delay(3000),
-            Animated.timing(errorAnimation, { toValue: 0, duration: 300, useNativeDriver: true })
-        ]).start(() => setErrorMessage(''));
+            Animated.timing(errorAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ]).start(() => setErrorMsg(''));
     };
 
-    // Auto-reset failed state after delay
     useFocusEffect(useCallback(() => {
         if (isFailed) {
-            const timer = setTimeout(() => { setIsFailed(false); }, 2000);
-            return () => clearTimeout(timer);
+            const t = setTimeout(() => setIsFailed(false), 2000);
+            return () => clearTimeout(t);
         }
     }, [isFailed]));
 
-    /** Full reset of the screen state */
-    const resetScreen = () => {
-        clearInputs();
-        setIsSuccess(false);
-        setIsLoading(false);
-        setIsFailed(false);
-    };
+    const resetScreen = () => { resetForm(); setIsSuccess(false); setIsLoading(false); setIsFailed(false); };
 
-    /** Pull-to-refresh handler */
     const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        await refresh();
-        resetScreen();
-        setRefreshing(false);
+        setRefreshing(true); await refresh(); resetScreen(); setRefreshing(false);
     }, [refresh]);
 
-    /** * Main Transaction Execution Logic 
-     * Triggered by SwipeButton
-     */
     const executeTransaction = async () => {
-        // 1. Validate Form
-        const error = validateForm(currentBalance);
-        if (error) {
-            setIsFailed(true);
-            showErrorMessage(error);
-            return;
-        }
-
-        const transactionSymbol = symbolRef.current;
-        if (!transactionSymbol) {
-            setIsFailed(true);
-            showErrorMessage('Token symbol error');
-            return;
-        }
+        const error = validate(currentBalance);
+        if (error) { setIsFailed(true); showError(error); return; }
+        if (!symbolRef.current) { setIsFailed(true); showError('Token symbol error'); return; }
 
         setIsLoading(true);
-
         try {
-            // 2. Send Transaction
-            const txSignature = await sendTransaction(
-                recipientRef.current, 
-                Number(amountRef.current), 
-                transactionSymbol
-            );
-
-            // 3. Handle Success
-            if (txSignature) {
+            const txSig = await sendTransaction(recipientRef.current, Number(amountRef.current), symbolRef.current);
+            if (txSig) {
                 setIsSuccess(true);
                 Vibration.vibrate(100);
-                
-                const txData = {
-                    from: smartWalletPubkey?.toString() || "Unknown", 
-                    to: recipientRef.current, 
-                    amount: amountRef.current,
-                    symbol: transactionSymbol, 
-                    tx_url: `https://solscan.io/tx/${txSignature}?cluster=devnet`
-                };
-
-                // Navigate to result after short delay
                 setTimeout(() => {
                     resetScreen();
                     router.push({
                         pathname: "/result-transaction",
-                        params: txData
+                        params: {
+                            from: smartWalletPubkey?.toString() || "Unknown",
+                            to: recipientRef.current,
+                            amount: amountRef.current,
+                            symbol: symbolRef.current,
+                            tx_url: `https://solscan.io/tx/${txSig}?cluster=devnet`,
+                        },
                     });
                 }, 1000);
             }
-        } catch (error: any) {
-            // 4. Handle Failure
+        } catch (e: any) {
             setIsFailed(true);
-            console.error(error);
-            Vibration.vibrate([0, 500]); 
-            const msg = error instanceof Error ? error.message : "Transaction failed";
-            showErrorMessage(msg);
+            Vibration.vibrate([0, 400]);
+            showError(e instanceof Error ? e.message : "Transaction failed");
         } finally {
             setIsLoading(false);
         }
     };
 
-    // 6. Render Data Configuration
-    const INPUT_ROWS = [
-        {
-            label: "Recipient Address",
-            value: recipient,
-            onChange: setRecipient,
-            placeholder: "Paste address (0x...)",
-            hasButtonMax: false,
-            keyboardType: "default" as const
-        },
-        {
-            label: `Amount ${tokenSymbolStr}`,
-            value: amount,
-            onChange: setAmount,
-            placeholder: "0.00",
-            hasButtonMax: true,
-            keyboardType: "decimal-pad" as const
-        },
-    ];
+    const gradientColors = isDark ? ['#0A0410', '#1a0a2e', '#0A0410'] : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff'];
+    const mainColor = isDark ? "#FFFFFF" : "#111827";
+    const mutedColor = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
+    const accentColor = isDark ? "#C4A7FF" : "#6D28D9";
+    const pillBg = isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)";
+    const pillBorder = isDark ? "rgba(255,255,255,0.15)" : "rgba(109,40,217,0.15)";
+    const modalBg = isDark ? "rgba(10, 4, 16, 0.95)" : "rgba(255, 255, 255, 0.95)";
+
+    const errorTranslateY = errorAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] });
 
     return (
-        <LinearGradient
-            colors={isDark ? ['#0A0410', '#1a0a2e', '#0A0410'] : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']}
-            style={{flex: 1}}
-        >
-            <View style={styles.container}>
-                <StatusBar
-                    backgroundColor={isDark ? "#0A0410" : "#F5F5F7"}
-                    barStyle={isDark ? "light-content" : "dark-content"}
-                />
-                
-                <ScrollView
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? "#fff" : "#000"} />}
-                    contentContainerStyle={{ paddingBottom: 120 }}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    {/* Error Toast */}
-                    {errorMessage !== '' && (
-                        <Animated.View style={[styles.errorContainer, { opacity: errorAnimation, transform: [{ translateY: errorAnimation.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] }]}>
-                            <Text style={styles.errorText}>{errorMessage}</Text>
-                        </Animated.View>
+        <LinearGradient colors={gradientColors} style={styles.root}>
+            <StatusBar backgroundColor={isDark ? "#0A0410" : "#FFFFFF"} barStyle={isDark ? "light-content" : "dark-content"} />
+
+            <Animated.View
+                pointerEvents="none"
+                style={[styles.errorToast, {
+                    opacity: errorAnim,
+                    transform: [{ translateY: errorTranslateY }],
+                    backgroundColor: isDark ? '#450a0a' : '#fef2f2',
+                    borderColor: isDark ? '#dc2626' : '#f87171',
+                }]}
+            >
+                <AlertCircle size={18} color={isDark ? "#f87171" : "#ef4444"} strokeWidth={1.5} />
+                <Text style={[styles.errorText, { color: isDark ? '#fca5a5' : '#b91c1c' }]}>
+                    {errorMsg}
+                </Text>
+            </Animated.View>
+
+            <Modal
+                visible={tokenPickerVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setTokenPickerVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity style={styles.modalCloseArea} onPress={() => setTokenPickerVisible(false)} />
+                    <View style={[styles.modalContent, { backgroundColor: modalBg, borderColor: pillBorder }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: mainColor }]}>Select Token</Text>
+                            <TouchableOpacity onPress={() => setTokenPickerVisible(false)}>
+                                <Text style={[styles.modalCloseText, { color: accentColor }]}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {data.tokens.map((t) => (
+                                <TouchableOpacity
+                                    key={t.symbol}
+                                    onPress={() => handleTokenSelect(t.symbol)}
+                                    style={[styles.tokenOption, t.symbol === selectedTokenSymbol && { backgroundColor: pillBg }]}
+                                >
+                                    <View style={styles.tokenOptionInfo}>
+                                        <Text style={[styles.tokenOptionSymbol, { color: mainColor }]}>{t.symbol}</Text>
+                                        <Text style={[styles.tokenOptionName, { color: mutedColor }]}>{t.name}</Text>
+                                    </View>
+                                    <View style={styles.tokenOptionBalance}>
+                                        <Text style={[styles.tokenOptionAmt, { color: mainColor }]}>{t.amount.toFixed(4)}</Text>
+                                        <Text style={[styles.tokenOptionUsd, { color: mutedColor }]}>${t.valueUsd.toFixed(2)}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            <ScrollView
+                contentContainerStyle={styles.scroll}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? "#fff" : "#000"} />}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        style={[styles.iconBtn, { backgroundColor: pillBg, borderColor: pillBorder }]}
+                    >
+                        <ArrowLeft size={20} color={mainColor} strokeWidth={1.5} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => setTokenPickerVisible(true)}
+                        style={[styles.tokenPill, { backgroundColor: pillBg, borderColor: pillBorder }]}
+                    >
+                        <Text style={[styles.tokenPillText, { color: mainColor }]}>{tokenSymbolStr}</Text>
+                        <ChevronDown size={14} color={mutedColor} style={{ marginLeft: 6 }} />
+                    </TouchableOpacity>
+
+                    <View style={styles.iconBtn} />
+                </View>
+
+                <View style={styles.amountContainer}>
+                    <TextInput
+                        style={[styles.massiveInput, { color: mainColor }]}
+                        value={amount}
+                        onChangeText={setAmount}
+                        placeholder="0"
+                        placeholderTextColor={mutedColor}
+                        keyboardType="decimal-pad"
+                        autoFocus
+                        autoCorrect={false}
+                        selectionColor={accentColor}
+                        adjustsFontSizeToFit={true}
+                        numberOfLines={1}
+                    />
+
+                    {tokenPrice > 0 && typedAmountNum > 0 && (
+                        <Text style={[styles.usdLiveText, { color: mutedColor }]}>
+                            ~${typedAmountUsd}
+                        </Text>
                     )}
 
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()}>
-                            <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#fff' : '#000'} />
-                        </TouchableOpacity>
-                        <Text style={styles.title}>Send {tokenSymbolStr}</Text>
+                    <Text style={[styles.balanceText, { color: mutedColor }]}>
+                        Available: {currentBalance.toFixed(4)} {tokenSymbolStr}
+                    </Text>
+
+                    <View style={styles.percentRow}>
+                        {[0.25, 0.5, 0.75, 1].map((pct, idx) => {
+                            const labels = ["25%", "50%", "75%", "MAX"];
+                            return (
+                                <TouchableOpacity
+                                    key={pct}
+                                    style={[styles.percentBtn, { backgroundColor: pillBg, borderColor: pillBorder }]}
+                                    onPress={() => handlePercentage(pct)}
+                                >
+                                    <Text style={[styles.percentText, { color: mainColor }]}>{labels[idx]}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                </View>
+
+                <View style={styles.recipientContainer}>
+                    <View style={styles.arrowWrap}>
+                        <View style={[styles.arrowCircle, { backgroundColor: pillBg, borderColor: pillBorder }]}>
+                            <ArrowDown size={16} color={mutedColor} strokeWidth={1.5} />
+                        </View>
                     </View>
 
-                    {/* Token Info Card */}
-                    <TokenInfoCard 
+                    <Text style={[styles.toLabel, { color: mutedColor }]}>To</Text>
+                    <TextInput
+                        style={[styles.recipientInput, { backgroundColor: pillBg, borderColor: pillBorder, color: mainColor }]}
+                        value={recipient}
+                        onChangeText={setRecipient}
+                        placeholder="Paste wallet address"
+                        placeholderTextColor={mutedColor}
+                        autoCorrect={false}
+                        autoCapitalize="none"
+                        selectionColor={accentColor}
+                    />
+                </View>
+
+                <View style={styles.infoSection}>
+                    <TokenInfoCard
                         tokenName={tokenName}
                         tokenSymbol={tokenSymbolStr}
                         tokenIcon={tokenIcon as string}
@@ -247,40 +315,17 @@ export default function CreateTransactionScreen() {
                         balance={currentBalance}
                         isDark={isDark}
                     />
+                </View>
 
-                    {/* Input Fields */}
-                    {INPUT_ROWS.map((el, index) => (
-                        <View key={index} style={styles.inputContainer}>
-                            <Text style={styles.label}>{el.label}</Text>
-                            <View style={styles.inputWrapper}>
-                                <BlurView intensity={isDark ? 30 : 90} tint={isDark ? 'dark' : 'light'} style={styles.blurViewAbsolute} />
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        el.hasButtonMax && styles.inputWithButton
-                                    ]}
-                                    value={el.value}
-                                    onChangeText={el.onChange}
-                                    placeholder={el.placeholder}
-                                    placeholderTextColor={isDark ? '#666' : '#999'}
-                                    multiline={false}
-                                    keyboardType={el.keyboardType}
-                                />
-                                {el.hasButtonMax && (
-                                    <TouchableOpacity style={styles.maxButton} onPress={() => handleMax(currentBalance)}>
-                                        <Text style={styles.maxButtonText}>Max</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </View> 
-                    ))}
+                {walletType !== 'mwa' && (
+                    <View style={styles.shieldWrap}>
+                        <LazorKitShield isDark={isDark} />
+                    </View>
+                )}
+            </ScrollView>
 
-                    {/* Lazorkit Security Badge */}
-                    <LazorKitShield isDark={isDark}/>
-                </ScrollView>
-
-                {/* Swipe Action Button */}
-                {!isKeyboardVisible && (
+            {!kbVisible && (
+                <View style={styles.swipeWrap}>
                     <SwipeButton
                         onSwipeSuccess={executeTransaction}
                         isLoading={isLoading}
@@ -288,8 +333,217 @@ export default function CreateTransactionScreen() {
                         isFailed={isFailed}
                         isDark={isDark}
                     />
-                )}
-            </View>
+                </View>
+            )}
         </LinearGradient>
     );
 }
+
+const styles = StyleSheet.create({
+    root: { flex: 1 },
+    scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 44, paddingBottom: 140 },
+    errorToast: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 56 : 44,
+        left: 20,
+        right: 20,
+        zIndex: 100,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    errorText: {
+        fontFamily: 'Dank Mono',
+        fontSize: 13,
+        includeFontPadding: false,
+        flex: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 20,
+    },
+    iconBtn: {
+        width: 44, height: 44,
+        borderRadius: 22, borderWidth: 1,
+        justifyContent: 'center', alignItems: 'center',
+    },
+    tokenPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16, paddingVertical: 10,
+        borderRadius: 20, borderWidth: 1,
+    },
+    tokenPillText: {
+        fontFamily: 'Dank Mono',
+        fontSize: 16,
+        includeFontPadding: false,
+    },
+    amountContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+    },
+    massiveInput: {
+        fontFamily: 'Dank Mono',
+        fontSize: 72,
+        minHeight: 100,
+        lineHeight: Platform.OS === 'ios' ? 0 : 85,
+        paddingTop: 10,
+        paddingBottom: 5,
+        textAlign: 'center',
+        includeFontPadding: false,
+        width: '100%',
+    },
+    usdLiveText: {
+        fontFamily: 'Dank Mono',
+        fontSize: 16,
+        marginTop: -5,
+        marginBottom: 10,
+        includeFontPadding: false,
+    },
+    balanceText: {
+        fontFamily: 'Dank Mono',
+        fontSize: 13,
+        marginBottom: 16,
+        includeFontPadding: false,
+    },
+    percentRow: {
+        flexDirection: 'row',
+        gap: 8,
+        justifyContent: 'center',
+    },
+    percentBtn: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 14,
+        borderWidth: 1,
+    },
+    percentText: {
+        fontFamily: 'Dank Mono',
+        fontSize: 13,
+        includeFontPadding: false,
+    },
+    recipientContainer: {
+        marginBottom: 24,
+    },
+    arrowWrap: {
+        alignItems: 'center',
+        marginBottom: -14,
+        zIndex: 10,
+    },
+    arrowCircle: {
+        width: 28, height: 28,
+        borderRadius: 14, borderWidth: 1,
+        justifyContent: 'center', alignItems: 'center',
+    },
+    toLabel: {
+        fontFamily: 'Dank Mono',
+        fontSize: 12,
+        textTransform: 'uppercase',
+        marginBottom: 8,
+        marginLeft: 4,
+        includeFontPadding: false,
+    },
+    recipientInput: {
+        fontFamily: 'Dank Mono',
+        fontSize: 15,
+        borderWidth: 1,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 18,
+        minHeight: 60,
+        includeFontPadding: false,
+    },
+    infoSection: {
+        marginBottom: 16,
+    },
+    shieldWrap: {
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    swipeWrap: {
+        position: 'absolute',
+        bottom: Platform.OS === 'ios' ? 36 : 24,
+        left: 0, right: 0,
+        alignItems: 'center',
+    },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalCloseArea: {
+        flex: 1,
+    },
+    modalContent: {
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        borderWidth: 1,
+        borderBottomWidth: 0,
+        padding: 24,
+        maxHeight: '60%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontFamily: 'Dank Mono',
+        fontSize: 18,
+        includeFontPadding: false,
+    },
+    modalCloseText: {
+        fontFamily: 'Dank Mono',
+        fontSize: 14,
+        includeFontPadding: false,
+    },
+    tokenOption: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 12,
+        borderRadius: 16,
+    },
+    tokenOptionInfo: {
+        flex: 1,
+        gap: 2,
+    },
+    tokenOptionSymbol: {
+        fontFamily: 'Dank Mono',
+        fontSize: 16,
+        includeFontPadding: false,
+    },
+    tokenOptionName: {
+        fontFamily: 'Dank Mono',
+        fontSize: 12,
+        includeFontPadding: false,
+    },
+    tokenOptionBalance: {
+        alignItems: 'flex-end',
+        gap: 2,
+    },
+    tokenOptionAmt: {
+        fontFamily: 'Dank Mono',
+        fontSize: 15,
+        includeFontPadding: false,
+    },
+    tokenOptionUsd: {
+        fontFamily: 'Dank Mono',
+        fontSize: 12,
+        includeFontPadding: false,
+    },
+});
