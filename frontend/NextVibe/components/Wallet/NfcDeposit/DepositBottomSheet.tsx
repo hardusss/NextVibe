@@ -159,7 +159,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
     const startHceTransaction = async () => {
         try {
             setIsBroadcasting(true);
-            const URL = `https://nextvibe.io/transaction?amount=${amount}&token=${selectedToken}&address=${address}`;
+            const URL = `https://nextvibe.io/u/send?amount=${amount}&token=${selectedToken}&address=${address}`;
 
             const tag = new NFCTagType4({
                 type: NFCTagType4NDEFContentType.URL,
