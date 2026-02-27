@@ -19,13 +19,13 @@ export default function TokenInfoCard({
 }: TokenInfoCardProps) {
     const router = useRouter();
 
-    const bg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
-    const border = isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
-    const mainColor = isDark ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.82)";
-    const mutedColor = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.35)";
-    const iconColor = isDark ? "rgba(196,167,255,0.9)" : "rgba(109,40,217,0.85)";
-    const switchBg = isDark ? "rgba(196,167,255,0.1)" : "rgba(109,40,217,0.07)";
-    const switchBorder = isDark ? "rgba(196,167,255,0.25)" : "rgba(109,40,217,0.2)";
+    const bg = isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.7)";
+    const border = isDark ? "rgba(255,255,255,0.1)" : "rgba(109,40,217,0.15)";
+    const mainColor = isDark ? "#FFFFFF" : "#111827";
+    const mutedColor = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
+    const iconColor = isDark ? "#C4A7FF" : "#6D28D9";
+    const switchBg = isDark ? "rgba(196,167,255,0.15)" : "rgba(109,40,217,0.1)";
+    const switchBorder = isDark ? "rgba(196,167,255,0.3)" : "rgba(109,40,217,0.2)";
 
     return (
         <View style={[styles.card, { backgroundColor: bg, borderColor: border }]}>
@@ -34,7 +34,7 @@ export default function TokenInfoCard({
                     <FastImage source={{ uri: tokenIcon }} style={styles.logo} resizeMode={FastImage.resizeMode.cover} />
                 ) : (
                     <View style={[styles.logo, { backgroundColor: border, justifyContent: 'center', alignItems: 'center' }]}>
-                        <Text style={{ color: mainColor, fontFamily: 'Dank Mono Bold', fontSize: 12 }}>{tokenSymbol[0]}</Text>
+                        <Text style={{ color: mainColor, fontFamily: 'Dank Mono', fontSize: 16 }}>{tokenSymbol[0]}</Text>
                     </View>
                 )}
                 <View style={styles.nameWrap}>
@@ -43,7 +43,7 @@ export default function TokenInfoCard({
                         onPress={() => router.push("/select-token")}
                         style={[styles.switchBtn, { backgroundColor: switchBg, borderColor: switchBorder }]}
                     >
-                        <ArrowLeftRight size={11} color={iconColor} strokeWidth={1.8} />
+                        <ArrowLeftRight size={12} color={iconColor} strokeWidth={1.5} />
                         <Text style={[styles.switchText, { color: iconColor }]}>Switch</Text>
                     </TouchableOpacity>
                 </View>
@@ -62,58 +62,58 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 18,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: 24,
         borderWidth: 1,
         marginBottom: 12,
     },
     left: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 14,
         flex: 1,
     },
     logo: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
     },
     nameWrap: {
         gap: 6,
     },
     name: {
-        fontFamily: 'Dank Mono Bold',
-        fontSize: 14,
+        fontFamily: 'Dank Mono',
+        fontSize: 16,
         includeFontPadding: false,
     },
     switchBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
+        gap: 6,
+        paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 10,
+        borderRadius: 12,
         borderWidth: 1,
         alignSelf: 'flex-start',
     },
     switchText: {
         fontFamily: 'Dank Mono',
-        fontSize: 10,
+        fontSize: 11,
         includeFontPadding: false,
     },
     right: {
         alignItems: 'flex-end',
+        gap: 6,
     },
     usd: {
-        fontFamily: 'Dank Mono Bold',
-        fontSize: 15,
+        fontFamily: 'Dank Mono',
+        fontSize: 16,
         includeFontPadding: false,
     },
     amount: {
         fontFamily: 'Dank Mono',
-        fontSize: 11,
+        fontSize: 13,
         includeFontPadding: false,
-        marginTop: 3,
     },
 });

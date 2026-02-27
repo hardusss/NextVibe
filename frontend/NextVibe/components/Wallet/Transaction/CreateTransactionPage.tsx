@@ -54,9 +54,25 @@ export default function CreateTransactionScreen() {
     const typedAmountNum = Number(amount) || 0;
     const typedAmountUsd = (typedAmountNum * tokenPrice).toFixed(2);
 
+    const handleAmountChange = (text: string) => {
+        let cleaned = text.replace(',', '.');
+        cleaned = cleaned.replace(/[^0-9.]/g, '');
+        
+        if (cleaned.startsWith('.')) {
+            cleaned = '0' + cleaned;
+        }
+        
+        const dotIndex = cleaned.indexOf('.');
+        if (dotIndex !== -1) {
+            cleaned = cleaned.slice(0, dotIndex + 1) + cleaned.slice(dotIndex + 1).replace(/\./g, '');
+        }
+        
+        setAmount(cleaned);
+    };
+
     useEffect(() => {
         if (incomingAddress) setRecipient(incomingAddress);
-        if (incomingAmount) setAmount(incomingAmount);
+        if (incomingAmount) handleAmountChange(incomingAmount);
     }, [incomingAddress, incomingAmount]);
 
     const handleTokenSelect = (newSymbol: string) => {
@@ -249,7 +265,7 @@ export default function CreateTransactionScreen() {
                     <TextInput
                         style={[styles.massiveInput, { color: mainColor }]}
                         value={amount}
-                        onChangeText={setAmount}
+                        onChangeText={handleAmountChange}
                         placeholder="0"
                         placeholderTextColor={mutedColor}
                         keyboardType="decimal-pad"
