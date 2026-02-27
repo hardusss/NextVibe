@@ -64,22 +64,10 @@ export default function useTransaction() {
 
             // --- 4. Branch logic based on Wallet Type ---
             if (wallet.walletType === 'lazorkit') {
-                // Assert the correct signature for LazorKit
-                // Serialize PublicKey to base58, and Buffer to base64
-                const serializedInstructions = instructions.map(ix => ({
-                    programId: ix.programId.toBase58(),
-                    keys: ix.keys.map(k => ({
-                        pubkey: k.pubkey.toBase58(),
-                        isSigner: k.isSigner,
-                        isWritable: k.isWritable
-                    })),
-                    data: ix.data.toString('base64')
-                }));
-
                 const signWithLazor = wallet.signAndSendTransaction as (payload: any, options: any) => Promise<string>;
                 txSignature = await signWithLazor(
                     {
-                        instructions: serializedInstructions,
+                        instructions: instructions,
                         transactionOptions: {
                             feeToken: 'SOL',
                             clusterSimulation: "devnet"
