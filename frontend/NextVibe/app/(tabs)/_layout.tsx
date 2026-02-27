@@ -120,7 +120,7 @@ export default function Layout() {
     const tabs = [
         { name: "home", IconOutline: House, IconFilled: House },
         { name: "search", IconOutline: Search, IconFilled: Search },
-        { name: "create-post", IconOutline: BadgePlus, IconFilled: BadgePlus },
+        { name: "camera", IconOutline: BadgePlus, IconFilled: BadgePlus },
         { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
     ];
 
