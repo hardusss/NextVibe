@@ -190,7 +190,7 @@ export default function CameraScreen() {
 
     useFocusEffect(useCallback(() => {
         if (!mediaURLS.length) return;
-        router.replace({ pathname: "/create-post", params: { urls: JSON.stringify(mediaURLS) } });
+        router.push({ pathname: "/create-post", params: { urls: JSON.stringify(mediaURLS) } });
         setMediaURLS([]);
     }, [mediaURLS]));
 

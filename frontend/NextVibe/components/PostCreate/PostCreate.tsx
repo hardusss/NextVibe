@@ -7,7 +7,6 @@ import createPost from '@/src/api/create.post';
 import generateImage from '@/src/api/generate.image';
 import generateImageStatus from '@/src/api/get.image.status';
 import FastImage from 'react-native-fast-image';
-import ButtonAI from './GenerateAIButton';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import { Vibration } from 'react-native';
@@ -306,7 +305,6 @@ export default function PostCreate() {
         setAiPrompt("");
         setLocation("");
         setPostText("");
-        router.back()
         router.back()
     }
 
