@@ -1,7 +1,7 @@
 import { TouchableOpacity, Animated, StyleSheet, Text, View } from "react-native";
 import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import useWalletAddress from "@/hooks/useWalletAddress";
 import { LinearGradient } from "expo-linear-gradient";
 import usePortfolio from "@/hooks/usePortfolio";
 import { WalletMinimal } from "lucide-react-native"
@@ -12,6 +12,7 @@ const ButtonWallet = () => {
     const scale = useRef(new Animated.Value(1)).current;
     const shimmerAnim = useRef(new Animated.Value(0)).current;
     const { data, isLoading } = usePortfolio();
+    const { address } = useWalletAddress();
 
     useEffect(() => {
         const animation = Animated.loop(
@@ -46,7 +47,11 @@ const ButtonWallet = () => {
             friction: 4,
             useNativeDriver: true,
         }).start();
-        router.push("/wallet-select");
+        if (address) {
+            router.push("/wallet-dash")
+        } else {
+            router.push("/wallet-select");
+        }
     };
 
     const formattedBalance = data?.totalUsdBalance 
