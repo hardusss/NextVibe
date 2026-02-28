@@ -9,7 +9,7 @@ import {
     useBottomSheet,
     BottomSheetBackdropProps
 } from '@gorhom/bottom-sheet';
-import { Nfc, CheckCircle2 } from "lucide-react-native";
+import { Nfc, CheckCircle2, Check } from "lucide-react-native";
 import { TOKENS } from "@/constants/Tokens";
 import FastImage from 'react-native-fast-image';
 import Animated, {
@@ -19,7 +19,6 @@ import Animated, {
 import { BlurView } from '@react-native-community/blur';
 import useWalletAddress from '@/hooks/useWalletAddress';
 import { HCESession, NFCTagType4, NFCTagType4NDEFContentType } from 'react-native-hce';
-
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 
 export interface DepositSheetRef {
@@ -28,87 +27,71 @@ export interface DepositSheetRef {
 }
 
 const AVAILABLE_TOKENS = [TOKENS.SOL, TOKENS.USDC];
-const DECIMAL_LIMIT = 8;
+const DECIMAL_LIMIT    = 8;
+
+// Mint addresses pulled directly from TOKENS constants
+const SOLANA_PAY_MINTS: Record<string, string | null> = Object.fromEntries(
+    Object.values(TOKENS).map(t => [t.symbol, t.mint ?? null])
+);
 
 const AnimatedNfc = Animated.createAnimatedComponent(Nfc);
 
+// ─── Backdrop ─────────────────────────────────────────────────────────────────
+
 export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProps) => {
-    const theme = useColorScheme();
-    const isDark = theme === 'dark';
+    const isDark = useColorScheme() === 'dark';
     const { close } = useBottomSheet();
 
     const animatedStyle = useAnimatedStyle(() => ({
-        opacity: interpolate(
-            animatedIndex.value,
-            [-1, 0],
-            [0, 1],
-            Extrapolation.CLAMP
-        ),
+        opacity: interpolate(animatedIndex.value, [-1, 0], [0, 1], Extrapolation.CLAMP),
     }));
 
     return (
         <Animated.View style={[StyleSheet.absoluteFill, style, animatedStyle]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => close()}>
-                <BlurView
-                    style={StyleSheet.absoluteFill}
-                    blurType={isDark ? "dark" : "light"}
-                    blurAmount={2}
-                />
-                <View
-                    style={[
-                        StyleSheet.absoluteFill,
-                        { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.2)' }
-                    ]}
-                />
+                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={2} />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.2)' }]} />
             </Pressable>
         </Animated.View>
     );
 };
 
-export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
-    const theme = useColorScheme();
-    const isDark = theme === 'dark';
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
+    const isDark = useColorScheme() === 'dark';
 
     const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-    const inputRef = useRef<TextInput>(null);
+    const inputRef            = useRef<TextInput>(null);
 
-    const [amount, setAmount] = useState('');
-    const [selectedToken, setSelectedToken] = useState(TOKENS.SOL.symbol);
+    const [amount,         setAmount]         = useState('');
+    const [selectedToken,  setSelectedToken]  = useState(TOKENS.SOL.symbol);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
+    const [useSolanaPay,   setUseSolanaPay]   = useState(false);
 
-    const [toastVisible, setToastVisible] = useState(false);
-    const [toastMessage, setToastMessage] = useState('');
+    const [toastVisible,   setToastVisible]   = useState(false);
+    const [toastMessage,   setToastMessage]   = useState('');
     const [toastIsSuccess, setToastIsSuccess] = useState(true);
 
     const { address } = useWalletAddress();
 
-    const hceSessionRef = useRef<any>(null);
-    const removeListenerRef = useRef<(() => void) | null>(null);
-    const lastReadTimestamp = useRef<number>(0);
+    const hceSessionRef      = useRef<any>(null);
+    const removeListenerRef  = useRef<(() => void) | null>(null);
+    const lastReadTimestamp  = useRef<number>(0);
 
-    const pulseScale = useSharedValue(1);
+    const pulseScale   = useSharedValue(1);
     const pulseOpacity = useSharedValue(1);
 
     const showToast = (message: string, isSuccess: boolean) => {
-        setToastMessage(message);
-        setToastIsSuccess(isSuccess);
-        setToastVisible(true);
+        setToastMessage(message); setToastIsSuccess(isSuccess); setToastVisible(true);
     };
 
     useEffect(() => {
         if (isBroadcasting) {
-            pulseScale.value = withRepeat(
-                withSequence(withTiming(1.25, { duration: 800 }), withTiming(1, { duration: 800 })),
-                -1,
-                true
-            );
-            pulseOpacity.value = withRepeat(
-                withSequence(withTiming(0.4, { duration: 800 }), withTiming(1, { duration: 800 })),
-                -1,
-                true
-            );
+            pulseScale.value   = withRepeat(withSequence(withTiming(1.25, { duration: 800 }), withTiming(1, { duration: 800 })), -1, true);
+            pulseOpacity.value = withRepeat(withSequence(withTiming(0.4, { duration: 800 }), withTiming(1, { duration: 800 })), -1, true);
         } else {
-            pulseScale.value = withTiming(1, { duration: 300 });
+            pulseScale.value   = withTiming(1, { duration: 300 });
             pulseOpacity.value = withTiming(1, { duration: 300 });
         }
     }, [isBroadcasting]);
@@ -120,25 +103,18 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
 
     const stopHceTransaction = async () => {
         try {
-            if (removeListenerRef.current) {
-                removeListenerRef.current();
-                removeListenerRef.current = null;
-            }
-            if (hceSessionRef.current) {
-                await hceSessionRef.current.setEnabled(false);
-            }
+            if (removeListenerRef.current) { removeListenerRef.current(); removeListenerRef.current = null; }
+            if (hceSessionRef.current) await hceSessionRef.current.setEnabled(false);
             setIsBroadcasting(false);
-        } catch (error) {
-            console.error("❌ Failed to stop HCE:", error);
-        }
+        } catch (e) { console.error("Failed to stop HCE:", e); }
     };
 
     useImperativeHandle(ref, () => ({
         present: () => {
             bottomSheetModalRef.current?.present();
-            setTimeout(() => {
-                inputRef.current?.focus();
-            }, 150);
+            // Focus without keyboard — showSoftInputOnFocus is false on the input,
+            // so we just set focus cursor position without keyboard opening.
+            setTimeout(() => inputRef.current?.focus(), 200);
         },
         dismiss: () => {
             stopHceTransaction();
@@ -148,25 +124,32 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
     }));
 
     const handleAmountChange = (text: string) => {
-        const normalizedText = text.replace(',', '.');
+        const normalized = text.replace(',', '.');
         const regex = new RegExp(`^\\d*\\.?\\d{0,${DECIMAL_LIMIT}}$`);
+        if (regex.test(normalized)) setAmount(normalized);
+    };
 
-        if (regex.test(normalizedText)) {
-            setAmount(normalizedText);
+    // ── Build NFC payload ──────────────────────────────────────────────────────
+
+    const buildPayload = (): string => {
+        if (useSolanaPay) {
+            // Solana Pay URI: solana:<address>?amount=<n>&spl-token=<mint>&label=...
+            const mint = SOLANA_PAY_MINTS[selectedToken];
+            const params = new URLSearchParams({ amount });
+            if (mint) params.set('spl-token', mint);
+            params.set('label', 'NextVibe');
+            params.set('message', `Send ${amount} ${selectedToken}`);
+            return `solana:${address}?${params.toString()}`;
         }
+        return `https://nextvibe.io/u/send?amount=${amount}&token=${selectedToken}&address=${address}`;
     };
 
     const startHceTransaction = async () => {
         try {
             setIsBroadcasting(true);
-            const URL = `https://nextvibe.io/u/send?amount=${amount}&token=${selectedToken}&address=${address}`;
+            const url = buildPayload();
 
-            const tag = new NFCTagType4({
-                type: NFCTagType4NDEFContentType.URL,
-                content: URL,
-                writable: false,
-            });
-
+            const tag     = new NFCTagType4({ type: NFCTagType4NDEFContentType.URL, content: url, writable: false });
             const session = await HCESession.getInstance();
             hceSessionRef.current = session;
             await session.setApplication(tag);
@@ -175,62 +158,53 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
             removeListenerRef.current = session.on(HCESession.Events.HCE_STATE_READ, () => {
                 const now = Date.now();
                 if (now - lastReadTimestamp.current > 2000) {
-                    console.log("✅ Valid read!");
                     lastReadTimestamp.current = now;
-
                     Vibration.vibrate([0, 100, 100, 100]);
                     showToast("NFC details sent successfully!", true);
                     stopHceTransaction();
                 }
             });
-
-        } catch (error: any) {
+        } catch (e: any) {
             showToast("Failed to start NFC. Please try again.", false);
             setIsBroadcasting(false);
-            console.error("❌ Failed to start HCE:", error);
         }
     };
 
-    const bg = isDark ? '#0f021c' : '#ffffff';
-    const mainColor = isDark ? '#ffffff' : '#1f2937';
-    const mutedColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.32)';
-    const borderColor = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
-    const inputBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
-    const iconColor = isDark ? 'rgba(196,167,255,0.9)' : 'rgba(109,40,217,0.85)';
-    const handleColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';
-    const tokenBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
-    const tokenActiveBg = isDark ? 'rgba(167,139,250,0.14)' : 'rgba(109,40,217,0.08)';
+    // ── Colors ─────────────────────────────────────────────────────────────────
+
+    const bg               = isDark ? '#0f021c' : '#ffffff';
+    const mainColor        = isDark ? '#ffffff'  : '#1f2937';
+    const mutedColor       = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.32)';
+    const borderColor      = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
+    const inputBg          = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+    const iconColor        = isDark ? 'rgba(196,167,255,0.9)'  : 'rgba(109,40,217,0.85)';
+    const handleColor      = isDark ? 'rgba(255,255,255,0.2)'  : 'rgba(0,0,0,0.15)';
+    const tokenActiveBg    = isDark ? 'rgba(167,139,250,0.14)' : 'rgba(109,40,217,0.08)';
     const tokenActiveBorder = isDark ? 'rgba(196,167,255,0.4)' : 'rgba(109,40,217,0.3)';
+    const accentText       = isDark ? '#d8b4fe' : '#7c3aed';
 
     const isReady = amount.length > 0 && amount !== '.' && parseFloat(amount) > 0;
 
     return (
         <BottomSheetModal
             ref={bottomSheetModalRef}
-            snapPoints={['55%']}
+            snapPoints={['60%']}
             index={0}
             backdropComponent={CustomBackdrop}
             backgroundStyle={{ backgroundColor: bg }}
-            handleIndicatorStyle={{
-                backgroundColor: handleColor,
-                width: 36,
-            }}
+            handleIndicatorStyle={{ backgroundColor: handleColor, width: 36 }}
             onDismiss={stopHceTransaction}
         >
             <BottomSheetView style={[styles.container, { backgroundColor: bg }]}>
+                <Web3Toast visible={toastVisible} message={toastMessage} isSuccess={toastIsSuccess} onHide={() => setToastVisible(false)} />
 
-                <Web3Toast
-                    visible={toastVisible}
-                    message={toastMessage}
-                    isSuccess={toastIsSuccess}
-                    onHide={() => setToastVisible(false)}
-                />
-
+                {/* Header */}
                 <View style={styles.header}>
                     <Nfc size={16} color={iconColor} strokeWidth={1.5} />
                     <Text style={[styles.headerTitle, { color: mainColor }]}>Receive via NFC</Text>
                 </View>
 
+                {/* Amount */}
                 <Text style={[styles.sectionLabel, { color: mutedColor }]}>AMOUNT</Text>
                 <View style={styles.inputWrap}>
                     <TextInput
@@ -243,9 +217,19 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
                         keyboardType="decimal-pad"
                         selectionColor={isDark ? '#a78bfa' : '#7c3aed'}
                         editable={!isBroadcasting}
+                        // Focus cursor appears but keyboard stays hidden until user taps
+                        showSoftInputOnFocus={false}
+                        onPressIn={() => {
+                            // On actual tap by user — show keyboard
+                            if (inputRef.current) {
+                                (inputRef.current as any).setNativeProps({ showSoftInputOnFocus: true });
+                                inputRef.current.focus();
+                            }
+                        }}
                     />
                 </View>
 
+                {/* Token */}
                 <Text style={[styles.sectionLabel, { color: mutedColor }]}>TOKEN</Text>
                 <View style={styles.tokensRow}>
                     {AVAILABLE_TOKENS.map((token) => {
@@ -258,40 +242,66 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
                                 style={[
                                     styles.tokenBtn,
                                     {
-                                        backgroundColor: isSelected ? tokenActiveBg : tokenBg,
+                                        backgroundColor: isSelected ? tokenActiveBg : inputBg,
                                         borderColor: isSelected ? tokenActiveBorder : borderColor,
                                         opacity: isBroadcasting ? 0.5 : 1,
                                     },
                                 ]}
                             >
-                                <FastImage
-                                    source={{ uri: token.logoURL }}
-                                    style={styles.tokenIcon}
-                                />
-                                <Text style={[styles.tokenSymbol, { color: isSelected ? (isDark ? '#d8b4fe' : '#7c3aed') : mutedColor }]}>
+                                <FastImage source={{ uri: token.logoURL }} style={styles.tokenIcon} />
+                                <Text style={[styles.tokenSymbol, { color: isSelected ? accentText : mutedColor }]}>
                                     {token.symbol}
                                 </Text>
                                 {isSelected && (
-                                    <CheckCircle2
-                                        size={14}
-                                        color={isDark ? '#a78bfa' : '#7c3aed'}
-                                        strokeWidth={1.8}
-                                        style={{ marginLeft: 6 }}
-                                    />
+                                    <CheckCircle2 size={14} color={accentText} strokeWidth={1.8} style={{ marginLeft: 6 }} />
                                 )}
                             </TouchableOpacity>
                         );
                     })}
                 </View>
 
+                {/* Solana Pay toggle */}
+                <TouchableOpacity
+                    onPress={() => !isBroadcasting && setUseSolanaPay(v => !v)}
+                    activeOpacity={0.7}
+                    style={[
+                        styles.solanaPayRow,
+                        {
+                            backgroundColor: useSolanaPay ? tokenActiveBg : inputBg,
+                            borderColor: useSolanaPay ? tokenActiveBorder : borderColor,
+                            opacity: isBroadcasting ? 0.5 : 1,
+                        },
+                    ]}
+                >
+                    {/* Checkbox */}
+                    <View style={[
+                        styles.checkbox,
+                        {
+                            backgroundColor: useSolanaPay ? (isDark ? 'rgba(167,139,250,0.3)' : 'rgba(109,40,217,0.15)') : 'transparent',
+                            borderColor: useSolanaPay ? tokenActiveBorder : borderColor,
+                        },
+                    ]}>
+                        {useSolanaPay && <Check size={11} color={accentText} strokeWidth={2.5} />}
+                    </View>
+
+                    {/* Solana Pay logo + text */}
+                    <View style={styles.solanaPayInfo}>
+                        <Text style={[styles.solanaPayTitle, { color: useSolanaPay ? accentText : mainColor }]}>
+                            Solana Pay
+                        </Text>
+                        <Text style={[styles.solanaPaySub, { color: mutedColor }]}>
+                            {useSolanaPay ? `solana:${address?.slice(0, 8)}…` : 'Use Solana Pay URI instead of NextVibe link'}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+
+                {/* Ready button */}
                 <TouchableOpacity
                     onPress={isBroadcasting ? stopHceTransaction : startHceTransaction}
                     style={[
                         styles.readyBtn,
                         {
-                            backgroundColor: isReady
-                                ? (isDark ? 'rgba(167,139,250,0.18)' : 'rgba(109,40,217,0.1)')
-                                : inputBg,
+                            backgroundColor: isReady ? tokenActiveBg : inputBg,
                             borderColor: isReady ? tokenActiveBorder : borderColor,
                         },
                     ]}
@@ -300,36 +310,18 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((props, ref) => {
                 >
                     {isBroadcasting ? (
                         <>
-                            <AnimatedNfc
-                                size={18}
-                                color={isDark ? '#d8b4fe' : '#7c3aed'}
-                                strokeWidth={1.5}
-                                style={animatedIconStyle}
-                            />
-                            <Text style={[
-                                styles.readyText,
-                                { color: isDark ? '#d8b4fe' : '#7c3aed' }
-                            ]}>
-                                Waiting for phone...
-                            </Text>
+                            <AnimatedNfc size={18} color={accentText} strokeWidth={1.5} style={animatedIconStyle} />
+                            <Text style={[styles.readyText, { color: accentText }]}>Waiting for phone…</Text>
                         </>
                     ) : (
                         <>
-                            <Nfc
-                                size={18}
-                                color={isReady ? (isDark ? '#d8b4fe' : '#7c3aed') : mutedColor}
-                                strokeWidth={1.5}
-                            />
-                            <Text style={[
-                                styles.readyText,
-                                { color: isReady ? (isDark ? '#d8b4fe' : '#7c3aed') : mutedColor }
-                            ]}>
+                            <Nfc size={18} color={isReady ? accentText : mutedColor} strokeWidth={1.5} />
+                            <Text style={[styles.readyText, { color: isReady ? accentText : mutedColor }]}>
                                 Ready to Receive
                             </Text>
                         </>
                     )}
                 </TouchableOpacity>
-
             </BottomSheetView>
         </BottomSheetModal>
     );
@@ -349,7 +341,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 10,
-        marginBottom: 28,
+        marginBottom: 24,
     },
     headerTitle: {
         fontFamily: 'Dank Mono Bold',
@@ -364,25 +356,23 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     inputWrap: {
-        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 28,
+        marginBottom: 24,
     },
     input: {
-        flex: 1,
         fontFamily: 'Dank Mono',
         fontSize: 52,
         letterSpacing: -2,
         includeFontPadding: false,
-        paddingVertical: 16,
+        paddingVertical: 8,
         textAlign: 'center',
+        minWidth: 140,
     },
     tokensRow: {
         flexDirection: 'row',
         justifyContent: 'center',
         gap: 10,
-        marginBottom: 28,
+        marginBottom: 16,
     },
     tokenBtn: {
         flexDirection: 'row',
@@ -403,6 +393,38 @@ const styles = StyleSheet.create({
         fontSize: 13,
         includeFontPadding: false,
     },
+
+    // Solana Pay toggle row
+    solanaPayRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        marginBottom: 16,
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        borderWidth: 1.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    solanaPayInfo: { flex: 1, gap: 2 },
+    solanaPayTitle: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 13,
+        includeFontPadding: false,
+    },
+    solanaPaySub: {
+        fontFamily: 'Dank Mono',
+        fontSize: 10,
+        includeFontPadding: false,
+    },
+
     readyBtn: {
         flexDirection: 'row',
         alignItems: 'center',
