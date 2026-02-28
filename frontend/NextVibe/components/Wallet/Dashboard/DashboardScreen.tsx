@@ -151,7 +151,9 @@ export default function WalletDashboardScreen() {
                     isDarkMode={isDarkMode}
                     isBalanceHidden={isBalanceHidden}
                     onToggleBalance={toggleBalanceVisibility}
-                    onNavigateBack={() => { router.back(), disconnect(); }}
+                    onNavigateBack={() => { 
+                        router.push("/profile")
+                        if (address) {disconnect();} }}
                     onNavigateToTransactions={navigateToTransactions}
                 />
 
