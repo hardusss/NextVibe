@@ -16,39 +16,45 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            # --- 1. SYNCHRONIZATION ---
-            cd /root/NextVibe
+            sudo systemctl stop nextvibe-celery-worker
 
-            # Get new update
+            # --- 2. SYNCHRONIZATION ---
+            cd /root/NextVibe
+            echo "📥 Fetching latest code..."
             git fetch origin main
             git reset --hard origin/main
 
-            # --- 2. PYTHON (DRF + FastAPI + Celery) ---
-            echo "Updating Python libs..."
-
-            # Update modules
+            # --- 3. PYTHON BACKEND (Django + Celery) ---
+            echo "🐍 Updating Python dependencies..."
             ./backend/.venv/bin/pip install -r backend/modules.txt
 
-            # Migrations
+            echo "🗄️ Running Migrations..."
             ./backend/.venv/bin/python backend/NextVibeAPI/manage.py migrate
 
-            echo "Restarting Backend, Celery and Fastapi Services..."
+            echo "🎨 Collecting Static Files..."
+            ./backend/.venv/bin/python backend/NextVibeAPI/manage.py collectstatic --noinput
+
+            # --- 4. GO MODERATION SERVICE ---
+            echo "mw Rebuilding Go Binary..."
+            cd moderation_service
+            /usr/local/go/bin/go build -o moderator_bin .
+            cd ..
+
+            # --- 5. RESTART SERVICES ---
+            echo "🔄 Restarting Systemd Services..."
+            
+            # Django Backend
             sudo systemctl restart nextvibe-backend.service
+            
+            sudo systemctl restart nextvibe-realtime.service
+            
+            # Celery
             sudo systemctl restart nextvibe-celery-beat.service 
             sudo systemctl restart nextvibe-celery-worker.service 
-            sudo systemctl restart nextvibe-realtime.service 
-
-            # --- 3. Moderation serivice ---
-            echo "Rebuilding Go..."
-            cd moderation_service
-
-            echo "Building Go App..."
-            /usr/local/go/bin/go build -o moderation-go main.go
-
-            echo "Restarting Go Service..."
+            
+            # Go Moderation
             sudo systemctl restart nextvibe-moderation.service
 
-            echo "Restarting Nginx..."
-            sudo systemctl restart nginx.service
+            sudo systemctl reload nginx
 
-            echo "DEPLOYMENT SUCCESSFUL 🚀"
+            echo "✅ DEPLOYMENT SUCCESSFUL 🚀"
