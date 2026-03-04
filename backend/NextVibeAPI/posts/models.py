@@ -18,8 +18,18 @@ class Post(models.Model):
     moderation_status = models.CharField(max_length=20, default="pending")
     categories = models.JSONField(default=list, blank=True)
     is_comments_enabled = models.BooleanField(default=True, blank=True, null=True)
+    is_hide = models.BooleanField(default=False)
+    # NFT logic
+    is_nft = models.BooleanField(default=False)
+    mint_address = models.CharField(max_length=44, null=True, blank=True) # Address Merkle Tree / Collection
+    metadata_uri = models.URLField(null=True, blank=True) # Link for JSON (Arweave/IPFS)
+    
+    # Limited Edition
+    total_supply = models.IntegerField(default=0, null=True, blank=True)
+    minted_count = models.IntegerField(default=0)
     objects = PostsManager()
     all_objects = models.Manager()
+
 
     def __str__(self):
         return f"Post by {self.owner.username} with id {self.id}"
@@ -96,3 +106,28 @@ class CommentReply(models.Model):
 
     def __str__(self) -> str:
         return f"Reply by {self.owner.user_id} in comment {self.comment.id}"
+
+# --- NEW MODEL: USER COLLECTION (Who claimed what) ---
+class UserCollection(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='nft_collection'
+    )
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name='mints'
+    )
+    token_address = models.CharField(max_length=44, unique=True) 
+    signature = models.CharField(max_length=88, null=True, blank=True)
+    
+    minted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-minted_at']
+        verbose_name = "NFT Item"
+        unique_together = ('user', 'post')
+
+    def __str__(self):
+        return f"NFT {self.token_address} owned by {self.user}"
