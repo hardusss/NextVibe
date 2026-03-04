@@ -8,7 +8,6 @@ import {
     Dimensions,
     Animated,
     ScrollView,
-    StatusBar,
     Pressable,
 } from "react-native";
 import FastImage from "react-native-fast-image";
@@ -27,6 +26,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
 import DropDown from "../Shared/Posts/PostsDropdown";
+import VerifyBadge from "../VerifyBadge";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
@@ -41,6 +41,9 @@ interface PostMedia {
 interface PostData {
     user_id: number;
     post_id: number;
+    username: string;
+    avatar: string | null;
+    official: boolean;
     about: string;
     count_likes: number;
     media: PostMedia[];
@@ -49,6 +52,8 @@ interface PostData {
     location: string | null;
     moderation_status: string;
     is_comments_enabled: boolean;
+    liked_posts: number[];
+    comments_count: number;
 }
 
 interface PostPopupProps {
@@ -102,6 +107,7 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                         if (response?.data) {
                             setPost(response.data);
                             setLikeCount(response.data.count_likes);
+                            setLiked(response.data.liked_posts?.includes(response.data.post_id) ?? false);
                         }
                     })
                     .catch((err) => console.error("fetchPost error:", err))
@@ -185,7 +191,6 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
             statusBarTranslucent
             onRequestClose={onClose}
         >
-
             {/* Backdrop */}
             <TouchableOpacity
                 style={styles.backdrop}
@@ -198,48 +203,66 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                 style={[styles.cardWrapper, { transform: [{ translateY: slideAnim }] }]}
                 pointerEvents="box-none"
             >
+                <View style={styles.glowWrapper}>
                 <View style={styles.card}>
                     <BlurView
                         style={StyleSheet.absoluteFillObject}
                         blurType="dark"
-                        blurAmount={20}
-                        reducedTransparencyFallbackColor="#111111"
+                        blurAmount={12}
+                        reducedTransparencyFallbackColor="#f4ebeb"
                     />
                     <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]} pointerEvents="none" />
 
-                    {/* Top bar */}
-                    <View style={styles.topBar}>
-                        <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                            <View style={styles.topBarBtn}>
-                                <X size={16} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
+                    {/* Post header */}
+                    <View style={styles.postHeader}>
+                        {/* Avatar + username */}
+                        <View style={styles.userInfo}>
+                            {post?.avatar ? (
+                                <FastImage source={{ uri: post.avatar }} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatar, { backgroundColor: "#222" }]} />
+                            )}
+                            <View style={styles.usernameRow}>
+                                <Text style={styles.username} numberOfLines={1}>{post?.username ?? ""}</Text>
+                                {post?.official && (
+                                    <View style={styles.badgeWrapper}>
+                                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={15} />
+                                    </View>
+                                )}
                             </View>
-                        </TouchableOpacity>
+                        </View>
 
-                        {/* 3 dots + dropdown */}
-                        <View style={{ position: "relative" }}>
-                            <TouchableOpacity
-                                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                                onPress={() => setDropdownVisible(prev => !prev)}
-                            >
-                                <View style={styles.topBarBtn}>
-                                    <MaterialCommunityIcons name="dots-vertical" size={16} color="rgba(255,255,255,0.85)" />
+                        {/* Actions: dots + close */}
+                        <View style={styles.headerActions}>
+                            <View style={{ position: "relative" }}>
+                                <TouchableOpacity
+                                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                                    onPress={() => setDropdownVisible(prev => !prev)}
+                                >
+                                    <MaterialCommunityIcons name="dots-vertical" size={22} color="rgba(255,255,255,0.75)" />
+                                </TouchableOpacity>
+
+                                {post && (
+                                    <DropDown
+                                        isVisible={dropdownVisible}
+                                        isOwner={currentUserId === post.user_id}
+                                        postId={post.post_id}
+                                        onClose={() => setDropdownVisible(false)}
+                                        onPostDeleted={() => {
+                                            setDropdownVisible(false);
+                                            onClose();
+                                        }}
+                                        onPostDeletedFail={() => setDropdownVisible(false)}
+                                        onReportResult={() => setDropdownVisible(false)}
+                                    />
+                                )}
+                            </View>
+
+                            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                                <View style={styles.closeBtn}>
+                                    <X size={15} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
                                 </View>
                             </TouchableOpacity>
-
-                            {post && (
-                                <DropDown
-                                    isVisible={dropdownVisible}
-                                    isOwner={currentUserId === post.user_id}
-                                    postId={post.post_id}
-                                    onClose={() => setDropdownVisible(false)}
-                                    onPostDeleted={() => {
-                                        setDropdownVisible(false);
-                                        onClose();
-                                    }}
-                                    onPostDeletedFail={() => setDropdownVisible(false)}
-                                    onReportResult={() => setDropdownVisible(false)}
-                                />
-                            )}
                         </View>
                     </View>
 
@@ -252,6 +275,7 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                                 <View style={[styles.shimmerLine, { width: "75%", marginTop: 6 }]} />
                             </View>
                         </View>
+
                     ) : post ? (
                         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                             {/* Image with double tap */}
@@ -337,16 +361,18 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                                         </Text>
                                     </TouchableOpacity>
 
-                                    {/* Comments — grey */}
+                                    {/* Comments */}
                                     {post.is_comments_enabled && (
                                         <TouchableOpacity style={styles.actionButton} onPress={() => postId !== null && onOpenComments?.(postId)} activeOpacity={0.7}>
                                             <MessageCircle size={22} color="#999" />
+                                            <Text style={styles.actionCount}>{post.comments_count ?? 0}</Text>
                                         </TouchableOpacity>
                                     )}
                                 </View>
                             </View>
                         </ScrollView>
                     ) : null}
+                </View>
                 </View>
             </Animated.View>
 
@@ -357,7 +383,7 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
 const styles = StyleSheet.create({
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: "rgba(0,0,0,0.6)",
+        backgroundColor: "rgba(0,0,0,0.4)",
     },
     cardWrapper: {
         flex: 1,
@@ -365,30 +391,70 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingHorizontal: 16,
     },
+    glowWrapper: {
+        width: CARD_WIDTH,
+        borderRadius: 24,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 28,
+        elevation: 20,
+    },
     card: {
         width: CARD_WIDTH,
         backgroundColor: "transparent",
         borderRadius: 24,
         maxHeight: SCREEN_HEIGHT * 0.90,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.08)",
         overflow: "hidden",
     },
-    topBar: {
+    postHeader: {
         flexDirection: "row",
-        justifyContent: "space-between",
         alignItems: "center",
+        justifyContent: "space-between",
         paddingHorizontal: 14,
-        paddingVertical: 12,
+        paddingVertical: 10,
         zIndex: 10,
     },
-    topBarBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: "rgba(255,255,255,0.1)",
+    userInfo: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        flex: 1,
+    },
+    avatar: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: "#1a1a1a",
+    },
+    usernameRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+    },
+    username: {
+        color: "#fff",
+        fontSize: 15,
+        includeFontPadding: false,
+        textAlignVertical: "center",
+    },
+    badgeWrapper: {
+        width: 15,
+        height: 15,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    headerActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    closeBtn: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: "rgba(255,255,255,0.08)",
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.14)",
+        borderColor: "rgba(255,255,255,0.12)",
         justifyContent: "center",
         alignItems: "center",
     },
@@ -396,10 +462,13 @@ const styles = StyleSheet.create({
         width: "100%",
         height: IMAGE_HEIGHT,
         position: "relative",
+        backgroundColor: "#111",
+        overflow: "hidden",
     },
     image: {
         width: "100%",
         height: "100%",
+        backgroundColor: "#111",
     },
     // Big heart overlay — same pattern as PostList
     heartOverlay: {
@@ -434,7 +503,6 @@ const styles = StyleSheet.create({
     badgeText: {
         color: "#fff",
         fontSize: 11,
-        fontWeight: "600",
         letterSpacing: 0.3,
     },
     content: {
@@ -456,7 +524,6 @@ const styles = StyleSheet.create({
     metaText: {
         color: "#666",
         fontSize: 12,
-        fontWeight: "500",
     },
     aboutText: {
         color: "#ddd",
@@ -477,14 +544,15 @@ const styles = StyleSheet.create({
     actionButton: {
         flexDirection: "row",
         alignItems: "center",
+        justifyContent: "center",
         gap: 6,
         paddingHorizontal: 6,
         paddingVertical: 4,
+        minHeight: 36,
     },
     actionCount: {
         color: "#999",
         fontSize: 14,
-        fontWeight: "600",
     },
     actionCountActive: {
         color: "#A855F7",
