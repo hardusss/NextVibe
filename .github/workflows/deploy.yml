@@ -20,8 +20,10 @@ jobs:
             cd /root/NextVibe
 
             # Get new update
-            git fetch origin main
+            git checkout main
+            git fetch --all
             git reset --hard origin/main
+            git pull origin main
 
             # --- 2. PYTHON (DRF + FastAPI + Celery) ---
             echo "Updating Python libs..."
