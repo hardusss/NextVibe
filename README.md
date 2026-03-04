@@ -334,7 +334,7 @@ To run the complete NextVibe application, you need to start all services in the 
 7. **Frontend**: `npx expo start`
 
 ## **🔗 Service Endpoints**
-
+    New update CI/CD
 - **Backend API**: `http://ur_ip(on frontend or localhost(127.0.0.1) in Postman for testing):8000`
 - **Chat Service**: `http://ur_ip(on frontend or localhost(127.0.0.1) in Postman for testing):8081`
 - **Moderation Service**: `http://localhost:8080`
