@@ -53,7 +53,7 @@ jobs:
             # --- 5. RESTART ALL ---
             echo "🔄 Restarting Services..."
             sudo systemctl restart nextvibe-backend.service
-            sudo systemctl restart nextvibe-chat.service
+            sudo systemctl restart nextvibe-realtime.service
             sudo systemctl restart nextvibe-celery-beat.service 
             sudo systemctl restart nextvibe-celery-worker.service 
 
