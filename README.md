@@ -352,6 +352,6 @@ To run the complete NextVibe application, you need to start all services in the 
 - Keep the Celery worker terminal open to process background tasks
 
 ## **🤝 Contributing**
-
+NextVibe Now IRL Social Layer on Solana
 Please read the contributing guidelines before making any changes to the codebase.
 
