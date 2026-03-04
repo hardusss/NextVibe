@@ -97,7 +97,7 @@ class Comment(models.Model):
 
 class CommentReply(models.Model):
     owner = models.ForeignKey("user.User", on_delete=models.CASCADE)
-    comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="replies")
     content = models.TextField(max_length=255)
     create_at = models.DateTimeField(auto_now_add=True)
     count_likes = models.IntegerField(default=0, null=True)
