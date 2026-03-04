@@ -73,7 +73,7 @@ export default function VerifyBadge ({ isLooped, isVisible, haveModal, isStatic,
 
         // visible
         if (isLooped) {
-            lottie.play(); // countined or start
+            lottie.play(30, 110); // countined or start
         }
     }, [isVisible, isStatic, isLooped]);
 

@@ -13,6 +13,10 @@ backend/NextVibeAPI/posts/src/.env
 
 backend/NextVibeAPI/NextVibeAPI/.env
 
+__pycache__/
+*.pyc
+
+
 **/__pycache__/
 
 ./.vscode

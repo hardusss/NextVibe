@@ -21,7 +21,9 @@ const profileDarkStyles = StyleSheet.create({
     },
     username: {
         color: colors.textPrimary,
-        fontSize: 22
+        fontSize: 22,
+        includeFontPadding: false,
+        fontFamily: "Dank Mono Bold"
         },
     avatar: {
         marginLeft: 10,
@@ -32,13 +34,14 @@ const profileDarkStyles = StyleSheet.create({
     },
     text: {
         color: colors.textPrimary,
-        textAlign: "center"
+        textAlign: "center",
+        fontFamily: "Dank Mono"
     },
     about: {
         color: colors.textPrimary,
-        fontWeight: 600,
         marginTop: 20,
         marginLeft: 5,
+        fontFamily: "Dank Mono"
     }
 })
 

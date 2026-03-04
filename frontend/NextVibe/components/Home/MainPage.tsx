@@ -75,7 +75,6 @@ const getStyles = (theme: typeof darkTheme) => {
         },
         postContainer: {
             borderRadius: 12,
-            marginBottom: 16,
             padding: 14,
             position: "relative"
         },
@@ -97,10 +96,21 @@ const getStyles = (theme: typeof darkTheme) => {
             flexDirection: "row",
             alignItems: "center"
         },
+        usernameRow: {
+            flexDirection: "row",
+            alignItems: "center", 
+        },
+        badgeWrapper: {
+            marginLeft: 1, 
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
         username: {
             fontSize: 16,
             fontWeight: "600",
-            color: theme.textPrimary
+            color: theme.textPrimary,
+            includeFontPadding: false, 
+            textAlignVertical: 'center',
         },
         location: {
             fontSize: 14,
@@ -644,12 +654,21 @@ const PostItem = memo(({
                     onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
                 >
                     <View style={styles.usernameContainer}>
-                        <View style={{flexDirection: "row", "alignItems": "center"}}>
+                        <View style={styles.usernameRow}>
                             <Text style={styles.username}>{item.owner__username}</Text>
                             {item.owner__official ? (
-                                <VerifyBadge isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16}/>
+                                <View style={styles.badgeWrapper}>
+                                    <VerifyBadge 
+                                        isLooped={true} 
+                                        isVisible={isVisible} 
+                                        haveModal={false} 
+                                        isStatic={false} 
+                                        size={16}
+                                    />
+                                </View>
                             ) : null}
                         </View>
+                        
                         {item.is_ai_generated && (
                             <View style={styles.aiBadge}>
                                 <MaterialIcons name="auto-awesome" size={12} color="#fff" />

@@ -1,5 +1,2 @@
-import TransactionDetail from '@/components/Wallet/TransactionDetail';
-
-export default function TransactionDetailScreen() {
-  return <TransactionDetail />;
-}
+import TransactionDetailScreen from "@/components/Wallet/TransactionsHistory/TransactionDetailScreen";
+export default TransactionDetailScreen;

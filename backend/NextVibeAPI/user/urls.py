@@ -1,7 +1,7 @@
 from django.urls import path
 from .views_pac import (
                             RegisterUserView, LoginUserView,
-                            GoogleRegisterView, GoogleLoginUserView,
+                            GoogleRegisterView,
                             UserDetailView, RecommendedUsersView,
                             FollowView, SearchUsersView,
                             HistorySearchView, TwoFAView,
@@ -21,8 +21,7 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("register/", RegisterUserView.as_view(), name='register_user'),
     path("login/", LoginUserView.as_view(), name='login_user'),
-    path("google-register/", GoogleRegisterView.as_view(), name="google_register"),
-    path("google-login/", GoogleLoginUserView.as_view(), name="google_login"),
+    path("google-sign-in/", GoogleRegisterView.as_view(), name="google_sing_in"),
     path("user-detail/<int:id>/", UserDetailView.as_view(), name="user-detail"),
     path("recommendations/<int:id>/", RecommendedUsersView.as_view(), name="recommendations_profiles"),
     path("follow/<int:follow_id>/", FollowView.as_view(), name="follow"),
