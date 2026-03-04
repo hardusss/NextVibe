@@ -11,7 +11,7 @@ export default function Header() {
   const scaleY = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
-  const height = useRef(new Animated.Value(110)).current;
+  const height = useRef(new Animated.Value(50)).current;
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
   const styles = getStyles(isDark);
@@ -83,25 +83,6 @@ export default function Header() {
           </View>
         </View>
       </View>
-
-    
-      <Animated.View 
-        style={[
-          styles.buttonContainer,
-          {
-            transform: [
-              { translateY },
-              { scaleY },
-              { scale }
-            ],
-            opacity,
-          }
-        ]}
-      >
-        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.messageButton} onPress={() => router.push("/chats")}>
-          <Text style={styles.messageButtonText}>Message</Text>
-        </TouchableOpacity>
-      </Animated.View>
     </Animated.View>
   );
 }
@@ -111,6 +92,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     zIndex: 100,
     width: '100%',
     marginTop: -5,
+    
   },
   notifyContainer: {
     position: "relative",
@@ -143,7 +125,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   buttonContainer: {
     paddingHorizontal: 10,
-    paddingBottom :10,
     backgroundColor: isDark ? '#0A0410' : '#fff',
     zIndex: 1,
   },
@@ -170,8 +151,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   text: {
     fontSize: 35,
-    fontWeight: 'bold',
     color: isDark ? '#D9D9D9' : 'black',
+    marginLeft: 2
   },
   logo: {
     width: 50,

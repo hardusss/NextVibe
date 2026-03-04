@@ -5,17 +5,18 @@
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/new_icon.png",
-    "scheme": "myapp",
+    "scheme": "nextvibe", 
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "jsEngine": "hermes",
     "ios": {
       "jsEngine": "hermes",
       "supportsTablet": true,
-      "bundleIdentifier": "com.harrddddd.NextVibe",
+      "bundleIdentifier": "com.nextvibe.app",
       "infoPlist": {
         "NSCameraUsageDescription": "NextVibe needs access to your Camera.",
         "NSMicrophoneUsageDescription": "NextVibe needs access to your Microphone.",
+        "NFCReaderUsageDescription": "NextVibe needs NFC to connect you with friends.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -25,15 +26,37 @@
         "foregroundImage": "./assets/new_icon.png",
         "backgroundColor": "#0A0410"
       },
-      "package": "com.harrddddd.NextVibe",
-      "googleServicesFile": "./google-services.json",
+      "package": "com.nextvibe.app",
+      "launchMode": "singleTask",
+      "googleServicesFile": "./google-services.json", 
       "permissions": [
+        "android.permission.NFC",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.VIBRATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "nextvibe.io",
+              "pathPrefix": "/u"
+            },
+            {
+              "scheme": "https",
+              "host": "nextvibe.io",
+              "pathPrefix": "/transaction"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {
@@ -51,9 +74,7 @@
           }
         }
       ],
-      [
-        "expo-updates"
-      ],
+      "expo-updates",
       [
         "expo-splash-screen",
         {
@@ -71,6 +92,12 @@
           "microphonePermissionText": "NextVibe needs access to your Microphone."
         }
       ],
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "NextVibe needs NFC to connect you with friends."
+        }
+      ],
       "expo-image-picker",
       [
         "expo-video",
@@ -82,7 +109,9 @@
       "expo-font",
       "expo-audio",
       "expo-secure-store",
-      "react-native-compressor"
+      "react-native-compressor",
+      "./withSolanaMWA.js",
+      "./withHCE.js"
     ],
     "experiments": {
       "typedRoutes": true
@@ -93,10 +122,10 @@
       },
       "eas": {
         "projectId": "4c7d8842-f989-419d-b3ec-49ceece00b6e"
-    }
+      }
     },
     "owner": "nextvibe",
-    "runtimeVersion": "0.0.2-beta",
+    "runtimeVersion": "0.0.1-collections",
     "updates": {
       "url": "https://u.expo.dev/4c7d8842-f989-419d-b3ec-49ceece00b6e"
     }

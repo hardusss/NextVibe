@@ -2,7 +2,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { Text, Pressable, Image, useColorScheme } from 'react-native';
 import registerStyles from '../../styles/dark-theme/registerStyles';
 import { useEffect } from 'react';
-import GoogleRegister from '../../src/api/google.registation';
+import GoogleSignIn from '@/src/api/google.sign.in';
 import GoogleLogin from '@/src/api/google.login';
 import { useRouter } from 'expo-router';
 import Toast from "react-native-toast-message";
@@ -34,12 +34,9 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
             await GoogleSignin.signOut();
             const userInfo = await GoogleSignin.signIn();
             const userData = userInfo.data?.user;
-            if (userInfo.type === "success" && page === "register") {
-                GoogleRegister(usernameFromEmail(userData?.email as string), `${userData?.email}`, `${userData?.photo ? userData?.photo : "https://media.nextvibe.io/images/default.png"}`, router);
-            }
-            if (userInfo.type === "success" && page === "login") {
-                GoogleLogin(`${userData?.email}`, router);
-            }
+            const idToken = userInfo.data?.idToken
+            GoogleSignIn(usernameFromEmail(userData?.email as string), `${userData?.email}`, `${userData?.photo ? userData?.photo : "https://media.nextvibe.io/images/default.png"}`, router, idToken as string);
+
         } catch (error: any) {
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
                 Toast.show({

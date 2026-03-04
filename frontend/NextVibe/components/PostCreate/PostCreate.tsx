@@ -7,7 +7,6 @@ import createPost from '@/src/api/create.post';
 import generateImage from '@/src/api/generate.image';
 import generateImageStatus from '@/src/api/get.image.status';
 import FastImage from 'react-native-fast-image';
-import ButtonAI from './GenerateAIButton';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import { Vibration } from 'react-native';
@@ -306,7 +305,6 @@ export default function PostCreate() {
         setAiPrompt("");
         setLocation("");
         setPostText("");
-        router.back()
         router.back()
     }
 
@@ -765,8 +763,6 @@ export default function PostCreate() {
                             ios_backgroundColor={colorScheme === 'dark' ? '#4B5563' : '#D1D5DB'}
                         />
                     </View>
-
-                    <ButtonAI onClick={() => setIsModalVisible(true)} isGenerating={isGenerating}/>
                 </View>
 
                 <View style={themedStyles.footer}>
@@ -781,108 +777,6 @@ export default function PostCreate() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-
-            <Modal
-                visible={isModalVisible}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => {
-                    if (!isGenerating) {
-                        setIsModalVisible(false);
-                    }
-                }}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={themedStyles.modalContainer}
-                >
-                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                        style={{ flex: 1 }} 
-                        activeOpacity={1} 
-                        onPress={() => {
-                            if (!isGenerating) {
-                                setIsModalVisible(false);
-                            }
-                        }}
-                    />
-                    <View style={themedStyles.modalContent}>
-                        <View style={themedStyles.modalHeader}>
-                            <Text style={themedStyles.modalTitle}>Generate with AI</Text>
-                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                                style={themedStyles.modalCloseButton}
-                                onPress={() => {
-                                    if (!isGenerating) {
-                                        setIsModalVisible(false);
-                                    }
-                                }}
-                                disabled={isGenerating}
-                            >
-                                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-                            </TouchableOpacity>
-                        </View>
-                        <View style={themedStyles.modalInputContainer}>
-                            <TextInput
-                                style={themedStyles.modalInput}
-                                placeholder="Describe your image..."
-                                placeholderTextColor={colors.textSecondary}
-                                value={aiPrompt}
-                                onChangeText={setAiPrompt}
-                                editable={!isGenerating}
-                            />
-                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                                style={themedStyles.modalButton} 
-                                onPress={handleGenerateWithAI}
-                                disabled={aiPrompt.length === 0 || isGenerating}
-                            >
-                                {isGenerating ? (
-                                    <ActivityIndicator size="small" color="#FFFFFF" />
-                                ) : (
-                                    <Ionicons name="sparkles" size={24} color="#FFFFFF" />
-                                )}
-                            </TouchableOpacity>
-                        </View>
-
-                        {isGenerating && generationStatus && (
-                            <View style={themedStyles.generationStatusContainer}>
-                                <ActivityIndicator size="small" color={colors.accent} />
-                                <Text style={themedStyles.generationStatusText}>
-                                    {generationStatus}
-                                </Text>
-                            </View>
-                        )}
-
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "flex-start",
-                                gap: 8,
-                                marginTop: 12,
-                                backgroundColor: "rgba(255, 165, 0, 0.1)",
-                                borderRadius: 12,
-                                padding: 10,
-                                borderLeftWidth: 3,
-                                borderLeftColor: "orange",
-                            }}
-                        >
-                            <Ionicons name="alert-circle-outline" size={22} color="orange" style={{ marginTop: 2 }} />
-                            <Text
-                                style={{
-                                    color: colorScheme === "dark" ? "#fafafa" : "black",
-                                    fontSize: 13.5,
-                                    lineHeight: 18,
-                                    flex: 1,
-                                    fontWeight: "400",
-                                }}
-                            >
-                                <Text style={{ fontWeight: "700" }}>Beta:</Text> Only 1 generation is available for now. New
-                                generations will be added later — follow our social media.{"\n"}
-                                <Text style={{ fontWeight: "700" }}>Prompt must be in English</Text>, otherwise the generation
-                                will fail.
-                            </Text>
-                        </View>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
         </KeyboardAvoidingView>
     );
 }

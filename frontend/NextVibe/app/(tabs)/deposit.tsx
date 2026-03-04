@@ -1,5 +1,3 @@
-import DepositPage from "@/components/Wallet/DepositPage";
+import DepositScreen from "@/components/Wallet/Deposit/DepositScreen";
 
-export default function DepositScreen () {
-    return <DepositPage />
-}
+export default DepositScreen;

@@ -1,3 +1,3 @@
-import TransactionsScreen from "@/components/Wallet/Transactions";
+import TransactionsHistoryScreen from "@/components/Wallet/TransactionsHistory/TransactionsHistoryScreen";
 
-export default TransactionsScreen;
+export default TransactionsHistoryScreen;
