@@ -107,9 +107,10 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
         const getData = async () => {
             try {
                 const data = await getComments(post_id);
-                if (Array.isArray(data)) {
-                    setOwner(data[0]?.author ?? null);
-                    setComments(data.slice(1));
+                // New structure: { post_id, author, comments: [...] }
+                if (data && typeof data === 'object' && Array.isArray(data.comments)) {
+                    setOwner(data.author ?? null);
+                    setComments(data.comments);
                 } else {
                     setComments([]);
                 }
@@ -496,7 +497,6 @@ const styles = StyleSheet.create({
     },
     headerText: {
         fontSize: 16,
-        fontWeight: '700',
         color: '#fff',
         letterSpacing: 0.2,
     },
@@ -510,7 +510,6 @@ const styles = StyleSheet.create({
     disabledText: {
         color: '#555',
         fontSize: 15,
-        fontWeight: '600',
     },
     disabledSubtext: {
         color: '#3a3a3a',
@@ -552,8 +551,8 @@ const styles = StyleSheet.create({
     },
     username: {
         color: '#fff',
+        fontFamily: "Dank Mono Bold",
         fontSize: 13,
-        fontWeight: '700',
     },
     commentText: {
         fontSize: 14,
@@ -578,7 +577,7 @@ const styles = StyleSheet.create({
     replyBtn: {
         color: '#666',
         fontSize: 12,
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
     },
     likeRow: {
         flexDirection: 'row',
@@ -602,13 +601,11 @@ const styles = StyleSheet.create({
     toggleRepliesText: {
         color: '#888',
         fontSize: 12,
-        fontWeight: '500',
     },
     showMoreText: {
         color: '#A855F7',
         marginTop: 4,
         fontSize: 13,
-        fontWeight: '600',
     },
     replyingToBar: {
         flexDirection: 'row',
@@ -626,12 +623,12 @@ const styles = StyleSheet.create({
     },
     inputRow: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
+        alignItems: 'center',
         paddingHorizontal: 14,
         paddingVertical: 12,
         gap: 10,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.06)',
+        borderTopColor: 'rgba(46, 26, 87, 0.06)',
         backgroundColor: '#0f0f0f',
     },
     inputAvatar: {
@@ -642,12 +639,11 @@ const styles = StyleSheet.create({
     },
     inputWrap: {
         flex: 1,
-        backgroundColor: 'rgba(255,255,255,0.06)',
+        backgroundColor: 'rgba(255, 255, 255, 0)',
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: "#a955f747",
         paddingHorizontal: 14,
-        paddingVertical: 8,
         minHeight: 40,
         justifyContent: 'center',
     },
