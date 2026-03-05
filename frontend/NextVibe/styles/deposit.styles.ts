@@ -38,7 +38,8 @@ const createDepositStyles = (isDark: boolean, insets: EdgeInsets) => StyleSheet.
     title: {
       color: isDark ? '#FFFFFF' : '#1A1A1A',
       fontSize: 22,
-      fontWeight: '700',
+      fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
       marginLeft: 16,
       letterSpacing: -0.5,
       flex: 1,
@@ -125,7 +126,8 @@ const createDepositStyles = (isDark: boolean, insets: EdgeInsets) => StyleSheet.
     networkBadgeText: {
       color: isDark ? '#FFA500' : '#D2691E',
       fontSize: 13,
-      fontWeight: '700',
+      fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
       marginLeft: 6,
     },
 
@@ -161,7 +163,8 @@ const createDepositStyles = (isDark: boolean, insets: EdgeInsets) => StyleSheet.
     },
     tokenSymbol: {
       fontSize: 13,
-      fontWeight: '700',
+      fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
       color: isDark ? '#FFFFFF' : '#333',
     },
 
@@ -245,7 +248,8 @@ const createDepositStyles = (isDark: boolean, insets: EdgeInsets) => StyleSheet.
     },
     buttonText: {
       fontSize: 17,
-      fontWeight: '700',
+      fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
       marginLeft: 10,
       letterSpacing: 0.5,
       color: '#FFFFFF',

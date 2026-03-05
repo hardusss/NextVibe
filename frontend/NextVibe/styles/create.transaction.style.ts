@@ -59,7 +59,8 @@ const createTransactionStyles = (isDark: boolean) => StyleSheet.create({
         switchButtonText: {
             color: isDark ? '#A78BFA' : '#5856D6',
             fontSize: 14,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         },
         balanceContainer: {
             alignItems: 'flex-end',
@@ -73,7 +74,8 @@ const createTransactionStyles = (isDark: boolean) => StyleSheet.create({
             color: isDark ? '#A09CB8' : '#666',
             fontSize: 14,
             marginTop: 4,
-            fontWeight: '500',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         },
         inputContainer: {
             marginBottom: 20,
@@ -82,7 +84,8 @@ const createTransactionStyles = (isDark: boolean) => StyleSheet.create({
             color: isDark ? '#A09CB8' : '#666',
             marginBottom: 8,
             fontSize: 14,
-            fontWeight: '500',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             marginLeft: 4,
         },
         inputWrapper: {
@@ -182,7 +185,8 @@ const createTransactionStyles = (isDark: boolean) => StyleSheet.create({
         swipeText: {
             color: isDark ? '#A09CB8' : '#666',
             fontSize: 16,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         },
         swipeButton: {
             position: 'absolute',
@@ -211,7 +215,8 @@ const createTransactionStyles = (isDark: boolean) => StyleSheet.create({
         errorText: {
             color: '#fff',
             fontSize: 14,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             textAlign: 'center',
         },
     });

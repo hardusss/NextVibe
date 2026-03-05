@@ -31,7 +31,8 @@ export const createSelectTokenStyles = (isDark: boolean, colors: any) => StyleSh
     title: {
         color: colors.text,
         fontSize: 22,
-        fontWeight: '700',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         letterSpacing: 0.5,
     },
     searchBox: {
@@ -94,7 +95,8 @@ export const createSelectTokenStyles = (isDark: boolean, colors: any) => StyleSh
     },
     tokenName: {
         color: colors.text,
-        fontWeight: '700',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         fontSize: 17,
     },
     tokenSymbol: {

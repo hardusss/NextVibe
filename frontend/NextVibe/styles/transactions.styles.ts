@@ -24,7 +24,8 @@ const createTransactionsStyles = (isDark: boolean, insets: EdgeInsets) => StyleS
     // Section Headers
     sectionHeader: {
         fontSize: 14,
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         color: isDark ? '#A09CB8' : '#666',
         paddingVertical: 12,
         paddingHorizontal: 4,
@@ -74,7 +75,8 @@ const createTransactionsStyles = (isDark: boolean, insets: EdgeInsets) => StyleS
     },
     transactionType: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         color: isDark ? '#FFFFFF' : '#000',
         marginBottom: 4,
     },
