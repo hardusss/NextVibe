@@ -57,6 +57,7 @@ class User(AbstractBaseUser):
     is_baned = models.BooleanField(default=False)
     last_activity = models.DateTimeField(default=timezone.now)
     wallet_address = models.CharField(max_length=50, blank=True, null=True)
+    expo_push_token = models.CharField(max_length=100, blank=True, null=True)
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

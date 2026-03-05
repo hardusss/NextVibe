@@ -1,6 +1,5 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
-import { FontAwesome5, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet } from "react-native";
+import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet, Platform } from "react-native";
 import React, { useEffect, useState } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
@@ -21,6 +20,11 @@ import { House, Search, BadgePlus, UserRound } from "lucide-react-native"
 // WMA
 import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
 import { clusterApiUrl } from '@solana/web3.js';
+// PUSH
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants'
+
 
 // WMA settings
 const chain = 'solana:devnet';
@@ -124,6 +128,55 @@ export default function Layout() {
         { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
     ];
 
+    // --------PUSH--------
+    function handleRegistrationError(errorMessage: string) {
+        setToastMessage(errorMessage);
+        setVisible(true);
+        throw new Error(errorMessage);
+    }
+
+    async function registerForPushNotificationsAsync() {
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync('default', {
+                name: 'default',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#FF231F7C',
+            });
+        }
+
+        if (Device.isDevice) {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+            if (finalStatus !== 'granted') {
+                handleRegistrationError('Permission not granted to get push token for push notification!');
+                return;
+            }
+            const projectId =
+                Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+            if (!projectId) {
+                handleRegistrationError('Project ID not found');
+            }
+            try {
+                const pushTokenString = (
+                    await Notifications.getExpoPushTokenAsync({
+                        projectId,
+                    })
+                ).data;
+                console.log(pushTokenString);
+                return pushTokenString;
+            } catch (e: unknown) {
+                handleRegistrationError(`${e}`);
+            }
+        } else {
+            handleRegistrationError('Must use physical device for push notifications');
+        }
+    }
+
     useEffect(() => {
         if (fontsLoaded || fontError) {
             SplashScreen.hideAsync();
@@ -141,6 +194,14 @@ export default function Layout() {
         };
         loadUserId();
     }, []);
+
+    useEffect(() => {
+        // Get PUSH permission on Profile page
+        if (segments[1] === "profile") {
+            registerForPushNotificationsAsync();
+        };
+    }, [segments])
+
 
     useEffect(() => {
         const interceptor = axios.interceptors.response.use(
