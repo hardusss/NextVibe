@@ -37,7 +37,8 @@ const loginLightStyles = StyleSheet.create({
     inputLabel: {
         color: colors.textPrimary,
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         marginBottom: 8,
     },
     input: {

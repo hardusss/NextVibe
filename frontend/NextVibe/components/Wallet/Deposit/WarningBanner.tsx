@@ -54,8 +54,10 @@ export default function WarningBanner({
                 style={{ marginTop: 0 }}
             />
             <Text style={styles.warningText}>
-                Send only <Text style={{ fontWeight: '700' }}>{label}</Text> on{' '}
-                <Text style={{ fontWeight: '700' }}>{network}</Text>.
+                Send only <Text style={{ fontFamily: "Dank Mono Bold",
+includeFontPadding:false, }}>{label}</Text> on{' '}
+                <Text style={{ fontFamily: "Dank Mono Bold",
+includeFontPadding:false, }}>{network}</Text>.
             </Text>
         </View>
     );

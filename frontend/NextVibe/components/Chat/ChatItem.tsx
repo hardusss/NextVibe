@@ -263,7 +263,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   username: {
     fontSize: 16,
-    fontWeight: '600'
+    fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
   },
   time: {
     fontSize: 12,
@@ -292,6 +293,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   deletingText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
   },
 });

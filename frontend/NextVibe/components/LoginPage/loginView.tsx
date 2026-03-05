@@ -209,7 +209,8 @@ const getModernTheme = (isDark: boolean, accentColor: string) => {
         },
         title: {
             fontSize: 28,
-            fontWeight: '700',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             color: isDark ? '#ffffff' : '#1a1a1a',
             marginBottom: 8,
         },
@@ -258,7 +259,8 @@ const getModernTheme = (isDark: boolean, accentColor: string) => {
         loginButtonText: {
             color: '#ffffff',
             fontSize: 16,
-            fontWeight: '700',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             letterSpacing: 0.5,
         },
 
@@ -277,7 +279,8 @@ const getModernTheme = (isDark: boolean, accentColor: string) => {
             paddingHorizontal: 16,
             color: isDark ? '#666' : '#999',
             fontSize: 12,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         },
 
         // Footer
@@ -292,7 +295,8 @@ const getModernTheme = (isDark: boolean, accentColor: string) => {
         },
         registerLink: {
             color: accentColor,
-            fontWeight: '700',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             marginLeft: 6,
             fontSize: 14,
         },

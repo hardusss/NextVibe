@@ -1,18 +1,14 @@
 import { TouchableOpacity, Animated, StyleSheet, Text, View } from "react-native";
 import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
-import useWalletAddress from "@/hooks/useWalletAddress";
 import { LinearGradient } from "expo-linear-gradient";
-import usePortfolio from "@/hooks/usePortfolio";
-import { WalletMinimal } from "lucide-react-native"
+import { Sparkles } from "lucide-react-native"
 
 
-const ButtonWallet = () => {
+const ButtonCollect = () => {
     const router = useRouter();
     const scale = useRef(new Animated.Value(1)).current;
     const shimmerAnim = useRef(new Animated.Value(0)).current;
-    const { data, isLoading } = usePortfolio();
-    const { address } = useWalletAddress();
 
     useEffect(() => {
         const animation = Animated.loop(
@@ -47,16 +43,8 @@ const ButtonWallet = () => {
             friction: 4,
             useNativeDriver: true,
         }).start();
-        if (address) {
-            router.push("/wallet-dash")
-        } else {
-            router.push("/wallet-select");
-        }
+        
     };
-
-    const formattedBalance = data?.totalUsdBalance 
-        ? `${data.totalUsdBalance.toFixed(2)} USD` 
-        : "Connect";
 
     return (
         <Animated.View style={[styles.container, { transform: [{ scale }] }]}>
@@ -66,7 +54,7 @@ const ButtonWallet = () => {
                 activeOpacity={0.9}
             >
                 <LinearGradient
-                    colors={["#6A00F4", "#8100dd"]}
+                    colors={["#401f6c", "#8100dd"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.badge}
@@ -85,13 +73,8 @@ const ButtonWallet = () => {
                         />
                     </Animated.View>
 
-                    <WalletMinimal color="white" size={18} />
-                    
-                    {isLoading ? (
-                        <View style={styles.skeleton} />
-                    ) : (
-                        <Text style={styles.balanceText}>{data ? `${formattedBalance}` : "Connect"}</Text>
-                    )}
+                    <Sparkles color="rgb(216, 216, 217)" size={18} />
+                    <Text style={styles.balanceText}>Collect</Text>
                 </LinearGradient>
             </TouchableOpacity>
         </Animated.View>
@@ -101,7 +84,7 @@ const ButtonWallet = () => {
 const styles = StyleSheet.create({
     container: {
         alignSelf: "flex-start",
-        marginRight: 10,
+        marginRight: -5,
     },
     badge: {
         flexDirection: "row",
@@ -117,7 +100,6 @@ const styles = StyleSheet.create({
     balanceText: {
         color: "white",
         fontSize: 13,
-        fontFamily: "Dank Mono Bold",
         includeFontPadding: false,
         zIndex: 1,
     },
@@ -129,4 +111,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default ButtonWallet;
+export default ButtonCollect;

@@ -228,7 +228,8 @@ const getStyles = (isDark: boolean) =>
     },
     emptyText: {
       fontSize: 18,
-      fontWeight: '600',
+      fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
       marginBottom: 8,
     },
     emptySubText: {

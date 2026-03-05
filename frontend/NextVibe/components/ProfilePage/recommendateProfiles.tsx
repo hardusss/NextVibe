@@ -240,7 +240,8 @@ const styles = StyleSheet.create({
     },
     followText: {
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: "Dank Mono Bold",
+    includeFontPadding: false,
     },
 });
 
