@@ -110,6 +110,7 @@
       "expo-audio",
       "expo-secure-store",
       "react-native-compressor",
+      "expo-notifications",
       "./withSolanaMWA.js",
       "./withHCE.js"
     ],

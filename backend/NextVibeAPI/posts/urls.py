@@ -6,7 +6,7 @@ from .view_pac import (
     GenerateImage, RecomendationsView,
     ModerationCallbackView, RecommendationFeedView,
     DeletePostView, SendReportForPostView,
-    GetGenerationImageStatusView
+    GetGenerationImageStatusView, GetPostView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -28,5 +28,6 @@ urlpatterns = [
     path("moderation-callback/", ModerationCallbackView.as_view(), name="moderation_callback"),
     path("delete-post/", DeletePostView.as_view(), name="delete_post"),
     path("report-post/", SendReportForPostView.as_view(), name="report_post"),
-    path("recommendation-feed/", RecommendationFeedView.as_view(), name="recommendation-feed")
+    path("recommendation-feed/", RecommendationFeedView.as_view(), name="recommendation-feed"),
+    path("get-post/", GetPostView.as_view(), name="get_post"),
 ]

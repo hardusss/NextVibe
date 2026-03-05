@@ -449,7 +449,8 @@ const getStyles = (isDarkMode: boolean) =>
       color: isDarkMode ? "#888" : "#999",
       fontSize: 12,
       marginBottom: 12,
-      fontWeight: "500",
+      fontFamily: "Dank Mono Bold",
+    includeFontPadding: false,
     },
     codeBox: {
       flexDirection: "row",
@@ -463,7 +464,8 @@ const getStyles = (isDarkMode: boolean) =>
     },
     codeText: {
       fontSize: 16,
-      fontWeight: "600",
+      fontFamily: "Dank Mono Bold",
+    includeFontPadding: false,
       color: isDarkMode ? "#A78BFA" : "#7b05f1ff",
       letterSpacing: 2,
     },

@@ -362,7 +362,8 @@ export default function PostCreate() {
         },
         headerText: {
             fontSize: height < 700 ? 20 : 22,
-            fontWeight: '700',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             color: colors.textPrimary,
             letterSpacing: 0.3,
         },
@@ -432,7 +433,8 @@ export default function PostCreate() {
         },
         cameraCardText: {
             fontSize: height < 700 ? 14 : 16,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             color: colors.textPrimary,
             marginTop: 4,
         },
@@ -503,7 +505,8 @@ export default function PostCreate() {
         },
         switchLabel: {
             fontSize: 16,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             color: colors.textPrimary,
         },
         footer: {
@@ -527,7 +530,8 @@ export default function PostCreate() {
         },
         buttonText: {
             fontSize: 17,
-            fontWeight: '700',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             color: '#FFFFFF',
             letterSpacing: 0.5,
         },
@@ -556,7 +560,8 @@ export default function PostCreate() {
         },
         modalTitle: {
             fontSize: 20,
-            fontWeight: '700',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             color: colors.textPrimary,
         },
         modalCloseButton: {
@@ -598,7 +603,8 @@ export default function PostCreate() {
         },
         sectionTitle: {
             fontSize: 14,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             color: colors.textSecondary,
             marginLeft: 4,
             marginBottom: 6,
@@ -620,7 +626,8 @@ export default function PostCreate() {
             fontSize: 14,
             marginLeft: 10,
             flex: 1,
-            fontWeight: '500',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         },
     });
 

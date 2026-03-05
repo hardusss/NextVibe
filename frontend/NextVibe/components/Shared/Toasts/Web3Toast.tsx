@@ -170,7 +170,8 @@ const styles = StyleSheet.create({
   toastText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "Dank Mono Bold",
+    includeFontPadding: false,
     letterSpacing: 0.2,
   },
   closeButton: {

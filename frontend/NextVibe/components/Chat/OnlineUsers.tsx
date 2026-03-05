@@ -111,7 +111,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   username: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
     color: isDark ? '#fff' : '#000',
     maxWidth: 100,
   },
@@ -130,6 +131,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontSize: 14,
     color: isDark ? '#888' : '#555',
     marginLeft: 8,
-    fontWeight: '500',
+    fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
   },
 });

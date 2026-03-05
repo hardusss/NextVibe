@@ -45,7 +45,8 @@ const createIntroStyles = (isDarkMode: boolean) => StyleSheet.create({
     },
     title: {
         fontSize: 34,
-        fontWeight: '800',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         textAlign: 'center',
         letterSpacing: -0.5,
         marginBottom: 8,
@@ -53,7 +54,8 @@ const createIntroStyles = (isDarkMode: boolean) => StyleSheet.create({
     },
     subtitle: {
         fontSize: 16,
-        fontWeight: '500',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         textAlign: 'center',
         maxWidth: '80%',
         color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
@@ -85,7 +87,8 @@ const createIntroStyles = (isDarkMode: boolean) => StyleSheet.create({
     },
     featureText: {
         fontSize: 17,
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         flex: 1,
         color: isDarkMode ? '#E0E0E0' : '#333333',
     },
@@ -115,7 +118,8 @@ const createIntroStyles = (isDarkMode: boolean) => StyleSheet.create({
     },
     swipeText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         letterSpacing: 0.5,
         color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
     },
@@ -146,7 +150,8 @@ const createIntroStyles = (isDarkMode: boolean) => StyleSheet.create({
     },
     footerText: {
         fontSize: 12,
-        fontWeight: '500',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         marginLeft: 6,
         color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
     },

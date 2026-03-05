@@ -7,16 +7,16 @@ import {
     Dimensions, 
     Text
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getMenuPosts from "@/src/api/menu.posts";
-import { useRouter } from "expo-router";
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
-import { MaterialIcons } from "@expo/vector-icons";
+import { Image, Video, Timer, Sparkles } from "lucide-react-native";
 import { storage } from '@/src/utils/storage';
+import PostPopup from "./PostModal";
+import PopupModal from "../Comments/CommentPopup";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
@@ -35,13 +35,17 @@ type MediaCheck =
     | false;
 
 const PostGallery = ({id, previous}: {id: number, previous: string}) => {
-    const router = useRouter();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true); 
     const [index, setIndex] = useState(0);
     const [userID, setUserID] = useState<number | null>(null);
+
+    // Popup state
+    const [popupVisible, setPopupVisible] = useState(false);
+    const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+    const [commentsPostId, setCommentsPostId] = useState<number | null>(null);
 
     const POSTS_PER_PAGE = 9;
 
@@ -82,9 +86,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
             });
 
             setIndex((prevIndex) => shouldLoadMore ? prevIndex + POSTS_PER_PAGE : POSTS_PER_PAGE);
-        } catch (error) {
-            
-        }
+        } catch (error) {}
     
         setLoading(false);
         setLoadingMore(false);
@@ -103,41 +105,54 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
 
     const isVideo = (url: string): MediaCheck => {
         if (url.includes("/video/")) {
-            return {
-                storage: "cloudinary",
-                is_video: true
-            };
+            return { storage: "cloudinary", is_video: true };
         }
-
         const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
         if (videoExtensions.some(ext => url.endsWith(ext))) {
-            return {
-                storage: "r2",
-                is_video: true
-            };
+            return { storage: "r2", is_video: true };
         }
-
         return false; 
     };
 
     const getPreviewUrl = (url: string, item: any): string => {
         const videoCheck = isVideo(url);
-
         if (videoCheck) {
             if (videoCheck.storage === "cloudinary") {
                 return url.replace("/video/upload/", "/video/upload/so_0,du_1,q_10,f_jpg/");
             }
-
             if (videoCheck.storage === "r2") {
                 return item?.media[0]?.media_preview || item?.preview || url;
             }
         }
-
         return url;
+    };
+
+    const handlePostPress = (item: Post) => {
+        if (item.moderation_status !== "approved") return;
+        setSelectedPostId(item.post_id);
+        setPopupVisible(true);
     };
 
     return (
         <View style={styles.container}>
+            {/* PostPopup — renders as Modal above everything */}
+            <PostPopup
+                visible={popupVisible}
+                postId={selectedPostId}
+                onClose={() => setPopupVisible(false)}
+                currentUserId={userID ?? undefined}
+                onOpenComments={(id) => setCommentsPostId(id)}
+            />
+
+            {/* CommentsSheet lives OUTSIDE Modal — BottomSheetModal can't nest inside Modal */}
+            {commentsPostId !== null && (
+                <PopupModal
+                    post_id={commentsPostId}
+                    onClose={() => setCommentsPostId(null)}
+                    isCommentsEnabled={true}
+                />
+            )}
+
             {loading ? ( 
                 <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} />
             ) : (
@@ -152,13 +167,16 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                     renderItem={({ item }) => {
                         const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
                         const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
-                        
                         const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
+                        const isApproved = item.moderation_status === "approved";
+                        const isPending = item.moderation_status === "pending" && item.user_id === userID;
+
                         return (
-                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+                            <TouchableOpacity
+                                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
                                 style={styles.postContainer} 
-                                onPress={() => item.moderation_status === "approved" && hasMedia ? router.push({pathname: "/postslist", params: {id: item.post_id, previous: previous, user_id: id}}) : null}
-                                activeOpacity={item.moderation_status === "approved" && hasMedia ? 0.7 : 1}
+                                onPress={() => isApproved ? handlePostPress(item) : null}
+                                activeOpacity={isApproved ? 0.75 : 1}
                             >
                                 {hasMedia ? (
                                     isMediaVideo ? (
@@ -172,47 +190,38 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                     ) : (
                                         <FastImage 
                                             source={{ uri: mediaUrl! }}
-                                            style={[styles.media]}
+                                            style={styles.media}
                                             resizeMode={FastImage.resizeMode.cover}
-                                            onError={() => console.error("Failed to load image:", mediaUrl)}
                                         />
                                     )
                                 ) : (
                                     <View style={styles.placeholderContainer}>
-                                        <Ionicons name="images-outline" size={40} color="#666" />
+                                        <Image size={40} color="#666" />
                                     </View>
                                 )}
                     
-                                {(item.moderation_status === "pending" && item.user_id === userID) && (
+                                {isPending && (
                                     <BlurView 
                                         style={styles.moderationStatus} 
                                         blurType="dark"   
                                         blurAmount={10}    
                                     >
                                         <View style={styles.moderationContent}>
-                                            <MaterialIcons name="timer" size={28} color="white" style={{
-                                                alignSelf: "center",
-                                                textAlign: "center",
-                                                verticalAlign: "middle",
-                                                paddingBottom: "20%",
-                                            }}/>
-                                            <Text style={styles.moderationText}>
-                                                Post on Moderation
-                                            </Text>
+                                            <Timer size={28} color="white" style={{ alignSelf: "center" }} />
+                                            <Text style={styles.moderationText}>Post on Moderation</Text>
                                         </View>
                                     </BlurView>
                                 )}
 
-                                {hasMedia && item.moderation_status === "approved" && (
+                                {hasMedia && isApproved && (
                                     <View style={styles.iconContainer}>
                                         <View style={styles.iconRow}>
-                                            <Ionicons 
-                                                name={isMediaVideo ? "videocam" : "image"} 
-                                                size={20} 
-                                                color="white" 
-                                            />
+                                            {isMediaVideo
+                                                ? <Video size={16} color="white" />
+                                                : <Image size={16} color="white" />
+                                            }
                                             {item.is_ai_generated && (
-                                                <MaterialIcons name="auto-awesome" size={20} color="#05f0d8" />
+                                                <Sparkles size={16} color="#05f0d8" />
                                             )}
                                         </View>
                                     </View>
@@ -223,7 +232,9 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                     onEndReached={() => fetchPosts(true)} 
                     onEndReachedThreshold={1}
                     ListFooterComponent={
-                        loadingMore ? <ActivityIndicator size="small" color="#0000ff" style={{ marginVertical: 10 }} /> : null
+                        loadingMore
+                            ? <ActivityIndicator size="small" color="#0000ff" style={{ marginVertical: 10 }} />
+                            : null
                     }
                 />
             )}
@@ -269,18 +280,13 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     moderationText: {
-        paddingTop: "20%",
         color: "white",
         fontSize: 11,
         textAlign: "center",
-        fontWeight: "600",
+        fontFamily: "Dank Mono Bold",
+    includeFontPadding: false,
         lineHeight: 14,
         letterSpacing: 0.5,
-        textShadowColor: "rgba(0, 0, 0, 0.75)",
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
-        alignSelf: "center",
-        verticalAlign: "middle"
     },
     media: {
         width: "100%",
@@ -289,7 +295,7 @@ const styles = StyleSheet.create({
     },
     videoContainer: {
         position: "relative",
-        width: "100%",
+    width: "100%",
         height: "100%",
     },
     iconContainer: {
@@ -303,13 +309,7 @@ const styles = StyleSheet.create({
     iconRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-    },
-    noPostsText: {
-        color: "white",
-        textAlign: "center",
-        fontSize: 18,
-        marginTop: 20,
+        gap: 5,
     },
 });
 

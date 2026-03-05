@@ -235,7 +235,8 @@ const styles = StyleSheet.create({
     closeIcon: {
         fontSize: 18,
         color: 'rgba(255, 255, 255, 0.8)',
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         lineHeight: 18,
     },
     iconCircle: {
@@ -252,7 +253,8 @@ const styles = StyleSheet.create({
     },
     mainTitle: {
         fontSize: 26,
-        fontWeight: '800',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         color: '#ffffff',
         marginBottom: 16,
         letterSpacing: 0.5,
@@ -267,7 +269,8 @@ const styles = StyleSheet.create({
     },
     description: {
         fontSize: 15,
-        fontWeight: '500',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         color: 'rgba(255, 255, 255, 0.75)',
         textAlign: 'center',
         lineHeight: 22,
@@ -275,7 +278,8 @@ const styles = StyleSheet.create({
     },
     brandHighlight: {
         color: '#a364f5',
-        fontWeight: '800',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         fontSize: 16,
     },
     badgeContainer: {
@@ -295,11 +299,13 @@ const styles = StyleSheet.create({
     badgeText: {
         fontSize: 16,
         color: '#a364f5',
-        fontWeight: '900',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
     },
     badgeLabel: {
         fontSize: 12,
-        fontWeight: '800',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         color: '#a364f5',
         letterSpacing: 1.5,
     },

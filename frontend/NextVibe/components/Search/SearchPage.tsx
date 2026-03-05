@@ -221,7 +221,8 @@ export default function SearchPage() {
                                         <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
                                     ) : null}
                                 </View>
-                                <Text style={{ color: "gray", fontWeight: "800" }}>{formatNumber(item.readers_count)} Subs</Text>
+                                <Text style={{ color: "gray", fontFamily: "Dank Mono Bold",
+    includeFontPadding: false, }}>{formatNumber(item.readers_count)} Subs</Text>
                             </View>
                             <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => handleDeleteUser(item.user_id)} style={{ position: "absolute", right: 10 }}>
                                 <MaterialIcons name="close" color={colors.textPrimary} size={24} />
@@ -254,7 +255,8 @@ export default function SearchPage() {
                                         <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
                                     ) : null}
                                 </View>
-                                <Text style={{ color: "gray", fontWeight: "800" }}>{formatNumber(item.readers_count)} Subs</Text>
+                                <Text style={{ color: "gray", fontFamily: "Dank Mono Bold",
+    includeFontPadding: false, }}>{formatNumber(item.readers_count)} Subs</Text>
                             </View>
                         </TouchableOpacity>
                     )}
