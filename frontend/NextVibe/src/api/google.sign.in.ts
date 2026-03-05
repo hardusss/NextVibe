@@ -12,7 +12,7 @@ export default function GoogleSignIn(username: string, email: string, avatar_url
         avatar_url: avatar_url,
         idToken: idToken
     }
-    axios.post(`${GetApiUrl()}/users/google-login/`, data)
+    axios.post(`${GetApiUrl()}/users/google-sign-in/`, data)
     .then(response => {
         storage.setItem("id", `${response.data.user_id}`)
         storage.setItem("access", response.data.token.access)
