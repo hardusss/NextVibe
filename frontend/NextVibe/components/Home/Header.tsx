@@ -4,7 +4,7 @@ import { useColorScheme } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import FastImage from 'react-native-fast-image';
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Bell } from "lucide-react-native"
 
 export default function Header() {
   const translateY = useRef(new Animated.Value(0)).current;
@@ -61,7 +61,7 @@ export default function Header() {
           <Text style={styles.text}>NextVibe</Text>
           <View style={{flexDirection: "row", gap: 15}}>
             <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
-              <MaterialCommunityIcons name="bell-outline" size={30} color="#fafafa" />
+              <Bell size={30} color="#fafafa" />
               {notificationsCount > 0 && (
                 <View style={[
                   styles.counterBox,
