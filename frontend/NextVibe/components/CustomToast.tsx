@@ -26,7 +26,7 @@ export function CustomToast({ message, isVisible, onHide, type = 'success' }: Cu
           useNativeDriver: true,
         }),
       ]).start(() => {
-        setTimeout(onHide, 300); // Додаємо затримку перед викликом onHide
+        setTimeout(onHide, 300);
       });
     }
   }, [isVisible]);
@@ -60,7 +60,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     zIndex: 9999,
-    // Додаємо відступи для кращої видимості
     marginHorizontal: 16,
     marginTop: 8,
   },
@@ -74,6 +73,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     textAlign: 'center',
-    fontWeight: '500',
+    fontFamily: "Dank Mono Bold",
+    includeFontPadding: false,
   },
 });

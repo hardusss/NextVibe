@@ -110,7 +110,8 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     title: {
-        fontWeight: "800",
+        fontFamily: "Dank Mono Bold",
+        includeFontPadding: false,
         fontSize: 26,
         textAlign: "center",
         marginBottom: 12,
@@ -159,7 +160,8 @@ const styles = StyleSheet.create({
     primaryButtonText: {
         color: '#FFFFFF',
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: "Dank Mono Bold",
+        includeFontPadding: false,
     },
     secondaryButton: {
         paddingVertical: 10,
@@ -168,6 +170,7 @@ const styles = StyleSheet.create({
     },
     secondaryButtonText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
+        includeFontPadding: false,
     }
 });

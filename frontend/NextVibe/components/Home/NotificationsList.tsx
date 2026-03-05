@@ -113,7 +113,8 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
     title: {
       color: themeColors.text,
       fontSize: 22,
-      fontWeight: '700',
+      fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
       letterSpacing: 0.5,
     },
     notificationItem: {
@@ -183,7 +184,8 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
       flex: 1,
     },
     username: {
-      fontWeight: '700',
+      fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
     },
     notificationSubText: {
       color: themeColors.textSecondary,

@@ -117,7 +117,8 @@ const styles = StyleSheet.create({
     balanceText: {
         color: "white",
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: "Dank Mono Bold",
+        includeFontPadding: false,
         zIndex: 1,
     },
     skeleton: {

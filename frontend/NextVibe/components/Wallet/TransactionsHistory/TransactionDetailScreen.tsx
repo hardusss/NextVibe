@@ -236,14 +236,16 @@ export default function TransactionDetailScreen() {
         value: {
             color: isDark ? '#FFFFFF' : '#000',
             fontSize: 14,
-            fontWeight: '500',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             textAlign: 'right',
             marginLeft: 8,
         },
         urlText: {
             color: isDark ? '#A78BFA' : '#5856D6',
             fontSize: 14,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         },
         toast: {
             position: 'absolute',
@@ -260,7 +262,8 @@ export default function TransactionDetailScreen() {
         toastText: {
             color: '#fff',
             fontSize: 14,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             marginLeft: 8,
         },
     });

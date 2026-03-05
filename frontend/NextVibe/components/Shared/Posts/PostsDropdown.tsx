@@ -1,426 +1,191 @@
-import { View, useColorScheme, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
+import { Flag, Trash2 } from 'lucide-react-native';
 import { useState, useEffect, useRef } from "react";
 import deletePost from "@/src/api/delete.post";
 import ConfirmDialog from "../Toasts/ConfirmDialog";
 import ReportPostModal from "@/components/Shared/Posts/ReportPostModal";
 
 export default function DropDown({
-  isVisible,
-  isOwner,
-  postId,
-  onClose,
-  onPostDeleted,
-  onPostDeletedFail,
-  onReportResult
+    isVisible,
+    isOwner,
+    postId,
+    onClose,
+    onPostDeleted,
+    onPostDeletedFail,
+    onReportResult,
 }: {
-  isVisible: boolean,
-  isOwner: boolean,
-  postId: number,
-  onClose: () => void,
-  onPostDeleted?: () => void,
-  onPostDeletedFail?: () => void
-  onReportResult?: (reported: boolean, message?: string) => void
+    isVisible: boolean,
+    isOwner: boolean,
+    postId: number,
+    onClose: () => void,
+    onPostDeleted?: () => void,
+    onPostDeletedFail?: () => void,
+    onReportResult?: (reported: boolean, message?: string) => void,
 }) {
-  const isDark = useColorScheme() === "dark";
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [reportModalVisible, setReportModalVisible] = useState(false);
-  
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [reportModalVisible, setReportModalVisible] = useState(false);
 
-  useEffect(() => {
-    if (isVisible) {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 8,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [isVisible]);
+    const scaleAnim = useRef(new Animated.Value(0)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
 
-  const handleDeleteClick = () => {
-    onClose();
-    setTimeout(() => {
-      setShowConfirm(true);
-    }, 200);
-  };
-
-  const handleConfirmDelete = async () => {
-    setShowConfirm(false);
-    
-    try {
-      const response =  await deletePost(postId);
-      if (response.data !== "Post deleted"){
-        setTimeout(() => {
-            if (onPostDeletedFail){
-                onPostDeletedFail()
-            }
-        }, 200);
-        return
-      }
-      setTimeout(() => {  
-        setTimeout(() => {
-          onPostDeleted?.();
-        }, 500);
-      }, 200);
-    } catch (error) {
-      setTimeout(() => {
-        if (onPostDeletedFail){
-            onPostDeletedFail()
+    useEffect(() => {
+        if (isVisible) {
+            Animated.parallel([
+                Animated.spring(scaleAnim, {
+                    toValue: 1,
+                    tension: 100,
+                    friction: 8,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(opacityAnim, {
+                    toValue: 1,
+                    duration: 180,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        } else {
+            Animated.parallel([
+                Animated.timing(scaleAnim, { toValue: 0, duration: 140, useNativeDriver: true }),
+                Animated.timing(opacityAnim, { toValue: 0, duration: 140, useNativeDriver: true }),
+            ]).start();
         }
-      }, 200);
-    }
-  };
+    }, [isVisible]);
 
-  const items = [
-    {
-      label: "Report",
-      icon: "flag",
-      gradient: ["#8B5CF6", "#6366F1"],
-      iconColor: "#A78BFA",
-      onClick: () => {
+    const handleDeleteClick = () => {
         onClose();
-        setTimeout(() => setReportModalVisible(true), 200);
-      },
-      show: !isOwner,
-    },
-    {
-      label: "Delete",
-      icon: "trash-can",
-      gradient: ["#EF4444", "#DC2626"],
-      iconColor: "#FCA5A5",
-      onClick: handleDeleteClick,
-      show: isOwner,
-    },
-  ].filter(item => item.show);
+        setTimeout(() => setShowConfirm(true), 200);
+    };
 
-  if (!isVisible) return (
-    <>
-      <ConfirmDialog
-        visible={showConfirm}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setShowConfirm(false)}
-      /> 
-
-        <ReportPostModal
-          postId={postId}
-          visible={reportModalVisible}
-          onClose={(reported?: boolean, message?: string) => {
-            setReportModalVisible(false);
-            if (onReportResult) {
-              onReportResult(!!reported, message);
+    const handleConfirmDelete = async () => {
+        setShowConfirm(false);
+        try {
+            const response = await deletePost(postId);
+            if (response.data !== "Post deleted") {
+                setTimeout(() => onPostDeletedFail?.(), 200);
+                return;
             }
-          }}
-        />
-    </>
-  );
+            setTimeout(() => setTimeout(() => onPostDeleted?.(), 500), 200);
+        } catch {
+            setTimeout(() => onPostDeletedFail?.(), 200);
+        }
+    };
 
-  return (
-    <>
-      <Animated.View 
-        style={[
-          styles.container,
-          {
-            backgroundColor: isDark ? "rgba(15, 8, 25, 0.98)" : "rgba(255, 255, 255, 0.98)",
-            shadowColor: isDark ? "#8B5CF6" : "#000",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: isDark ? 0.5 : 0.15,
-            shadowRadius: 24,
-            elevation: 12,
-            opacity: opacityAnim,
-            transform: [
-              { scale: scaleAnim },
-              { translateY: scaleAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-20, 0]
-              })}
-            ]
-          }
-        ]}
-      >
-        <View style={styles.glassOverlay} />
+    const items = [
+        {
+            label: "Report",
+            icon: <Flag size={17} color="#C4B5FD" strokeWidth={1.8} />,
+            color: "#A855F7",
+            onClick: () => { onClose(); setTimeout(() => setReportModalVisible(true), 200); },
+            show: !isOwner,
+        },
+        {
+            label: "Delete",
+            icon: <Trash2 size={17} color="#FCA5A5" strokeWidth={1.8} />,
+            color: "#EF4444",
+            onClick: handleDeleteClick,
+            show: isOwner,
+        },
+    ].filter(item => item.show);
 
-        <View style={[
-          styles.gradientBorder,
-          { opacity: isDark ? 1 : 0.3 }
-        ]} />
+    // Always render modals so they survive isVisible=false
+    const modals = (
+        <>
+            <ConfirmDialog
+                visible={showConfirm}
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setShowConfirm(false)}
+            />
+            <ReportPostModal
+                postId={postId}
+                visible={reportModalVisible}
+                onClose={(reported?: boolean, message?: string) => {
+                    setReportModalVisible(false);
+                    onReportResult?.(!!reported, message);
+                }}
+            />
+        </>
+    );
 
-        {items.map((item, i) => (
-          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            key={i}
-            activeOpacity={0.7}
-            onPress={item.onClick}
-            style={[
-              styles.item,
-              i === items.length - 1 && styles.lastItem
-            ]}
-          >
-            <View style={styles.itemContent}>
-              <View style={[
-                styles.iconContainer,
-                {
-                  backgroundColor: isDark
-                    ? `${item.gradient[0]}20`
-                    : `${item.gradient[0]}15`,
-                  shadowColor: item.gradient[0],
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: isDark ? 0.6 : 0.3,
-                  shadowRadius: 8,
-                }
-              ]}>
-                <MaterialCommunityIcons
-                  name={item.icon as any}
-                  size={18}
-                  color={item.iconColor}
+    if (!isVisible) return modals;
+
+    return (
+        <>
+            <Animated.View style={[
+                styles.container,
+                { opacity: opacityAnim, transform: [{ scale: scaleAnim }, { translateY: scaleAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }] }
+            ]}>
+                {/* Top gradient line */}
+                <LinearGradient
+                    colors={['#A855F7', '#7C3AED']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.topLine}
                 />
-              </View>
 
-              <Text style={[
-                styles.label,
-                { color: isDark ? "#F3F4F6" : "#1F2937" }
-              ]}>
-                {item.label}
-              </Text>
-            </View>
+                {items.map((item, i) => (
+                    <TouchableOpacity
+                        key={i}
+                        activeOpacity={0.7}
+                        onPress={item.onClick}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        style={[styles.item, i < items.length - 1 && styles.itemBorder]}
+                    >
+                        <View style={[styles.iconBox, { borderColor: `${item.color}30`, backgroundColor: `${item.color}12` }]}>
+                            {item.icon}
+                        </View>
+                        <Text style={[styles.label, { color: item.color === '#EF4444' ? '#FCA5A5' : '#C4B5FD' }]}>
+                            {item.label}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </Animated.View>
 
-            <View style={[
-              styles.hoverLine,
-              {
-                backgroundColor: item.gradient[0],
-                opacity: 0
-              }
-            ]} />
-          </TouchableOpacity>
-        ))}
-
-        <LinearGradient
-          colors={isDark
-            ? ['#8B5CF6', '#6366F1', '#EC4899']
-            : ['#A78BFA', '#818CF8', '#F9A8D4']
-          }
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.accentLine}
-        />
-      </Animated.View>
-
-      <ConfirmDialog
-        visible={showConfirm}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setShowConfirm(false)}
-      />
-
-    </>
-  );
+            {modals}
+        </>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: 180,
-    borderRadius: 16,
-    position: "absolute",
-    right: 0,
-    top: 30,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.2)",
-    zIndex: 999999,
-  },
-  glassOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
-  },
-  gradientBorder: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: "#8B5CF6",
-  },
-  item: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(139, 92, 246, 0.1)",
-    position: "relative",
-  },
-  lastItem: {
-    borderBottomWidth: 0,
-  },
-  itemContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.2)",
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  hoverLine: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
-    borderTopRightRadius: 2,
-    borderBottomRightRadius: 2,
-  },
-  accentLine: {
-    height: 2,
-    width: "100%",
-  },
-  toastContainer: {
-    position: "absolute",
-    top: 60,
-    left: 20,
-    right: 20,
-    zIndex: 999999999,
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.3)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  toastBorder: {
-    height: 3,
-    width: "100%",
-  },
-  toastContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    gap: 12,
-  },
-  toastIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.3)",
-  },
-  toastText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  // Confirm Dialog Styles
-  confirmBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  confirmDialog: {
-    width: "90%",
-    maxWidth: 400,
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.3)",
-  },
-  confirmBorder: {
-    height: 3,
-    width: "100%",
-  },
-  confirmContent: {
-    padding: 24,
-    alignItems: "center",
-  },
-  confirmIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.3)",
-  },
-  confirmTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  confirmMessage: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  confirmButtons: {
-    flexDirection: "row",
-    gap: 12,
-    width: "100%",
-  },
-  confirmButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  cancelButton: {
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  deleteButton: {
-    overflow: "hidden",
-  },
-  deleteButtonGradient: {
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  deleteButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
+    container: {
+        width: 160,
+        position: 'absolute',
+        right: 0,
+        top: 40,
+        backgroundColor: '#110a1e',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(168,85,247,0.2)',
+        overflow: 'hidden',
+        zIndex: 999999,
+    },
+    topLine: {
+        height: 2,
+        width: '100%',
+    },
+    item: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 13,
+    },
+    itemBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(168,85,247,0.1)',
+    },
+    iconBox: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    label: {
+        fontSize: 14,
+        fontFamily: 'Dank Mono Bold',
+        letterSpacing: 0.1,
+        includeFontPadding: false
+    },
 });
