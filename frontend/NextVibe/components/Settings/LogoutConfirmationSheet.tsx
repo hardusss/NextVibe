@@ -139,12 +139,14 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         fontSize: 16,
-        fontWeight: '600'
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
     },
     logoutButtonText: {
         color: '#ffffff',
         fontSize: 16,
-        fontWeight: '600'
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
     }
 });
 

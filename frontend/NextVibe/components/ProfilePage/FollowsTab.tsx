@@ -281,7 +281,8 @@ export default function FollowsScreen() {
         },
         tabButtonText: {
             fontSize: 16,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         },
         indicator: {
             height: 3,
@@ -312,7 +313,8 @@ export default function FollowsScreen() {
         userName: {
             flex: 1,
             fontSize: 16,
-            fontWeight: '500',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
             color: isDark ? '#FFFFFF' : '#000',
         },
         messageButton: {
@@ -323,7 +325,8 @@ export default function FollowsScreen() {
         },
         messageButtonText: {
             color: isDark ? '#0A0410' : '#F5F5F7',
-            fontWeight: '500',
+            fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
         },
         footerLoader: {
             paddingVertical: 20,
@@ -364,7 +367,8 @@ export default function FollowsScreen() {
     },
     emptyButtonText: {
         fontSize: 14,
-        fontWeight: '600',
+        fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
     }
     });
 

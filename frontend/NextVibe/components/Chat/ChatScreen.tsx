@@ -528,7 +528,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   headerUsername: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: "Dank Mono Bold",
+includeFontPadding:false,
     color: isDark ? '#fff' : '#000',
   },
   emptyContainer: {

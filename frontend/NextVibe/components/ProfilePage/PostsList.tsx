@@ -93,7 +93,8 @@ const getStyles = (theme: typeof darkTheme) => {
         },
         username: {
             fontSize: 16,
-            fontWeight: "600",
+            fontFamily: "Dank Mono Bold",
+    includeFontPadding: false,
             color: theme.textPrimary
         },
         location: {
