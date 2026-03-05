@@ -27,11 +27,22 @@ import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
 import DropDown from "../Shared/Posts/PostsDropdown";
 import VerifyBadge from "../VerifyBadge";
+import ButtonCollect from "../NftClaim/ButtonCollect";
+
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2;
 const IMAGE_HEIGHT = CARD_WIDTH * 1.25;
+
+// ─── Animation config ───────────────────────────────────────────────────────
+// Open: card springs up from 60px below, scales from 0.88 → 1, fades in
+// Close: card drops 40px, scales to 0.92, fades out — faster than open
+const OPEN_TRANSLATE_Y   = 60;
+const CLOSE_TRANSLATE_Y  = 40;
+const OPEN_SCALE_FROM    = 0.88;
+const CLOSE_SCALE_TO     = 0.92;
+// ────────────────────────────────────────────────────────────────────────────
 
 interface PostMedia {
     id: number;
@@ -76,23 +87,90 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
     const [likeCount, setLikeCount] = useState(0);
     const [dropdownVisible, setDropdownVisible] = useState(false);
     const [showHeart, setShowHeart] = useState(false);
+    // Controls Modal mount so we can keep it mounted during close animation
+    const [modalVisible, setModalVisible] = useState(false);
 
-    const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-    const heartScale = useRef(new Animated.Value(1)).current;
-    // Big heart overlay animation (like in PostList)
-    const heartOverlayAnim = useRef(new Animated.Value(0)).current;
-    // For double tap detection
-    const tapCount = useRef(0);
-    const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // ── Animation values ────────────────────────────────────────────────────
+    const translateY    = useRef(new Animated.Value(OPEN_TRANSLATE_Y)).current;
+    const scale         = useRef(new Animated.Value(OPEN_SCALE_FROM)).current;
+    const cardOpacity   = useRef(new Animated.Value(0)).current;
+    const backdropOpacity = useRef(new Animated.Value(0)).current;
+    // ────────────────────────────────────────────────────────────────────────
+
+    const heartScale        = useRef(new Animated.Value(1)).current;
+    const heartOverlayAnim  = useRef(new Animated.Value(0)).current;
+    const tapCount          = useRef(0);
+    const tapTimer          = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ── Open animation ──────────────────────────────────────────────────────
+    const runOpenAnimation = () => {
+        translateY.setValue(OPEN_TRANSLATE_Y);
+        scale.setValue(OPEN_SCALE_FROM);
+        cardOpacity.setValue(0);
+        backdropOpacity.setValue(0);
+
+        Animated.parallel([
+            // Backdrop fades in quickly
+            Animated.timing(backdropOpacity, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            // Card slides up + scales to 1 + fades in — spring feel
+            Animated.spring(translateY, {
+                toValue: 0,
+                tension: 70,
+                friction: 12,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scale, {
+                toValue: 1,
+                tension: 70,
+                friction: 12,
+                useNativeDriver: true,
+            }),
+            Animated.timing(cardOpacity, {
+                toValue: 1,
+                duration: 220,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    };
+
+    // ── Close animation then actually close ─────────────────────────────────
+    const runCloseAnimation = (onDone: () => void) => {
+        Animated.parallel([
+            Animated.timing(backdropOpacity, {
+                toValue: 0,
+                duration: 180,
+                useNativeDriver: true,
+            }),
+            Animated.timing(translateY, {
+                toValue: CLOSE_TRANSLATE_Y,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.timing(scale, {
+                toValue: CLOSE_SCALE_TO,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.timing(cardOpacity, {
+                toValue: 0,
+                duration: 180,
+                useNativeDriver: true,
+            }),
+        ]).start(onDone);
+    };
+    // ────────────────────────────────────────────────────────────────────────
 
     useEffect(() => {
         if (visible) {
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                tension: 65,
-                friction: 11,
-                useNativeDriver: true,
-            }).start();
+            setModalVisible(true);
+            // Tiny rAF delay so Modal has time to mount before animation fires
+            requestAnimationFrame(() => {
+                requestAnimationFrame(runOpenAnimation);
+            });
 
             if (postId !== null) {
                 let cancelled = false;
@@ -115,18 +193,13 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
 
                 return () => { cancelled = true; };
             }
-        } else {
-            Animated.timing(slideAnim, {
-                toValue: SCREEN_HEIGHT,
-                duration: 250,
-                useNativeDriver: true,
-            }).start();
+        } else if (modalVisible) {
+            // Animate out, THEN unmount
             setDropdownVisible(false);
-            // closed via onDismiss;
+            runCloseAnimation(() => setModalVisible(false));
         }
-    }, [visible, postId]);
+    }, [visible]);
 
-    // Cleanup tap timer
     useEffect(() => {
         return () => {
             if (tapTimer.current) clearTimeout(tapTimer.current);
@@ -155,227 +228,229 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
 
     const handleDoubleTap = () => {
         tapCount.current += 1;
-
         if (tapTimer.current) clearTimeout(tapTimer.current);
-
         if (tapCount.current === 2) {
             animateHeartOverlay();
             if (!liked) handleLike();
             tapCount.current = 0;
         } else {
-            tapTimer.current = setTimeout(() => {
-                tapCount.current = 0;
-            }, 300);
+            tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 300);
         }
     };
 
     const handleLike = () => {
         if (!post) return;
         likePost(post.post_id);
-        // Bottom bar heart animation
         Animated.sequence([
             Animated.spring(heartScale, { toValue: 1.4, tension: 300, friction: 5, useNativeDriver: true }),
-            Animated.spring(heartScale, { toValue: 1, tension: 300, friction: 5, useNativeDriver: true }),
+            Animated.spring(heartScale, { toValue: 1,   tension: 300, friction: 5, useNativeDriver: true }),
         ]).start();
         setLiked((prev) => !prev);
         setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+    };
+
+    const handleClose = () => {
+        runCloseAnimation(() => {
+            setModalVisible(false);
+            onClose();
+        });
     };
 
     const mediaUrl = post?.media?.[0]?.media_url ?? null;
 
     return (
         <Modal
-            visible={visible}
+            visible={modalVisible}
             transparent
             animationType="none"
             statusBarTranslucent
-            onRequestClose={onClose}
+            onRequestClose={handleClose}
         >
-            {/* Backdrop */}
-            <TouchableOpacity
-                style={styles.backdrop}
-                onPress={onClose}
-                activeOpacity={1}
-            />
-
-            {/* Card */}
+            {/* Backdrop — fades independently */}
             <Animated.View
-                style={[styles.cardWrapper, { transform: [{ translateY: slideAnim }] }]}
+                style={[styles.backdrop, { opacity: backdropOpacity }]}
+                pointerEvents="auto"
+            >
+                <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
+            </Animated.View>
+
+            {/* Card wrapper — scale + translateY + opacity */}
+            <Animated.View
+                style={[
+                    styles.cardWrapper,
+                    {
+                        opacity: cardOpacity,
+                        transform: [
+                            { translateY },
+                            { scale },
+                        ],
+                    },
+                ]}
                 pointerEvents="box-none"
             >
                 <View style={styles.glowWrapper}>
-                <View style={styles.card}>
-                    <BlurView
-                        style={StyleSheet.absoluteFillObject}
-                        blurType="dark"
-                        blurAmount={12}
-                        reducedTransparencyFallbackColor="#f4ebeb"
-                    />
-                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]} pointerEvents="none" />
+                    <View style={styles.card}>
+                        <BlurView
+                            style={StyleSheet.absoluteFillObject}
+                            blurType="dark"
+                            blurAmount={12}
+                            reducedTransparencyFallbackColor="#f4ebeb"
+                        />
+                        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]} pointerEvents="none" />
 
-                    {/* Post header */}
-                    <View style={styles.postHeader}>
-                        {/* Avatar + username */}
-                        <View style={styles.userInfo}>
-                            {post?.avatar ? (
-                                <FastImage source={{ uri: post.avatar }} style={styles.avatar} />
-                            ) : (
-                                <View style={[styles.avatar, { backgroundColor: "#222" }]} />
-                            )}
-                            <View style={styles.usernameRow}>
-                                <Text style={styles.username} numberOfLines={1}>{post?.username ?? ""}</Text>
-                                {post?.official && (
-                                    <View style={styles.badgeWrapper}>
-                                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={15} />
-                                    </View>
+                        {/* Post header */}
+                        <View style={styles.postHeader}>
+                            <View style={styles.userInfo}>
+                                {post?.avatar ? (
+                                    <FastImage source={{ uri: post.avatar }} style={styles.avatar} />
+                                ) : (
+                                    <View style={[styles.avatar, { backgroundColor: "#222" }]} />
                                 )}
-                            </View>
-                        </View>
-
-                        {/* Actions: dots + close */}
-                        <View style={styles.headerActions}>
-                            <View style={{ position: "relative" }}>
-                                <TouchableOpacity
-                                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                                    onPress={() => setDropdownVisible(prev => !prev)}
-                                >
-                                    <MaterialCommunityIcons name="dots-vertical" size={22} color="rgba(255,255,255,0.75)" />
-                                </TouchableOpacity>
-
-                                {post && (
-                                    <DropDown
-                                        isVisible={dropdownVisible}
-                                        isOwner={currentUserId === post.user_id}
-                                        postId={post.post_id}
-                                        onClose={() => setDropdownVisible(false)}
-                                        onPostDeleted={() => {
-                                            setDropdownVisible(false);
-                                            onClose();
-                                        }}
-                                        onPostDeletedFail={() => setDropdownVisible(false)}
-                                        onReportResult={() => setDropdownVisible(false)}
-                                    />
-                                )}
-                            </View>
-
-                            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                                <View style={styles.closeBtn}>
-                                    <X size={15} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
-                                </View>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {loading ? (
-                        <View style={styles.loadingContainer}>
-                            <View style={styles.shimmerImage} />
-                            <View style={styles.shimmerContent}>
-                                <View style={[styles.shimmerLine, { width: "60%" }]} />
-                                <View style={[styles.shimmerLine, { width: "90%", marginTop: 8 }]} />
-                                <View style={[styles.shimmerLine, { width: "75%", marginTop: 6 }]} />
-                            </View>
-                        </View>
-
-                    ) : post ? (
-                        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                            {/* Image with double tap */}
-                            {mediaUrl ? (
-                                <Pressable
-                                    style={styles.imageWrapper}
-                                    onPress={handleDoubleTap}
-                                >
-                                    <FastImage
-                                        source={{ uri: mediaUrl }}
-                                        style={styles.image}
-                                        resizeMode={FastImage.resizeMode.cover}
-                                    />
-
-                                    {/* Big heart overlay on double tap — same as PostList */}
-                                    {showHeart && (
-                                        <Animated.View
-                                            style={[styles.heartOverlay, {
-                                                transform: [{ scale: heartOverlayAnim }],
-                                                opacity: heartOverlayAnim,
-                                            }]}
-                                            pointerEvents="none"
-                                        >
-                                            <MaterialIcons name="favorite" size={90} color="#A855F7" />
-                                        </Animated.View>
-                                    )}
-
-                                    <View style={styles.imageBadges}>
-                                        {post.is_ai_generated && (
-                                            <View style={styles.badge}>
-                                                <Sparkles size={11} color="#05f0d8" />
-                                                <Text style={styles.badgeText}>AI Generated</Text>
-                                            </View>
-                                        )}
-                                        {post.location && (
-                                            <View style={styles.badge}>
-                                                <MapPin size={11} color="#fff" />
-                                                <Text style={styles.badgeText}>{post.location}</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                </Pressable>
-                            ) : (
-                                <View style={styles.noMediaContainer}>
-                                    <ImageIcon size={44} color="#555" />
-                                    <Text style={styles.noMediaText}>No media</Text>
-                                </View>
-                            )}
-
-                            {/* Content */}
-                            <View style={styles.content}>
-                                <View style={styles.metaRow}>
-                                    <View style={styles.metaChip}>
-                                        <Calendar size={12} color="#666" />
-                                        <Text style={styles.metaText}>{formatDate(post.create_at)}</Text>
-                                    </View>
-                                    {post.is_comments_enabled && (
-                                        <View style={styles.metaChip}>
-                                            <MessageCircle size={12} color="#666" />
-                                            <Text style={styles.metaText}>Comments on</Text>
+                                <View style={styles.usernameRow}>
+                                    <Text style={styles.username} numberOfLines={1}>{post?.username ?? ""}</Text>
+                                    {post?.official && (
+                                        <View style={styles.badgeWrapper}>
+                                            <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={15} />
                                         </View>
                                     )}
                                 </View>
+                            </View>
 
-                                {!!post.about && (
-                                    <Text style={styles.aboutText}>{post.about}</Text>
-                                )}
-
-                                <View style={styles.divider} />
-
-                                <View style={styles.actionsRow}>
-                                    {/* Like */}
-                                    <TouchableOpacity style={styles.actionButton} onPress={handleLike} activeOpacity={0.7}>
-                                        <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                                            <Heart
-                                                size={22}
-                                                color={liked ? "#A855F7" : "#999"}
-                                                fill={liked ? "#A855F7" : "transparent"}
-                                            />
-                                        </Animated.View>
-                                        <Text style={[styles.actionCount, liked && styles.actionCountActive]}>
-                                            {likeCount}
-                                        </Text>
+                            <View style={styles.headerActions}>
+                                <ButtonCollect />
+                                <View style={{ position: "relative" }}>
+                                    <TouchableOpacity
+                                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                                        onPress={() => setDropdownVisible(prev => !prev)}
+                                    >
+                                        <MaterialCommunityIcons name="dots-vertical" size={22} color="rgba(255,255,255,0.75)" />
                                     </TouchableOpacity>
 
-                                    {/* Comments */}
-                                    {post.is_comments_enabled && (
-                                        <TouchableOpacity style={styles.actionButton} onPress={() => postId !== null && onOpenComments?.(postId)} activeOpacity={0.7}>
-                                            <MessageCircle size={22} color="#999" />
-                                            <Text style={styles.actionCount}>{post.comments_count ?? 0}</Text>
-                                        </TouchableOpacity>
+                                    {post && (
+                                        <DropDown
+                                            isVisible={dropdownVisible}
+                                            isOwner={currentUserId === post.user_id}
+                                            postId={post.post_id}
+                                            onClose={() => setDropdownVisible(false)}
+                                            onPostDeleted={() => { setDropdownVisible(false); handleClose(); }}
+                                            onPostDeletedFail={() => setDropdownVisible(false)}
+                                            onReportResult={() => setDropdownVisible(false)}
+                                        />
                                     )}
                                 </View>
+
+                                <TouchableOpacity onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                                    <View style={styles.closeBtn}>
+                                        <X size={15} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
+                                    </View>
+                                </TouchableOpacity>
                             </View>
-                        </ScrollView>
-                    ) : null}
-                </View>
+                        </View>
+
+                        {loading ? (
+                            <View style={styles.loadingContainer}>
+                                <View style={styles.shimmerImage} />
+                                <View style={styles.shimmerContent}>
+                                    <View style={[styles.shimmerLine, { width: "60%" }]} />
+                                    <View style={[styles.shimmerLine, { width: "90%", marginTop: 8 }]} />
+                                    <View style={[styles.shimmerLine, { width: "75%", marginTop: 6 }]} />
+                                </View>
+                            </View>
+                        ) : post ? (
+                            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+                                {mediaUrl ? (
+                                    <Pressable style={styles.imageWrapper} onPress={handleDoubleTap}>
+                                        <FastImage
+                                            source={{ uri: mediaUrl }}
+                                            style={styles.image}
+                                            resizeMode={FastImage.resizeMode.cover}
+                                        />
+
+                                        {showHeart && (
+                                            <Animated.View
+                                                style={[styles.heartOverlay, {
+                                                    transform: [{ scale: heartOverlayAnim }],
+                                                    opacity: heartOverlayAnim,
+                                                }]}
+                                                pointerEvents="none"
+                                            >
+                                                <MaterialIcons name="favorite" size={90} color="#A855F7" />
+                                            </Animated.View>
+                                        )}
+
+                                        <View style={styles.imageBadges}>
+                                            {post.is_ai_generated && (
+                                                <View style={styles.badge}>
+                                                    <Sparkles size={11} color="#05f0d8" />
+                                                    <Text style={styles.badgeText}>AI Generated</Text>
+                                                </View>
+                                            )}
+                                            {post.location && (
+                                                <View style={styles.badge}>
+                                                    <MapPin size={11} color="#fff" />
+                                                    <Text style={styles.badgeText}>{post.location}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    </Pressable>
+                                ) : (
+                                    <View style={styles.noMediaContainer}>
+                                        <ImageIcon size={44} color="#555" />
+                                        <Text style={styles.noMediaText}>No media</Text>
+                                    </View>
+                                )}
+
+                                <View style={styles.content}>
+                                    <View style={styles.metaRow}>
+                                        <View style={styles.metaChip}>
+                                            <Calendar size={12} color="#666" />
+                                            <Text style={styles.metaText}>{formatDate(post.create_at)}</Text>
+                                        </View>
+                                        {post.is_comments_enabled && (
+                                            <View style={styles.metaChip}>
+                                                <MessageCircle size={12} color="#666" />
+                                                <Text style={styles.metaText}>Comments on</Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {!!post.about && (
+                                        <Text style={styles.aboutText}>{post.about}</Text>
+                                    )}
+
+                                    <View style={styles.divider} />
+
+                                    <View style={styles.actionsRow}>
+                                        <TouchableOpacity style={styles.actionButton} onPress={handleLike} activeOpacity={0.7}>
+                                            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                                                <Heart
+                                                    size={22}
+                                                    color={liked ? "#A855F7" : "#999"}
+                                                    fill={liked ? "#A855F7" : "transparent"}
+                                                />
+                                            </Animated.View>
+                                            <Text style={[styles.actionCount, liked && styles.actionCountActive]}>
+                                                {likeCount}
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        {post.is_comments_enabled && (
+                                            <TouchableOpacity
+                                                style={styles.actionButton}
+                                                onPress={() => postId !== null && onOpenComments?.(postId)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <MessageCircle size={22} color="#999" />
+                                                <Text style={styles.actionCount}>{post.comments_count ?? 0}</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                </View>
+                            </ScrollView>
+                        ) : null}
+                    </View>
                 </View>
             </Animated.View>
-
         </Modal>
     );
 };
@@ -383,7 +458,7 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
 const styles = StyleSheet.create({
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: "rgba(0,0,0,0.4)",
+        backgroundColor: "rgba(0,0,0,0.55)",
     },
     cardWrapper: {
         flex: 1,
@@ -470,13 +545,9 @@ const styles = StyleSheet.create({
         height: "100%",
         backgroundColor: "#111",
     },
-    // Big heart overlay — same pattern as PostList
     heartOverlay: {
         position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        top: 0, left: 0, right: 0, bottom: 0,
         justifyContent: "center",
         alignItems: "center",
         zIndex: 15,
