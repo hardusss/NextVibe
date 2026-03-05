@@ -9,7 +9,7 @@ from .views_pac import (
                             UpdatePassword, GetReaders,
                             GetFollows, GetCountUnreadNotificationsView,
                             GetNotificationsView, ReadNotificationsView,
-                            CheckStatusView
+                            CheckStatusView, SavePushTokenView
                         )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -36,5 +36,6 @@ urlpatterns = [
     path("count-unread-notifications/", GetCountUnreadNotificationsView.as_view(), name="count_unread_notifications"),
     path("notifications/", GetNotificationsView.as_view(), name="notifications"),
     path("read-notifications/", ReadNotificationsView.as_view(), name="read_notifications"),
-    path("check-status/", CheckStatusView.as_view(), name="check_status")
+    path("check-status/", CheckStatusView.as_view(), name="check_status"),
+    path("save-push-token/", SavePushTokenView.as_view(), name="token_push_save")
 ]
