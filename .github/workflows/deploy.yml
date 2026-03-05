@@ -47,7 +47,7 @@ jobs:
             echo "🐹 Rebuilding Go..."
             cd moderation_service
             rm -f moderator_bin
-            /usr/local/go/bin/go build -o moderator_bin .
+            go build -o moderator_bin .
             cd ..
 
             # --- 5. RESTART ALL ---
