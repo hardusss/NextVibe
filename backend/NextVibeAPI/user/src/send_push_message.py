@@ -26,8 +26,8 @@ def send(token: str, title: str, body: str):
     response = PushClient().publish(
         PushMessage(
             to=token,
-            title="Hello",
-            body="Test",
+            title=title,
+            body=body,
             data=None,
             sound=None,
             ttl=None,
@@ -42,6 +42,3 @@ def send(token: str, title: str, body: str):
         )
     )
     print(response)
-
-if __name__ == "__main__":
-    send("ExponentPushToken[bl7yHBE9BfBsDLonlic-Q9]", "Hello from NextVibe", "I love u)")
