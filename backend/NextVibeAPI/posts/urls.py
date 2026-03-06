@@ -32,5 +32,5 @@ urlpatterns = [
     path("recommendation-feed/", RecommendationFeedView.as_view(), name="recommendation-feed"),
     path("get-post/", GetPostView.as_view(), name="get_post"),
     path('<int:post_id>/metadata/<int:edition>/', PostMetadataView.as_view(), name='post_metadata'),
-    path("posts/collection/metadata/", CollectionMetadataView.as_view()),
+    path("collection/metadata/", CollectionMetadataView.as_view()),
 ]
