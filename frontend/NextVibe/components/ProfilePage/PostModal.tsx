@@ -29,20 +29,15 @@ import DropDown from "../Shared/Posts/PostsDropdown";
 import VerifyBadge from "../VerifyBadge";
 import ButtonCollect from "../NftClaim/ButtonCollect";
 
-
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2;
 const IMAGE_HEIGHT = CARD_WIDTH * 1.25;
 
-// ─── Animation config ───────────────────────────────────────────────────────
-// Open: card springs up from 60px below, scales from 0.88 → 1, fades in
-// Close: card drops 40px, scales to 0.92, fades out — faster than open
-const OPEN_TRANSLATE_Y   = 60;
-const CLOSE_TRANSLATE_Y  = 40;
-const OPEN_SCALE_FROM    = 0.88;
-const CLOSE_SCALE_TO     = 0.92;
-// ────────────────────────────────────────────────────────────────────────────
+const OPEN_TRANSLATE_Y = 60;
+const CLOSE_TRANSLATE_Y = 40;
+const OPEN_SCALE_FROM = 0.88;
+const CLOSE_SCALE_TO = 0.92;
 
 interface PostMedia {
     id: number;
@@ -73,6 +68,7 @@ interface PostPopupProps {
     onClose: () => void;
     currentUserId?: number;
     onOpenComments?: (postId: number) => void;
+    onOpenMint?: (postId: number, imageUrl: string | null, creator: string) => void;
 }
 
 const formatDate = (isoString: string): string => {
@@ -80,29 +76,25 @@ const formatDate = (isoString: string): string => {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
-const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, currentUserId, onOpenComments }) => {
+const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, currentUserId, onOpenComments, onOpenMint }) => {
     const [post, setPost] = useState<PostData | null>(null);
     const [loading, setLoading] = useState(false);
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
     const [dropdownVisible, setDropdownVisible] = useState(false);
     const [showHeart, setShowHeart] = useState(false);
-    // Controls Modal mount so we can keep it mounted during close animation
     const [modalVisible, setModalVisible] = useState(false);
 
-    // ── Animation values ────────────────────────────────────────────────────
-    const translateY    = useRef(new Animated.Value(OPEN_TRANSLATE_Y)).current;
-    const scale         = useRef(new Animated.Value(OPEN_SCALE_FROM)).current;
-    const cardOpacity   = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(OPEN_TRANSLATE_Y)).current;
+    const scale = useRef(new Animated.Value(OPEN_SCALE_FROM)).current;
+    const cardOpacity = useRef(new Animated.Value(0)).current;
     const backdropOpacity = useRef(new Animated.Value(0)).current;
-    // ────────────────────────────────────────────────────────────────────────
 
-    const heartScale        = useRef(new Animated.Value(1)).current;
-    const heartOverlayAnim  = useRef(new Animated.Value(0)).current;
-    const tapCount          = useRef(0);
-    const tapTimer          = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const heartScale = useRef(new Animated.Value(1)).current;
+    const heartOverlayAnim = useRef(new Animated.Value(0)).current;
+    const tapCount = useRef(0);
+    const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // ── Open animation ──────────────────────────────────────────────────────
     const runOpenAnimation = () => {
         translateY.setValue(OPEN_TRANSLATE_Y);
         scale.setValue(OPEN_SCALE_FROM);
@@ -110,64 +102,25 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
         backdropOpacity.setValue(0);
 
         Animated.parallel([
-            // Backdrop fades in quickly
-            Animated.timing(backdropOpacity, {
-                toValue: 1,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            // Card slides up + scales to 1 + fades in — spring feel
-            Animated.spring(translateY, {
-                toValue: 0,
-                tension: 70,
-                friction: 12,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scale, {
-                toValue: 1,
-                tension: 70,
-                friction: 12,
-                useNativeDriver: true,
-            }),
-            Animated.timing(cardOpacity, {
-                toValue: 1,
-                duration: 220,
-                useNativeDriver: true,
-            }),
+            Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+            Animated.spring(translateY, { toValue: 0, tension: 70, friction: 12, useNativeDriver: true }),
+            Animated.spring(scale, { toValue: 1, tension: 70, friction: 12, useNativeDriver: true }),
+            Animated.timing(cardOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
         ]).start();
     };
 
-    // ── Close animation then actually close ─────────────────────────────────
     const runCloseAnimation = (onDone: () => void) => {
         Animated.parallel([
-            Animated.timing(backdropOpacity, {
-                toValue: 0,
-                duration: 180,
-                useNativeDriver: true,
-            }),
-            Animated.timing(translateY, {
-                toValue: CLOSE_TRANSLATE_Y,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.timing(scale, {
-                toValue: CLOSE_SCALE_TO,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.timing(cardOpacity, {
-                toValue: 0,
-                duration: 180,
-                useNativeDriver: true,
-            }),
+            Animated.timing(backdropOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+            Animated.timing(translateY, { toValue: CLOSE_TRANSLATE_Y, duration: 200, useNativeDriver: true }),
+            Animated.timing(scale, { toValue: CLOSE_SCALE_TO, duration: 200, useNativeDriver: true }),
+            Animated.timing(cardOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
         ]).start(onDone);
     };
-    // ────────────────────────────────────────────────────────────────────────
 
     useEffect(() => {
         if (visible) {
             setModalVisible(true);
-            // Tiny rAF delay so Modal has time to mount before animation fires
             requestAnimationFrame(() => {
                 requestAnimationFrame(runOpenAnimation);
             });
@@ -194,7 +147,6 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                 return () => { cancelled = true; };
             }
         } else if (modalVisible) {
-            // Animate out, THEN unmount
             setDropdownVisible(false);
             runCloseAnimation(() => setModalVisible(false));
         }
@@ -209,17 +161,9 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
     const animateHeartOverlay = () => {
         setShowHeart(true);
         Animated.sequence([
-            Animated.spring(heartOverlayAnim, {
-                toValue: 1,
-                friction: 3,
-                useNativeDriver: true,
-            }),
+            Animated.spring(heartOverlayAnim, { toValue: 1, friction: 3, useNativeDriver: true }),
             Animated.delay(500),
-            Animated.timing(heartOverlayAnim, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            }),
+            Animated.timing(heartOverlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
         ]).start(() => {
             setShowHeart(false);
             heartOverlayAnim.setValue(0);
@@ -243,7 +187,7 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
         likePost(post.post_id);
         Animated.sequence([
             Animated.spring(heartScale, { toValue: 1.4, tension: 300, friction: 5, useNativeDriver: true }),
-            Animated.spring(heartScale, { toValue: 1,   tension: 300, friction: 5, useNativeDriver: true }),
+            Animated.spring(heartScale, { toValue: 1, tension: 300, friction: 5, useNativeDriver: true }),
         ]).start();
         setLiked((prev) => !prev);
         setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
@@ -266,7 +210,6 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
             statusBarTranslucent
             onRequestClose={handleClose}
         >
-            {/* Backdrop — fades independently */}
             <Animated.View
                 style={[styles.backdrop, { opacity: backdropOpacity }]}
                 pointerEvents="auto"
@@ -274,16 +217,12 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                 <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
             </Animated.View>
 
-            {/* Card wrapper — scale + translateY + opacity */}
             <Animated.View
                 style={[
                     styles.cardWrapper,
                     {
                         opacity: cardOpacity,
-                        transform: [
-                            { translateY },
-                            { scale },
-                        ],
+                        transform: [{ translateY }, { scale }],
                     },
                 ]}
                 pointerEvents="box-none"
@@ -298,7 +237,6 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                         />
                         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]} pointerEvents="none" />
 
-                        {/* Post header */}
                         <View style={styles.postHeader}>
                             <View style={styles.userInfo}>
                                 {post?.avatar ? (
@@ -317,7 +255,15 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                             </View>
 
                             <View style={styles.headerActions}>
-                                <ButtonCollect />
+                                {post && (
+                                    <ButtonCollect
+                                        onPress={() => onOpenMint?.(
+                                            post.post_id,
+                                            post.media?.[0]?.media_url ?? null,
+                                            post.username,
+                                        )}
+                                    />
+                                )}
                                 <View style={{ position: "relative" }}>
                                     <TouchableOpacity
                                         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}

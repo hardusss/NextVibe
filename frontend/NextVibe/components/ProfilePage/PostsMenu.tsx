@@ -1,10 +1,10 @@
-import React, { useState } from "react";
-import { 
-    View, 
-    FlatList, 
-    TouchableOpacity, 
-    StyleSheet, 
-    Dimensions, 
+import React, { useState, useRef } from "react";
+import {
+    View,
+    FlatList,
+    TouchableOpacity,
+    StyleSheet,
+    Dimensions,
     Text
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
@@ -17,10 +17,12 @@ import { Image, Video, Timer, Sparkles } from "lucide-react-native";
 import { storage } from '@/src/utils/storage';
 import PostPopup from "./PostModal";
 import PopupModal from "../Comments/CommentPopup";
+import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
+import useWalletAddress from "@/hooks/useWalletAddress";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
-const imageSize = (screenWidth - padding * 2) / 3; 
+const imageSize = (screenWidth - padding * 2) / 3;
 
 interface Post {
     user_id: number;
@@ -30,15 +32,15 @@ interface Post {
     moderation_status: string;
 }
 
-type MediaCheck = 
+type MediaCheck =
     | { storage: string; is_video: true }
     | false;
 
-const PostGallery = ({id, previous}: {id: number, previous: string}) => {
+const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
-    const [hasMore, setHasMore] = useState(true); 
+    const [hasMore, setHasMore] = useState(true);
     const [index, setIndex] = useState(0);
     const [userID, setUserID] = useState<number | null>(null);
 
@@ -47,6 +49,13 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
     const [commentsPostId, setCommentsPostId] = useState<number | null>(null);
 
+    // Mint state
+    const mintSheetRef = useRef<MintBottomSheetRef>(null);
+    const [mintPostId, setMintPostId] = useState<number | null>(null);
+    const [mintImageUrl, setMintImageUrl] = useState<string | null>(null);
+    const [mintCreator, setMintCreator] = useState<string>("");
+
+    const { address } = useWalletAddress();
     const POSTS_PER_PAGE = 9;
 
     const getId = async () => {
@@ -58,21 +67,21 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
 
     const fetchPosts = async (shouldLoadMore = false, currentUserID?: number) => {
         if (loadingMore || !hasMore) return;
-    
+
         if (shouldLoadMore) setLoadingMore(true);
         else setLoading(true);
-    
+
         try {
             const response = await getMenuPosts(id, index, POSTS_PER_PAGE);
             const newPosts = response.data;
             setHasMore(response.more_posts);
-    
+
             setPosts((prevPosts) => {
                 const actualUserID = currentUserID ?? userID;
-                
+
                 const filteredNewPosts = newPosts.filter(
                     (p: any) =>
-                        p.moderation_status === "approved" || 
+                        p.moderation_status === "approved" ||
                         (p.moderation_status === "pending" && p.user_id === actualUserID)
                 );
 
@@ -86,8 +95,8 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
             });
 
             setIndex((prevIndex) => shouldLoadMore ? prevIndex + POSTS_PER_PAGE : POSTS_PER_PAGE);
-        } catch (error) {}
-    
+        } catch (error) { }
+
         setLoading(false);
         setLoadingMore(false);
     };
@@ -96,7 +105,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         useCallback(() => {
             setPosts([]);
             setIndex(0);
-            
+
             getId().then((fetchedUserID) => {
                 fetchPosts(false, fetchedUserID);
             });
@@ -111,7 +120,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         if (videoExtensions.some(ext => url.endsWith(ext))) {
             return { storage: "r2", is_video: true };
         }
-        return false; 
+        return false;
     };
 
     const getPreviewUrl = (url: string, item: any): string => {
@@ -133,18 +142,30 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
         setPopupVisible(true);
     };
 
+    const handleMint = async (postId: number, price: number) => {
+        console.log("Minting post:", postId, "for", price, "SOL");
+        await new Promise(resolve => setTimeout(resolve, 1500));
+    };
+
+    const handleOpenMint = (postId: number, imageUrl: string | null, creator: string) => {
+        setMintPostId(postId);
+        setMintImageUrl(imageUrl);
+        setMintCreator(creator);
+        setTimeout(() => mintSheetRef.current?.present(), 50);
+    };
+
     return (
         <View style={styles.container}>
-            {/* PostPopup — renders as Modal above everything */}
+            {/* PostPopup */}
             <PostPopup
                 visible={popupVisible}
                 postId={selectedPostId}
                 onClose={() => setPopupVisible(false)}
                 currentUserId={userID ?? undefined}
                 onOpenComments={(id) => setCommentsPostId(id)}
+                onOpenMint={handleOpenMint}
             />
 
-            {/* CommentsSheet lives OUTSIDE Modal — BottomSheetModal can't nest inside Modal */}
             {commentsPostId !== null && (
                 <PopupModal
                     post_id={commentsPostId}
@@ -153,7 +174,16 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                 />
             )}
 
-            {loading ? ( 
+            <MintBottomSheet
+                ref={mintSheetRef}
+                postId={mintPostId ?? 0}
+                imageUrl={mintImageUrl}
+                creatorUsername={mintCreator}
+                walletConnected={address ? true : false}
+                onMint={handleMint}
+            />
+
+            {loading ? (
                 <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} />
             ) : (
                 <FlatList
@@ -173,22 +203,22 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
 
                         return (
                             <TouchableOpacity
-                                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                                style={styles.postContainer} 
+                                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                style={styles.postContainer}
                                 onPress={() => isApproved ? handlePostPress(item) : null}
                                 activeOpacity={isApproved ? 0.75 : 1}
                             >
                                 {hasMedia ? (
                                     isMediaVideo ? (
                                         <View style={styles.videoContainer}>
-                                            <FastImage 
+                                            <FastImage
                                                 source={{ uri: getPreviewUrl(mediaUrl!, item) }}
                                                 style={styles.media}
                                                 resizeMode={FastImage.resizeMode.cover}
                                             />
                                         </View>
                                     ) : (
-                                        <FastImage 
+                                        <FastImage
                                             source={{ uri: mediaUrl! }}
                                             style={styles.media}
                                             resizeMode={FastImage.resizeMode.cover}
@@ -199,12 +229,12 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                                         <Image size={40} color="#666" />
                                     </View>
                                 )}
-                    
+
                                 {isPending && (
-                                    <BlurView 
-                                        style={styles.moderationStatus} 
-                                        blurType="dark"   
-                                        blurAmount={10}    
+                                    <BlurView
+                                        style={styles.moderationStatus}
+                                        blurType="dark"
+                                        blurAmount={10}
                                     >
                                         <View style={styles.moderationContent}>
                                             <Timer size={28} color="white" style={{ alignSelf: "center" }} />
@@ -229,7 +259,7 @@ const PostGallery = ({id, previous}: {id: number, previous: string}) => {
                             </TouchableOpacity>
                         );
                     }}
-                    onEndReached={() => fetchPosts(true)} 
+                    onEndReached={() => fetchPosts(true)}
                     onEndReachedThreshold={1}
                     ListFooterComponent={
                         loadingMore
@@ -251,7 +281,7 @@ const styles = StyleSheet.create({
         height: imageSize,
         margin: 2,
         position: "relative",
-        overflow: "hidden", 
+        overflow: "hidden",
         borderRadius: 10,
         backgroundColor: "#1a1a1a",
     },
@@ -284,18 +314,18 @@ const styles = StyleSheet.create({
         fontSize: 11,
         textAlign: "center",
         fontFamily: "Dank Mono Bold",
-    includeFontPadding: false,
+        includeFontPadding: false,
         lineHeight: 14,
         letterSpacing: 0.5,
     },
     media: {
         width: "100%",
         height: "100%",
-        borderRadius: 10
+        borderRadius: 10,
     },
     videoContainer: {
         position: "relative",
-    width: "100%",
+        width: "100%",
         height: "100%",
     },
     iconContainer: {
