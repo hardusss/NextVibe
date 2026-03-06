@@ -24,7 +24,9 @@ import { clusterApiUrl } from '@solana/web3.js';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants'
-
+// Save token on backend
+import savePushToken from "@/src/api/save.push.token";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // WMA settings
 const chain = 'solana:devnet';
@@ -135,70 +137,58 @@ export default function Layout() {
         throw new Error(errorMessage);
     }
 
-    async function registerForPushNotificationsAsync() {
-        if (Platform.OS === 'android') {
-            await Notifications.setNotificationChannelAsync('default', {
-                name: 'default',
-                importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 250, 250, 250],
-                lightColor: '#FF231F7C',
-            });
+
+    const PUSH_TOKEN_KEY = 'expo_push_token';
+
+    async function registerForPushNotifications() {
+        if (!Device.isDevice) {
+            handleRegistrationError('Must use physical device for push notifications');
+            return;
         }
 
-        if (Device.isDevice) {
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-            if (existingStatus !== 'granted') {
-                const { status } = await Notifications.requestPermissionsAsync();
-                finalStatus = status;
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+
+        if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
+
+        if (finalStatus !== 'granted') {
+            handleRegistrationError('Permission not granted to get push token for push notification!');
+            return;
+        }
+
+        const projectId =
+            Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+
+        if (!projectId) {
+            handleRegistrationError('Project ID not found');
+            return;
+        }
+
+        try {
+            const pushTokenString = (
+                await Notifications.getExpoPushTokenAsync({ projectId })
+            ).data;
+
+            const savedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+
+            if (savedToken !== pushTokenString) {
+                await savePushToken(pushTokenString);
+                await AsyncStorage.setItem(PUSH_TOKEN_KEY, pushTokenString);
             }
-            if (finalStatus !== 'granted') {
-                handleRegistrationError('Permission not granted to get push token for push notification!');
-                return;
-            }
-            const projectId =
-                Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-            if (!projectId) {
-                handleRegistrationError('Project ID not found');
-            }
-            try {
-                const pushTokenString = (
-                    await Notifications.getExpoPushTokenAsync({
-                        projectId,
-                    })
-                ).data;
-                console.log(pushTokenString);
-                return pushTokenString;
-            } catch (e: unknown) {
-                handleRegistrationError(`${e}`);
-            }
-        } else {
-            handleRegistrationError('Must use physical device for push notifications');
+
+            return pushTokenString;
+        } catch (e: unknown) {
+            handleRegistrationError(`${e}`);
         }
     }
 
     useEffect(() => {
-        if (fontsLoaded || fontError) {
-            SplashScreen.hideAsync();
-        }
-    }, [fontsLoaded, fontError]);
-
-    useEffect(() => {
-        const loadUserId = async () => {
-            try {
-                const id = await storage.getItem("id");
-                if (id) setUserID(Number(id));
-            } catch (error) {
-                console.error('Error loading user ID:', error);
-            }
-        };
-        loadUserId();
-    }, []);
-
-    useEffect(() => {
         // Get PUSH permission on Profile page
         if (segments[1] === "profile") {
-            registerForPushNotificationsAsync();
+            registerForPushNotifications();
         };
     }, [segments])
 
