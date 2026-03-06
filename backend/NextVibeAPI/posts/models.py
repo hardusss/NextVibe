@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from .managers import PostsManager, CommentManager, CommentReplyManager
+from decimal import Decimal
+
 
 class Post(models.Model):
     class Meta:
@@ -21,8 +23,6 @@ class Post(models.Model):
     is_hide = models.BooleanField(default=False)
     # NFT logic
     is_nft = models.BooleanField(default=False)
-    mint_address = models.CharField(max_length=44, null=True, blank=True) # Address Merkle Tree / Collection
-    metadata_uri = models.URLField(null=True, blank=True) # Link for JSON (Arweave/IPFS)
     
     # Limited Edition
     total_supply = models.IntegerField(default=50, null=True, blank=True)
@@ -110,7 +110,7 @@ class CommentReply(models.Model):
 # --- NEW MODEL: USER COLLECTION (Who claimed what) ---
 class UserCollection(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        "user.User",
         on_delete=models.CASCADE,
         related_name='nft_collection'
     )
@@ -119,15 +119,16 @@ class UserCollection(models.Model):
         on_delete=models.CASCADE,
         related_name='mints'
     )
-    token_address = models.CharField(max_length=44, unique=True) 
-    signature = models.CharField(max_length=88, null=True, blank=True)
-    
+    asset_id = models.CharField(max_length=64, unique=True)   # cNFT assetId (PublicKey)
+    signature = models.CharField(max_length=128, null=True, blank=True)  # base64 tx sig
+    edition = models.PositiveIntegerField(default=1)           # edition number (1 of 50)
+    price = models.DecimalField(max_digits=10, decimal_places=6, default=Decimal('0'))  # SOL price
     minted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-minted_at']
         verbose_name = "NFT Item"
-        unique_together = ('user', 'post')
+        unique_together = ('user', 'post')  # one user = one mint on post
 
     def __str__(self):
-        return f"NFT {self.token_address} owned by {self.user}"
+        return f"NFT #{self.edition} of post {self.post.id} owned by {self.user.username}"
