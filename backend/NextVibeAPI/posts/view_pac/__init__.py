@@ -15,3 +15,4 @@ from .get_gen_image_status import GetGenerationImageStatusView
 from .get_post import GetPostView
 from .get_metadata import PostMetadataView
 from .collection_metadata import CollectionMetadataView
+from .mint_nft import MintNftView
