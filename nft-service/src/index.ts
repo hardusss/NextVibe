@@ -18,7 +18,7 @@ const COLLECTION_ADDRESS = process.env.COLLECTION_ADDRESS!
 const MERKLE_TREE_ADDRESS = process.env.MERKLE_TREE_ADDRESS!
 
 new Elysia()
-  .post("/build-mint", async ({ body }: { body: any }) => {
+  .post("/mint", async ({ body }: { body: any }) => {
     const { recipient, postId, edition } = body  
 
     // Get metadata from NextVibe API
@@ -26,7 +26,7 @@ new Elysia()
     const meta = await metaResponse.json()
 
     // Build transaction
-    const builder = await mintV1(umi, {
+    const { signature } = await (await mintV1(umi, {
       leafOwner: publicKey(recipient),
       merkleTree: publicKey(MERKLE_TREE_ADDRESS), 
       metadata: {
@@ -36,12 +36,12 @@ new Elysia()
         collection: { key: publicKey(COLLECTION_ADDRESS), verified: false },  
         creators: [],
       },
-    })
+    })).sendAndConfirm(umi)
 
-    const transaction = await builder.buildWithLatestBlockhash(umi)
-    const serialized = umi.transactions.serialize(transaction)
-
-    return { transaction: Buffer.from(serialized).toString('base64') }
+    return { 
+      success: true,
+      signature: Buffer.from(signature).toString('base64')
+    }
   })
   .listen(3000)
 
