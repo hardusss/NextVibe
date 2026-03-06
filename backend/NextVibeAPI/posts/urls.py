@@ -6,7 +6,8 @@ from .view_pac import (
     GenerateImage, RecomendationsView,
     ModerationCallbackView, RecommendationFeedView,
     DeletePostView, SendReportForPostView,
-    GetGenerationImageStatusView, GetPostView
+    GetGenerationImageStatusView, GetPostView,
+    PostMetadataView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -30,4 +31,5 @@ urlpatterns = [
     path("report-post/", SendReportForPostView.as_view(), name="report_post"),
     path("recommendation-feed/", RecommendationFeedView.as_view(), name="recommendation-feed"),
     path("get-post/", GetPostView.as_view(), name="get_post"),
+    path('<int:post_id>/metadata/<int:edition>/', PostMetadataView.as_view(), name='post_metadata'),
 ]
