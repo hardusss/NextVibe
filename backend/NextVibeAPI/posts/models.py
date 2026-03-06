@@ -25,7 +25,7 @@ class Post(models.Model):
     metadata_uri = models.URLField(null=True, blank=True) # Link for JSON (Arweave/IPFS)
     
     # Limited Edition
-    total_supply = models.IntegerField(default=0, null=True, blank=True)
+    total_supply = models.IntegerField(default=50, null=True, blank=True)
     minted_count = models.IntegerField(default=0)
     objects = PostsManager()
     all_objects = models.Manager()
