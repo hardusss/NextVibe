@@ -9,11 +9,8 @@ from .views_pac import (
                             UpdatePassword, GetReaders,
                             GetFollows, GetCountUnreadNotificationsView,
                             GetNotificationsView, ReadNotificationsView,
-<<<<<<< HEAD
-                            CheckStatusView, PublicUserDetailView
-=======
-                            CheckStatusView, SavePushTokenView
->>>>>>> feat/nextvibe-collections
+                            CheckStatusView, PublicUserDetailView,
+                            SavePushTokenView
                         )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -41,9 +38,6 @@ urlpatterns = [
     path("notifications/", GetNotificationsView.as_view(), name="notifications"),
     path("read-notifications/", ReadNotificationsView.as_view(), name="read_notifications"),
     path("check-status/", CheckStatusView.as_view(), name="check_status"),
-<<<<<<< HEAD
-    path("public/user/<int:id>/", PublicUserDetailView.as_view(), name="public_user")
-=======
+    path("public/user/<int:id>/", PublicUserDetailView.as_view(), name="public_user"),
     path("save-push-token/", SavePushTokenView.as_view(), name="token_push_save")
->>>>>>> feat/nextvibe-collections
 ]
