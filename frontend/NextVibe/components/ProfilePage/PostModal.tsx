@@ -27,7 +27,7 @@ import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
 import DropDown from "../Shared/Posts/PostsDropdown";
 import VerifyBadge from "../VerifyBadge";
-import ButtonCollect from "../NftClaim/ButtonCollect";
+import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
@@ -61,15 +61,10 @@ interface PostData {
     is_comments_enabled: boolean;
     liked_posts: number[];
     comments_count: number;
-    /** Whether this post has been minted at least once (edition #1 exists) */
     is_nft: boolean;
-    /** SOL price set by the owner at edition #1 mint */
     nft_price: string | null;
-    /** Whether the current authenticated user is the post owner */
     is_owner: boolean;
-    /** Whether the current authenticated user has already claimed this NFT */
     already_claimed: boolean;
-    /** Whether all editions have been minted */
     sold_out: boolean;
     minted_count: number;
     total_supply: number;
@@ -81,15 +76,6 @@ interface PostPopupProps {
     onClose: () => void;
     currentUserId?: number;
     onOpenComments?: (postId: number) => void;
-    /**
-     * Called when the user taps Collect.
-     * @param postId      - Post to mint
-     * @param imageUrl    - Thumbnail for the mint sheet preview
-     * @param creator     - Username of the post owner
-     * @param nftPrice    - Pre-filled price (null if owner is setting it for the first time)
-     * @param isOwner     - Whether the current user is the post owner
-     * @param alreadyClaimed - Whether the user already owns this NFT
-     */
     onOpenMint?: (
         postId: number,
         imageUrl: string | null,
@@ -125,7 +111,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
     const scale = useRef(new Animated.Value(OPEN_SCALE_FROM)).current;
     const cardOpacity = useRef(new Animated.Value(0)).current;
     const backdropOpacity = useRef(new Animated.Value(0)).current;
-
     const heartScale = useRef(new Animated.Value(1)).current;
     const heartOverlayAnim = useRef(new Animated.Value(0)).current;
     const tapCount = useRef(0);
@@ -136,7 +121,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
         scale.setValue(OPEN_SCALE_FROM);
         cardOpacity.setValue(0);
         backdropOpacity.setValue(0);
-
         Animated.parallel([
             Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
             Animated.spring(translateY, { toValue: 0, tension: 70, friction: 12, useNativeDriver: true }),
@@ -157,9 +141,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     useEffect(() => {
         if (visible) {
             setModalVisible(true);
-            requestAnimationFrame(() => {
-                requestAnimationFrame(runOpenAnimation);
-            });
+            requestAnimationFrame(() => requestAnimationFrame(runOpenAnimation));
 
             if (postId !== null) {
                 let cancelled = false;
@@ -189,9 +171,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     }, [visible]);
 
     useEffect(() => {
-        return () => {
-            if (tapTimer.current) clearTimeout(tapTimer.current);
-        };
+        return () => { if (tapTimer.current) clearTimeout(tapTimer.current); };
     }, []);
 
     const animateHeartOverlay = () => {
@@ -200,10 +180,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
             Animated.spring(heartOverlayAnim, { toValue: 1, friction: 3, useNativeDriver: true }),
             Animated.delay(500),
             Animated.timing(heartOverlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        ]).start(() => {
-            setShowHeart(false);
-            heartOverlayAnim.setValue(0);
-        });
+        ]).start(() => { setShowHeart(false); heartOverlayAnim.setValue(0); });
     };
 
     const handleDoubleTap = () => {
@@ -230,20 +207,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     };
 
     const handleClose = () => {
-        runCloseAnimation(() => {
-            setModalVisible(false);
-            onClose();
-        });
-    };
-
-    /**
-     * Determines whether the Collect button should be shown.
-     * Hidden when: post not loaded, already claimed, or sold out (and not owner).
-     */
-    const shouldShowCollect = (p: PostData): boolean => {
-        if (p.already_claimed) return false;
-        if (p.sold_out && !p.is_owner) return false;
-        return true;
+        runCloseAnimation(() => { setModalVisible(false); onClose(); });
     };
 
     const handleOpenMint = () => {
@@ -258,7 +222,21 @@ const PostPopup: React.FC<PostPopupProps> = ({
         );
     };
 
+    /**
+     * Resolves the visual state of the collect button based on post NFT data.
+     * Returns null if the post has no NFT functionality yet and the user is not the owner.
+     */
+    const resolveCollectState = (p: PostData): CollectState | null => {
+        if (p.already_claimed) return "claimed";
+        if (p.sold_out) return "soldout";
+        // Show collect button if: post is already an NFT OR current user is the owner (first mint)
+        if (p.is_nft || p.is_owner) return "collect";
+        return null;
+    };
+
     const mediaUrl = post?.media?.[0]?.media_url ?? null;
+    const collectState = post ? resolveCollectState(post) : null;
+    const supplyLabel = post ? `${post.minted_count}/${post.total_supply}` : undefined;
 
     return (
         <Modal
@@ -305,23 +283,13 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             </View>
 
                             <View style={styles.headerActions}>
-                                {/* Collect button — shown based on NFT state */}
-                                {post && shouldShowCollect(post) && (
-                                    <ButtonCollect onPress={handleOpenMint} />
-                                )}
-
-                                {/* Already claimed badge */}
-                                {post?.already_claimed && (
-                                    <View style={styles.claimedBadge}>
-                                        <Text style={styles.claimedText}>Collected ✓</Text>
-                                    </View>
-                                )}
-
-                                {/* Sold out badge */}
-                                {post?.sold_out && !post.is_owner && !post.already_claimed && (
-                                    <View style={styles.soldOutBadge}>
-                                        <Text style={styles.soldOutText}>Sold out</Text>
-                                    </View>
+                                {/* Single button handles all 3 states */}
+                                {collectState !== null && (
+                                    <ButtonCollect
+                                        onPress={handleOpenMint}
+                                        state={collectState}
+                                        supplyLabel={supplyLabel}
+                                    />
                                 )}
 
                                 <View style={{ position: "relative" }}>
@@ -331,7 +299,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                     >
                                         <MaterialCommunityIcons name="dots-vertical" size={22} color="rgba(255,255,255,0.75)" />
                                     </TouchableOpacity>
-
                                     {post && (
                                         <DropDown
                                             isVisible={dropdownVisible}
@@ -371,7 +338,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                             style={styles.image}
                                             resizeMode={FastImage.resizeMode.cover}
                                         />
-
                                         {showHeart && (
                                             <Animated.View
                                                 style={[styles.heartOverlay, {
@@ -383,7 +349,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                 <MaterialIcons name="favorite" size={90} color="#A855F7" />
                                             </Animated.View>
                                         )}
-
                                         <View style={styles.imageBadges}>
                                             {post.is_ai_generated && (
                                                 <View style={styles.badge}>
@@ -397,7 +362,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                     <Text style={styles.badgeText}>{post.location}</Text>
                                                 </View>
                                             )}
-                                            {/* NFT edition badge on image */}
                                             {post.is_nft && (
                                                 <View style={[styles.badge, styles.nftBadge]}>
                                                     <Text style={styles.nftBadgeText}>
@@ -546,34 +510,6 @@ const styles = StyleSheet.create({
         borderColor: "rgba(255,255,255,0.12)",
         justifyContent: "center",
         alignItems: "center",
-    },
-    claimedBadge: {
-        backgroundColor: "rgba(34,197,94,0.15)",
-        borderRadius: 10,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderWidth: 1,
-        borderColor: "rgba(34,197,94,0.3)",
-    },
-    claimedText: {
-        color: "#4ade80",
-        fontSize: 11,
-        fontFamily: "Dank Mono",
-        includeFontPadding: false,
-    },
-    soldOutBadge: {
-        backgroundColor: "rgba(239,68,68,0.12)",
-        borderRadius: 10,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderWidth: 1,
-        borderColor: "rgba(239,68,68,0.25)",
-    },
-    soldOutText: {
-        color: "#f87171",
-        fontSize: 11,
-        fontFamily: "Dank Mono",
-        includeFontPadding: false,
     },
     imageWrapper: {
         width: "100%",

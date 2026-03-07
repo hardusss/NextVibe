@@ -20,6 +20,9 @@ import PopupModal from "../Comments/CommentPopup";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import useWalletAddress from "@/hooks/useWalletAddress";
 import mintNFT from "@/src/api/mint.nft";
+import useTransaction from "@/hooks/useTransaction";
+import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
+
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
@@ -82,6 +85,9 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const [mintPostId, setMintPostId] = useState<number | null>(null);
     const [mintImageUrl, setMintImageUrl] = useState<string | null>(null);
     const [mintCreator, setMintCreator] = useState<string>("");
+    const [mintIsOwner, setMintIsOwner] = useState(false);
+    const [mintDefaultPrice, setMintDefaultPrice] = useState<string | null>(null);
+    const { sendInstructions } = useTransaction();
 
     /** Connected Solana wallet address from LazorKit / MWA */
     const { address } = useWalletAddress();
@@ -136,7 +142,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
             });
 
             setIndex((prevIndex) => shouldLoadMore ? prevIndex + POSTS_PER_PAGE : POSTS_PER_PAGE);
-        } catch (error) {}
+        } catch (error) { }
 
         setLoading(false);
         setLoadingMore(false);
@@ -204,14 +210,26 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
      * Prepares mint state and opens the MintBottomSheet.
      * Called from PostPopup when the user taps the Collect button.
      *
-     * @param postId   - ID of the post to mint
-     * @param imageUrl - Thumbnail URL shown in the mint sheet preview
-     * @param creator  - Username of the post owner
+     * @param postId       - ID of the post to mint
+     * @param imageUrl     - Thumbnail URL shown in the mint sheet preview
+     * @param creator      - Username of the post owner
+     * @param nftPrice     - Fixed price from the server (null if owner sets it first time)
+     * @param isOwner      - Whether the current user is the post owner
+     * @param alreadyClaimed - Passed through but unused here (button hidden upstream)
      */
-    const handleOpenMint = (postId: number, imageUrl: string | null, creator: string) => {
+    const handleOpenMint = (
+        postId: number,
+        imageUrl: string | null,
+        creator: string,
+        nftPrice: string | null,
+        isOwner: boolean,
+        alreadyClaimed: boolean,
+    ) => {
         setMintPostId(postId);
         setMintImageUrl(imageUrl);
         setMintCreator(creator);
+        setMintIsOwner(isOwner);
+        setMintDefaultPrice(nftPrice);
         setTimeout(() => mintSheetRef.current?.present(), 50);
     };
 
@@ -227,8 +245,18 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
      * @throws Error if no wallet is connected
      */
     const handleMint = async (postId: number, price: number) => {
-        if (!address) throw new Error("Wallet not connected");
-        await mintNFT(address, postId, price);
+        const handleMint = async (postId: number, price: number) => {
+            if (!address) throw new Error("Wallet not connected");
+            if (!ownerWalletAddress) throw new Error("Owner wallet not found");
+
+            //95% → owner, 5% → platform
+            const ixs = buildMintPaymentInstructions(address, ownerWalletAddress, price);
+            const paymentSignature = await sendInstructions(ixs);
+
+            if (!paymentSignature) throw new Error("Payment was not confirmed");
+
+            await mintNFT(address, postId, price);
+        };
     };
 
     return (
@@ -257,6 +285,8 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                 creatorUsername={mintCreator}
                 walletConnected={!!address}
                 onMint={handleMint}
+                isOwner={mintIsOwner}
+                defaultPrice={mintDefaultPrice}
             />
 
             {loading ? (
