@@ -19,10 +19,9 @@ import PostPopup from "./PostModal";
 import PopupModal from "../Comments/CommentPopup";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import useWalletAddress from "@/hooks/useWalletAddress";
-import mintNFT from "@/src/api/mint.nft";
-import useTransaction from "@/hooks/useTransaction";
 import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
-
+import useTransaction from "@/hooks/useTransaction";
+import mintNFT from "@/src/api/mint.nft";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
@@ -87,8 +86,9 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const [mintCreator, setMintCreator] = useState<string>("");
     const [mintIsOwner, setMintIsOwner] = useState(false);
     const [mintDefaultPrice, setMintDefaultPrice] = useState<string | null>(null);
+    const [mintOwnerWallet, setMintOwnerWallet] = useState<string | null>(null);
+    const [mintMintedCount, setMintMintedCount] = useState<number>(0)
     const { sendInstructions } = useTransaction();
-
     /** Connected Solana wallet address from LazorKit / MWA */
     const { address } = useWalletAddress();
 
@@ -224,39 +224,38 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         nftPrice: string | null,
         isOwner: boolean,
         alreadyClaimed: boolean,
+        ownerWallet: string | null,
+        mintedCount: number
     ) => {
         setMintPostId(postId);
         setMintImageUrl(imageUrl);
         setMintCreator(creator);
         setMintIsOwner(isOwner);
         setMintDefaultPrice(nftPrice);
+        setMintOwnerWallet(ownerWallet);
+        setMintMintedCount(mintedCount);
         setTimeout(() => mintSheetRef.current?.present(), 50);
     };
 
-    /**
-     * Executes the full cNFT mint flow:
-     * 1. Validates that a Solana wallet is connected
-     * 2. Calls Django MintNftView → Elysia NFT service
-     * 3. Elysia mints the cNFT leaf and verifies the collection on-chain
-     * 4. Django saves the resulting UserCollection record
-     *
-     * @param postId - ID of the post being minted as a cNFT
-     * @param price  - SOL amount set by the user in the mint sheet
-     * @throws Error if no wallet is connected
-     */
     const handleMint = async (postId: number, price: number) => {
-        const handleMint = async (postId: number, price: number) => {
-            if (!address) throw new Error("Wallet not connected");
-            if (!ownerWalletAddress) throw new Error("Owner wallet not found");
+        if (!address) throw new Error("Wallet not connected");
 
-            //95% → owner, 5% → platform
-            const ixs = buildMintPaymentInstructions(address, ownerWalletAddress, price);
-            const paymentSignature = await sendInstructions(ixs);
+        let paymentSignature: string | null = null;
+
+        if (mintMintedCount === 0 && mintIsOwner) {
+            paymentSignature = null;
+        }
+        else if (!mintIsOwner) {
+            if (!mintOwnerWallet) throw new Error("Owner wallet not found");
+
+            // 95% → owner, 5% → platform
+            const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
+            paymentSignature = await sendInstructions(ixs);
 
             if (!paymentSignature) throw new Error("Payment was not confirmed");
+        }
 
-            await mintNFT(address, postId, price);
-        };
+        await mintNFT(address, postId, price, paymentSignature);
     };
 
     return (

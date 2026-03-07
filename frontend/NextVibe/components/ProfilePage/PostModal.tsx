@@ -68,6 +68,7 @@ interface PostData {
     sold_out: boolean;
     minted_count: number;
     total_supply: number;
+    owner_wallet: string | null;
 }
 
 interface PostPopupProps {
@@ -83,6 +84,8 @@ interface PostPopupProps {
         nftPrice: string | null,
         isOwner: boolean,
         alreadyClaimed: boolean,
+        ownerWallet: string | null,
+        mintedCount: number
     ) => void;
 }
 
@@ -219,6 +222,8 @@ const PostPopup: React.FC<PostPopupProps> = ({
             post.nft_price,
             post.is_owner,
             post.already_claimed,
+            post.owner_wallet,
+            post.minted_count
         );
     };
 
