@@ -2,14 +2,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from ..models import Post, Comment, CommentReply
+from ..models import Post, Comment, UserCollection
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
 class GetPostView(APIView):
-
+    permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "post_menu"
 
@@ -46,7 +46,17 @@ class GetPostView(APIView):
         comments_count = comments.count()
         replies_count = sum(len(comment.replies.all()) for comment in comments)
 
-        count_comments = comments_count + replies_count
+        nft_price = None
+        is_owner = post.owner == request.user
+        already_claimed = False
+        if post.is_nft:
+            edition_one = UserCollection.objects.filter(post=post, edition=1).first()
+            nft_price = str(edition_one.price) if edition_one else None
+
+            already_claimed = UserCollection.objects.filter(
+                user=request.user,
+                post=post
+            ).exists()
         return Response({
             "status": "ok",
             "data": {
@@ -71,9 +81,15 @@ class GetPostView(APIView):
                     for m in post.media.all()
                 ],
                 "create_at": post.create_at,
-                "is_ai_generated": post.is_ai_generated,
                 "location": post.location,
                 "moderation_status": post.moderation_status,
                 "is_comments_enabled": post.is_comments_enabled,
+                "is_owner": is_owner,
+                "is_nft": post.is_nft,
+                "nft_price": nft_price,              
+                "minted_count": post.minted_count,
+                "total_supply": post.total_supply,
+                "already_claimed": already_claimed, 
+                "sold_out": post.minted_count >= (post.total_supply or 50),
             }
         })
