@@ -4,11 +4,9 @@ import {
     TransactionInstruction,
     LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-import Config from "react-native-config"
-
 
 /** Platform wallet that receives the 5% fee */
-const PLATFORM_ADDRESS = new PublicKey(Config.NEXTVIBE_PUBKEY!);
+const PLATFORM_ADDRESS = new PublicKey(process.env.EXPO_PUBLIC_NEXTVIBE_PUBKEY!);
 
 /**
  * Builds two SOL transfer instructions for NFT mint payment:
