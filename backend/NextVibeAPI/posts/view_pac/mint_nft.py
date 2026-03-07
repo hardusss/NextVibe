@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from ..models import Post, UserCollection
 from decimal import Decimal
 import requests
+from user.src.send_push_message import send
 
 User = get_user_model()
 
@@ -16,77 +17,85 @@ class MintNftView(APIView):
         wallet_address = request.data.get("walletAddress")
         post_id = request.data.get("postId")
         raw_price = request.data.get("price")
+        payment_signature = request.data.get("paymentSignature")
 
-        # Validate required fields
-        if not wallet_address:
-            return Response({"error": "Wallet address is required."}, status=status.HTTP_400_BAD_REQUEST)
-        if not post_id:
-            return Response({"error": "Post id is required."}, status=status.HTTP_400_BAD_REQUEST)
-        if raw_price is None:
-            return Response({"error": "Price is required."}, status=status.HTTP_400_BAD_REQUEST)
+        # Basic validation
+        if not wallet_address or not post_id or raw_price is None:
+            return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             price = Decimal(str(raw_price))
-        except Exception:
-            return Response({"error": "Invalid price."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Fetch post
-        try:
             post = Post.objects.select_related("owner").get(id=post_id)
-        except Post.DoesNotExist:
-            return Response({"error": "Post not found."}, status=status.HTTP_404_NOT_FOUND)
+        except (Post.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "Invalid post or price."}, status=status.HTTP_4o00_BAD_REQUEST)
 
-        # Check sold out
-        if int(post.minted_count) >= int(post.total_supply):
+        # Supply and duplication checks
+        if post.minted_count >= post.total_supply:
             return Response({"error": "Edition sold out."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check duplicate mint 
         if UserCollection.objects.filter(user=request.user, post=post).exists():
             return Response({"error": "You already minted this post."}, status=status.HTTP_400_BAD_REQUEST)
 
         edition = post.minted_count + 1
+        is_owner_mint = (post.owner == request.user)
 
-        # Edition #1 — owner only
-        if edition == 1 and post.owner != request.user:
-            return Response(
-                {"error": "Edition #1 can only be minted by the post owner."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # Require payment signature for collectors (editions 2+)
+        if edition > 1 and not is_owner_mint:
+            if not payment_signature:
+                return Response(
+                    {"error": "Payment signature is required for collectors."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        # Call Elysia mint service
+        # Execute mint via external service
         try:
-            mint_response = requests.post(
+            mint_res = requests.post(
                 url="http://localhost:3000/mint",
                 json={
                     "recipient": wallet_address,
                     "postId": post_id,
                     "edition": edition,
                 },
-                timeout=60  # finalized
+                timeout=60,
             ).json()
         except Exception:
-            return Response({"error": "Mint service unavailable."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response({"error": "Mint service connection error."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        if not mint_response.get("success"):
-            return Response({"error": "Mint failed."}, status=status.HTTP_400_BAD_REQUEST)
+        if not mint_res.get("success"):
+            return Response({"error": "Mint failed on service side."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save to DB 
+        # Save success state to database
         UserCollection.objects.create(
             user=request.user,
             post=post,
-            asset_id=mint_response.get("assetId"),
-            signature=mint_response.get("signature"),
+            asset_id=mint_res.get("assetId"),
+            signature=mint_res.get("signature"),
             edition=edition,
             price=price,
         )
-
+        
         post.minted_count += 1
         post.is_nft = True
         post.save(update_fields=["minted_count", "is_nft"])
-        
+
+        # Send push notification to the owner if claimed by someone else
+        if not is_owner_mint:
+            push_token = getattr(post.owner, "expo_push_token", None)
+            if push_token:
+                try:
+                    buyer_name = request.user.username or "Someone"
+                    send(
+                        token=push_token,
+                        title="Your Post was Claimed! 🎉",
+                        body=f"{buyer_name} just claimed your post for {price} SOL."
+                    )
+                except Exception as e:
+                    # Log the error but don't fail the request
+                    print(f"Push notification failed: {e}")
+
         return Response({
             "success": True,
             "edition": edition,
-            "assetId": mint_response.get("assetId"),
-            "signature": mint_response.get("signature"),
+            "assetId": mint_res.get("assetId"),
+            "signature": mint_res.get("signature"),
         }, status=status.HTTP_201_CREATED)

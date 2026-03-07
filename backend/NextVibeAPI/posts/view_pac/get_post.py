@@ -91,5 +91,6 @@ class GetPostView(APIView):
                 "total_supply": post.total_supply,
                 "already_claimed": already_claimed, 
                 "sold_out": post.minted_count >= (post.total_supply or 50),
+                "owner_wallet": getattr(post.owner, "wallet_address", None),
             }
         })
