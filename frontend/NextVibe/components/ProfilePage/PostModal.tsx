@@ -44,6 +44,7 @@ interface PostMedia {
     media_url: string;
 }
 
+/** Full post data shape returned by GetPostView */
 interface PostData {
     user_id: number;
     post_id: number;
@@ -60,6 +61,18 @@ interface PostData {
     is_comments_enabled: boolean;
     liked_posts: number[];
     comments_count: number;
+    /** Whether this post has been minted at least once (edition #1 exists) */
+    is_nft: boolean;
+    /** SOL price set by the owner at edition #1 mint */
+    nft_price: string | null;
+    /** Whether the current authenticated user is the post owner */
+    is_owner: boolean;
+    /** Whether the current authenticated user has already claimed this NFT */
+    already_claimed: boolean;
+    /** Whether all editions have been minted */
+    sold_out: boolean;
+    minted_count: number;
+    total_supply: number;
 }
 
 interface PostPopupProps {
@@ -68,7 +81,23 @@ interface PostPopupProps {
     onClose: () => void;
     currentUserId?: number;
     onOpenComments?: (postId: number) => void;
-    onOpenMint?: (postId: number, imageUrl: string | null, creator: string) => void;
+    /**
+     * Called when the user taps Collect.
+     * @param postId      - Post to mint
+     * @param imageUrl    - Thumbnail for the mint sheet preview
+     * @param creator     - Username of the post owner
+     * @param nftPrice    - Pre-filled price (null if owner is setting it for the first time)
+     * @param isOwner     - Whether the current user is the post owner
+     * @param alreadyClaimed - Whether the user already owns this NFT
+     */
+    onOpenMint?: (
+        postId: number,
+        imageUrl: string | null,
+        creator: string,
+        nftPrice: string | null,
+        isOwner: boolean,
+        alreadyClaimed: boolean,
+    ) => void;
 }
 
 const formatDate = (isoString: string): string => {
@@ -76,7 +105,14 @@ const formatDate = (isoString: string): string => {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
-const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, currentUserId, onOpenComments, onOpenMint }) => {
+const PostPopup: React.FC<PostPopupProps> = ({
+    visible,
+    postId,
+    onClose,
+    currentUserId,
+    onOpenComments,
+    onOpenMint,
+}) => {
     const [post, setPost] = useState<PostData | null>(null);
     const [loading, setLoading] = useState(false);
     const [liked, setLiked] = useState(false);
@@ -200,6 +236,28 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
         });
     };
 
+    /**
+     * Determines whether the Collect button should be shown.
+     * Hidden when: post not loaded, already claimed, or sold out (and not owner).
+     */
+    const shouldShowCollect = (p: PostData): boolean => {
+        if (p.already_claimed) return false;
+        if (p.sold_out && !p.is_owner) return false;
+        return true;
+    };
+
+    const handleOpenMint = () => {
+        if (!post) return;
+        onOpenMint?.(
+            post.post_id,
+            post.media?.[0]?.media_url ?? null,
+            post.username,
+            post.nft_price,
+            post.is_owner,
+            post.already_claimed,
+        );
+    };
+
     const mediaUrl = post?.media?.[0]?.media_url ?? null;
 
     return (
@@ -210,21 +268,12 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
             statusBarTranslucent
             onRequestClose={handleClose}
         >
-            <Animated.View
-                style={[styles.backdrop, { opacity: backdropOpacity }]}
-                pointerEvents="auto"
-            >
+            <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="auto">
                 <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
             </Animated.View>
 
             <Animated.View
-                style={[
-                    styles.cardWrapper,
-                    {
-                        opacity: cardOpacity,
-                        transform: [{ translateY }, { scale }],
-                    },
-                ]}
+                style={[styles.cardWrapper, { opacity: cardOpacity, transform: [{ translateY }, { scale }] }]}
                 pointerEvents="box-none"
             >
                 <View style={styles.glowWrapper}>
@@ -237,6 +286,7 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                         />
                         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]} pointerEvents="none" />
 
+                        {/* Header */}
                         <View style={styles.postHeader}>
                             <View style={styles.userInfo}>
                                 {post?.avatar ? (
@@ -255,15 +305,25 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                             </View>
 
                             <View style={styles.headerActions}>
-                                {post && (
-                                    <ButtonCollect
-                                        onPress={() => onOpenMint?.(
-                                            post.post_id,
-                                            post.media?.[0]?.media_url ?? null,
-                                            post.username,
-                                        )}
-                                    />
+                                {/* Collect button — shown based on NFT state */}
+                                {post && shouldShowCollect(post) && (
+                                    <ButtonCollect onPress={handleOpenMint} />
                                 )}
+
+                                {/* Already claimed badge */}
+                                {post?.already_claimed && (
+                                    <View style={styles.claimedBadge}>
+                                        <Text style={styles.claimedText}>Collected ✓</Text>
+                                    </View>
+                                )}
+
+                                {/* Sold out badge */}
+                                {post?.sold_out && !post.is_owner && !post.already_claimed && (
+                                    <View style={styles.soldOutBadge}>
+                                        <Text style={styles.soldOutText}>Sold out</Text>
+                                    </View>
+                                )}
+
                                 <View style={{ position: "relative" }}>
                                     <TouchableOpacity
                                         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -335,6 +395,14 @@ const PostPopup: React.FC<PostPopupProps> = ({ visible, postId, onClose, current
                                                 <View style={styles.badge}>
                                                     <MapPin size={11} color="#fff" />
                                                     <Text style={styles.badgeText}>{post.location}</Text>
+                                                </View>
+                                            )}
+                                            {/* NFT edition badge on image */}
+                                            {post.is_nft && (
+                                                <View style={[styles.badge, styles.nftBadge]}>
+                                                    <Text style={styles.nftBadgeText}>
+                                                        {post.minted_count}/{post.total_supply} minted
+                                                    </Text>
                                                 </View>
                                             )}
                                         </View>
@@ -479,6 +547,34 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
+    claimedBadge: {
+        backgroundColor: "rgba(34,197,94,0.15)",
+        borderRadius: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderWidth: 1,
+        borderColor: "rgba(34,197,94,0.3)",
+    },
+    claimedText: {
+        color: "#4ade80",
+        fontSize: 11,
+        fontFamily: "Dank Mono",
+        includeFontPadding: false,
+    },
+    soldOutBadge: {
+        backgroundColor: "rgba(239,68,68,0.12)",
+        borderRadius: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderWidth: 1,
+        borderColor: "rgba(239,68,68,0.25)",
+    },
+    soldOutText: {
+        color: "#f87171",
+        fontSize: 11,
+        fontFamily: "Dank Mono",
+        includeFontPadding: false,
+    },
     imageWrapper: {
         width: "100%",
         height: IMAGE_HEIGHT,
@@ -521,6 +617,16 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontSize: 11,
         letterSpacing: 0.3,
+    },
+    nftBadge: {
+        borderColor: "rgba(168,85,247,0.4)",
+        backgroundColor: "rgba(168,85,247,0.2)",
+    },
+    nftBadgeText: {
+        color: "#d8b4fe",
+        fontSize: 11,
+        fontFamily: "Dank Mono",
+        includeFontPadding: false,
     },
     content: {
         paddingHorizontal: 16,
