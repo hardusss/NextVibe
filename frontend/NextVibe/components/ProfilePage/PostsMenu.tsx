@@ -19,24 +19,54 @@ import PostPopup from "./PostModal";
 import PopupModal from "../Comments/CommentPopup";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import useWalletAddress from "@/hooks/useWalletAddress";
+import mintNFT from "@/src/api/mint.nft";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
 const imageSize = (screenWidth - padding * 2) / 3;
 
+/** Single media item attached to a post */
+interface PostMedia {
+    media_url: string;
+    media_preview: string | null;
+}
+
+/** Minimal post shape returned by the gallery feed API */
 interface Post {
     user_id: number;
     post_id: number;
-    media: { media_url: string, media_preview: string | null }[] | null;
+    media: PostMedia[] | null;
     is_ai_generated: boolean;
     moderation_status: string;
 }
 
+/**
+ * Result of a video detection check.
+ * Returns storage provider info when the URL is a video, false otherwise.
+ */
 type MediaCheck =
     | { storage: string; is_video: true }
     | false;
 
-const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
+/** Props for the PostGallery component */
+interface PostGalleryProps {
+    /** User profile ID whose posts are displayed */
+    id: number;
+    /** Previous screen identifier used for navigation context */
+    previous: string;
+}
+
+/**
+ * PostGallery renders a 3-column grid of posts for a given user profile.
+ *
+ * Handles:
+ * - Paginated post fetching with infinite scroll
+ * - Post moderation filtering (approved + own pending)
+ * - Post detail popup
+ * - Comments bottom sheet
+ * - cNFT minting bottom sheet with real Django + Elysia integration
+ */
+const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -44,20 +74,24 @@ const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
     const [index, setIndex] = useState(0);
     const [userID, setUserID] = useState<number | null>(null);
 
-    // Popup state
     const [popupVisible, setPopupVisible] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
     const [commentsPostId, setCommentsPostId] = useState<number | null>(null);
 
-    // Mint state
     const mintSheetRef = useRef<MintBottomSheetRef>(null);
     const [mintPostId, setMintPostId] = useState<number | null>(null);
     const [mintImageUrl, setMintImageUrl] = useState<string | null>(null);
     const [mintCreator, setMintCreator] = useState<string>("");
 
+    /** Connected Solana wallet address from LazorKit / MWA */
     const { address } = useWalletAddress();
+
     const POSTS_PER_PAGE = 9;
 
+    /**
+     * Reads the authenticated user's ID from secure storage
+     * and stores it in local state for ownership checks.
+     */
     const getId = async () => {
         const storedId = await storage.getItem("id");
         const parsedId = Number(storedId);
@@ -65,6 +99,13 @@ const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
         return parsedId;
     };
 
+    /**
+     * Fetches a page of posts for the profile.
+     * Filters out posts that are pending moderation unless they belong to the current user.
+     *
+     * @param shouldLoadMore - Whether this is a pagination request or initial load
+     * @param currentUserID  - User ID override used on first load before state is set
+     */
     const fetchPosts = async (shouldLoadMore = false, currentUserID?: number) => {
         if (loadingMore || !hasMore) return;
 
@@ -95,7 +136,7 @@ const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
             });
 
             setIndex((prevIndex) => shouldLoadMore ? prevIndex + POSTS_PER_PAGE : POSTS_PER_PAGE);
-        } catch (error) { }
+        } catch (error) {}
 
         setLoading(false);
         setLoadingMore(false);
@@ -105,24 +146,35 @@ const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
         useCallback(() => {
             setPosts([]);
             setIndex(0);
-
             getId().then((fetchedUserID) => {
                 fetchPosts(false, fetchedUserID);
             });
         }, [])
     );
 
+    /**
+     * Detects whether a media URL points to a video file.
+     * Supports both Cloudinary video URLs and R2-hosted video extensions.
+     *
+     * @param url - Media URL to inspect
+     * @returns MediaCheck object with storage provider, or false if not a video
+     */
     const isVideo = (url: string): MediaCheck => {
-        if (url.includes("/video/")) {
-            return { storage: "cloudinary", is_video: true };
-        }
+        if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
         const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
-        if (videoExtensions.some(ext => url.endsWith(ext))) {
-            return { storage: "r2", is_video: true };
-        }
+        if (videoExtensions.some(ext => url.endsWith(ext))) return { storage: "r2", is_video: true };
         return false;
     };
 
+    /**
+     * Generates a thumbnail preview URL for video media.
+     * For Cloudinary videos, uses transformation params to extract the first frame.
+     * For R2 videos, falls back to the pre-generated preview field.
+     *
+     * @param url  - Original media URL
+     * @param item - Full post item (used to access media_preview for R2)
+     * @returns Preview image URL
+     */
     const getPreviewUrl = (url: string, item: any): string => {
         const videoCheck = isVideo(url);
         if (videoCheck) {
@@ -136,17 +188,26 @@ const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
         return url;
     };
 
+    /**
+     * Opens the post detail popup for an approved post.
+     * Silently ignores taps on pending or rejected posts.
+     *
+     * @param item - Post item that was tapped
+     */
     const handlePostPress = (item: Post) => {
         if (item.moderation_status !== "approved") return;
         setSelectedPostId(item.post_id);
         setPopupVisible(true);
     };
 
-    const handleMint = async (postId: number, price: number) => {
-        console.log("Minting post:", postId, "for", price, "SOL");
-        await new Promise(resolve => setTimeout(resolve, 1500));
-    };
-
+    /**
+     * Prepares mint state and opens the MintBottomSheet.
+     * Called from PostPopup when the user taps the Collect button.
+     *
+     * @param postId   - ID of the post to mint
+     * @param imageUrl - Thumbnail URL shown in the mint sheet preview
+     * @param creator  - Username of the post owner
+     */
     const handleOpenMint = (postId: number, imageUrl: string | null, creator: string) => {
         setMintPostId(postId);
         setMintImageUrl(imageUrl);
@@ -154,9 +215,24 @@ const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
         setTimeout(() => mintSheetRef.current?.present(), 50);
     };
 
+    /**
+     * Executes the full cNFT mint flow:
+     * 1. Validates that a Solana wallet is connected
+     * 2. Calls Django MintNftView → Elysia NFT service
+     * 3. Elysia mints the cNFT leaf and verifies the collection on-chain
+     * 4. Django saves the resulting UserCollection record
+     *
+     * @param postId - ID of the post being minted as a cNFT
+     * @param price  - SOL amount set by the user in the mint sheet
+     * @throws Error if no wallet is connected
+     */
+    const handleMint = async (postId: number, price: number) => {
+        if (!address) throw new Error("Wallet not connected");
+        await mintNFT(address, postId, price);
+    };
+
     return (
         <View style={styles.container}>
-            {/* PostPopup */}
             <PostPopup
                 visible={popupVisible}
                 postId={selectedPostId}
@@ -179,7 +255,7 @@ const PostGallery = ({ id, previous }: { id: number, previous: string }) => {
                 postId={mintPostId ?? 0}
                 imageUrl={mintImageUrl}
                 creatorUsername={mintCreator}
-                walletConnected={address ? true : false}
+                walletConnected={!!address}
                 onMint={handleMint}
             />
 
