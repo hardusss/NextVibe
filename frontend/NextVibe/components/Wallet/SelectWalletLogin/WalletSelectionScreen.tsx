@@ -18,6 +18,8 @@ import { useMobileWallet } from '@wallet-ui/react-native-web3js';
 import { WalletOptionCard } from './WalletOptionCard';
 import type { WalletType, WalletCardConfig } from './WalletOptionCard';
 import useWalletAddress from '@/hooks/useWalletAddress';
+import saveWallet from '@/src/api/save.wallet';
+import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 
 const COLORS = {
     dark: {
@@ -30,7 +32,6 @@ const COLORS = {
     },
 };
 
-// LazorKit goes first per design requirement
 const WALLET_CARDS: WalletCardConfig[] = [
     {
         id: 'lazorkit',
@@ -67,11 +68,13 @@ const WalletSelectionScreen: React.FC = () => {
     const router = useRouter();
     const { account, connect, disconnect } = useMobileWallet();
     const { connection, address, walletType } = useWalletAddress();
+
     const bgColors = isDark
         ? (['#0A0410', '#1a0a2e', '#0A0410'] as const)
         : (['#FFFFFF', '#dbd4fbff', '#d7cdf2ff'] as const);
 
     const [selectedWallet, setSelectedWallet] = useState<WalletType | null>(null);
+    const [toast, setToast] = useState<{ message: string; isSuccess: boolean } | null>(null);
 
     const handleCardPress = useCallback((id: WalletType) => {
         setSelectedWallet((prev) => (prev === id ? null : id));
@@ -79,20 +82,27 @@ const WalletSelectionScreen: React.FC = () => {
 
     const handleMwaConnect = useCallback(async (_id: WalletType) => {
         try {
-            if (!account) {
-                await connect();
-            } else {
+            if (account) {
                 await disconnect();
-
-                await connect();
+            }
+            await connect();
+            const walletAddr = account?.address?.toString() ?? null;
+            if (walletAddr) {
+                try {
+                    await saveWallet(walletAddr);
+                } catch (saveError: any) {
+                    const msg: string = saveError?.response?.data?.error ?? 'Wallet error';
+                    await disconnect();
+                    setToast({ message: msg, isSuccess: false });
+                }
             }
         } catch (error) {
             console.error("MWA Connection failed:", error);
         }
     }, [account, connect, disconnect]);
 
-    const handleLazorKitConnect = useCallback((_id: WalletType) => { 
-        router.push("/wallet-init")
+    const handleLazorKitConnect = useCallback((_id: WalletType) => {
+        router.push("/wallet-init");
     }, []);
 
     const handleCtaPress = useCallback(
@@ -159,8 +169,8 @@ const WalletSelectionScreen: React.FC = () => {
                                 />
                             ))}
                         </Animated.View>
-
                     </ScrollView>
+
                     <Animated.View
                         entering={FadeInDown.delay(440).duration(500)}
                         style={styles.footer}
@@ -170,6 +180,15 @@ const WalletSelectionScreen: React.FC = () => {
                         </Text>
                     </Animated.View>
                 </SafeAreaView>
+
+                {toast && (
+                    <Web3Toast
+                        message={toast.message}
+                        visible={!!toast}
+                        isSuccess={toast.isSuccess}
+                        onHide={() => setToast(null)}
+                    />
+                )}
             </LinearGradient>
         </GestureHandlerRootView>
     );
