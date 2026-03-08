@@ -153,7 +153,7 @@ export default function WalletDashboardScreen() {
                     onToggleBalance={toggleBalanceVisibility}
                     onNavigateBack={() => { 
                         router.push("/profile")
-                        if (address) {disconnect();} }}
+                    }}
                     onNavigateToTransactions={navigateToTransactions}
                 />
 
