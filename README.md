@@ -1,357 +1,200 @@
-# **🚀 NextVibe**
+# 🚀 NextVibe: The IRL-to-Web3 Social Graph
 
-A new #1 Web3 Social Media with Social2Earn mechanism, NFTs, AI and Crypto.
+**Built for the Solana Mobile Hackathon 2026**
 
-## **📋 Table of Contents**
+![NextVibe Banner](https://nextvibe.io/logo.png)
 
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Backend Setup](#backend-setup)
-- [Frontend Setup](#frontend-setup)
-- [Moderation Service](#moderation-service)
-- [Chat Service (FastAPI)](#chat-service-fastapi)
-- [Redis Setup](#redis-setup)
-- [Celery Setup](#celery-setup)
-- [Database Setup](#database-setup)
-- [Running the Application](#running-the-application)
+### 🔗 Important Links
+* **🎥 Demo Video:** [Insert YouTube/Vimeo Link Here]
+* **📊 Pitch Deck:** [Insert Google Drive Link Here]
+* **📱 Platform:** Android (APK)
 
-## **🔧 Prerequisites**
+## ❌ The Problem
+Web3 social apps today are plagued by friction. For a mobile user, saving content or interacting with creators requires deep blockchain knowledge, seed phrases, and constant transaction signing. Furthermore, existing apps completely ignore the physical world (IRL) — your real-life connections don't translate into your digital social graph.
 
-Make sure you have the following installed on your system:
+## ✅ The Solution
+NextVibe is a mobile-first Web3 social network that makes blockchain invisible but keeps the true ownership. We turn digital content and IRL physical interactions into gasless collectibles on Solana, designed specifically for the next generation of crypto-phones like the Seeker.
 
-- **Python 3.11.4**
-- **Node.js** (v20.17.0)
-- **npm** (10.8.2)
-- **JDK** (17.0.16)
-- **Android Studio**
-- **Go** (latest version)
-- **MySQL**
-- **MySQL Workbench**
-- **Redis**
-- **Celery**
+## 🔥 Key Features
+* **📱 IRL Connections (NFC Tap-to-Connect):** Blur the line between the physical and digital worlds. Share your Web3 profile and social graph simply by tapping your phones together.
+* **🤝 Tap-to-Pay (NFC Token Transfers):** Go beyond profile sharing. Bring crypto into the physical world by sending SOL or SPL tokens to another user IRL with a single NFC tap.
+* **⚡ Zero-Friction UX (Gasless Minting):** Users can collect posts as cNFTs in one click. Our ElysiaJS backend acts as the fee payer, completely abstracting away gas fees for the end-user.
+* **💸 Smart Creator Monetization (95/5 Split):** Built-in on-chain revenue sharing. When a user collects a paid post, the transaction automatically splits the SOL: 95% directly to the creator's wallet, and 5% to the platform.
+* **🔒 Mobile-First Onboarding:** Seamless integration with Solana Mobile Wallet Adapter (MWA). Tested and fully functional with Solflare.
 
-## **🚀 Getting Started**
+## 📈 Traction & The IRL Pivot
+NextVibe is live and actively validating our hypotheses. We currently have **115 active beta users**. 
 
-First, clone the repository to your local machine:
+*Note on our journey:* Before our recent pivot, we successfully scaled to over 400+ users. However, to fully commit to our new "IRL-first" vision for the Solana Mobile ecosystem, we made the tough but necessary decision to pivot away from our initial AI-centric approach. We archived legacy content to focus strictly on authentic, physical-world interactions.
 
-```bash
-git clone https://github.com/hardusss/NextVibe.git
-cd NextVibe
+## 🛠️ What We Built During the Hackathon
+We used this hackathon to completely overhaul NextVibe and maximize the capabilities of crypto-native mobile devices:
+
+* **📸 Authentic Camera-Only Posts:** To ensure real-world authenticity, posts can now only be created using the in-app camera in real-time (limited to 1 photo per post). No camera roll uploads, no fake vibes.
+* **💎 Gasless cNFT Minting & Monetization:** Creators can instantly mint their posts as cNFTs absolutely for free—without even signing a transaction. They set a price, and followers can collect these limited-edition drops (strictly capped at 50 editions per post) directly from the feed.
+* **📳 NFC-Powered IRL Interactions:** We shipped "Tap-to-Pay" for seamless token transfers and "Tap-to-Connect" for instant profile sharing in the physical world.
+* **🎨 Complete UI/UX Redesign:** A fresh, minimalist interface optimized for a zero-friction mobile Web3 experience.
+* **🛡️ Advanced Content Moderation:** Deployed a brand-new, robust automated moderation engine to ensure a clean and safe community feed.
+
+## 👥 Team
+* **Danylo Klepar - Founder & Lead Developer:** Full-stack architecture, Solana integrations, and microservices backend.
+* **Mark Vendysh - Co-Founder:** Business development, finance, and operations.
+
+## 🛠 Tech Stack
+* **Frontend:** React Native, Expo, Solana MWA, LazorKit
+* **Backend & Microservices:** Django REST Framework, Go, FastAPI, ElysiaJS
+* **Blockchain Layer:** Umi, Bubblegum
+* **Database & Infrastructure:** MySQL, Redis, Cloudflare R2, Cloudinary
+
+
+## 🚀 How to Run (Local Setup)
+
+### 1. Prerequisites
+Ensure you have the following installed and running:
+* **Python 3.11**
+* **Node.js & Bun**
+* **Go**
+* **MySQL & Redis** (running locally or via Docker)
+* **Android Device / Emulator** (with Solflare installed)
+
+### 2. Environment Variables
+You will need to set up `.env` files for each microservice. *Note: Never commit your actual keys to the repository.*
+
+**Data Layer (Django)** Location: `backend/NextVibeAPI/.env` & `backend/NextVibeAPI/setting/.env`
+```env
+ALLOWED_HOSTS=
+CORS_ALLOWED_ORIGINS=
+SECRET_KEY=
+DJANGO_ENV=
+
+# Database
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=
+DB_PORT=
+
+# Cloudinary
+CLOUD_NAME=
+API_KEY=
+API_SECRET=
+
+# Cloudflare R2
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+BUCKET_NAME=
+ENDPOINT_URL=
+CUSTOM_DOMAIN=
 ```
 
-## **🔴 Backend Setup**
-
-### **Step 1: Navigate to Backend Directory**
-```bash
-cd NextVibe/backend/
+**Frontend (React Native / Expo)** Location: `frontend/NextVibe/.env`
+```env
+EXPO_PUBLIC_NEXTVIBE_PUBKEY=
 ```
 
-### **Step 2: Create and Activate Virtual Environment**
+**AI Moderation Service (Go)** Location: `moderation_service/.env`
+```env
+PORT=
+OPENAI_API_KEY=
+```
+
+**NFT Minting Service (ElysiaJS / Bun)** Location: `nft-service/.env`
+```env
+SOLANA_PRIVATE_KEY=
+COLLECTION_ADDRESS=
+MERKLE_TREE_ADDRESS=
+HELIUS_RPC_URL=
+```
+
+**Socket Service (FastAPI)** Location: `socket_service/.env`
+```env
+# Database
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=
+DB_PORT=
+
+# Cloudflare R2
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+BUCKET_NAME=
+ENDPOINT_URL=
+CUSTOM_DOMAIN=
+
+# JWT Auth
+JWT_SECRET_KEY=
+JWT_ALGORITHM=
+
+# Settings
+ENVIRONMENT=
+LOG_LEVEL=
+CORS_ORIGINS_PROD=
+```
+
+### 3. Start the Services
+
+**1. Data Layer & Background Tasks (Django + Celery)**
+Ensure Redis is running before starting Celery.
 ```bash
-# Create virtual environment
+# Setup Python environment and run Django
+cd backend
 python -m venv .venv
-
-# Activate virtual environment
-# Windows:
-.venv\Scripts\activate
-
-# macOS/Linux:
-source .venv/bin/activate
-```
-
-### **Step 3: Install Dependencies**
-```bash
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 pip install -r modules.txt
+cd NextVibeAPI
+python manage.py migrate
+python manage.py runserver
+
+# In a new terminal (with venv activated), start Celery Worker:
+celery -A NextVibeAPI worker -l info
+
+# In another terminal, start Celery Beat:
+celery -A NextVibeAPI beat -l info
 ```
-
-> ⚠️ **Note**: If errors occur when starting the server, install any additional libraries that are listed in the error messages.
-
-### **Step 4: Install Redis and Celery**
+**2. AI Moderation Service (Go)**
 ```bash
-# Install Redis and Celery
-pip install redis celery
+cd moderation_service
+go build -o moderator_bin .
+./moderator_bin
 ```
 
-### **Step 5: Configure Database Environment**
-
-Create `.env` file in `NextVibe/backend/NextVibeAPI/`:
-
-```env
-DB_NAME=nextvibe
-DB_USER=ur_user
-DB_PASSWORD=ur_passwd
-DB_HOST=localhost
-DB_PORT=3306
-```
-
-### **Step 6: Configure Posts Service Environment**
-
-Create `.env` file in `NextVibe/backend/posts/src/`:
-
-```env
-REPLICATE_API_TOKEN=r8_TioXtphu5tAlcBlKRFGr1ZDhLIczUgk1HVyDx
-```
-
-> ⚠️ **Warning**: Please do not make too many image creation requests as limits may apply.
-
-### **Step 7: Start Django Server**
+**3. NFT Minting Service (ElysiaJS)**
 ```bash
-python manage.py runserver 0.0.0.0:8000
+cd nft-service
+bun install
+bun run dev
 ```
 
-## **📱 Frontend Setup**
-
-### **Step 1: Install Required Tools**
-- Download and install **Android Studio**
-- Install **Node.js** (v20.17.0)
-- Install **npm** (10.8.2)
-- Install **JDK** (17.0.16)
-
-### **Step 2: Navigate to Frontend Directory**
+**4. Socket Service (FastAPI)**
 ```bash
-cd NextVibe/frontend/NextVibe
+cd backend
+source .venv/bin/activate
+cd ..
+cd socket_service
+uvicorn main:app --reload
 ```
 
-### **Step 3: Install Dependencies**
+**5. Mobile App (Expo)**
 ```bash
-# Install Expo CLI
-npm install expo@53.0.22
-
-# Install project dependencies
-npx expo install
-```
-
-### **Step 4: Build Application**
-```bash
-eas build --platform android --profile development
-```
-
-Download the built app to your emulator or real mobile device.
-
-### **Step 5: Configure API URL**
-In `NextVibe/frontend/NextVibe/src/utils/url_api.ts`, set your IP address for API connections.
-
-### **Step 6: Start Application**
-```bash
+cd frontend/NextVibe
+npm install
 npx expo start
 ```
+*Press `a` to run on the Android emulator, or scan the QR code with Expo Go on a physical device.*
 
-Press **`a`** to open on Android emulator.
+## ℹ️ Hackathon Info
+* **Track:** Consumer / Social Web3
+* **Network:** Solana Devnet
 
-## **🛡️ Moderation Service (Go)**
+## 📞 Contact & Links
+* **Website:** [nextvibe.io](https://nextvibe.io)
+* **Project X (Twitter):** [@NextVibeWeb3](https://x.com/NextVibeWeb3)
+* **Founder X (Twitter):** [@DanKlepar](https://x.com/DanKlepar)
+* **Founder Telegram:** [@danylo_nv](https://t.me/danylo_nv)
+* **Founder Email:** [dklepar29@gmail.com](mailto:dklepar29@gmail.com)
 
-### **Step 1: Navigate to Moderation Service Directory**
-```bash
-cd NextVibe/moderation_service
-```
+## 📄 License
+**All Rights Reserved.**
 
-### **Step 2: Download Go Modules**
-```bash
-go mod tidy
-# or
-go mod download
-```
-
-### **Step 3: Configure Environment Variables**
-
-Create `.env` file in the moderation service root directory:
-
-```env
-SIGHTENGINE_USER=64529326
-SIGHTENGINE_SECRET=JdaoFRxzStTVLN2bhQWVLjnrF7UhE6hx
-PORT=8080
-
-SIGHTENGINE_USER2=1705451817
-SIGHTENGINE_SECRET2=MmxhSgHxVGfjqyyq9UzL82JWdsk3JRtK
-
-SIGHTENGINE_USER3=1012150028
-SIGHTENGINE_SECRET3=W72CExMzjWd66LwhbKdHAi4EJMBuVudj
-
-SIGHTENGINE_USER4=216982646
-SIGHTENGINE_SECRET4=iD5qgddYhzNrS8jV3RERMzjCzPYYiqn5
-
-SIGHTENGINE_USER5=1496669676
-SIGHTENGINE_SECRET5=DKboAbSx5FTA7y22oZiKkotW4G624QH9
-
-SIGHTENGINE_USER6=1995678318
-SIGHTENGINE_SECRET6=XUKsuTXY8kjNy5SRhz9t7qNuG7nTUqUy
-
-SIGHTENGINE_USER7=1673586046
-SIGHTENGINE_SECRET7=XdKwkH8tAZ2AaywSRVQ5oYvwMeYgmZvP
-
-SIGHTENGINE_USER8=1739177191
-SIGHTENGINE_SECRET8=vnXvzpKYUsMSNtV7JifLu566CUwvFJmy
-
-SIGHTENGINE_USER9=36901041
-SIGHTENGINE_SECRET9=n7qegCs46EKZGKbHVVqvWNKtv7x4Wt2H
-
-SIGHTENGINE_USER10=1316397818
-SIGHTENGINE_SECRET10=rAnygmzCbKqN3aCUifhBQwbK2RoW25mG
-```
-
-### **Step 4: Start Go Server**
-```bash
-go run .
-```
-
-## **💬 Chat Service (FastAPI)**
-
-### **Step 1: Navigate to Socket Service Directory**
-```bash
-cd NextVibe/socket_service
-```
-
-### **Step 2: Activate Virtual Environment**
-```bash
-# Go to backend directory and activate the same virtual environment
-cd ../backend
-source .venv/bin/activate  # macOS/Linux
-# or
-.venv\Scripts\activate     # Windows
-
-# Return to socket service directory
-cd ../socket_service
-```
-
-### **Step 3: Configure Environment Variables**
-
-Create `.env` file in the socket service root directory with the same database connection settings as the backend:
-
-```env
-DB_NAME=nextvibe
-DB_USER=ur_user
-DB_PASSWORD=ur_passwd
-DB_HOST=localhost
-DB_PORT=3306
-```
-
-### **Step 4: Start FastAPI Server**
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8081 --reload
-```
-
-## **🔥 Redis Setup**
-
-### **Step 1: Install Redis**
-
-**Windows:**
-1. Download Redis from [https://redis.io/download](https://redis.io/download) or use Windows Subsystem for Linux (WSL)
-2. Alternatively, use Redis through Docker:
-```bash
-docker run -d -p 6379:6379 redis:latest
-```
-
-**macOS:**
-```bash
-# Using Homebrew
-brew install redis
-
-# Start Redis service
-brew services start redis
-```
-
-**Linux (Ubuntu/Debian):**
-```bash
-# Install Redis
-sudo apt update
-sudo apt install redis-server
-
-# Start Redis service
-sudo systemctl start redis-server
-sudo systemctl enable redis-server
-```
-
-### **Step 2: Verify Redis Installation**
-```bash
-# Test Redis connection
-redis-cli ping
-# Should return: PONG
-```
-
-### **Step 3: Start Redis Server**
-```bash
-# Start Redis server (if not running as service)
-redis-server
-```
-
-## **⚡ Celery Setup**
-
-### **Step 1: Navigate to Backend API Directory**
-```bash
-cd NextVibe/backend/NextVibeAPI
-```
-
-### **Step 2: Ensure Virtual Environment is Active**
-```bash
-# Activate virtual environment if not already active
-# Windows:
-../.venv/Scripts/activate
-
-# macOS/Linux:
-source ../.venv/bin/activate
-```
-
-### **Step 3: Install Celery (if not already installed)**
-```bash
-pip install celery redis
-```
-
-### **Step 4: Start Celery Worker**
-```bash
-celery -A NextVibeAPI worker -l info
-```
-
-> 📝 **Note**: Keep this terminal window open while running the application to process background tasks.
-
-## **🗄️ Database Setup (MySQL)**
-
-### **Step 1: Download Database File**
-Download the `.sql` file containing the database structure and data.
-
-### **Step 2: Open MySQL Workbench**
-Launch MySQL Workbench on your system.
-
-### **Step 3: Create Database**
-Create a new database named `nextvibe`.
-
-### **Step 4: Import Database**
-1. Go to **Server** → **Data Import**
-2. Select **Import from Self-Contained File**
-3. Enter the path to your `.sql` file
-4. At **Default target Schema**, select `nextvibe`
-5. Press **Import**
-
-## **🏃‍♂️ Running the Application**
-
-To run the complete NextVibe application, you need to start all services in the following order:
-
-1. **Redis**: `redis-server` (or ensure Redis service is running)
-2. **Database**: Ensure MySQL is running with the `nextvibe` database
-3. **Backend**: `python manage.py runserver 0.0.0.0:8000`
-4. **Celery Worker**: `celery -A NextVibeAPI worker -l info` (in NextVibe/backend/NextVibeAPI/)
-5. **Chat Service**: `uvicorn main:app --host 0.0.0.0 --port 8081 --reload`
-6. **Moderation Service**: `go run .`
-7. **Frontend**: `npx expo start`
-
-## **🔗 Service Endpoints**
-    New update CI/CD
-- **Backend API**: `http://ur_ip(on frontend or localhost(127.0.0.1) in Postman for testing):8000`
-- **Chat Service**: `http://ur_ip(on frontend or localhost(127.0.0.1) in Postman for testing):8081`
-- **Moderation Service**: `http://localhost:8080`
-- **Redis**: `localhost:6379` (default port)
-- **Frontend**: Expo development server (scan QR code or press 'a' for Android)
-
-## **📝 Important Notes**
-
-- Make sure all environment variables are properly configured before starting the services
-- Configure your IP address in `NextVibe/frontend/NextVibe/src/utils/url_api.ts` for proper API connectivity
-- The Replicate API token has usage limits, so avoid excessive image generation requests
-- Ensure all required ports (6379, 8000, 8080, 8081) are available on your system
-- For mobile development, make sure your Android emulator is running or your physical device is connected
-- Redis must be running before starting the Django backend and Celery worker
-- Keep the Celery worker terminal open to process background tasks
-
-## **🤝 Contributing**
-NextVibe Now IRL Social Layer on Solana
-Please read the contributing guidelines before making any changes to the codebase.
-
+This project and its source code are proprietary. You may view the code for educational and hackathon evaluation purposes. However, you are **strictly prohibited** from copying, modifying, distributing, selling, or using this project (or any of its parts) as a template for your own projects, whether for free or for commercial purposes, without explicit written permission from the author.
