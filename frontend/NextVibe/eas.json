@@ -14,6 +14,9 @@
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease",
         "distribution": "internal"
+      },
+      "env": {
+        "EXPO_PUBLIC_NEXTVIBE_PUBKEY": "EaKpyd7H9iZQSzUNSa8W5ykntH55y49C3EMVd1YjgDKm"
       }
     },
     "production": {
