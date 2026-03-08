@@ -23,7 +23,7 @@ class PostMenuView(APIView):
 
         posts_qs = (
             Post.objects
-            .filter(owner__user_id=id)
+            .filter(owner__user_id=id, is_hide=False, is_ai_generated=False)
             .exclude(moderation_status="denied")
             .select_related("owner") 
             .prefetch_related(Prefetch("media", queryset=PostsMedia.objects.all()))
