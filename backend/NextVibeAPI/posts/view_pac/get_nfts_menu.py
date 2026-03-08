@@ -14,20 +14,19 @@ class UserCollectionView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "post_menu"
 
-    def get(self, request) -> Response:
+    def get(self, request, id: int) -> Response:
         index = int(request.query_params.get("index", 0))
         limit = int(request.query_params.get("limit", 9))
-        user_id = request.user.user_id
 
         collections_qs = (
             UserCollection.objects
-            .filter(user__user_id=user_id, post__is_hide=False, post__is_ai_generated=False)
+            .filter(user__user_id=id, post__is_hide=False, post__is_ai_generated=False)
             .select_related("post__owner")
             .prefetch_related(Prefetch("post__media", queryset=PostsMedia.objects.all()))
             .order_by("-minted_at")[index:index + limit]
         )
 
-        total = UserCollection.objects.filter(user__user_id=user_id).count()
+        total = UserCollection.objects.filter(user__user_id=id).count()
 
         if not collections_qs:
             return Response({
