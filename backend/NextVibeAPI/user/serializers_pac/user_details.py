@@ -14,7 +14,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
     def get_posts_count(self, obj):
         # get the current number of posts
-        actual_count = Post.objects.filter(owner__user_id=obj.user_id, moderation_status="approved").count()
+        actual_count = Post.objects.filter(owner__user_id=obj.user_id, moderation_status="approved", is_hide=False).count()
         if obj.post_count != actual_count:
             obj.post_count = actual_count
             obj.save(update_fields=['post_count'])
