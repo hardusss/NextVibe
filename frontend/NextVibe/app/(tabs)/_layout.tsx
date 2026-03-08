@@ -185,6 +185,16 @@ export default function Layout() {
     }, []);
 
     useEffect(() => {
+        const loadUser = async () => {
+            try {
+                const id = await storage.getItem('id'); 
+                if (id) setUserID(Number(id));
+            } catch (e) {}
+        };
+        loadUser();
+    }, []);
+
+    useEffect(() => {
         if (!userID) return;
         let isMounted = true;
         const fetchAvatar = async () => {
@@ -212,7 +222,7 @@ export default function Layout() {
             <BottomSheetModalProvider>
                 <MobileWalletProvider chain={chain} endpoint={endpoint} identity={identity}>
                     <LazorKitProvider
-                        rpcUrl="https://devnet.helius-rpc.com/?api-key=8b5d26aa-3554-4d0c-b716-c04029ca49c9"
+                        rpcUrl="https://api.devnet.solana.com"
                         portalUrl="https://portal.lazor.sh"
                         configPaymaster={{ paymasterUrl: "https://kora.devnet.lazorkit.com" }}
                     >
