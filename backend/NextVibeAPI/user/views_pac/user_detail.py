@@ -3,9 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 
 from ..serializers_pac import UserDetailSerializer
-from rest_framework.throttling import ScopedRateThrottle
+from posts.models import UserCollection
 
 User = get_user_model()
 
@@ -20,6 +21,7 @@ BANED_FIELDS = [
     "is_active",
     "last_activity"
 ]
+
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
@@ -27,10 +29,13 @@ class UserDetailView(APIView):
     
     def get(self, request, id: int):
         try:
+            # Знаходимо користувача
             user = User.objects.get(user_id=id)
             isProfile = request.query_params.get('isProfile')
-            serializer = UserDetailSerializer(user)
+            
+            cnft_count = UserCollection.objects.filter(user=user).count()
 
+            serializer = UserDetailSerializer(user)
             data = serializer.data.copy()
 
             is_subscribed = False
@@ -43,7 +48,14 @@ class UserDetailView(APIView):
                 for banned_field in BANED_FIELDS:
                     data.pop(banned_field, None)
 
-            return Response({**data, "is_subscribed": is_subscribed}, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    **data, 
+                    "is_subscribed": is_subscribed, 
+                    "cnft_count": cnft_count
+                }, 
+                status=status.HTTP_200_OK
+            )
         
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
