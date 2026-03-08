@@ -73,8 +73,29 @@ const WalletSelectionScreen: React.FC = () => {
         ? (['#0A0410', '#1a0a2e', '#0A0410'] as const)
         : (['#FFFFFF', '#dbd4fbff', '#d7cdf2ff'] as const);
 
+    const [isConnecting, setIsConnecting] = useState(false);
     const [selectedWallet, setSelectedWallet] = useState<WalletType | null>(null);
     const [toast, setToast] = useState<{ message: string; isSuccess: boolean } | null>(null);
+
+    // Коли account з'являється після connect() — спочатку зберігаємо адресу,
+    // редірект тільки після успішного saveWallet
+    useEffect(() => {
+        if (!isConnecting || !account?.address) return;
+
+        const walletAddr = account.address.toString();
+        console.log(address)
+        setIsConnecting(false);
+
+        saveWallet(walletAddr)
+            .then(() => {
+                router.push("/wallet-dash");
+            })
+            .catch((saveError: any) => {
+                const msg: string = saveError?.response?.data?.error ?? 'Wallet error';
+                disconnect();
+                setToast({ message: msg, isSuccess: false });
+            });
+    }, [account, isConnecting]);
 
     const handleCardPress = useCallback((id: WalletType) => {
         setSelectedWallet((prev) => (prev === id ? null : id));
@@ -82,21 +103,12 @@ const WalletSelectionScreen: React.FC = () => {
 
     const handleMwaConnect = useCallback(async (_id: WalletType) => {
         try {
-            if (account) {
-                await disconnect();
-            }
+            if (account) await disconnect();
+            setIsConnecting(true);
             await connect();
-            const walletAddr = account?.address?.toString() ?? null;
-            if (walletAddr) {
-                try {
-                    await saveWallet(walletAddr);
-                } catch (saveError: any) {
-                    const msg: string = saveError?.response?.data?.error ?? 'Wallet error';
-                    await disconnect();
-                    setToast({ message: msg, isSuccess: false });
-                }
-            }
+            // адреса прийде через useEffect на account
         } catch (error) {
+            setIsConnecting(false);
             console.error("MWA Connection failed:", error);
         }
     }, [account, connect, disconnect]);
@@ -112,12 +124,6 @@ const WalletSelectionScreen: React.FC = () => {
         },
         [handleMwaConnect, handleLazorKitConnect],
     );
-
-    useEffect(() => {
-        if (address) {
-            router.push("/wallet-dash");
-        }
-    }, [address]);
 
     return (
         <GestureHandlerRootView style={styles.flex}>
