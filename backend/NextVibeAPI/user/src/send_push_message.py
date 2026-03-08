@@ -3,13 +3,16 @@ from exponent_server_sdk import (
     PushMessage,
 )
 
-def send(token: str, title: str, body: str):
+from typing import Optional
+
+def send(token: str, title: str, body: str, link: Optional[str] = None):
+    data = {"url": link} if link else None
     response = PushClient().publish(
         PushMessage(
             to=token,
             title=title,
             body=body,
-            data=None,
+            data=data,
             sound=None,
             ttl=None,
             expiration=None,
@@ -22,4 +25,3 @@ def send(token: str, title: str, body: str):
             mutable_content=None
         )
     )
-    print(response)
