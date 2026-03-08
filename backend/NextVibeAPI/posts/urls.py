@@ -35,5 +35,5 @@ urlpatterns = [
     path('<int:post_id>/metadata/<int:edition>/', PostMetadataView.as_view(), name='post_metadata'),
     path("collection/metadata/", CollectionMetadataView.as_view(), name="metadata"),
     path("cnft-mint/", MintNftView.as_view(), name="mint_cnft"),
-    path("collections-menu", UserCollectionView.as_view(), name="collections_menu"),
+    path("collections-menu/", UserCollectionView.as_view(), name="collections_menu"),
 ]
