@@ -23,6 +23,7 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import ConfirmDialog from "../Shared/Toasts/ConfirmDialog";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import validationUsername from "@/src/validation/username-update-validator";
+import { useWalletAddress } from "@/hooks/useWalletAddress"
 
 interface User {
     username: string;
@@ -74,6 +75,7 @@ function PageSettingsContent() {
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
     const [toastSuccess, setToastSuccess] = useState(true);
+    const { address, disconnect } = useWalletAddress();
 
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
@@ -90,11 +92,14 @@ function PageSettingsContent() {
             });
     }, []);
 
-    const handleLogoutConfirm = () => {
+    const handleLogoutConfirm = async () => {
         storage.clearAll();
         AsyncStorage.clear();
         GoogleSignin.signOut();
         setIsVisibleLogoutConfirmation(false); 
+        if (address) {
+            await disconnect();
+        }
         router.replace("/register");
     }
 
