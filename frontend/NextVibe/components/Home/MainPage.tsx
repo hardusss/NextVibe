@@ -17,8 +17,6 @@ import Header from "./Header";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
-import { MaterialIcons } from "@expo/vector-icons";
-import Icon from "react-native-vector-icons/Ionicons";
 import { useRouter, useFocusEffect } from "expo-router";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
@@ -33,12 +31,21 @@ import { storage } from '@/src/utils/storage';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import VerifyBadge from "../VerifyBadge";
 import Hyperlink from "react-native-hyperlink";
+import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
+import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
+import useWalletAddress from "@/hooks/useWalletAddress";
+import mintNFT from "@/src/api/mint.nft";
+import useTransaction from "@/hooks/useTransaction";
+import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
+import {
+    Heart, MessageCircle, MapPin, Volume2, VolumeX,
+    Sparkles, Calendar, Clock
+} from "lucide-react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 let isSessionActive = false;
 
-// --- THEME & STYLES ---
 const darkTheme = {
     background: "#0A0410",
     cardBackground: "#0A0410",
@@ -65,281 +72,149 @@ const lightTheme = {
 
 const getStyles = (theme: typeof darkTheme) => {
     return StyleSheet.create({
-        container: {
-            flex: 1,
-            backgroundColor: theme.background
-        },
-        listContainer: {
-            backgroundColor: theme.background,
-            paddingBottom: 50
-        },
-        postContainer: {
-            borderRadius: 12,
-            padding: 14,
-            position: "relative"
-        },
-        postHeader: {
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: 12
-        },
-        avatar: {
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            marginRight: 12
-        },
-        userInfo: {
-            flex: 1
-        },
-        usernameContainer: {
-            flexDirection: "row",
-            alignItems: "center"
-        },
-        usernameRow: {
-            flexDirection: "row",
-            alignItems: "center", 
-        },
-        badgeWrapper: {
-            marginLeft: 1, 
-            justifyContent: 'center',
-            alignItems: 'center',
-        },
+        container: { flex: 1, backgroundColor: theme.background },
+        listContainer: { backgroundColor: theme.background, paddingBottom: 50 },
+        postContainer: { borderRadius: 12, padding: 14, position: "relative" },
+        postHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+        avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
+        userInfo: { flex: 1 },
+        usernameContainer: { flexDirection: "row", alignItems: "center" },
+        usernameRow: { flexDirection: "row", alignItems: "center" },
+        badgeWrapper: { marginLeft: 1, justifyContent: 'center', alignItems: 'center' },
         username: {
-            fontSize: 16,
-            fontFamily: "Dank Mono Bold",
-    includeFontPadding: false,
-            color: theme.textPrimary,
-            includeFontPadding: false, 
-            textAlignVertical: 'center',
+            fontSize: 16, fontFamily: "Dank Mono Bold", includeFontPadding: false,
+            color: theme.textPrimary, textAlignVertical: 'center',
         },
-        location: {
-            fontSize: 14,
-            color: theme.textSecondary,
-            marginTop: 2
-        },
+        location: { fontSize: 14, color: theme.textSecondary, marginTop: 2 },
         mediaPlaceholder: {
-            width: "100%",
-            height: screenWidth,
-            backgroundColor: '#1a1a1a',
-            borderRadius: 8,
-            marginBottom: 12,
-            overflow: "hidden"
+            width: "100%", height: screenWidth, backgroundColor: '#1a1a1a',
+            borderRadius: 8, marginBottom: 12, overflow: "hidden"
         },
-        mediaImage: {
-            width: "100%",
-            height: "100%"
-        },
-        mediaVideo: {
-            width: "100%",
-            height: "100%"
-        },
+        mediaImage: { width: "100%", height: "100%" },
+        mediaVideo: { width: "100%", height: "100%" },
         mediaLoading: {
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.3)",
-            zIndex: 10
+            position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+            justifyContent: "center", alignItems: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.3)", zIndex: 10
         },
-        postContent: {
-            marginBottom: 12
-        },
-        postText: {
-            fontSize: 15,
-            color: theme.textPrimary,
-            lineHeight: 20
-        },
-        postFooter: {
-            marginLeft: -1,
+        postContent: { marginBottom: 12 },
+        postText: { fontSize: 15, color: theme.textPrimary, lineHeight: 20 },
+        postFooter: { marginTop: 10, flexDirection: "row", gap: 10, alignItems: "center" },
+        likesContainer: { flexDirection: "row", alignItems: "center" },
+        likesCount: { marginLeft: 6, color: theme.textPrimary, fontSize: 14 },
+        metaRow: {
             flexDirection: "row",
-            gap: 10,
-            alignItems: "center"
-        },
-        likesContainer: {
-            flexDirection: "row",
-            alignItems: "center"
-        },
-        likesCount: {
-            marginLeft: 6,
-            color: theme.textPrimary,
-            fontSize: 14
-        },
-        postDate: {
-            color: theme.textSecondary,
-            fontSize: 14,
-            position: "absolute",
-            bottom: 20,
-            right: 15
-        },
-        loadingMore: {
-            paddingVertical: 16,
-            alignItems: "center"
-        },
-        emptyContainer: {
-            flex: 1,
             alignItems: "center",
-            justifyContent: "center",
-            paddingVertical: 32
+            gap: 12,
+            marginTop: 10,
+            marginBottom: 4,
         },
-        emptyText: {
-            marginTop: 16,
-            fontSize: 16,
-            color: theme.textSecondary
+        metaChip: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
         },
+        metaText: {
+            color: "#666",
+            fontSize: 12,
+            fontFamily: "Dank Mono",
+            includeFontPadding: false,
+        },
+        loadingMore: { paddingVertical: 16, alignItems: "center" },
+        emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32 },
+        emptyText: { marginTop: 16, fontSize: 16, color: theme.textSecondary },
         skeletonContainer: {
-            marginBottom: 16,
-            padding: 14,
-            shadowColor: theme.shadowColor,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 3,
-            position: "relative"
+            marginBottom: 16, padding: 14, shadowColor: theme.shadowColor,
+            shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1,
+            shadowRadius: 4, elevation: 3, position: "relative"
         },
-        skeletonHeader: {
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: 12
-        },
+        skeletonHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
         skeletonAvatar: {
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: theme.skeletonBackground,
-            marginRight: 12
+            width: 40, height: 40, borderRadius: 20,
+            backgroundColor: theme.skeletonBackground, marginRight: 12
         },
-        skeletonInfo: {
-            flex: 1
-        },
+        skeletonInfo: { flex: 1 },
         skeletonUsername: {
-            width: 120,
-            height: 16,
-            backgroundColor: theme.skeletonBackground,
-            borderRadius: 4,
-            marginBottom: 4
+            width: 120, height: 16, backgroundColor: theme.skeletonBackground,
+            borderRadius: 4, marginBottom: 4
         },
-        skeletonLocation: {
-            width: 80,
-            height: 14,
-            backgroundColor: theme.skeletonBackground,
-            borderRadius: 4
-        },
+        skeletonLocation: { width: 80, height: 14, backgroundColor: theme.skeletonBackground, borderRadius: 4 },
         skeletonContent: {
-            height: 60,
-            backgroundColor: theme.skeletonBackground,
-            borderRadius: 4,
-            marginBottom: 12
+            height: 60, backgroundColor: theme.skeletonBackground,
+            borderRadius: 4, marginBottom: 12
         },
-        skeletonFooter: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center"
-        },
-        skeletonLikes: {
-            width: 60,
-            height: 16,
-            backgroundColor: theme.skeletonBackground,
-            borderRadius: 4
-        },
+        skeletonFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+        skeletonLikes: { width: 60, height: 16, backgroundColor: theme.skeletonBackground, borderRadius: 4 },
         muteButton: {
-            position: "absolute",
-            bottom: 20,
-            right: 40,
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
-            padding: 8,
-            borderRadius: 20,
-            zIndex: 20
+            position: "absolute", bottom: 20, right: 40,
+            backgroundColor: "rgba(0, 0, 0, 0.6)", padding: 8, borderRadius: 20, zIndex: 20
         },
         pageIndicator: {
-            position: "absolute",
-            right: 30,
-            top: 10,
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
-            padding: 5,
-            borderRadius: 10
+            position: "absolute", right: 30, top: 10,
+            backgroundColor: "rgba(0, 0, 0, 0.6)", padding: 5, borderRadius: 10
         },
-        pageIndicatorText: {
-            color: "white",
-            fontSize: 12
-        },
-        fullMedia: {
-            width: screenWidth,
-            height: screenWidth
-        },
-        mediaContainer: {
-            width: screenWidth,
-            height: screenWidth,
-            backgroundColor: '#1a1a1a',
-            overflow: "hidden"
-        },
+        pageIndicatorText: { color: "white", fontSize: 12 },
+        fullMedia: { width: screenWidth, height: screenWidth },
+        mediaContainer: { width: screenWidth, height: screenWidth, backgroundColor: '#1a1a1a', overflow: "hidden" },
         heartOverlay: {
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'transparent',
-            zIndex: 15
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            justifyContent: 'center', alignItems: 'center',
+            backgroundColor: 'transparent', zIndex: 15
         },
         aiBadge: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: '#05f0d8',
-            paddingHorizontal: 6,
-            paddingVertical: 2,
-            borderRadius: 12,
-            marginLeft: 8
+            flexDirection: 'row', alignItems: 'center', backgroundColor: '#05f0d8',
+            paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, marginLeft: 8
         },
-        aiBadgeText: {
-            color: '#000',
-            fontSize: 10,
-            fontWeight: 'bold',
-            marginLeft: 2
-        },
-        previewImage: {
-            position: "absolute",
-            width: "100%",
-            height: "100%",
-            zIndex: 5
-        },
+        aiBadgeText: { color: '#000', fontSize: 10, fontFamily: "Dank Mono Bold", includeFontPadding: false, marginLeft: 2 },
+        previewImage: { position: "absolute", width: "100%", height: "100%", zIndex: 5 },
         endOfListText: {
-            textAlign: 'center',
-            color: theme.textSecondary,
-            padding: 20,
-            paddingBottom: 40,
-            fontSize: 14
+            textAlign: 'center', color: theme.textSecondary,
+            padding: 20, paddingBottom: 40, fontSize: 14
         },
         card: {
-            margin: 20,
-            marginBottom: 20,
-            padding: 15,
-            paddingBottom: 40,
-            backgroundColor: theme.background,
-            borderRadius: 12,
-            alignItems: 'center',
+            margin: 20, marginBottom: 20, padding: 15, paddingBottom: 40,
+            backgroundColor: theme.background, borderRadius: 12, alignItems: 'center',
         },
-        cardText: {
-            fontSize: 16,
-            fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
-            color: theme.textPrimary,
+        cardText: { fontSize: 16, fontFamily: "Dank Mono Bold", includeFontPadding: false, color: theme.textPrimary },
+        cardSub: { fontSize: 13, color: '#666', marginTop: 4 },
+        imageBadges: {
+            position: "absolute",
+            bottom: 12,
+            left: 12,
+            flexDirection: "row",
+            gap: 6,
+            flexWrap: "wrap",
         },
-        cardSub: {
-            fontSize: 13,
-            color: '#666',
-            marginTop: 4,
+        imageBadge: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            backgroundColor: "rgba(0,0,0,0.6)",
+            borderRadius: 20,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.12)",
         },
-
+        imageBadgeText: {
+            color: "#fff",
+            fontSize: 11,
+            fontFamily: "Dank Mono",
+            includeFontPadding: false,
+        },
+        nftBadge: {
+            borderColor: "rgba(168,85,247,0.4)",
+            backgroundColor: "rgba(168,85,247,0.2)",
+        },
+        nftBadgeText: {
+            color: "#d8b4fe",
+            fontSize: 11,
+            fontFamily: "Dank Mono",
+            includeFontPadding: false,
+        },
     });
 }
 
-// ... Interfaces ...
 interface MediaItem {
     id: number;
     media_url: string;
@@ -361,56 +236,51 @@ interface Post {
     media: MediaItem[];
     is_ai_generated: boolean;
     moderation_status: string;
+    // NFT
+    is_nft: boolean;
+    nft_price: string | null;
+    is_owner: boolean;
+    already_claimed: boolean;
+    sold_out: boolean;
+    minted_count: number;
+    total_supply: number;
+    owner_wallet: string | null;
 }
 
-interface LikedPosts {
-    [key: number]: boolean;
-}
+interface LikedPosts { [key: number]: boolean; }
 
 type VideoStorage =
     | { storage: "cloudinary"; is_video: true }
     | { storage: "r2"; is_video: true }
     | false;
 
-// ... Utils ...
 const isVideo = (url: string): VideoStorage => {
-    if (url.includes("/video/")) {
-        return { storage: "cloudinary", is_video: true };
-    }
+    if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
     const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
-    if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) {
-        return { storage: "r2", is_video: true };
-    }
+    if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) return { storage: "r2", is_video: true };
     return false;
 };
 
 const getVideoUrls = (mediaItem: MediaItem) => {
     const videoCheck = isVideo(mediaItem.media_url);
-
-    if (!videoCheck) {
-        return { preview: mediaItem.media_url, hd: mediaItem.media_url, isVideo: false };
-    }
-
+    if (!videoCheck) return { preview: mediaItem.media_url, hd: mediaItem.media_url, isVideo: false };
     if (videoCheck.storage === "cloudinary") {
-        const previewUrl = mediaItem.media_url.replace(
-            '/video/upload/',
-            '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
-        );
-        const hdUrl = mediaItem.media_url.replace(
-            '/video/upload/',
-            '/video/upload/q_auto:good,f_auto,vc_h264:baseline,br_1500k/'
-        );
-        return { preview: previewUrl, hd: hdUrl, isVideo: true };
+        return {
+            preview: mediaItem.media_url.replace('/video/upload/', '/video/upload/q_auto:low,w_400,f_jpg,so_0/'),
+            hd: mediaItem.media_url.replace('/video/upload/', '/video/upload/q_auto:good,f_auto,vc_h264:baseline,br_1500k/'),
+            isVideo: true,
+        };
     }
-
-    return {
-        preview: mediaItem.media_preview || mediaItem.media_url,
-        hd: mediaItem.media_url,
-        isVideo: true
-    };
+    return { preview: mediaItem.media_preview || mediaItem.media_url, hd: mediaItem.media_url, isVideo: true };
 };
 
-// --- COMPONENTS ---
+const resolveCollectState = (post: Post): CollectState | null => {
+    if (!post.is_nft && !post.is_owner) return null;
+    if (post.already_claimed) return "claimed";
+    if (post.sold_out) return "soldout";
+    return "collect";
+};
+
 const PostSkeleton = memo(() => {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
@@ -420,16 +290,8 @@ const PostSkeleton = memo(() => {
     useEffect(() => {
         Animated.loop(
             Animated.sequence([
-                Animated.timing(animatedValue, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: false
-                }),
-                Animated.timing(animatedValue, {
-                    toValue: 0,
-                    duration: 1000,
-                    useNativeDriver: false
-                })
+                Animated.timing(animatedValue, { toValue: 1, duration: 1000, useNativeDriver: false }),
+                Animated.timing(animatedValue, { toValue: 0, duration: 1000, useNativeDriver: false }),
             ])
         ).start();
     }, []);
@@ -437,8 +299,8 @@ const PostSkeleton = memo(() => {
     const animatedStyle = {
         backgroundColor: animatedValue.interpolate({
             inputRange: [0, 1],
-            outputRange: [theme.skeletonBackground, theme.skeletonHighlight]
-        })
+            outputRange: [theme.skeletonBackground, theme.skeletonHighlight],
+        }),
     };
 
     return (
@@ -456,7 +318,10 @@ const PostSkeleton = memo(() => {
     );
 });
 
-const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: { item: MediaItem; postId: number; onLike: (postId: number) => void; isLiked: boolean; isVisible: boolean; }) => {
+const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
+    item: MediaItem; postId: number; onLike: (postId: number) => void;
+    isLiked: boolean; isVisible: boolean;
+}) => {
     const { preview, hd, isVideo: isVideoMedia } = getVideoUrls(item);
     const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
@@ -472,87 +337,47 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
 
     const handleDoublePress = () => {
         tapCount.current += 1;
-        
-        if (tapTimer.current) {
-            clearTimeout(tapTimer.current);
-        }
-        
+        if (tapTimer.current) clearTimeout(tapTimer.current);
         if (tapCount.current === 2) {
             animateHeart();
-            if (!isLiked) {
-                onLike(postId);
-            }
+            if (!isLiked) onLike(postId);
             tapCount.current = 0;
         } else {
-            tapTimer.current = setTimeout(() => {
-                tapCount.current = 0;
-            }, 300);
+            tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 300);
         }
     };
 
     useEffect(() => {
-        return () => {
-            if (tapTimer.current) {
-                clearTimeout(tapTimer.current);
-            }
-        };
+        return () => { if (tapTimer.current) clearTimeout(tapTimer.current); };
     }, []);
 
     const animateHeart = () => {
         setShowHeart(true);
         Animated.sequence([
-            Animated.spring(heartAnim, {
-                toValue: 1,
-                friction: 3,
-                useNativeDriver: true
-            }),
+            Animated.spring(heartAnim, { toValue: 1, friction: 3, useNativeDriver: true }),
             Animated.delay(500),
-            Animated.timing(heartAnim, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true
-            })
-        ]).start(() => {
-            setShowHeart(false);
-            heartAnim.setValue(0);
-        });
+            Animated.timing(heartAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]).start(() => { setShowHeart(false); heartAnim.setValue(0); });
     };
 
     useEffect(() => {
         if (!videoRef.current) return;
-        if (!isVisible) {
-            videoRef.current.unloadAsync();
-            setShowPreview(true);
-        };
-        return () => {
-            if (videoRef.current) {
-                videoRef.current.unloadAsync().catch(() => {});
-            };
-        };
+        if (!isVisible) { videoRef.current.unloadAsync(); setShowPreview(true); }
+        return () => { if (videoRef.current) videoRef.current.unloadAsync().catch(() => {}); };
     }, [isVisible, isVideoMedia]);
 
     const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
         if (!status.isLoaded) return;
-        if (status.isLoaded && status.isPlaying) {
-            setIsLoading(false);
-            setTimeout(() => setShowPreview(false), 150);
-        }
+        if (status.isLoaded && status.isPlaying) { setIsLoading(false); setTimeout(() => setShowPreview(false), 150); }
     };
 
     return (
-        <Pressable
-            onPress={handleDoublePress}
-            style={styles.mediaContainer}
-        >
+        <Pressable onPress={handleDoublePress} style={styles.mediaContainer}>
             {isVideoMedia ? (
                 <>
                     {(showPreview || !isVisible) && (
                         <FastImage
-                            source={{
-                                uri: preview,
-                                priority: FastImage.priority.high,
-                                cache: FastImage.cacheControl.immutable
-                            }}
+                            source={{ uri: preview, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable }}
                             style={styles.previewImage}
                             resizeMode={FastImage.resizeMode.cover}
                         />
@@ -563,78 +388,53 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
                             style={styles.fullMedia}
                             source={{ uri: hd }}
                             resizeMode={ResizeMode.COVER}
-                            isLooping
-                            isMuted={isMuted}
-                            shouldPlay={isVisible}
+                            isLooping isMuted={isMuted} shouldPlay={isVisible}
                             onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                         />
                     )}
-
                     {isLoading && isVisible && (
                         <View style={styles.mediaLoading}>
                             <ActivityIndicator size="large" color="#ffffff" />
                         </View>
                     )}
                     <Pressable
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            setIsMuted(prev => !prev);
-                        }}
+                        onPress={(e) => { e.stopPropagation(); setIsMuted(prev => !prev); }}
                         style={styles.muteButton}
                     >
-                        <MaterialIcons
-                            name={isMuted ? "volume-off" : "volume-up"}
-                            size={24}
-                            color="white"
-                        />
+                        {isMuted
+                            ? <VolumeX size={20} color="white" />
+                            : <Volume2 size={20} color="white" />
+                        }
                     </Pressable>
                 </>
             ) : (
                 <FastImage
-                    source={{
-                        uri: item.media_url,
-                        priority: FastImage.priority.normal,
-                        cache: FastImage.cacheControl.immutable
-                        
-                    }}
+                    source={{ uri: item.media_url, priority: FastImage.priority.normal, cache: FastImage.cacheControl.immutable }}
                     style={styles.mediaImage}
-                    resizeMode={FastImage.resizeMode.cover}   
+                    resizeMode={FastImage.resizeMode.cover}
                 />
             )}
             {showHeart && (
                 <Animated.View
-                    style={[
-                        styles.heartOverlay,
-                        {
-                            transform: [{ scale: heartAnim }],
-                            opacity: heartAnim
-                        }
-                    ]}
+                    style={[styles.heartOverlay, { transform: [{ scale: heartAnim }], opacity: heartAnim }]}
                     pointerEvents="none"
                 >
-                    <MaterialIcons name="favorite" size={80} color="#ff0000" />
+                    <Heart size={80} color="#A855F7" fill="#A855F7" />
                 </Animated.View>
             )}
         </Pressable>
     );
-}, (prev, next) => prev.isVisible === next.isVisible && prev.isLiked === next.isLiked && prev.item.id === next.item.id);
+}, (prev, next) =>
+    prev.isVisible === next.isVisible &&
+    prev.isLiked === next.isLiked &&
+    prev.item.id === next.item.id
+);
 
 const PostItem = memo(({
-    item,
-    isLiked,
-    isVisible,
-    userID,
-    theme,
-    styles,
-    router,
-    toggleLike,
-    onDelete,
-    openComments,
-    dropdownVisible,
-    setDropdownVisible,
-    setToastMessage,
-    setToastSuccess,
-    setIsToastVisible
+    item, isLiked, isVisible, userID, theme, styles, router,
+    toggleLike, onDelete, openComments, dropdownVisible, setDropdownVisible,
+    setToastMessage, setToastSuccess, setIsToastVisible,
+    onOpenMint,
 }: any) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -644,49 +444,45 @@ const PostItem = memo(({
     const mediaItems = item.media || [];
     const hasMedia = mediaItems.length > 0;
 
+    const collectState = resolveCollectState(item);
+    const supplyLabel = `${item.minted_count ?? 0}/${item.total_supply ?? 50}`;
+
     return (
         <View style={styles.postContainer}>
+
+            {/* ── Header: avatar | username | dots ── */}
             <View style={styles.postHeader}>
-                <FastImage source={{ uri: `${item.owner__avatar}`,
-                    priority: FastImage.priority.normal,
-                    cache: FastImage.cacheControl.immutable 
-                }} style={styles.avatar} />
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                <FastImage
+                    source={{ uri: item.owner__avatar, priority: FastImage.priority.normal, cache: FastImage.cacheControl.immutable }}
+                    style={styles.avatar}
+                />
+                <TouchableOpacity
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     style={styles.userInfo}
                     onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
                 >
-                    <View style={styles.usernameContainer}>
-                        <View style={styles.usernameRow}>
-                            <Text style={styles.username}>{item.owner__username}</Text>
-                            {item.owner__official ? (
-                                <View style={styles.badgeWrapper}>
-                                    <VerifyBadge 
-                                        isLooped={true} 
-                                        isVisible={isVisible} 
-                                        haveModal={false} 
-                                        isStatic={false} 
-                                        size={16}
-                                    />
-                                </View>
-                            ) : null}
-                        </View>
-                        
-                        {item.is_ai_generated && (
-                            <View style={styles.aiBadge}>
-                                <MaterialIcons name="auto-awesome" size={12} color="#fff" />
-                                <Text style={styles.aiBadgeText}>AI</Text>
+                    <View style={styles.usernameRow}>
+                        <Text style={styles.username}>{item.owner__username}</Text>
+                        {item.owner__official && (
+                            <View style={styles.badgeWrapper}>
+                                <VerifyBadge isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
                             </View>
                         )}
                     </View>
-                    {item.location && <Text style={styles.location}>{item.location}</Text>}
                 </TouchableOpacity>
-                <View style={{ position: "relative" }}>
-                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                        style={{ position: "absolute", right: -2, top: -10, zIndex: 10, padding: 5 }}
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            setDropdownVisible(item.id);
-                        }}
+
+                <View style={{ position: "relative", flexDirection: "row" }}>
+                     {collectState !== null && (
+                    <ButtonCollect
+                        onPress={() => onOpenMint(item)}
+                        state={collectState}
+                        supplyLabel={supplyLabel}
+                    />
+                )}
+                    <TouchableOpacity
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                        style={{ padding: 5 }}
+                        onPress={(e) => { e.stopPropagation(); setDropdownVisible(item.id); }}
                     >
                         <MaterialCommunityIcons name="dots-vertical" color={theme.textPrimary} size={24} />
                     </TouchableOpacity>
@@ -704,21 +500,15 @@ const PostItem = memo(({
                         onReportResult={(reported?: boolean, message?: string) => {
                             setDropdownVisible(null);
                             setTimeout(() => {
-                                if (message) {
-                                    setToastMessage(message);
-                                    setToastSuccess(false);
-                                    setIsToastVisible(true);
-                                } else if (reported) {
-                                    setToastSuccess(true);
-                                    setToastMessage('Report submitted');
-                                    setIsToastVisible(true);
-                                }
+                                if (message) { setToastMessage(message); setToastSuccess(false); setIsToastVisible(true); }
+                                else if (reported) { setToastSuccess(true); setToastMessage('Report submitted'); setIsToastVisible(true); }
                             }, 260);
                         }}
                     />
                 </View>
             </View>
 
+            {/* ── Media ── */}
             {hasMedia && (
                 <View style={styles.mediaPlaceholder}>
                     {mediaItems.length > 1 ? (
@@ -727,27 +517,17 @@ const PostItem = memo(({
                                 data={mediaItems}
                                 renderItem={({ item: mediaItem, index: mediaIndex }) => (
                                     <MediaItemComponent
-                                        item={mediaItem}
-                                        postId={item.id}
-                                        onLike={toggleLike}
-                                        isLiked={isLiked}
-                                        isVisible={isVisible && currentMediaIndex === mediaIndex}
+                                        item={mediaItem} postId={item.id} onLike={toggleLike}
+                                        isLiked={isLiked} isVisible={isVisible && currentMediaIndex === mediaIndex}
                                     />
                                 )}
                                 keyExtractor={mediaItem => mediaItem.id.toString()}
-                                horizontal
-                                pagingEnabled
-                                showsHorizontalScrollIndicator={false}
+                                horizontal pagingEnabled showsHorizontalScrollIndicator={false}
                                 onMomentumScrollEnd={(event) => {
-                                    const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
-                                    setCurrentMediaIndex(index);
+                                    setCurrentMediaIndex(Math.round(event.nativeEvent.contentOffset.x / screenWidth));
                                 }}
-                                updateCellsBatchingPeriod={100}
-                                removeClippedSubviews={true}
-                                scrollEventThrottle={16}
-                                initialNumToRender={1}
-                                maxToRenderPerBatch={1}
-                                windowSize={2}
+                                updateCellsBatchingPeriod={100} removeClippedSubviews={true}
+                                scrollEventThrottle={16} initialNumToRender={1} maxToRenderPerBatch={1} windowSize={2}
                             />
                             <View style={styles.pageIndicator}>
                                 <Text style={styles.pageIndicatorText}>{currentMediaIndex + 1}/{mediaItems.length}</Text>
@@ -755,20 +535,52 @@ const PostItem = memo(({
                         </View>
                     ) : (
                         <MediaItemComponent
-                            item={mediaItems[0]}
-                            postId={item.id}
-                            onLike={toggleLike}
-                            isLiked={isLiked}
-                            isVisible={isVisible}
+                            item={mediaItems[0]} postId={item.id} onLike={toggleLike}
+                            isLiked={isLiked} isVisible={isVisible}
                         />
                     )}
+
+                    {/* Overlay badges */}
+                    <View style={styles.imageBadges} pointerEvents="none">
+                        {item.is_ai_generated && (
+                            <View style={styles.imageBadge}>
+                                <Sparkles size={11} color="#05f0d8" />
+                                <Text style={styles.imageBadgeText}>AI</Text>
+                            </View>
+                        )}
+                        {item.is_nft && (
+                            <View style={[styles.imageBadge, styles.nftBadge]}>
+                                <Text style={styles.nftBadgeText}>{item.minted_count}/{item.total_supply} minted</Text>
+                            </View>
+                        )}
+                        {item.location && (
+                            <View style={styles.imageBadge}>
+                                <MapPin size={11} color="#fff" />
+                                <Text style={styles.imageBadgeText}>{item.location}</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
             )}
+
+            {/* ── Meta chips: date + comments on ── */}
+            <View style={styles.metaRow}>
+                <View style={styles.metaChip}>
+                    <Clock size={12} color="#666" />
+                    <Text style={styles.metaText}>{timeAgo(item.create_at)}</Text>
+                </View>
+                {item.is_comments_enabled && (
+                    <View style={styles.metaChip}>
+                        <MessageCircle size={12} color="#666" />
+                        <Text style={styles.metaText}>Comments on</Text>
+                    </View>
+                )}
+            </View>
+
+            {/* ── About text ── */}
             {displayText && (
                 <View style={styles.postContent}>
-                    <Hyperlink 
-                        linkStyle={{ color: "#A78BFA", fontWeight: "500" }}
-                        onPress={(url: string) => Linking.openURL(url)}>
+                    <Hyperlink linkStyle={{ color: "#A78BFA" }} onPress={(url: string) => Linking.openURL(url)}>
                         <Text style={styles.postText}>{displayText}</Text>
                     </Hyperlink>
                     {needsMoreButton && (
@@ -781,36 +593,32 @@ const PostItem = memo(({
                 </View>
             )}
 
+            {/* ── Footer: like | comment | spacer | ButtonCollect ── */}
             <View style={styles.postFooter}>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
-                    <Icon name={isLiked ? "heart" : "heart-outline"} size={24} color={isLiked ? "red" : theme.textPrimary} />
-                    <Text style={styles.likesCount}>{formatNumber(item.count_likes)}</Text>
+                    <Heart size={22} color={isLiked ? "#A855F7" : theme.textPrimary} fill={isLiked ? "#A855F7" : "transparent"} />
+                    <Text style={[styles.likesCount, isLiked && { color: "#A855F7" }]}>{formatNumber(item.count_likes)}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => openComments(item)}>
-                    <Icon name="chatbubble-outline" size={20} style={{ marginTop: -3 }} color={theme.textPrimary} />
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => openComments(item)} style={styles.likesContainer}>
+                    <MessageCircle size={22} color={theme.textPrimary} />
                 </TouchableOpacity>
+                <View style={{ flex: 1 }} />
             </View>
-            <Text style={styles.postDate}>{timeAgo(item.create_at)}</Text>
         </View>
     );
 }, (prev, next) => {
-        if (prev.item.id !== next.item.id) return false;
+    if (prev.item.id !== next.item.id) return false;
+    if (prev.isLiked !== next.isLiked) return false;
+    if (prev.isVisible !== next.isVisible) return false;
+    if (prev.dropdownVisible !== next.dropdownVisible) return false;
+    if (prev.item.count_likes !== next.item.count_likes) return false;
+    if (prev.item.media?.length !== next.item.media?.length) return false;
+    if (prev.item.about !== next.item.about) return false;
+    if (prev.item.already_claimed !== next.item.already_claimed) return false;
+    if (prev.item.minted_count !== next.item.minted_count) return false;
+    return true;
+});
 
-        if (prev.isLiked !== next.isLiked) return false;
-
-        if (prev.isVisible !== next.isVisible) return false;
-
-        if (prev.dropdownVisible !== next.dropdownVisible) return false;
-
-        if (prev.item.count_likes !== next.item.count_likes) return false;
-
-        if (prev.item.media?.length !== next.item.media?.length) return false;
-
-        if (prev.item.about !== next.item.about) return false;
-        return true;
-    });
-
-// --- MAIN PAGE ---
 export default function MainPage() {
     const router = useRouter();
     const [posts, setPosts] = useState<Post[]>([]);
@@ -833,48 +641,73 @@ export default function MainPage() {
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     const isFetchingRef = useRef(false);
 
+    // ── Mint ──────────────────────────────────────────────────────────────────
+    const mintSheetRef = useRef<MintBottomSheetRef>(null);
+    const [mintPostId, setMintPostId] = useState<number>(0);
+    const [mintImageUrl, setMintImageUrl] = useState<string | null>(null);
+    const [mintCreator, setMintCreator] = useState<string>("");
+    const [mintIsOwner, setMintIsOwner] = useState(false);
+    const [mintDefaultPrice, setMintDefaultPrice] = useState<string | null>(null);
+    const [mintOwnerWallet, setMintOwnerWallet] = useState<string | null>(null);
+    const { address } = useWalletAddress();
+    const { sendInstructions } = useTransaction();
+
+    const handleOpenMint = useCallback((post: Post) => {
+        setMintPostId(post.id);
+        setMintImageUrl(post.media?.[0]?.media_url ?? null);
+        setMintCreator(post.owner__username);
+        setMintIsOwner(post.is_owner);
+        setMintDefaultPrice(post.nft_price);
+        setMintOwnerWallet(post.owner_wallet);
+        setTimeout(() => mintSheetRef.current?.present(), 50);
+    }, []);
+
+    const handleMint = useCallback(async (postId: number, price: number) => {
+        if (!address) throw new Error("Wallet not connected");
+        if (mintIsOwner) {
+            await mintNFT(address, postId, price);
+            return;
+        }
+        if (!mintOwnerWallet) throw new Error("Owner wallet not found");
+        const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
+        const paymentSignature = await sendInstructions(ixs);
+        if (!paymentSignature) throw new Error("Payment was not confirmed");
+        await mintNFT(address, postId, price, paymentSignature);
+    }, [address, mintIsOwner, mintOwnerWallet, sendInstructions]);
+    // ─────────────────────────────────────────────────────────────────────────
+
     const getUserID = async () => {
-        const id = await storage.getItem("id")
-        setUserID(id ? +id : 0)
+        const id = await storage.getItem("id");
+        setUserID(id ? +id : 0);
     };
 
     const onRefresh = useCallback(() => {
         if (isFetchingRef.current) return;
         setRefreshing(true);
         setHasMore(true);
-        // Force reset
         fetchPosts(false, true, true).then(() => setRefreshing(false));
     }, []);
 
-    // Optimized fetch logic
     const fetchPosts = async (loadMore = false, reset = false, forceReset = false) => {
         if (isFetchingRef.current) return;
         if (!reset && loadMore && !hasMore) return;
 
-        isFetchingRef.current = true; // LOCK
+        isFetchingRef.current = true;
         const shouldReset = forceReset || !isSessionActive;
-
-        if (shouldReset) {
-            isSessionActive = true;
-        };
+        if (shouldReset) isSessionActive = true;
 
         if (loadMore) setLoadingMore(true);
         else if (!reset) setLoading(true);
 
         try {
-
             const response = await getRecomendatePosts(shouldReset);
             const newPosts = response.results || [];
 
-            // If backend returns empty array, we are done.
             if (newPosts.length === 0) {
                 setHasMore(false);
             } else {
-                if (loadMore && !reset) {
-                    setPosts(prev => [...prev, ...newPosts]);
-                } else {
-                    setPosts(newPosts);
-                }
+                if (loadMore && !reset) setPosts(prev => [...prev, ...newPosts]);
+                else setPosts(newPosts);
 
                 if (response.liked_posts) {
                     const newLikes: LikedPosts = {};
@@ -887,32 +720,25 @@ export default function MainPage() {
         } finally {
             setLoading(false);
             setLoadingMore(false);
-            setTimeout(() => {
-                isFetchingRef.current = false; // UNLOCK
-            }, 500);
+            setTimeout(() => { isFetchingRef.current = false; }, 500);
         }
     };
 
     useEffect(() => {
         if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.(true);
         getUserID();
-        fetchPosts(false, true); // Initial load treated as reset
+        fetchPosts(false, true);
     }, []);
 
     useFocusEffect(
         useCallback(() => {
-            return () => {
-                setVisiblePostId(null);
-            };
+            return () => { setVisiblePostId(null); };
         }, [])
     );
 
     const toggleLike = useCallback((postId: number) => {
         likePost(postId);
-        setLikedPosts(prev => {
-            const isLiked = !!prev[postId];
-            return { ...prev, [postId]: !isLiked };
-        });
+        setLikedPosts(prev => ({ ...prev, [postId]: !prev[postId] }));
         setPosts(prev => prev.map(post =>
             post.id === postId
                 ? { ...post, count_likes: post.count_likes + (likedPosts[postId] ? -1 : 1) }
@@ -934,14 +760,13 @@ export default function MainPage() {
         setShowPopup(true);
     }, []);
 
-    const viewabilityConfig = useRef({
-        itemVisiblePercentThreshold: 70,
-        minimumViewTime: 100
-    }).current;
+    const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 70, minimumViewTime: 100 }).current;
 
     const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: any[] }) => {
         if (viewableItems.length > 0) {
-            const mostVisible = viewableItems.reduce((prev, cur) => (cur.isViewable && (!prev || cur.index < prev.index)) ? cur : prev, null);
+            const mostVisible = viewableItems.reduce(
+                (prev, cur) => (cur.isViewable && (!prev || cur.index < prev.index)) ? cur : prev, null
+            );
             if (mostVisible?.item) setVisiblePostId(mostVisible.item.id);
         } else {
             setVisiblePostId(null);
@@ -953,21 +778,20 @@ export default function MainPage() {
         if (!hasMore && posts.length > 0) {
             return (
                 <View style={styles.card}>
-                <Text style={styles.cardText}>🎉 No more posts for now</Text>
-                <Text style={styles.cardSub}>Check back later for new vibes!</Text>
+                    <Text style={styles.cardText}>🎉 No more posts for now</Text>
+                    <Text style={styles.cardSub}>Check back later for new vibes!</Text>
                 </View>
             );
         }
-
         return <View style={{ height: 20 }} />;
     };
 
-    const dataToRender = loading ? Array.from({ length: 2 }).map((_, i) => ({ id: `skeleton-${i}`, type: 'skeleton' })) : posts.filter(p => p.moderation_status === "approved");
+    const dataToRender = loading
+        ? Array.from({ length: 2 }).map((_, i) => ({ id: `skeleton-${i}`, type: 'skeleton' }))
+        : posts.filter(p => p.moderation_status === "approved");
 
     const renderItem = useCallback(({ item }: { item: any }) => {
-        if (loading || item.type === 'skeleton') {
-            return <PostSkeleton />;
-        }
+        if (loading || item.type === 'skeleton') return <PostSkeleton />;
         return (
             <PostItem
                 item={item}
@@ -985,9 +809,10 @@ export default function MainPage() {
                 setToastMessage={setToastMessage}
                 setToastSuccess={setToastSuccess}
                 setIsToastVisible={setIsToastVisible}
+                onOpenMint={handleOpenMint}
             />
         );
-    }, [loading, likedPosts, visiblePostId, userID, theme, styles, activeDropdownId]);
+    }, [loading, likedPosts, visiblePostId, userID, theme, styles, activeDropdownId, handleOpenMint]);
 
     return (
         <View style={styles.container}>
@@ -999,6 +824,7 @@ export default function MainPage() {
                 isSuccess={toastSuccess}
             />
             <Header />
+
             {showPopup && (
                 <PopupModal
                     post_id={popupPostId as number}
@@ -1006,6 +832,18 @@ export default function MainPage() {
                     isCommentsEnabled={popupCommentsEnabled}
                 />
             )}
+
+            <MintBottomSheet
+                ref={mintSheetRef}
+                postId={mintPostId}
+                imageUrl={mintImageUrl}
+                creatorUsername={mintCreator}
+                walletConnected={!!address}
+                onMint={handleMint}
+                isOwner={mintIsOwner}
+                defaultPrice={mintDefaultPrice}
+            />
+
             <FlatList
                 data={dataToRender}
                 onScrollBeginDrag={() => setActiveDropdownId(null)}
@@ -1013,15 +851,14 @@ export default function MainPage() {
                 renderItem={renderItem}
                 contentContainerStyle={styles.listContainer}
                 onEndReached={() => {
-                    if (!loading && !loadingMore && hasMore && !isFetchingRef.current) {
-                        fetchPosts(true);
-                    }
+                    if (!loading && !loadingMore && hasMore && !isFetchingRef.current) fetchPosts(true);
                 }}
                 ListEmptyComponent={(
-                <View style={styles.card}>
-                    <Text style={styles.cardText}>🎉 No more posts for now</Text>
-                    <Text style={styles.cardSub}>Check back later for new vibes!</Text>
-                </View>)}
+                    <View style={styles.card}>
+                        <Text style={styles.cardText}>🎉 No more posts for now</Text>
+                        <Text style={styles.cardSub}>Check back later for new vibes!</Text>
+                    </View>
+                )}
                 onEndReachedThreshold={0.5}
                 initialNumToRender={2}
                 maxToRenderPerBatch={1}
@@ -1034,7 +871,6 @@ export default function MainPage() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListFooterComponent={!loading ? renderFooter : null}
             />
-            
         </View>
     );
 }
