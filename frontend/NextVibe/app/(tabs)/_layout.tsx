@@ -1,5 +1,5 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
-import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet, Platform } from "react-native";
+import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet } from "react-native";
 import React, { useEffect, useState } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
@@ -15,20 +15,15 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-// Icons
-import { House, Search, BadgePlus, UserRound } from "lucide-react-native"
-// WMA
+import { House, Search, BadgePlus, UserRound } from "lucide-react-native";
 import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
 import { clusterApiUrl } from '@solana/web3.js';
-// PUSH
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants'
-// Save token on backend
+import Constants from 'expo-constants';
 import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// WMA settings
 const chain = 'solana:devnet';
 const endpoint = clusterApiUrl('devnet');
 const identity = {
@@ -36,7 +31,6 @@ const identity = {
     uri: 'https://nextvibe.io',
     icon: 'logo.png',
 };
-
 
 SplashScreen.preventAutoHideAsync();
 
@@ -49,19 +43,14 @@ const oldTextRender = Text.render;
 Text.render = function (...args) {
     const origin = oldTextRender.call(this, ...args);
     const style = StyleSheet.flatten(origin.props.style) || {};
-
     const isBold = style.fontWeight === 'bold' ||
         style.fontWeight === '600' ||
         style.fontWeight === '700' ||
         style.fontWeight === '800' ||
         style.fontWeight === '900' ||
         (typeof style.fontWeight === 'number' && style.fontWeight > 500);
-
     return React.cloneElement(origin, {
-        style: [
-            { fontFamily: isBold ? boldFontFamily : defaultFontFamily },
-            origin.props.style
-        ],
+        style: [{ fontFamily: isBold ? boldFontFamily : defaultFontFamily }, origin.props.style],
     });
 };
 
@@ -71,26 +60,19 @@ const oldTextInputRender = TextInput.render;
 TextInput.render = function (...args) {
     const origin = oldTextInputRender.call(this, ...args);
     const style = StyleSheet.flatten(origin.props.style) || {};
-
     const isBold = style.fontWeight === 'bold' || (typeof style.fontWeight === 'number' && style.fontWeight > 500);
-
     return React.cloneElement(origin, {
-        style: [
-            { fontFamily: isBold ? boldFontFamily : defaultFontFamily },
-            origin.props.style
-        ],
+        style: [{ fontFamily: isBold ? boldFontFamily : defaultFontFamily }, origin.props.style],
     });
 };
 
 if (__DEV__ && typeof global !== 'undefined') {
     const originalError = console.error;
     const originalWarn = console.warn;
-
     console.error = (...args) => {
         if (typeof args[0] === 'string' && (args[0].includes('getDevServer') || args[0].includes('getDevServer is not a function'))) return;
         originalError(...args);
     };
-
     console.warn = (...args) => {
         if (typeof args[0] === 'string' && args[0].includes('getDevServer')) return;
         originalWarn(...args);
@@ -114,14 +96,24 @@ export default function Layout() {
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [visible, setVisible] = useState<boolean>(false);
 
-    const blacklist = ["register", "login", "postslist",
+    useEffect(() => {
+        if (fontsLoaded || fontError) {
+            SplashScreen.hideAsync();
+        }
+    }, [fontsLoaded, fontError]);
+
+    const blacklist = [
+        "register", "login", "postslist",
         "splash", "index", "create-post",
         "settings", "select-token", "deposit",
         "transaction", "user-profile", "result-transaction",
         "transactions", "transaction-detail", "chat-room",
         "chats", "follows-screen", "notifications",
         "user-banned", "wallet-init", "wallet-dash",
-        "wallet-select", "send"];
+        "wallet-select", "send"
+    ];
+
+    const stackScreens = blacklist.filter(item => item !== "send");
 
     const tabs = [
         { name: "home", IconOutline: House, IconFilled: House },
@@ -130,55 +122,42 @@ export default function Layout() {
         { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
     ];
 
-    // --------PUSH--------
+    const PUSH_TOKEN_KEY = 'expo_push_token';
+
     function handleRegistrationError(errorMessage: string) {
         setToastMessage(errorMessage);
         setVisible(true);
         throw new Error(errorMessage);
     }
 
-
-    const PUSH_TOKEN_KEY = 'expo_push_token';
-
     async function registerForPushNotifications() {
         if (!Device.isDevice) {
             handleRegistrationError('Must use physical device for push notifications');
             return;
         }
-
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
-
         if (existingStatus !== 'granted') {
             const { status } = await Notifications.requestPermissionsAsync();
             finalStatus = status;
         }
-
         if (finalStatus !== 'granted') {
             handleRegistrationError('Permission not granted to get push token for push notification!');
             return;
         }
-
         const projectId =
             Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-
         if (!projectId) {
             handleRegistrationError('Project ID not found');
             return;
         }
-
         try {
-            const pushTokenString = (
-                await Notifications.getExpoPushTokenAsync({ projectId })
-            ).data;
-
+            const pushTokenString = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
             const savedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
-
             if (savedToken !== pushTokenString) {
                 await savePushToken(pushTokenString);
                 await AsyncStorage.setItem(PUSH_TOKEN_KEY, pushTokenString);
             }
-
             return pushTokenString;
         } catch (e: unknown) {
             handleRegistrationError(`${e}`);
@@ -186,12 +165,10 @@ export default function Layout() {
     }
 
     useEffect(() => {
-        // Get PUSH permission on Profile page
         if (segments[1] === "profile") {
             registerForPushNotifications();
-        };
-    }, [segments])
-
+        }
+    }, [segments]);
 
     useEffect(() => {
         const interceptor = axios.interceptors.response.use(
@@ -242,21 +219,35 @@ export default function Layout() {
                         <ErrorBoundary FallbackComponent={ErrorFallback}>
                             <WebSocketProvider userId={userID || 0}>
                                 {toastMessage && (
-                                    <Web3Toast message={toastMessage} visible={visible} onHide={() => setVisible(false)} isSuccess={false} />
+                                    <Web3Toast
+                                        message={toastMessage}
+                                        visible={visible}
+                                        onHide={() => setVisible(false)}
+                                        isSuccess={false}
+                                    />
                                 )}
                                 <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
-                                    <Stack screenOptions={{ headerShown: false, animation: "none" }} >
+                                    <Stack screenOptions={{ headerShown: false, animation: "none" }}>
                                         <Stack.Screen name="home" />
                                         <Stack.Screen name="search" />
                                         <Stack.Screen name="camera" />
                                         <Stack.Screen name="profile" />
-                                        {blacklist.map((item) => <Stack.Screen key={item} name={item} />)}
+                                        {stackScreens.map((item) => (
+                                            <Stack.Screen key={item} name={item} />
+                                        ))}
                                     </Stack>
 
                                     {showTabBar && (
                                         <View style={styles.tabBarContainer}>
-                                            <BlurView blurType={theme === "dark" ? "dark" : "light"} blurAmount={10} style={StyleSheet.absoluteFill} />
-                                            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme === "dark" ? "rgba(20, 8, 41, 0.4)" : "rgba(255, 255, 255, 0.4)" }]} />
+                                            <BlurView
+                                                blurType={theme === "dark" ? "dark" : "light"}
+                                                blurAmount={10}
+                                                style={StyleSheet.absoluteFill}
+                                            />
+                                            <View style={[
+                                                StyleSheet.absoluteFill,
+                                                { backgroundColor: theme === "dark" ? "rgba(20, 8, 41, 0.4)" : "rgba(255, 255, 255, 0.4)" }
+                                            ]} />
                                             <View style={styles.tabsWrapper}>
                                                 {tabs.map((tab) => {
                                                     const isActive = currentPage === tab.name;
