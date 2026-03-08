@@ -13,7 +13,8 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
-import { Image, Video, Timer, Sparkles } from "lucide-react-native";
+import { ImageIcon, Video, Clock3, Sparkles, Gem } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { storage } from '@/src/utils/storage';
 import PostPopup from "./PostModal";
 import PopupModal from "../Comments/CommentPopup";
@@ -27,47 +28,29 @@ const screenWidth = Dimensions.get("window").width;
 const padding = 26;
 const imageSize = (screenWidth - padding * 2) / 3;
 
-/** Single media item attached to a post */
 interface PostMedia {
     media_url: string;
     media_preview: string | null;
 }
 
-/** Minimal post shape returned by the gallery feed API */
 interface Post {
     user_id: number;
     post_id: number;
     media: PostMedia[] | null;
     is_ai_generated: boolean;
+    is_nft: boolean;
     moderation_status: string;
 }
 
-/**
- * Result of a video detection check.
- * Returns storage provider info when the URL is a video, false otherwise.
- */
 type MediaCheck =
     | { storage: string; is_video: true }
     | false;
 
-/** Props for the PostGallery component */
 interface PostGalleryProps {
-    /** User profile ID whose posts are displayed */
     id: number;
-    /** Previous screen identifier used for navigation context */
     previous: string;
 }
 
-/**
- * PostGallery renders a 3-column grid of posts for a given user profile.
- *
- * Handles:
- * - Paginated post fetching with infinite scroll
- * - Post moderation filtering (approved + own pending)
- * - Post detail popup
- * - Comments bottom sheet
- * - cNFT minting bottom sheet with real Django + Elysia integration
- */
 const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
@@ -87,17 +70,12 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const [mintIsOwner, setMintIsOwner] = useState(false);
     const [mintDefaultPrice, setMintDefaultPrice] = useState<string | null>(null);
     const [mintOwnerWallet, setMintOwnerWallet] = useState<string | null>(null);
-    const [mintMintedCount, setMintMintedCount] = useState<number>(0)
+    const [mintMintedCount, setMintMintedCount] = useState<number>(0);
     const { sendInstructions } = useTransaction();
-    /** Connected Solana wallet address from LazorKit / MWA */
     const { address } = useWalletAddress();
 
     const POSTS_PER_PAGE = 9;
 
-    /**
-     * Reads the authenticated user's ID from secure storage
-     * and stores it in local state for ownership checks.
-     */
     const getId = async () => {
         const storedId = await storage.getItem("id");
         const parsedId = Number(storedId);
@@ -105,13 +83,6 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         return parsedId;
     };
 
-    /**
-     * Fetches a page of posts for the profile.
-     * Filters out posts that are pending moderation unless they belong to the current user.
-     *
-     * @param shouldLoadMore - Whether this is a pagination request or initial load
-     * @param currentUserID  - User ID override used on first load before state is set
-     */
     const fetchPosts = async (shouldLoadMore = false, currentUserID?: number) => {
         if (loadingMore || !hasMore) return;
 
@@ -158,13 +129,6 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         }, [])
     );
 
-    /**
-     * Detects whether a media URL points to a video file.
-     * Supports both Cloudinary video URLs and R2-hosted video extensions.
-     *
-     * @param url - Media URL to inspect
-     * @returns MediaCheck object with storage provider, or false if not a video
-     */
     const isVideo = (url: string): MediaCheck => {
         if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
         const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
@@ -172,15 +136,6 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         return false;
     };
 
-    /**
-     * Generates a thumbnail preview URL for video media.
-     * For Cloudinary videos, uses transformation params to extract the first frame.
-     * For R2 videos, falls back to the pre-generated preview field.
-     *
-     * @param url  - Original media URL
-     * @param item - Full post item (used to access media_preview for R2)
-     * @returns Preview image URL
-     */
     const getPreviewUrl = (url: string, item: any): string => {
         const videoCheck = isVideo(url);
         if (videoCheck) {
@@ -194,29 +149,12 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         return url;
     };
 
-    /**
-     * Opens the post detail popup for an approved post.
-     * Silently ignores taps on pending or rejected posts.
-     *
-     * @param item - Post item that was tapped
-     */
     const handlePostPress = (item: Post) => {
         if (item.moderation_status !== "approved") return;
         setSelectedPostId(item.post_id);
         setPopupVisible(true);
     };
 
-    /**
-     * Prepares mint state and opens the MintBottomSheet.
-     * Called from PostPopup when the user taps the Collect button.
-     *
-     * @param postId       - ID of the post to mint
-     * @param imageUrl     - Thumbnail URL shown in the mint sheet preview
-     * @param creator      - Username of the post owner
-     * @param nftPrice     - Fixed price from the server (null if owner sets it first time)
-     * @param isOwner      - Whether the current user is the post owner
-     * @param alreadyClaimed - Passed through but unused here (button hidden upstream)
-     */
     const handleOpenMint = (
         postId: number,
         imageUrl: string | null,
@@ -244,11 +182,9 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
 
         if (mintMintedCount === 0 && mintIsOwner) {
             paymentSignature = null;
-        }
-        else if (!mintIsOwner) {
+        } else if (!mintIsOwner) {
             if (!mintOwnerWallet) throw new Error("Owner wallet not found");
 
-            // 95% → owner, 5% → platform
             const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
             paymentSignature = await sendInstructions(ixs);
 
@@ -257,6 +193,9 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
 
         await mintNFT(address, postId, price, paymentSignature);
     };
+
+    const hasBadges = (item: Post) =>
+        item.is_nft || item.is_ai_generated;
 
     return (
         <View style={styles.container}>
@@ -311,7 +250,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 style={styles.postContainer}
                                 onPress={() => isApproved ? handlePostPress(item) : null}
-                                activeOpacity={isApproved ? 0.75 : 1}
+                                activeOpacity={isApproved ? 0.8 : 1}
                             >
                                 {hasMedia ? (
                                     isMediaVideo ? (
@@ -331,34 +270,55 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                     )
                                 ) : (
                                     <View style={styles.placeholderContainer}>
-                                        <Image size={40} color="#666" />
+                                        <LinearGradient
+                                            colors={["rgba(109,40,217,0.05)", "rgba(20,8,41,0.9)"]}
+                                            style={StyleSheet.absoluteFill}
+                                        />
+                                        <View style={styles.placeholderInner}>
+                                            <ImageIcon size={26} color="rgba(167,139,250,0.8)" strokeWidth={1.2} />
+                                        </View>
+                                        <Text style={styles.placeholderText}>Немає медіа</Text>
                                     </View>
+                                )}
+
+                                {hasMedia && isApproved && (isMediaVideo || hasBadges(item)) && (
+                                    <LinearGradient
+                                        colors={["transparent", "rgba(0,0,0,0.55)"]}
+                                        style={styles.bottomGradient}
+                                        pointerEvents="none"
+                                    />
                                 )}
 
                                 {isPending && (
                                     <BlurView
-                                        style={styles.moderationStatus}
+                                        style={styles.moderationOverlay}
                                         blurType="dark"
-                                        blurAmount={10}
+                                        blurAmount={12}
                                     >
                                         <View style={styles.moderationContent}>
-                                            <Timer size={28} color="white" style={{ alignSelf: "center" }} />
-                                            <Text style={styles.moderationText}>Post on Moderation</Text>
+                                            <Clock3 size={26} color="rgba(255,255,255,0.85)" strokeWidth={1.8} />
+                                            <Text style={styles.moderationText}>On Moderation</Text>
                                         </View>
                                     </BlurView>
                                 )}
 
                                 {hasMedia && isApproved && (
-                                    <View style={styles.iconContainer}>
-                                        <View style={styles.iconRow}>
-                                            {isMediaVideo
-                                                ? <Video size={16} color="white" />
-                                                : <Image size={16} color="white" />
-                                            }
-                                            {item.is_ai_generated && (
-                                                <Sparkles size={16} color="#05f0d8" />
-                                            )}
-                                        </View>
+                                    <View style={styles.badgeRow}>
+                                        {isMediaVideo && (
+                                            <View style={styles.badge}>
+                                                <Video size={11} color="rgba(255,255,255,0.9)" strokeWidth={2} />
+                                            </View>
+                                        )}
+                                        {item.is_nft && (
+                                            <View style={[styles.badge, styles.badgeNft]}>
+                                                <Gem size={11} color="#c4b5fd" strokeWidth={2} />
+                                            </View>
+                                        )}
+                                        {item.is_ai_generated && (
+                                            <View style={[styles.badge, styles.badgeAi]}>
+                                                <Sparkles size={11} color="#05f0d8" strokeWidth={2} />
+                                            </View>
+                                        )}
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -387,23 +347,62 @@ const styles = StyleSheet.create({
         margin: 2,
         position: "relative",
         overflow: "hidden",
-        borderRadius: 10,
-        backgroundColor: "#1a1a1a",
+        borderRadius: 12,
+        backgroundColor: "#111",
     },
     placeholderContainer: {
         width: "100%",
         height: "100%",
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#2a2a2a",
-        borderRadius: 10,
+        backgroundColor: "#0d0514",
+        borderRadius: 12,
+        overflow: "hidden",
+        borderWidth: 1.5,
+        borderColor: "rgba(109,40,217,0.4)",
+        borderStyle: "dashed",
     },
-    moderationStatus: {
+    placeholderInner: {
+        width: 46,
+        height: 46,
+        borderRadius: 23, 
+        backgroundColor: "rgba(109,40,217,0.15)",
+        borderWidth: 1,
+        borderColor: "rgba(167,139,250,0.3)",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 8,
+    },
+    placeholderText: {
+        color: "rgba(167,139,250,0.6)",
+        fontSize: 10,
+        fontFamily: "Dank Mono Bold", 
+        letterSpacing: 0.5,
+    },
+    media: {
+        width: "100%",
+        height: "100%",
+        borderRadius: 12,
+    },
+    videoContainer: {
+        width: "100%",
+        height: "100%",
+    },
+    bottomGradient: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: "45%",
+        borderBottomLeftRadius: 12,
+        borderBottomRightRadius: 12,
+    },
+    moderationOverlay: {
         position: "absolute",
         width: "100%",
         height: "100%",
         zIndex: 9999,
-        borderRadius: 10,
+        borderRadius: 12,
         overflow: "hidden",
         justifyContent: "center",
         alignItems: "center",
@@ -412,39 +411,42 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        gap: 12,
+        gap: 8,
     },
     moderationText: {
-        color: "white",
-        fontSize: 11,
+        color: "rgba(255,255,255,0.8)",
+        fontSize: 10,
         textAlign: "center",
         fontFamily: "Dank Mono Bold",
         includeFontPadding: false,
-        lineHeight: 14,
-        letterSpacing: 0.5,
+        lineHeight: 13,
+        letterSpacing: 0.4,
     },
-    media: {
-        width: "100%",
-        height: "100%",
-        borderRadius: 10,
-    },
-    videoContainer: {
-        position: "relative",
-        width: "100%",
-        height: "100%",
-    },
-    iconContainer: {
+    badgeRow: {
         position: "absolute",
-        top: 5,
-        right: 5,
-        backgroundColor: "rgba(0,0,0,0.6)",
-        borderRadius: 10,
-        padding: 5,
+        bottom: 6,
+        right: 6,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
     },
-    iconRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
+    badge: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        backgroundColor: "rgba(0,0,0,0.55)",
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 0.5,
+        borderColor: "rgba(255,255,255,0.1)",
+    },
+    badgeNft: {
+        backgroundColor: "rgba(109,40,217,0.45)",
+        borderColor: "rgba(196,181,253,0.25)",
+    },
+    badgeAi: {
+        backgroundColor: "rgba(5,240,216,0.15)",
+        borderColor: "rgba(5,240,216,0.25)",
     },
 });
 
