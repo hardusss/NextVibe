@@ -29,11 +29,10 @@ class UserDetailView(APIView):
     
     def get(self, request, id: int):
         try:
-            # Знаходимо користувача
             user = User.objects.get(user_id=id)
             isProfile = request.query_params.get('isProfile')
             
-            cnft_count = UserCollection.objects.filter(user=user).count()
+            cnft_count = UserCollection.objects.filter(user=user, post__is_hide=False).count()
 
             serializer = UserDetailSerializer(user)
             data = serializer.data.copy()
