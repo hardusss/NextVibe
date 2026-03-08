@@ -8,7 +8,7 @@ from .view_pac import (
     DeletePostView, SendReportForPostView,
     GetGenerationImageStatusView, GetPostView,
     PostMetadataView, CollectionMetadataView,
-    MintNftView
+    MintNftView, UserCollectionView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -33,6 +33,7 @@ urlpatterns = [
     path("recommendation-feed/", RecommendationFeedView.as_view(), name="recommendation-feed"),
     path("get-post/", GetPostView.as_view(), name="get_post"),
     path('<int:post_id>/metadata/<int:edition>/', PostMetadataView.as_view(), name='post_metadata'),
-    path("collection/metadata/", CollectionMetadataView.as_view()),
-    path("cnft-mint/", MintNftView.as_view(), name="mint_cnft")
+    path("collection/metadata/", CollectionMetadataView.as_view(), name="metadata"),
+    path("cnft-mint/", MintNftView.as_view(), name="mint_cnft"),
+    path("collections-menu", UserCollectionView.as_view(), name="collections_menu"),
 ]
