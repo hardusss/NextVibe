@@ -16,3 +16,4 @@ from .get_post import GetPostView
 from .get_metadata import PostMetadataView
 from .collection_metadata import CollectionMetadataView
 from .mint_nft import MintNftView
+from .get_nfts_menu import UserCollectionView
