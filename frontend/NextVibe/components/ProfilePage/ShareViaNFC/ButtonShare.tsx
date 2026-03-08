@@ -32,7 +32,6 @@ const getStyles = () => StyleSheet.create({
         height: 40,
         borderRadius: 14,
         marginVertical: 10,
-        marginBottom: 20,
         justifyContent: "center",
         alignItems: "center",
         flexDirection: "row",
