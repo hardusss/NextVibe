@@ -59,6 +59,7 @@ class PostMenuView(APIView):
                 "location": post.location,
                 "moderation_status": post.moderation_status,
                 "is_comments_enabled": post.is_comments_enabled,
+                "is_nft": post.is_nft
             }
             for post in posts_qs
         ]
