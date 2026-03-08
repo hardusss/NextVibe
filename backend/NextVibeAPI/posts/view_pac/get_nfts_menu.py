@@ -21,7 +21,7 @@ class UserCollectionView(APIView):
 
         collections_qs = (
             UserCollection.objects
-            .filter(user__user_id=user_id)
+            .filter(user__user_id=user_id, is_hide=False, is_ai_generated=False)
             .select_related("post__owner")
             .prefetch_related(Prefetch("post__media", queryset=PostsMedia.objects.all()))
             .order_by("-minted_at")[index:index + limit]
