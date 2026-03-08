@@ -177,7 +177,7 @@ const RecommendedUsers = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 20,
+        marginTop: 20,
     },
     header: {
         flexDirection: "row",
