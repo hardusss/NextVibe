@@ -15,6 +15,9 @@ class SaveWalletAddressView(APIView):
         if len(wallet_address) < 32 or len(wallet_address) > 44:
             return Response({"error": "Invalid Solana address."}, status=status.HTTP_400_BAD_REQUEST)
 
+        if request.user.wallet_address == wallet_address:
+            return Response({"success": True}, status=status.HTTP_200_OK)
+        
         if request.user.wallet_address:
             existing = request.user.wallet_address
             short = f"{existing[:6]}...{existing[-6:]}"
