@@ -5,9 +5,10 @@
 ![NextVibe Banner](https://nextvibe.io/logo.png)
 
 ### 🔗 Important Links
-* **🎥 Demo Video:** [Insert YouTube/Vimeo Link Here]
-* **📊 Pitch Deck:** [Insert Google Drive Link Here]
+* **🎥 Demo Video:** https://youtu.be/BZwYKiNW9kI?si=RCM8IiwMReNVF5wF
+* **📊 Pitch Deck:** https://youtu.be/BZwYKiNW9kI?si=RCM8IiwMReNVF5wF
 * **📱 Platform:** Android (APK)
+* **🔗 Site:** https://nextvibe.io
 
 ## ❌ The Problem
 Web3 social apps today are plagued by friction. For a mobile user, saving content or interacting with creators requires deep blockchain knowledge, seed phrases, and constant transaction signing. Furthermore, existing apps completely ignore the physical world (IRL) — your real-life connections don't translate into your digital social graph.
@@ -25,7 +26,7 @@ NextVibe is a mobile-first Web3 social network that makes blockchain invisible b
 ## 📈 Traction & The IRL Pivot
 NextVibe is live and actively validating our hypotheses. We currently have **115 active beta users**. 
 
-*Note on our journey:* Before our recent pivot, we successfully scaled to over 400+ users. However, to fully commit to our new "IRL-first" vision for the Solana Mobile ecosystem, we made the tough but necessary decision to pivot away from our initial AI-centric approach. We archived legacy content to focus strictly on authentic, physical-world interactions.
+*Note on our journey:* Before our recent pivot, we successfully scaled to over 300+ posts. However, to fully commit to our new "IRL-first" vision for the Solana Mobile ecosystem, we made the tough but necessary decision to pivot away from our initial AI-centric approach. We archived legacy content to focus strictly on authentic, physical-world interactions.
 
 ## 🛠️ What We Built During the Hackathon
 We used this hackathon to completely overhaul NextVibe and maximize the capabilities of crypto-native mobile devices:
