@@ -7,6 +7,8 @@ from ..models import Post
 from user.models import Notification
 from user.src.clear_notify_cache import clear_notification_cache
 from rest_framework.throttling import ScopedRateThrottle
+from user.src.send_push_message import send
+
 
 User = get_user_model()
 
@@ -71,6 +73,11 @@ class LikePostView(APIView):
                         notification_type="like",
                         text_preview=f"{user.username} like your post!"
                     )
+                    send(
+                        token=post.owner.expo_push_token,
+                        title=f"{user.username} liked your post",
+                        body=post.about
+                        ) 
                     clear_notification_cache(post.owner.user_id)
             return Response({"data": "Succes"}, status=status.HTTP_200_OK)
         
