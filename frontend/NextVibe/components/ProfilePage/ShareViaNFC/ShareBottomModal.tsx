@@ -12,7 +12,8 @@ import FastImage from 'react-native-fast-image';
 import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { HCESession, NFCTagType4, NFCTagType4NDEFContentType } from 'react-native-hce';
+
+import { startSharing, stopSharing } from '../../../modules/nfc-send'; 
 
 export interface ShareModalRef {
     present: () => void;
@@ -135,11 +136,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const [vibes, setVibes] = useState(0);
     const [showGlow, setShowGlow] = useState(false);
 
-    const hceSessionRef = useRef<any>(null);
-    const removeListenerRef = useRef<(() => void) | null>(null);
-    const lastReadTimestamp = useRef<number>(0);
     const glowAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-
     const glowOpacity = useRef(new Animated.Value(0)).current;
 
     const snapPoints = useMemo(() => ['50%', '65%'], []);
@@ -161,7 +158,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const resetState = () => {
         setVibes(0);
         setIsBroadcasting(false);
-        lastReadTimestamp.current = 0;
         setShowGlow(false);
         glowOpacity.setValue(0);
     };
@@ -202,47 +198,26 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         if (isBroadcasting) return;
         try {
             const urlToShare = props.profileUrl || "https://nextvibe.io/u/39";
-            const tag = new NFCTagType4({
-                type: NFCTagType4NDEFContentType.URL,
-                content: urlToShare,
-                writable: false,
-            });
-            const session = await HCESession.getInstance();
-            hceSessionRef.current = session;
-            await session.setApplication(tag);
-            await session.setEnabled(true);
-
-            removeListenerRef.current = session.on(HCESession.Events.HCE_STATE_READ, () => {
-                const now = Date.now();
-                if (now - lastReadTimestamp.current > 2000) {
-                    console.log("✅ Valid read! Incrementing vibes.");
-                    setVibes(prev => prev + 1);
-                    lastReadTimestamp.current = now;
-                    triggerNeonGlow();
-                } else {
-                    console.log("⚠️ Debounced duplicate read (ignored)");
-                }
-            });
-
+            
+            // Call our native func
+            startSharing(urlToShare);
+            
             setIsBroadcasting(true);
-            console.log("✅ HCE Broadcasting started.");
+            console.log("✅ Custom Native HCE Broadcasting started with URL:", urlToShare);
         } catch (error) {
-            console.error("❌ Failed to start HCE:", error);
+            console.error("❌ Failed to start custom HCE:", error);
         }
     };
 
     const stopHceBroadcast = async () => {
         try {
-            if (hceSessionRef.current) {
-                await hceSessionRef.current.setEnabled(false);
-            }
-            if (removeListenerRef.current) {
-                removeListenerRef.current();
-                removeListenerRef.current = null;
-            }
-            console.log("🛑 HCE Broadcasting stopped.");
+            // Our native func for stop nfc
+            stopSharing();
+            console.log("🛑 Custom Native HCE Broadcasting stopped.");
         } catch (error) {
-            console.warn("Error stopping HCE:", error);
+            console.warn("Error stopping custom HCE:", error);
+        } finally {
+            setIsBroadcasting(false);
         }
     };
 
