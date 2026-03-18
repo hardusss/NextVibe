@@ -6,8 +6,9 @@
 
 ### 🔗 Important Links
 * **🎥 Demo Video:** https://youtu.be/BZwYKiNW9kI?si=RCM8IiwMReNVF5wF
-* **📊 Pitch Deck:** https://youtu.be/BZwYKiNW9kI?si=RCM8IiwMReNVF5wF
-* **📱 Platform:** Android (APK)
+* **📊 Pitch Deck:** https://drive.google.com/file/d/1gOSasFNecBx6WxJhF90kDOcvYDxhwWtR/view?usp=drive_link
+* **🎥📊 Video Pitch:** https://youtu.be/1EpUWRV9mZY
+* **📱 Download APK:** https://media.nextvibe.io/NextVibe.apk
 * **🔗 Site:** https://nextvibe.io
 
 ## ❌ The Problem
