@@ -18,8 +18,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { BlurView } from '@react-native-community/blur';
 import useWalletAddress from '@/hooks/useWalletAddress';
-import { HCESession, NFCTagType4, NFCTagType4NDEFContentType } from 'react-native-hce';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
+
+import { startSharing, stopSharing, addNfcReadListener } from '@/modules/nfc-send';
 
 export interface DepositSheetRef {
     present: () => void;
@@ -27,7 +28,7 @@ export interface DepositSheetRef {
 }
 
 const AVAILABLE_TOKENS = [TOKENS.SOL, TOKENS.USDC];
-const DECIMAL_LIMIT    = 8;
+const DECIMAL_LIMIT = 8;
 
 // Mint addresses pulled directly from TOKENS constants
 const SOLANA_PAY_MINTS: Record<string, string | null> = Object.fromEntries(
@@ -36,8 +37,7 @@ const SOLANA_PAY_MINTS: Record<string, string | null> = Object.fromEntries(
 
 const AnimatedNfc = Animated.createAnimatedComponent(Nfc);
 
-// ─── Backdrop ─────────────────────────────────────────────────────────────────
-
+// Backdrop
 export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProps) => {
     const isDark = useColorScheme() === 'dark';
     const { close } = useBottomSheet();
@@ -56,30 +56,28 @@ export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProp
     );
 };
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
+// Main
 export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
     const isDark = useColorScheme() === 'dark';
 
     const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-    const inputRef            = useRef<TextInput>(null);
+    const inputRef = useRef<TextInput>(null);
 
-    const [amount,         setAmount]         = useState('');
-    const [selectedToken,  setSelectedToken]  = useState(TOKENS.SOL.symbol);
+    const [amount, setAmount] = useState('');
+    const [selectedToken, setSelectedToken] = useState(TOKENS.SOL.symbol);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
-    const [useSolanaPay,   setUseSolanaPay]   = useState(false);
+    const [useSolanaPay, setUseSolanaPay] = useState(false);
 
-    const [toastVisible,   setToastVisible]   = useState(false);
-    const [toastMessage,   setToastMessage]   = useState('');
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
     const [toastIsSuccess, setToastIsSuccess] = useState(true);
 
     const { address } = useWalletAddress();
 
-    const hceSessionRef      = useRef<any>(null);
-    const removeListenerRef  = useRef<(() => void) | null>(null);
-    const lastReadTimestamp  = useRef<number>(0);
+    const removeListenerRef = useRef<{ remove: () => void } | null>(null);
+    const lastReadTimestamp = useRef<number>(0);
 
-    const pulseScale   = useSharedValue(1);
+    const pulseScale = useSharedValue(1);
     const pulseOpacity = useSharedValue(1);
 
     const showToast = (message: string, isSuccess: boolean) => {
@@ -88,10 +86,10 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
 
     useEffect(() => {
         if (isBroadcasting) {
-            pulseScale.value   = withRepeat(withSequence(withTiming(1.25, { duration: 800 }), withTiming(1, { duration: 800 })), -1, true);
+            pulseScale.value = withRepeat(withSequence(withTiming(1.25, { duration: 800 }), withTiming(1, { duration: 800 })), -1, true);
             pulseOpacity.value = withRepeat(withSequence(withTiming(0.4, { duration: 800 }), withTiming(1, { duration: 800 })), -1, true);
         } else {
-            pulseScale.value   = withTiming(1, { duration: 300 });
+            pulseScale.value = withTiming(1, { duration: 300 });
             pulseOpacity.value = withTiming(1, { duration: 300 });
         }
     }, [isBroadcasting]);
@@ -103,10 +101,15 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
 
     const stopHceTransaction = async () => {
         try {
-            if (removeListenerRef.current) { removeListenerRef.current(); removeListenerRef.current = null; }
-            if (hceSessionRef.current) await hceSessionRef.current.setEnabled(false);
+            if (removeListenerRef.current) {
+                removeListenerRef.current.remove();
+                removeListenerRef.current = null;
+            }
+            stopSharing();
             setIsBroadcasting(false);
-        } catch (e) { console.error("Failed to stop HCE:", e); }
+        } catch (e) {
+            console.error("Failed to stop HCE:", e);
+        }
     };
 
     useImperativeHandle(ref, () => ({
@@ -129,7 +132,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
         if (regex.test(normalized)) setAmount(normalized);
     };
 
-    // ── Build NFC payload ──────────────────────────────────────────────────────
+    //Build NFC payload
 
     const buildPayload = (): string => {
         if (useSolanaPay) {
@@ -149,39 +152,36 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
             setIsBroadcasting(true);
             const url = buildPayload();
 
-            const tag     = new NFCTagType4({ type: NFCTagType4NDEFContentType.URL, content: url, writable: false });
-            const session = await HCESession.getInstance();
-            hceSessionRef.current = session;
-            await session.setApplication(tag);
-            await session.setEnabled(true);
-
-            removeListenerRef.current = session.on(HCESession.Events.HCE_STATE_READ, () => {
+            removeListenerRef.current = addNfcReadListener(() => {
                 const now = Date.now();
                 if (now - lastReadTimestamp.current > 2000) {
                     lastReadTimestamp.current = now;
                     Vibration.vibrate([0, 100, 100, 100]);
                     showToast("NFC details sent successfully!", true);
-                    stopHceTransaction();
+                    stopHceTransaction(); 
                 }
             });
+
+            startSharing(url);
+            console.log("✅ Custom Native HCE started with payload:", url);
+
         } catch (e: any) {
             showToast("Failed to start NFC. Please try again.", false);
             setIsBroadcasting(false);
+            console.error("❌ Failed to start custom HCE:", e);
         }
     };
 
-    // ── Colors ─────────────────────────────────────────────────────────────────
-
-    const bg               = isDark ? '#0f021c' : '#ffffff';
-    const mainColor        = isDark ? '#ffffff'  : '#1f2937';
-    const mutedColor       = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.32)';
-    const borderColor      = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
-    const inputBg          = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
-    const iconColor        = isDark ? 'rgba(196,167,255,0.9)'  : 'rgba(109,40,217,0.85)';
-    const handleColor      = isDark ? 'rgba(255,255,255,0.2)'  : 'rgba(0,0,0,0.15)';
-    const tokenActiveBg    = isDark ? 'rgba(167,139,250,0.14)' : 'rgba(109,40,217,0.08)';
+    const bg = isDark ? '#0f021c' : '#ffffff';
+    const mainColor = isDark ? '#ffffff' : '#1f2937';
+    const mutedColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.32)';
+    const borderColor = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
+    const inputBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+    const iconColor = isDark ? 'rgba(196,167,255,0.9)' : 'rgba(109,40,217,0.85)';
+    const handleColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';
+    const tokenActiveBg = isDark ? 'rgba(167,139,250,0.14)' : 'rgba(109,40,217,0.08)';
     const tokenActiveBorder = isDark ? 'rgba(196,167,255,0.4)' : 'rgba(109,40,217,0.3)';
-    const accentText       = isDark ? '#d8b4fe' : '#7c3aed';
+    const accentText = isDark ? '#d8b4fe' : '#7c3aed';
 
     const isReady = amount.length > 0 && amount !== '.' && parseFloat(amount) > 0;
 

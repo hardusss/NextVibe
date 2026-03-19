@@ -13,7 +13,7 @@ import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { startSharing, stopSharing } from '../../../modules/nfc-send'; 
+import { startSharing, stopSharing, addNfcReadListener } from '../../../modules/nfc-send';
 
 export interface ShareModalRef {
     present: () => void;
@@ -26,9 +26,9 @@ export interface ShareModalProps {
 }
 
 const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
-    const SIDE = 55;   
-    const BOTTOM = 70; 
-    const CORNER = 65; 
+    const SIDE = 55;
+    const BOTTOM = 70;
+    const CORNER = 65;
 
     return (
         <Modal
@@ -136,6 +136,9 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const [vibes, setVibes] = useState(0);
     const [showGlow, setShowGlow] = useState(false);
 
+    const removeListenerRef = useRef<{ remove: () => void } | null>(null);
+    const lastReadTimestamp = useRef<number>(0);
+
     const glowAnimRef = useRef<Animated.CompositeAnimation | null>(null);
     const glowOpacity = useRef(new Animated.Value(0)).current;
 
@@ -158,6 +161,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const resetState = () => {
         setVibes(0);
         setIsBroadcasting(false);
+        lastReadTimestamp.current = 0; 
         setShowGlow(false);
         glowOpacity.setValue(0);
     };
@@ -198,10 +202,22 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         if (isBroadcasting) return;
         try {
             const urlToShare = props.profileUrl || "https://nextvibe.io/u/39";
-            
+
+            removeListenerRef.current = addNfcReadListener(() => {
+                const now = Date.now();
+                if (now - lastReadTimestamp.current > 2000) {
+                    console.log("✅ Valid read! Incrementing vibes.");
+                    setVibes(prev => prev + 1);
+                    lastReadTimestamp.current = now;
+                    triggerNeonGlow();
+                } else {
+                    console.log("⚠️ Debounced duplicate read (ignored)");
+                }
+            });
+
             // Call our native func
             startSharing(urlToShare);
-            
+
             setIsBroadcasting(true);
             console.log("✅ Custom Native HCE Broadcasting started with URL:", urlToShare);
         } catch (error) {
@@ -211,6 +227,11 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
     const stopHceBroadcast = async () => {
         try {
+            if (removeListenerRef.current) {
+                removeListenerRef.current.remove();
+                removeListenerRef.current = null;
+            }
+
             // Our native func for stop nfc
             stopSharing();
             console.log("🛑 Custom Native HCE Broadcasting stopped.");
