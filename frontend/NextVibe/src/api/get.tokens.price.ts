@@ -2,11 +2,13 @@ import axios from "axios";
 import GetApiUrl from "../utils/url_api";
 
 interface TokensPriceResponse {
-    /** Map of token IDs to their current prices (e.g., { solana: 145.5 }) */
-    prices: Record<string, number>;
+    prices: Record<string, {
+        price: number;
+        change_24h: number;
+        direction: "up" | "down" | "flat";
+    }>;
     message: string;
 }
-
 /**
  * Batch fetches current market prices for specified tokens via the backend API.
  * Implements silent failure (returns null) to ensure UI resilience during network issues.

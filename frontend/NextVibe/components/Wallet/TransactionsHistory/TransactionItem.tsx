@@ -10,7 +10,7 @@ import { TOKENS } from '@/constants/Tokens';
 
 type TransactionItemProps = {
     item: FormattedTransaction;
-    prices: { [key: string]: number };
+    prices: Record<string, { price: number; change_24h: number; direction: "up" | "down" | "flat" }>;
     isDark: boolean;
     styles: any;
 };
@@ -37,7 +37,7 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
     };
 
     const tokenInfo = getTokenInfo(item.token);
-    const price = prices[tokenInfo.priceKey] || 0;
+    const price = prices[tokenInfo.priceKey]?.price ?? 0;
     const usdValue = (item.amount * price).toFixed(2);
 
     const handlePress = () => {
