@@ -2,45 +2,52 @@ package expo.modules.nfcsend
 
 import android.content.ComponentName
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 class NfcSendModule : Module() {
-    override fun definition() = ModuleDefinition {
-        Name("NfcSend")
+  override fun definition() = ModuleDefinition {
+    Name("NfcSend") 
 
-        Events("onNfcRead")
+    Events("onNfcRead")
 
-        Function("startSharing") { url: String ->
-            NdefHostApduService.urlToShare = url
+    Function("startSharing") { url: String ->
+      NdefHostApduService.urlToShare = url
+      
+      NdefHostApduService.onReadListener = {
+          Handler(Looper.getMainLooper()).post {
+              try {
+                  this@NfcSendModule.sendEvent("onNfcRead")
+              } catch (e: Exception) {
+              }
+          }
+      }
 
-            NdefHostApduService.onReadListener = { this@NfcSendModule.sendEvent("onNfcRead") }
-
-            val context = appContext.reactContext
-
-            if (context != null) {
-                NdefHostApduService.onReadListener = null
-                
-                val pm = context.packageManager
-                pm.setComponentEnabledSetting(
-                        ComponentName(context, NdefHostApduService::class.java),
-                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                        PackageManager.DONT_KILL_APP
-                )
-            }
-        }
-
-        Function("stopSharing") {
-            val context = appContext.reactContext
-
-            if (context != null) {
-                val pm = context.packageManager
-                pm.setComponentEnabledSetting(
-                        ComponentName(context, NdefHostApduService::class.java),
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                        PackageManager.DONT_KILL_APP
-                )
-            }
-        }
+      val context = appContext.reactContext
+      if (context != null) {
+          val pm = context.packageManager
+          pm.setComponentEnabledSetting(
+              ComponentName(context, NdefHostApduService::class.java),
+              PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+              PackageManager.DONT_KILL_APP
+          )
+      }
     }
+
+    Function("stopSharing") {
+      NdefHostApduService.onReadListener = null 
+      
+      val context = appContext.reactContext
+      if (context != null) {
+          val pm = context.packageManager
+          pm.setComponentEnabledSetting(
+              ComponentName(context, NdefHostApduService::class.java),
+              PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+              PackageManager.DONT_KILL_APP
+          )
+      }
+    }
+  }
 }

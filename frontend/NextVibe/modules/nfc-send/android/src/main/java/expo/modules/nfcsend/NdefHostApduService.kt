@@ -94,7 +94,11 @@ class NdefHostApduService : HostApduService() {
         }
 
         if (Arrays.equals(NDEF_SELECT_OK, commandApdu)) {
-            if (appSelected) ndefSelected = true
+            if (appSelected) {
+                ndefSelected = true
+
+                onReadListener?.invoke()
+            }
             return RESP_OK
         }
 
@@ -106,10 +110,6 @@ class NdefHostApduService : HostApduService() {
             val offset =
                     ((commandApdu[2].toInt() and 0xFF) shl 8) or (commandApdu[3].toInt() and 0xFF)
             val length = commandApdu[4].toInt() and 0xFF
-
-            if (offset == 0) {
-                onReadListener?.invoke()
-            }
 
             val ndefMessage = createNdefMessage(urlToShare)
             val nlen =
@@ -126,7 +126,6 @@ class NdefHostApduService : HostApduService() {
             return response + RESP_OK
         }
 
-        // Any another request (from Apple Wallet) gets refusal
         return RESP_FAIL
     }
 
