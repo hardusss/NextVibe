@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import useWalletAddress from "./useWalletAddress";
-import SolanaService from "@/src/services/SolanaService"; 
+import SolanaService from "@/src/services/SolanaService";
 import getTokensPrice from "@/src/api/get.tokens.price";
 import { TOKENS } from "@/constants/Tokens";
 
@@ -9,22 +9,13 @@ import { TOKENS } from "@/constants/Tokens";
  * @interface TokenAsset
  */
 export interface TokenAsset {
-    /** Token symbol (e.g., "SOL", "USDC") */
     symbol: string;
-    
-    /** Full token name (e.g., "Solana", "USD Coin") */
     name: string;
-    
-    /** Amount of tokens held (in native token units) */
     amount: number;
-    
-    /** Current price per token in USD */
     price: number;
-    
-    /** Total value of holdings in USD (amount × price) */
+    change24h: number;
+    direction: "up" | "down" | "flat";
     valueUsd: number;
-    
-    /** Optional URL to token logo image */
     logoURI?: string;
 }
 
@@ -35,7 +26,7 @@ export interface TokenAsset {
 export interface PortfolioData {
     /** Sum of all token holdings valued in USD */
     totalUsdBalance: number;
-    
+
     /** Array of individual token holdings */
     tokens: TokenAsset[];
 }
@@ -47,10 +38,10 @@ export interface PortfolioData {
 export interface UsePortfolioReturn {
     /** Current portfolio data (tokens and total balance) */
     data: PortfolioData;
-    
+
     /** Loading state indicator for initial fetch and refreshes */
     isLoading: boolean;
-    
+
     /** Function to manually trigger portfolio data refresh */
     refresh: () => Promise<void>;
 }
@@ -107,12 +98,12 @@ export default function usePortfolio(): UsePortfolioReturn {
      * smartWalletPubkey: The user's Solana wallet address
      * connection: RPC connection instance for blockchain queries
      */
-    const { address, connection } = useWalletAddress(); 
+    const { address, connection } = useWalletAddress();
 
-    
+
     /** Loading state - true during initial fetch and manual refreshes */
     const [isLoading, setIsLoading] = useState(true);
-    
+
     /** 
      * Portfolio data state
      * Initialized with empty portfolio (zero balance, no tokens)
@@ -121,7 +112,7 @@ export default function usePortfolio(): UsePortfolioReturn {
         totalUsdBalance: 0,
         tokens: []
     });
-    
+
     /**
      * Core data fetching function
      * 
@@ -178,7 +169,7 @@ export default function usePortfolio(): UsePortfolioReturn {
 
             // Array to accumulate non-zero token holdings
             const assets: TokenAsset[] = [];
-            
+
             // Running total of portfolio value in USD
             let total = 0;
 
@@ -192,18 +183,22 @@ export default function usePortfolio(): UsePortfolioReturn {
 
 
             // In forEach we get price and value and add this to asset with info about token
-            balances.forEach(({amount, info, priceKey}) => {
-                const price = prices?.prices?.[priceKey] ?? 0;
+            balances.forEach(({ amount, info, priceKey }) => {
+                const tokenPrice = prices?.prices?.[priceKey];
+                const price = tokenPrice?.price ?? 0;
+                const change24h = tokenPrice?.change_24h ?? 0;
+                const direction = tokenPrice?.direction ?? "flat";
 
-                // Value in Usd
                 const val = amount * price;
-
                 total += val;
+
                 assets.push({
                     symbol: info.symbol,
                     name: info.name,
                     amount: amount,
                     price: price,
+                    change24h: change24h,
+                    direction: direction,
                     valueUsd: val,
                     logoURI: info.logoURL
                 });
@@ -240,7 +235,7 @@ export default function usePortfolio(): UsePortfolioReturn {
             setIsLoading(false);
         }
     };
-    
+
     /**
      * Auto-fetch effect
      * 
@@ -257,7 +252,7 @@ export default function usePortfolio(): UsePortfolioReturn {
     useEffect(() => {
         fetchData();
     }, [address?.toString()]);
-    
+
     /**
      * Manual refresh function
      * 

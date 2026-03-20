@@ -15,6 +15,15 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
         const mutedColor = isDarkMode ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.35)";
         const dividerColor = isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
 
+        const changeColor =
+            token.direction === "up"
+                ? "#4ade80"
+                : token.direction === "down"
+                    ? "#f87171"
+                    : mutedColor;
+
+        const changeSign = token.direction === "up" ? "+" : "";
+
         const formatAmount = (amount: number): string => {
             if (amount >= 1) return amount.toFixed(2);
             return amount.toFixed(8).replace(/\.?0+$/, "");
@@ -33,10 +42,12 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                 )}
 
                 {/* Info */}
-                <View style={styles.info}>
-                    <Text style={[styles.name, { color: mainColor }]}>{token.name}</Text>
+                <View style={styles.priceRow}>
                     <Text style={[styles.price, { color: mutedColor }]}>
                         ${token.price.toFixed(2)} / {token.symbol}
+                    </Text>
+                    <Text style={[styles.change, { color: changeColor }]}>
+                        {isBalanceHidden ? "••" : `${changeSign}${token.change24h.toFixed(2)}%`}
                     </Text>
                 </View>
 
@@ -57,7 +68,9 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
         prev.token.amount === next.token.amount &&
         prev.token.price === next.token.price &&
         prev.isBalanceHidden === next.isBalanceHidden &&
-        prev.isDarkMode === next.isDarkMode
+        prev.isDarkMode === next.isDarkMode &&
+        prev.token.change24h === next.token.change24h &&
+        prev.token.direction === next.token.direction
 );
 
 TokenItem.displayName = "TokenItem";
@@ -102,6 +115,17 @@ const styles = StyleSheet.create({
         fontSize: 11,
         includeFontPadding: false,
         marginTop: 3,
+    },
+    priceRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        marginTop: 3,
+    },
+    change: {
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        includeFontPadding: false,
     },
 });
 
