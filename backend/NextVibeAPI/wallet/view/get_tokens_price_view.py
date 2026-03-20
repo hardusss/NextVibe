@@ -7,7 +7,7 @@ from rest_framework import status
 
 from typing import Any, Dict
 
-from wallet.src.tokens_price import tokens_price
+from wallet.src.tokens_price import get_tokens_prices
 from wallet.serializers.tokens_price_serializer import TokensPriceSerializer
 
 class GetTokensPriceView(APIView):
@@ -22,7 +22,7 @@ class GetTokensPriceView(APIView):
         - currency (str): Target currency (default: "usd")
         
         Output:
-        - prices (dict): Mapping of tokens to prices
+        - prices (dict): Mapping of tokens to {price, change_24h, direction}
         - message (str): Status message
         """
         serializer = TokensPriceSerializer(data=request.data)
@@ -34,7 +34,7 @@ class GetTokensPriceView(APIView):
         currency = validated_data.get("currency", "usd")
 
         try:
-            prices = tokens_price(tokens=tokens, vs_currencies=currency, last=False)
+            prices = get_tokens_prices(tokens=tokens, vs_currencies=currency, last=False)
             return Response({
                 "prices": prices,
                 "message": f"Success get prices for tokens: {tokens}"

@@ -32,10 +32,10 @@ class GetTransactionFee(APIView):
         prices = cache.get(cache_key)
         
         if prices is None:
-            from ..src.get_tokens_price import get_tokens_prices
+            from ..src.tokens_price import get_tokens_prices
             import asyncio
             
-            prices = asyncio.run(get_tokens_prices())
+            prices = get_tokens_prices()
             cache.set(cache_key, prices, 30) 
         
         return prices
