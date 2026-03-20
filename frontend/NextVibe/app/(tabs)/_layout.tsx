@@ -24,6 +24,8 @@ import Constants from 'expo-constants';
 import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { vexo, identifyDevice } from 'vexo-analytics';
+
 const chain = 'solana:devnet';
 const endpoint = clusterApiUrl('devnet');
 const identity = {
@@ -31,6 +33,10 @@ const identity = {
     uri: 'https://nextvibe.io',
     icon: 'logo.png',
 };
+
+if (!__DEV__ && process.env.EXPO_PUBLIC_VEXO_API_KEY) {
+    vexo(process.env.EXPO_PUBLIC_VEXO_API_KEY);
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -200,6 +206,12 @@ export default function Layout() {
         const fetchAvatar = async () => {
             try {
                 const userData = await getUserDetail();
+                
+                if (!__DEV__ && isMounted) {
+                    const identifier = userData.username || String(userID);
+                    identifyDevice(identifier);
+                }
+
                 const newAvatarUrl = userData.avatar || "https://media.nextvibe.io/images/default.png";
                 if (isMounted && newAvatarUrl !== cachedAvatarUrl) {
                     FastImage.preload([{ uri: newAvatarUrl, priority: FastImage.priority.high }]);
