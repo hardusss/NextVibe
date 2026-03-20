@@ -16,7 +16,8 @@
         "distribution": "internal"
       },
       "env": {
-        "EXPO_PUBLIC_NEXTVIBE_PUBKEY": "EaKpyd7H9iZQSzUNSa8W5ykntH55y49C3EMVd1YjgDKm"
+        "EXPO_PUBLIC_NEXTVIBE_PUBKEY": "EaKpyd7H9iZQSzUNSa8W5ykntH55y49C3EMVd1YjgDKm",
+        "EXPO_PUBLIC_VEXO_API_KEY": "93f6e34f-8d85-4b17-a2b1-7f974e6d929e"
       }
     },
     "production": {
