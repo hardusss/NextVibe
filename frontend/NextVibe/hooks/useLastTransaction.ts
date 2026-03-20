@@ -97,7 +97,7 @@ export function useLastTransaction(
 
         try {
           const priceData = await getTokensPrice([apiId]);
-          price = priceData?.prices[apiId] ?? 0;
+          price = priceData?.prices[apiId]?.price ?? 0;
         } catch (priceError) {
           // Log but don't fail on price fetch error
           console.warn("Failed to fetch token price:", priceError);

@@ -42,13 +42,16 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                 )}
 
                 {/* Info */}
-                <View style={styles.priceRow}>
-                    <Text style={[styles.price, { color: mutedColor }]}>
-                        ${token.price.toFixed(2)} / {token.symbol}
-                    </Text>
-                    <Text style={[styles.change, { color: changeColor }]}>
-                        {isBalanceHidden ? "••" : `${changeSign}${token.change24h.toFixed(2)}%`}
-                    </Text>
+                <View style={styles.info}>
+                    <Text style={[styles.name, { color: mainColor }]}>{token.name}</Text>
+                    <View style={styles.priceRow}>
+                        <Text style={[styles.price, { color: mutedColor }]}>
+                            ${token.price.toFixed(2)} / {token.symbol}
+                        </Text>
+                        <Text style={[styles.change, { color: changeColor }]}>
+                            {isBalanceHidden ? "••" : `${changeSign}${token.change24h.toFixed(2)}%`}
+                        </Text>
+                    </View>
                 </View>
 
                 {/* Value */}
@@ -119,8 +122,9 @@ const styles = StyleSheet.create({
     priceRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
+        gap: 4,
         marginTop: 3,
+        flexWrap: "wrap",
     },
     change: {
         fontFamily: "Dank Mono",
