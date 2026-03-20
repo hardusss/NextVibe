@@ -23,7 +23,8 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import ConfirmDialog from "../Shared/Toasts/ConfirmDialog";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import validationUsername from "@/src/validation/username-update-validator";
-import { useWalletAddress } from "@/hooks/useWalletAddress"
+
+import useWalletAddress from "@/hooks/useWalletAddress";
 
 interface User {
     username: string;
