@@ -168,7 +168,7 @@ export default function WalletDashboardScreen() {
                     isDarkMode={isDarkMode}
                     onReceive={navigateToDeposit}
                     onSend={navigateToSend}
-                    onSwap={showComingSoonToast}
+                    onSwap={() => router.push("/swap")}
                     onNfcDeposit={() => depositSheetRef.current?.present()}
                 />
 
