@@ -116,7 +116,7 @@ export default function Layout() {
         "transactions", "transaction-detail", "chat-room",
         "chats", "follows-screen", "notifications",
         "user-banned", "wallet-init", "wallet-dash",
-        "wallet-select", "send"
+        "wallet-select", "send", "swap"
     ];
 
     const stackScreens = blacklist.filter(item => item !== "send");
@@ -249,7 +249,7 @@ export default function Layout() {
                                     />
                                 )}
                                 <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
-                                    <Stack screenOptions={{ headerShown: false, animation: "none" }}>
+                                    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { backgroundColor: 'transparent'} }}>
                                         <Stack.Screen name="home" />
                                         <Stack.Screen name="search" />
                                         <Stack.Screen name="camera" />
