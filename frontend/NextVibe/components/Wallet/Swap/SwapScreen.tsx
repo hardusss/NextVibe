@@ -1,0 +1,562 @@
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    ScrollView,
+    Platform,
+    Animated,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from '@react-native-community/blur';
+import { useRouter } from 'expo-router';
+import { useColorScheme } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
+
+import usePortfolio, { TokenAsset } from '@/hooks/usePortfolio';
+import SwapCard from './SwapCard';
+import SwapFlipButton from './SwapFlipButton';
+import SwapSwipeButton from './SwapSwipeButton';
+import SwapTokenPicker from './SwapTokenPicker';
+import SwapInfoRows from './SwapInfoRows';
+import type { SwapColors } from '@/src/types/swap';
+
+/**
+ * Sanitizes user input to ensure a valid floating-point number string.
+ * Normalizes commas to dots, strips non-numeric characters, and enforces a single decimal point.
+ */
+const sanitize = (text: string): string => {
+    let v = text.replace(',', '.').replace(/[^0-9.]/g, '');
+    
+    if (v.startsWith('.')) {
+        v = '0' + v;
+    }
+    
+    const dot = v.indexOf('.');
+    if (dot !== -1) {
+        v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '');
+    }
+    
+    return v;
+};
+
+/**
+ * SwapScreen Component
+ * The main screen for token-to-token swapping.
+ * Implements a bidirectional token amount calculator, token pair selection,
+ * a fluid hazy background, and a swipe-to-confirm mechanism.
+ */
+export default function SwapScreen() {
+    const router = useRouter();
+    const isDark = useColorScheme() === 'dark';
+    const { data } = usePortfolio();
+
+    const tokens: TokenAsset[] = data.tokens;
+
+    const [fromToken, setFromToken] = useState<TokenAsset | null>(null);
+    const [toToken, setToToken] = useState<TokenAsset | null>(null);
+    const [fromAmount, setFromAmount] = useState('');
+    const [toAmount, setToAmount] = useState('');
+    
+    const [lastEditedField, setLastEditedField] = useState<'from' | 'to'>('from');
+    const [focused, setFocused] = useState<'from' | 'to' | null>(null);
+    const [pickerSide, setPickerSide] = useState<'from' | 'to' | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [isFailed, setIsFailed] = useState(false);
+
+    const floatAnim1 = useRef(new Animated.Value(0)).current;
+    const floatAnim2 = useRef(new Animated.Value(0)).current;
+    const floatAnim3 = useRef(new Animated.Value(0)).current;
+    const floatAnim4 = useRef(new Animated.Value(0)).current;
+
+    /**
+     * Loops background blob animation endlessly to create a dynamic fluid effect.
+     * Starts animations for all four blobs with differing durations to ensure movement is varied.
+     */
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(floatAnim1, {
+                    toValue: 1,
+                    duration: 12000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(floatAnim1, {
+                    toValue: 0,
+                    duration: 12000,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
+
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(floatAnim2, {
+                    toValue: 1,
+                    duration: 10000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(floatAnim2, {
+                    toValue: 0,
+                    duration: 10000,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
+
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(floatAnim3, {
+                    toValue: 1,
+                    duration: 14000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(floatAnim3, {
+                    toValue: 0,
+                    duration: 14000,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
+
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(floatAnim4, {
+                    toValue: 1,
+                    duration: 9000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(floatAnim4, {
+                    toValue: 0,
+                    duration: 9000,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
+    }, []);
+
+    /**
+     * Initializes default token pair upon portfolio data load.
+     */
+    useEffect(() => {
+        if (tokens.length > 0 && !fromToken) {
+            setFromToken(tokens[0]);
+        }
+        if (tokens.length > 1 && !toToken) {
+            setToToken(tokens[1]);
+        }
+    }, [tokens]);
+
+    /**
+     * Memoizes color palette based on current color scheme.
+     */
+    const colors: SwapColors = useMemo(() => ({
+        text: isDark ? '#F0EAFF' : '#1A0A3E',
+        muted: isDark ? 'rgba(240,234,255,0.45)' : 'rgba(26,10,62,0.45)',
+        accent: '#A855F7',
+        chip: isDark ? 'rgba(168,85,247,0.15)' : 'rgba(124,58,237,0.1)',
+        chipBorder: isDark ? 'rgba(168,85,247,0.3)' : 'rgba(124,58,237,0.2)',
+        cardBorder: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(124,58,237,0.15)',
+        modalBg: isDark ? 'rgba(10,4,16,0.97)' : 'rgba(255,255,255,0.97)',
+        isDark,
+    }), [isDark]);
+
+    /**
+     * Bidirectional amount calculator.
+     * Updates one state based on the other whenever inputs or tokens change,
+     * preventing cyclic updates between fromAmount and toAmount states.
+     */
+    useEffect(() => {
+        if (!fromToken || !toToken) return;
+        
+        const fromPrice = fromToken.price;
+        const toPrice = toToken.price;
+
+        if (fromPrice <= 0 || toPrice <= 0) return;
+
+        if (lastEditedField === 'from') {
+            const num = parseFloat(fromAmount);
+            if (isNaN(num) || num <= 0) {
+                setToAmount('');
+                return;
+            }
+            setToAmount((num * fromPrice / toPrice).toFixed(6));
+        } else if (lastEditedField === 'to') {
+            const num = parseFloat(toAmount);
+            if (isNaN(num) || num <= 0) {
+                setFromAmount('');
+                return;
+            }
+            setFromAmount((num * toPrice / fromPrice).toFixed(6));
+        }
+    }, [fromAmount, toAmount, fromToken, toToken, lastEditedField]);
+
+    const handleFromAmountChange = (text: string) => {
+        setLastEditedField('from');
+        setFromAmount(sanitize(text));
+    };
+
+    const handleToAmountChange = (text: string) => {
+        setLastEditedField('to');
+        setToAmount(sanitize(text));
+    };
+
+    const handlePercentPress = useCallback((pct: number) => {
+        if (!fromToken || fromToken.amount <= 0) return;
+        setLastEditedField('from');
+        setFromAmount((fromToken.amount * pct).toFixed(6));
+    }, [fromToken]);
+
+    const handleFlip = useCallback(() => {
+        setFromToken(toToken);
+        setToToken(fromToken);
+        setFromAmount(toAmount);
+        setToAmount(fromAmount);
+        setLastEditedField(prev => prev === 'from' ? 'to' : 'from');
+    }, [fromToken, toToken, fromAmount, toAmount]);
+
+    const handleTokenSelect = useCallback((token: TokenAsset) => {
+        if (pickerSide === 'from') {
+            setFromToken(token);
+        } else {
+            setToToken(token);
+        }
+        setPickerSide(null);
+    }, [pickerSide]);
+
+    const handleSwipe = async () => {};
+
+    const availableTokens = useCallback((side: 'from' | 'to') => {
+        const other = side === 'from' ? toToken?.symbol : fromToken?.symbol;
+        return tokens.filter(t => t.symbol !== other);
+    }, [tokens, fromToken, toToken]);
+
+    const displayRate = fromToken?.price && toToken?.price && toToken.price > 0
+        ? (fromToken.price / toToken.price).toFixed(6)
+        : null;
+
+    const blob1Transform = [
+        { 
+            translateX: floatAnim1.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 80]
+            }) 
+        },
+        { 
+            translateY: floatAnim1.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 40]
+            }) 
+        },
+        { 
+            scale: floatAnim1.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.2]
+            }) 
+        }
+    ];
+
+    const blob2Transform = [
+        { 
+            translateX: floatAnim2.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -60]
+            }) 
+        },
+        { 
+            translateY: floatAnim2.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -50]
+            }) 
+        },
+        { 
+            scale: floatAnim2.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.3]
+            }) 
+        }
+    ];
+
+    const blob3Transform = [
+        { 
+            translateX: floatAnim3.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 70]
+            }) 
+        },
+        { 
+            translateY: floatAnim3.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -60]
+            }) 
+        },
+        { 
+            scale: floatAnim3.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.25]
+            }) 
+        }
+    ];
+
+    const blob4Transform = [
+        { 
+            translateX: floatAnim4.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -80]
+            }) 
+        },
+        { 
+            translateY: floatAnim4.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 70]
+            }) 
+        },
+        { 
+            scale: floatAnim4.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.15]
+            }) 
+        }
+    ];
+
+    return (
+        <View style={styles.root}>
+            <StatusBar 
+                style={isDark ? 'light' : 'dark'}
+                translucent={true}
+                backgroundColor="transparent"
+            />
+
+            {/**
+             * Base Background Gradient
+             * Softened top color to seamlessly blend with the Android translucent status bar.
+             */}
+            <LinearGradient
+                colors={isDark ? ['#120820', '#1A0A3E', '#0A0410'] : ['#F7F3FF', '#EBE3FE', '#F7F3FF']}
+                locations={[0, 0.5, 1]}
+                style={StyleSheet.absoluteFill}
+            />
+
+            <View style={StyleSheet.absoluteFill}>
+                <Animated.View 
+                    style={[
+                        styles.blobTopLeft,
+                        { transform: blob1Transform },
+                        { backgroundColor: isDark ? '#6B21A8' : '#C084FC' }
+                    ]} 
+                />
+                <Animated.View 
+                    style={[
+                        styles.blobBottomRight,
+                        { transform: blob2Transform },
+                        { backgroundColor: isDark ? '#3B0764' : '#A855F7' }
+                    ]} 
+                />
+                <Animated.View 
+                    style={[
+                        styles.blobMiddleLeft,
+                        { transform: blob3Transform },
+                        { backgroundColor: isDark ? '#4A148C' : '#CE93D8' }
+                    ]} 
+                />
+                <Animated.View 
+                    style={[
+                        styles.blobMiddleRight,
+                        { transform: blob4Transform },
+                        { backgroundColor: isDark ? '#311B92' : '#B39DDB' }
+                    ]} 
+                />
+                
+                <BlurView
+                    style={StyleSheet.absoluteFill}
+                    blurType={isDark ? 'dark' : 'light'}
+                    blurAmount={90}
+                    reducedTransparencyFallbackColor="transparent"
+                />
+            </View>
+
+            <ScrollView 
+                contentContainerStyle={styles.scroll} 
+                keyboardShouldPersistTaps="handled" 
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={styles.header}>
+                    <TouchableOpacity 
+                        onPress={() => router.back()} 
+                        style={[
+                            styles.iconBtn, 
+                            { 
+                                borderColor: colors.cardBorder, 
+                                backgroundColor: colors.chip 
+                            }
+                        ]}
+                    >
+                        <ArrowLeft 
+                            size={18} 
+                            color={colors.text} 
+                            strokeWidth={1.8} 
+                        />
+                    </TouchableOpacity>
+                    
+                    <Text style={[styles.title, { color: colors.text }]}>
+                        Swap Tokens
+                    </Text>
+                    
+                    <View 
+                        style={[
+                            styles.slippagePill, 
+                            { 
+                                borderColor: colors.chipBorder, 
+                                backgroundColor: colors.chip 
+                            }
+                        ]}
+                    >
+                        <Text style={[styles.slippageText, { color: colors.muted }]}>
+                            ⚙ 0.5%
+                        </Text>
+                    </View>
+                </View>
+
+                <SwapCard
+                    label="PAY"
+                    token={fromToken}
+                    amount={fromAmount}
+                    isFocused={focused === 'from'}
+                    colors={colors}
+                    onAmountChange={handleFromAmountChange}
+                    onFocus={() => setFocused('from')}
+                    onBlur={() => setFocused(null)}
+                    onTokenPress={() => setPickerSide('from')}
+                    showPercentButtons
+                    onPercentPress={handlePercentPress}
+                />
+
+                <SwapFlipButton colors={colors} onPress={handleFlip} />
+
+                <SwapCard
+                    label="RECEIVE"
+                    token={toToken}
+                    amount={toAmount}
+                    isFocused={focused === 'to'}
+                    colors={colors}
+                    onAmountChange={handleToAmountChange}
+                    onFocus={() => setFocused('to')}
+                    onBlur={() => setFocused(null)}
+                    onTokenPress={() => setPickerSide('to')}
+                />
+
+                <SwapInfoRows 
+                    fromSymbol={fromToken?.symbol ?? null} 
+                    toSymbol={toToken?.symbol ?? null} 
+                    price={displayRate} 
+                    fees="~0.5%" 
+                    slippage="0.5%" 
+                    priceImpact="< 0.01%" 
+                    colors={colors} 
+                />
+
+                <View style={styles.swipeWrap}>
+                    <SwapSwipeButton 
+                        onSwipeSuccess={handleSwipe} 
+                        isLoading={isLoading} 
+                        isSuccess={isSuccess} 
+                        isFailed={isFailed} 
+                        colors={colors} 
+                    />
+                </View>
+            </ScrollView>
+
+            <SwapTokenPicker 
+                visible={pickerSide !== null} 
+                tokens={pickerSide ? availableTokens(pickerSide) : []} 
+                selectedSymbol={pickerSide === 'from' ? fromToken?.symbol ?? null : toToken?.symbol ?? null} 
+                colors={colors} 
+                onSelect={handleTokenSelect} 
+                onClose={() => setPickerSide(null)} 
+            />
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    root: {
+        flex: 1,
+    },
+    scroll: {
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 70 : 60,
+        paddingBottom: 120,
+    },
+    blobTopLeft: {
+        position: 'absolute',
+        width: 350,
+        height: 350,
+        borderRadius: 175,
+        top: '10%',
+        left: '-20%',
+        opacity: 0.6,
+    },
+    blobBottomRight: {
+        position: 'absolute',
+        width: 450,
+        height: 450,
+        borderRadius: 225,
+        bottom: '5%',
+        right: '-30%',
+        opacity: 0.5,
+    },
+    blobMiddleLeft: {
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        top: '40%',
+        left: '-15%',
+        opacity: 0.6,
+    },
+    blobMiddleRight: {
+        position: 'absolute',
+        width: 380,
+        height: 380,
+        borderRadius: 190,
+        bottom: '30%',
+        right: '-10%',
+        opacity: 0.5,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+    },
+    iconBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    title: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 18,
+        includeFontPadding: false,
+    },
+    slippagePill: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    slippageText: {
+        fontFamily: 'Dank Mono',
+        fontSize: 12,
+        includeFontPadding: false,
+    },
+    swipeWrap: {
+        marginTop: 20,
+    },
+});
