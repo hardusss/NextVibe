@@ -272,7 +272,6 @@ export default function CreateTransactionScreen() {
                         autoFocus
                         autoCorrect={false}
                         selectionColor={accentColor}
-                        adjustsFontSizeToFit={true}
                         numberOfLines={1}
                     />
 
