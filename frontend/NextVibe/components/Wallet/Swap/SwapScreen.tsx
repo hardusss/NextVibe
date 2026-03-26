@@ -14,6 +14,7 @@ import { BlurView } from '@react-native-community/blur';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import usePortfolio, { TokenAsset } from '@/hooks/usePortfolio';
 import SwapCard from './SwapCard';
@@ -52,6 +53,9 @@ export default function SwapScreen() {
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
     const { data } = usePortfolio();
+    
+    // Отримуємо безпечні відступи для пристрою (динамічний острівець, статус-бар)
+    const insets = useSafeAreaInsets();
 
     const tokens: TokenAsset[] = data.tokens;
 
@@ -72,75 +76,36 @@ export default function SwapScreen() {
     const floatAnim3 = useRef(new Animated.Value(0)).current;
     const floatAnim4 = useRef(new Animated.Value(0)).current;
 
-    /**
-     * Loops background blob animation endlessly to create a dynamic fluid effect.
-     * Starts animations for all four blobs with differing durations to ensure movement is varied.
-     */
     useEffect(() => {
         Animated.loop(
             Animated.sequence([
-                Animated.timing(floatAnim1, {
-                    toValue: 1,
-                    duration: 12000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(floatAnim1, {
-                    toValue: 0,
-                    duration: 12000,
-                    useNativeDriver: true,
-                })
+                Animated.timing(floatAnim1, { toValue: 1, duration: 12000, useNativeDriver: true }),
+                Animated.timing(floatAnim1, { toValue: 0, duration: 12000, useNativeDriver: true })
             ])
         ).start();
 
         Animated.loop(
             Animated.sequence([
-                Animated.timing(floatAnim2, {
-                    toValue: 1,
-                    duration: 10000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(floatAnim2, {
-                    toValue: 0,
-                    duration: 10000,
-                    useNativeDriver: true,
-                })
+                Animated.timing(floatAnim2, { toValue: 1, duration: 10000, useNativeDriver: true }),
+                Animated.timing(floatAnim2, { toValue: 0, duration: 10000, useNativeDriver: true })
             ])
         ).start();
 
         Animated.loop(
             Animated.sequence([
-                Animated.timing(floatAnim3, {
-                    toValue: 1,
-                    duration: 14000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(floatAnim3, {
-                    toValue: 0,
-                    duration: 14000,
-                    useNativeDriver: true,
-                })
+                Animated.timing(floatAnim3, { toValue: 1, duration: 14000, useNativeDriver: true }),
+                Animated.timing(floatAnim3, { toValue: 0, duration: 14000, useNativeDriver: true })
             ])
         ).start();
 
         Animated.loop(
             Animated.sequence([
-                Animated.timing(floatAnim4, {
-                    toValue: 1,
-                    duration: 9000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(floatAnim4, {
-                    toValue: 0,
-                    duration: 9000,
-                    useNativeDriver: true,
-                })
+                Animated.timing(floatAnim4, { toValue: 1, duration: 9000, useNativeDriver: true }),
+                Animated.timing(floatAnim4, { toValue: 0, duration: 9000, useNativeDriver: true })
             ])
         ).start();
     }, []);
 
-    /**
-     * Initializes default token pair upon portfolio data load.
-     */
     useEffect(() => {
         if (tokens.length > 0 && !fromToken) {
             setFromToken(tokens[0]);
@@ -150,9 +115,6 @@ export default function SwapScreen() {
         }
     }, [tokens]);
 
-    /**
-     * Memoizes color palette based on current color scheme.
-     */
     const colors: SwapColors = useMemo(() => ({
         text: isDark ? '#F0EAFF' : '#1A0A3E',
         muted: isDark ? 'rgba(240,234,255,0.45)' : 'rgba(26,10,62,0.45)',
@@ -164,11 +126,6 @@ export default function SwapScreen() {
         isDark,
     }), [isDark]);
 
-    /**
-     * Bidirectional amount calculator.
-     * Updates one state based on the other whenever inputs or tokens change,
-     * preventing cyclic updates between fromAmount and toAmount states.
-     */
     useEffect(() => {
         if (!fromToken || !toToken) return;
         
@@ -239,87 +196,27 @@ export default function SwapScreen() {
         : null;
 
     const blob1Transform = [
-        { 
-            translateX: floatAnim1.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 80]
-            }) 
-        },
-        { 
-            translateY: floatAnim1.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 40]
-            }) 
-        },
-        { 
-            scale: floatAnim1.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.2]
-            }) 
-        }
+        { translateX: floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, 80] }) },
+        { translateY: floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, 40] }) },
+        { scale: floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] }) }
     ];
 
     const blob2Transform = [
-        { 
-            translateX: floatAnim2.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -60]
-            }) 
-        },
-        { 
-            translateY: floatAnim2.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -50]
-            }) 
-        },
-        { 
-            scale: floatAnim2.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.3]
-            }) 
-        }
+        { translateX: floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, -60] }) },
+        { translateY: floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, -50] }) },
+        { scale: floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) }
     ];
 
     const blob3Transform = [
-        { 
-            translateX: floatAnim3.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 70]
-            }) 
-        },
-        { 
-            translateY: floatAnim3.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -60]
-            }) 
-        },
-        { 
-            scale: floatAnim3.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.25]
-            }) 
-        }
+        { translateX: floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [0, 70] }) },
+        { translateY: floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [0, -60] }) },
+        { scale: floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] }) }
     ];
 
     const blob4Transform = [
-        { 
-            translateX: floatAnim4.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -80]
-            }) 
-        },
-        { 
-            translateY: floatAnim4.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 70]
-            }) 
-        },
-        { 
-            scale: floatAnim4.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.15]
-            }) 
-        }
+        { translateX: floatAnim4.interpolate({ inputRange: [0, 1], outputRange: [0, -80] }) },
+        { translateY: floatAnim4.interpolate({ inputRange: [0, 1], outputRange: [0, 70] }) },
+        { scale: floatAnim4.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }) }
     ];
 
     return (
@@ -330,10 +227,6 @@ export default function SwapScreen() {
                 backgroundColor="transparent"
             />
 
-            {/**
-             * Base Background Gradient
-             * Softened top color to seamlessly blend with the Android translucent status bar.
-             */}
             <LinearGradient
                 colors={isDark ? ['#120820', '#1A0A3E', '#0A0410'] : ['#F7F3FF', '#EBE3FE', '#F7F3FF']}
                 locations={[0, 0.5, 1]}
@@ -379,7 +272,8 @@ export default function SwapScreen() {
             </View>
 
             <ScrollView 
-                contentContainerStyle={styles.scroll} 
+                // Використовуємо insets.top, щоб контент не ліз на статус-бар/камеру
+                contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 20 }]} 
                 keyboardShouldPersistTaps="handled" 
                 showsVerticalScrollIndicator={false}
             >
@@ -487,7 +381,6 @@ const styles = StyleSheet.create({
     },
     scroll: {
         paddingHorizontal: 20,
-        paddingTop: Platform.OS === 'ios' ? 70 : 60,
         paddingBottom: 120,
     },
     blobTopLeft: {
