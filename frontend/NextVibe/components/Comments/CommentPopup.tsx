@@ -367,61 +367,66 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
 
             {/* Sheet slides up from bottom */}
             <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-                {/* Handle */}
-                <View style={styles.handle} />
+                
+                {/* KeyboardWrapper is INSIDE the absolute sheet */}
+                <KeyboardAvoidingView 
+                    style={styles.keyboardWrapper}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    {/* Handle */}
+                    <View style={styles.handle} />
 
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.headerText}>
-                        Comments{totalCount > 0 ? ` · ${totalCount}` : ''}
-                    </Text>
-                    <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <AntDesign name="close" size={20} color="#888" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Content */}
-                {loading ? (
-                    <View style={styles.centered}>
-                        <ActivityIndicator size="large" color="#A855F7" />
-                    </View>
-                ) : !isCommentsEnabled ? (
-                    <View style={styles.centered}>
-                        <MaterialIcons name="comments-disabled" size={40} color="#333" />
-                        <Text style={styles.disabledText}>Comments are disabled</Text>
-                    </View>
-                ) : comments.length === 0 ? (
-                    <View style={styles.centered}>
-                        <MaterialIcons name="chat-bubble-outline" size={40} color="#333" />
-                        <Text style={styles.disabledText}>No comments yet</Text>
-                        <Text style={styles.disabledSubtext}>Be the first to comment</Text>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={comments}
-                        renderItem={renderComment}
-                        keyExtractor={item => item.id.toString()}
-                        contentContainerStyle={styles.listContent}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                    />
-                )}
-
-                {/* Replying to bar */}
-                {replyingTo && (
-                    <View style={styles.replyingToBar}>
-                        <Text style={styles.replyingToText}>
-                            Replying to <Text style={{ color: '#A855F7' }}>{replyingTo.user.username}</Text>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <Text style={styles.headerText}>
+                            Comments{totalCount > 0 ? ` · ${totalCount}` : ''}
                         </Text>
-                        <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setReplyingTo(null)}>
-                            <AntDesign name="close" size={14} color="#888" />
+                        <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <AntDesign name="close" size={20} color="#888" />
                         </TouchableOpacity>
                     </View>
-                )}
 
-                {/* Input */}
-                {isCommentsEnabled && (
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                    {/* Content */}
+                    {loading ? (
+                        <View style={styles.centered}>
+                            <ActivityIndicator size="large" color="#A855F7" />
+                        </View>
+                    ) : !isCommentsEnabled ? (
+                        <View style={styles.centered}>
+                            <MaterialIcons name="comments-disabled" size={40} color="#333" />
+                            <Text style={styles.disabledText}>Comments are disabled</Text>
+                        </View>
+                    ) : comments.length === 0 ? (
+                        <View style={styles.centered}>
+                            <MaterialIcons name="chat-bubble-outline" size={40} color="#333" />
+                            <Text style={styles.disabledText}>No comments yet</Text>
+                            <Text style={styles.disabledSubtext}>Be the first to comment</Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={comments}
+                            renderItem={renderComment}
+                            keyExtractor={item => item.id.toString()}
+                            contentContainerStyle={styles.listContent}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        />
+                    )}
+
+                    {/* Replying to bar */}
+                    {replyingTo && (
+                        <View style={styles.replyingToBar}>
+                            <Text style={styles.replyingToText}>
+                                Replying to <Text style={{ color: '#A855F7' }}>{replyingTo.user.username}</Text>
+                            </Text>
+                            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setReplyingTo(null)}>
+                                <AntDesign name="close" size={14} color="#888" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Input Container */}
+                    {isCommentsEnabled && (
                         <View style={styles.inputRow}>
                             <FastImage source={{ uri: user?.avatar ?? undefined }} style={styles.inputAvatar} />
                             <View style={styles.inputWrap}>
@@ -435,7 +440,6 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                                     onSubmitEditing={handleSendComment}
                                     multiline
                                     maxLength={500}
-                                    autoFocus
                                 />
                             </View>
                             <TouchableOpacity
@@ -451,14 +455,17 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
-                    </KeyboardAvoidingView>
-                )}
+                    )}
+                </KeyboardAvoidingView>
             </Animated.View>
         </Modal>
     );
 };
 
 const styles = StyleSheet.create({
+    keyboardWrapper: {
+        flex: 1,
+    },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.4)',
