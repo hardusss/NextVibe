@@ -6,7 +6,6 @@ from rest_framework.throttling import ScopedRateThrottle
 from user.src.validate_google_token_id import validate
 from django.contrib.auth import get_user_model
 
-
 class GoogleRegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
@@ -26,11 +25,18 @@ class GoogleRegisterView(APIView):
         user = User.objects.filter(email=google_data["email"]).first()
 
         if not user:
+            username = request.data.get("username")
+            avatar_url = request.data.get("avatar_url")
+
+            if not username:
+                 username = google_data.get("name", "").replace(" ", "_").lower()
+
             serializer = GoogleRegister(data={
                 "email": google_data["email"],
-                "username": google_data.get("name"),
-                "avatar_url": google_data.get("avatar_url")
+                "username": username,
+                "avatar_url": avatar_url
             })
+            
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
         else:
