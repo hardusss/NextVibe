@@ -107,7 +107,6 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
         const getData = async () => {
             try {
                 const data = await getComments(post_id);
-                // New structure: { post_id, author, comments: [...] }
                 if (data && typeof data === 'object' && Array.isArray(data.comments)) {
                     setOwner(data.author ?? null);
                     setComments(data.comments);
@@ -362,21 +361,16 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             statusBarTranslucent
             onRequestClose={handleClose}
         >
-            {/* Dim backdrop — tap to close */}
             <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
 
-            {/* Sheet slides up from bottom */}
             <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-                
-                {/* KeyboardWrapper is INSIDE the absolute sheet */}
-                <KeyboardAvoidingView 
+
+                <KeyboardAvoidingView
                     style={styles.keyboardWrapper}
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 >
-                    {/* Handle */}
                     <View style={styles.handle} />
 
-                    {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.headerText}>
                             Comments{totalCount > 0 ? ` · ${totalCount}` : ''}
@@ -386,7 +380,6 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                         </TouchableOpacity>
                     </View>
 
-                    {/* Content */}
                     {loading ? (
                         <View style={styles.centered}>
                             <ActivityIndicator size="large" color="#A855F7" />
@@ -404,6 +397,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                         </View>
                     ) : (
                         <FlatList
+                            style={{ flex: 1 }}
                             data={comments}
                             renderItem={renderComment}
                             keyExtractor={item => item.id.toString()}
@@ -413,7 +407,6 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                         />
                     )}
 
-                    {/* Replying to bar */}
                     {replyingTo && (
                         <View style={styles.replyingToBar}>
                             <Text style={styles.replyingToText}>
@@ -425,7 +418,6 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                         </View>
                     )}
 
-                    {/* Input Container */}
                     {isCommentsEnabled && (
                         <View style={styles.inputRow}>
                             <FastImage source={{ uri: user?.avatar ?? undefined }} style={styles.inputAvatar} />
@@ -475,7 +467,9 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: SCREEN_HEIGHT * 0.80,
+        height: '100%',
+        maxHeight: SCREEN_HEIGHT * 0.70, 
+        marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0, 
         backgroundColor: '#0f0f0f',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
