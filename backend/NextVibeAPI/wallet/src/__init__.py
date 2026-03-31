@@ -1,2 +1,1 @@
-from .sorted_transactions import get_all_transactions_sorted
 from .tokens_price import get_tokens_prices
