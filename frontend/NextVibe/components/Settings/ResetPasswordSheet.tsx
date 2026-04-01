@@ -1,7 +1,22 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet, useColorScheme, PanResponder, TextInput, Vibration, ActivityIndicator } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { auth } from "@/src/api/2fa";
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { 
+    View, 
+    Text, 
+    TouchableOpacity, 
+    StyleSheet, 
+    useColorScheme, 
+    TextInput, 
+    Vibration, 
+    ActivityIndicator,
+    Keyboard
+} from 'react-native';
+import {
+    BottomSheetModal,
+    BottomSheetView,
+    BottomSheetBackdrop,
+    BottomSheetBackdropProps
+} from '@gorhom/bottom-sheet';
+import { KeyRound, ShieldAlert } from 'lucide-react-native';
 import resetPassword from "@/src/api/reset.password";
 import { usePopup } from "../Popup";
 
@@ -11,10 +26,34 @@ interface Props {
     onSuccess: () => void;
 }
 
+const darkColors = {
+    background: "#130822",
+    textPrimary: "#ffffff",
+    textSecondary: "#8b949e",
+    border: "#2A1846",
+    accent: "#05f0d8",
+    link: "#a371f7",
+    danger: "#ff4d4d",
+    inputBackground: "transparent"
+};
+
+const lightColors = {
+    background: "#ffffff",
+    textPrimary: "#000000",
+    textSecondary: "#666666",
+    border: "#e5e5e5",
+    accent: "#05f0d8",
+    link: "#7b05f1",
+    danger: "#ef4444",
+    inputBackground: "transparent"
+};
+
 const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
-    const isDark = useColorScheme() === 'dark';
-    const translateY = useRef(new Animated.Value(300)).current;
-    const styles = getStyles(isDark);
+    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const colorScheme = useColorScheme();
+    const isDarkMode = colorScheme === 'dark';
+    const colors = isDarkMode ? darkColors : lightColors;
+    const styles = getStyles(colors);
     const { showPopup } = usePopup();
     
     const [code, setCode] = useState('');
@@ -22,72 +61,41 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [passwordError, setPasswordError] = useState('');
-    
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => true,
-            onPanResponderMove: (_, gestureState) => {
-                if (gestureState.dy > 0) {
-                    translateY.setValue(gestureState.dy);
-                }
-            },
-            onPanResponderRelease: (_, gestureState) => {
-                if (gestureState.dy > 50) {
-                    onClose();
-                } else {
-                    Animated.spring(translateY, {
-                        toValue: 0,
-                        useNativeDriver: true,
-                        tension: 100,
-                        friction: 8
-                    }).start();
-                }
-            },
-        })
-    ).current;
 
     useEffect(() => {
-        Animated.spring(translateY, {
-            toValue: isVisible ? 0 : 300,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8
-        }).start();
-        
         if (isVisible) {
             setCode('');
             setPassword('');
             setConfirmPassword('');
             setPasswordError('');
+            bottomSheetModalRef.current?.present();
+        } else {
+            Keyboard.dismiss();
+            bottomSheetModalRef.current?.dismiss();
         }
     }, [isVisible]);
 
+    const handleSheetChanges = useCallback((index: number) => {
+        if (index === -1) {
+            onClose();
+        }
+    }, [onClose]);
+
+    const renderBackdrop = useCallback(
+        (props: BottomSheetBackdropProps) => (
+            <BottomSheetBackdrop
+                {...props}
+                disappearsOnIndex={-1}
+                appearsOnIndex={0}
+                opacity={isDarkMode ? 0.7 : 0.4}
+            />
+        ),
+        [isDarkMode]
+    );
+
     const handleCodeChange = (text: string) => {
-        // Limit code length to 6 characters
         const formattedText = text.replace(/[^0-9]/g, '').slice(0, 6);
         setCode(formattedText);
-    };
-
-    const verifyCode = async () => {
-        if (code.length !== 6) {
-            showPopup('error', 'Error', 'Please enter a 6-digit code');
-            return;
-        }
-        
-        setIsLoading(true);
-        try {
-            const isValid = await auth(code);
-            if (!isValid) {
-                Vibration.vibrate();
-                setCode('');
-                showPopup('error', 'Error', 'Invalid authentication code. Please try again.');
-            }
-        } catch (error) {
-            showPopup('error', 'Error', 'Failed to verify code. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
     };
 
     const validatePassword = () => {
@@ -112,12 +120,15 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
         
         setIsLoading(true);
         try {
-            const response =  await resetPassword({
+            const response = await resetPassword({
                 code: code,
                 newPassword: password
             });
+            
             if (response.status !== 200) {
-                showPopup("error", "Error", response.data.message) 
+                showPopup("error", "Error", response.data.message);
+                setIsLoading(false);
+                return;
             }
             
             showPopup('success', 'Success', 'Your password has been successfully reset.');
@@ -135,191 +146,182 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
         }
     };
 
-    if (!isVisible) return null;
-
     return (
-        <View style={styles.overlay}>
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
-            <Animated.View style={[styles.container, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
-                <View style={styles.headerContainer}>
-                    <MaterialCommunityIcons name="lock-reset" size={30} color={isDark ? "#7b05f1ff" : "#007bff"} />
-                    <Text style={styles.title}>Reset Password</Text>
+        <BottomSheetModal
+            ref={bottomSheetModalRef}
+            snapPoints={['75%']}
+            onChange={handleSheetChanges}
+            backdropComponent={renderBackdrop}
+            backgroundStyle={styles.bottomSheetBackground}
+            handleIndicatorStyle={styles.handleIndicator}
+            enablePanDownToClose={true}
+            keyboardBehavior="interactive"
+            keyboardBlurBehavior="restore"
+        >
+            <BottomSheetView style={styles.contentContainer}>
+                <Text style={styles.title}>Reset Password</Text>
+                <Text style={styles.subtitle}>Enter the 6-digit code from your authenticator app and a new password</Text>
+
+                <View style={styles.section}>
+                    <Text style={styles.label}>AUTHENTICATOR CODE</Text>
+                    <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        maxLength={6}
+                        value={code}
+                        onChangeText={handleCodeChange}
+                        placeholder="000000"
+                        placeholderTextColor={colors.textSecondary}
+                        selectionColor={colors.accent}
+                    />
                 </View>
                 
-                <>
-                    <Text style={styles.instruction}>Enter the 6-digit code from your Google Authenticator app and your new password</Text>
-                    
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Verification Code</Text>
-                        <TextInput
-                            style={styles.input}
-                            keyboardType="numeric"
-                            maxLength={6}
-                            value={code}
-                            onChangeText={handleCodeChange}
-                            placeholder="Enter 6-digit code"
-                            placeholderTextColor={isDark ? "#666" : "#999"}
-                        />
+                <View style={styles.section}>
+                    <Text style={styles.label}>NEW PASSWORD</Text>
+                    <TextInput
+                        style={styles.input}
+                        secureTextEntry
+                        value={password}
+                        onChangeText={setPassword}
+                        placeholder="••••••••"
+                        placeholderTextColor={colors.textSecondary}
+                        selectionColor={colors.accent}
+                    />
+                </View>
+                
+                <View style={styles.section}>
+                    <Text style={styles.label}>CONFIRM PASSWORD</Text>
+                    <TextInput
+                        style={styles.input}
+                        secureTextEntry
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        placeholder="••••••••"
+                        placeholderTextColor={colors.textSecondary}
+                        selectionColor={colors.accent}
+                    />
+                </View>
+                
+                {passwordError ? (
+                    <View style={styles.errorContainer}>
+                        <ShieldAlert size={16} color={colors.danger} />
+                        <Text style={styles.errorText}>{passwordError}</Text>
                     </View>
-                    
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>New Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            secureTextEntry
-                            value={password}
-                            onChangeText={setPassword}
-                            placeholder="Enter new password"
-                            placeholderTextColor={isDark ? "#666" : "#999"}
-                        />
-                    </View>
-                    
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Confirm Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            secureTextEntry
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            placeholder="Confirm new password"
-                            placeholderTextColor={isDark ? "#666" : "#999"}
-                        />
-                    </View>
-                    
-                    {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
-                    
-                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                        style={styles.resetButton} 
-                        onPress={handleResetPassword}
-                        disabled={isLoading}
-                    >
+                ) : null}
+                
+                <View style={styles.spacer} />
+
+                <TouchableOpacity 
+                    style={[styles.row, styles.lastRow]} 
+                    onPress={handleResetPassword}
+                    disabled={isLoading}
+                >
+                    <View style={styles.rowLeft}>
                         {isLoading ? (
-                            <ActivityIndicator size="small" color="#fff" />
+                            <ActivityIndicator size="small" color={colors.link} />
                         ) : (
-                            <Text style={styles.resetButtonText}>Reset Password</Text>
+                            <KeyRound size={24} color={colors.link} strokeWidth={1.5} />
                         )}
-                    </TouchableOpacity>
-                </>
-            </Animated.View>
-        </View>
+                        <Text style={styles.linkTextMain}>
+                            {isLoading ? 'Resetting...' : 'Confirm Reset Password'}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+
+            </BottomSheetView>
+        </BottomSheetModal>
     );
 };
 
-const darkColors = {
-    background: 'rgb(31, 31, 32)',
-    buttonBackground: '#1f1f1f',
-    textColor: '#c9d1d9',
-    accent: '#3e0578ff',
-    overlay: 'rgba(0, 0, 0, 0.5)',
-    inputBackground: '#2d2d2d',
-    errorColor: '#ff6b6b'
-};
-
-const lightColors = {
-    background: '#ffffff',
-    buttonBackground: '#e5e5e5',
-    textColor: '#000000',
-    accent: '#007bff',
-    overlay: 'rgba(0, 0, 0, 0.3)',
-    inputBackground: '#f5f5f5',
-    errorColor: '#d32f2f'
-};
-
-const getStyles = (isDark: boolean) => StyleSheet.create({
-    overlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: isDark ? darkColors.overlay : lightColors.overlay,
-        justifyContent: 'flex-end',
-        zIndex: 1000,
+const getStyles = (colors: any) => StyleSheet.create({
+    bottomSheetBackground: {
+        backgroundColor: colors.background,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
     },
-    overlayTouchable: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+    handleIndicator: {
+        backgroundColor: colors.border,
+        width: 40,
     },
-    container: {
-        backgroundColor: isDark ? darkColors.background : lightColors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
+    contentContainer: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingTop: 8,
         paddingBottom: 40,
-        elevation: 5,
-        maxHeight: '80%',
-    },
-    headerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
     },
     title: {
         fontSize: 22,
-        fontWeight: 'bold',
-        color: isDark ? darkColors.textColor : lightColors.textColor,
-        marginLeft: 10,
+        fontWeight: "600",
+        color: colors.textPrimary,
+        letterSpacing: 0.5,
+        marginBottom: 8,
+        textAlign: "center"
     },
-    instruction: {
-        fontSize: 16,
-        color: isDark ? darkColors.textColor : lightColors.textColor,
-        marginBottom: 20,
-        textAlign: 'center',
+    subtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        textAlign: "center",
+        marginBottom: 32,
+        fontWeight: "400",
+        paddingHorizontal: 10,
     },
-    codeContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginVertical: 20,
-    },
-    codeInput: {
-        width: 45,
-        height: 55,
-        borderWidth: 1,
-        borderColor: isDark ? darkColors.accent : lightColors.accent,
-        borderRadius: 8,
-        textAlign: 'center',
-        fontSize: 24,
-        color: isDark ? darkColors.textColor : lightColors.textColor,
-        backgroundColor: isDark ? darkColors.inputBackground : lightColors.inputBackground,
-    },
-    inputContainer: {
-        marginBottom: 15,
+    section: {
+        marginBottom: 24,
     },
     label: {
-        fontSize: 16,
-        color: isDark ? '#8b949e' : '#666666',
-        marginBottom: 5,
+        fontSize: 11,
+        fontWeight: "700",
+        color: colors.textSecondary,
+        letterSpacing: 1.2,
+        marginBottom: 8,
     },
     input: {
-        backgroundColor: isDark ? darkColors.inputBackground : lightColors.inputBackground,
-        color: isDark ? darkColors.textColor : lightColors.textColor,
-        paddingVertical: 10,
-        paddingHorizontal: 15,
-        borderRadius: 8,
-        fontSize: 16,
-        borderWidth: 1,
-        borderColor: isDark ? '#333' : '#ddd',
+        backgroundColor: colors.inputBackground,
+        color: colors.textPrimary,
+        fontSize: 18,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+        minHeight: 40,
+    },
+    errorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: -10,
+        marginBottom: 16,
     },
     errorText: {
-        color: isDark ? darkColors.errorColor : lightColors.errorColor,
-        fontSize: 14,
-        marginTop: 5,
-        marginBottom: 15,
+        color: colors.danger,
+        fontSize: 13,
+        marginLeft: 6,
+        fontWeight: '500',
     },
-    resetButton: {
-        backgroundColor: isDark ? darkColors.accent : lightColors.accent,
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 20,
+    spacer: {
+        flex: 1,
+        minHeight: 20,
     },
-    resetButtonText: {
-        color: '#fff',
+    row: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingVertical: 18,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+    },
+    lastRow: {
+        borderBottomWidth: 0,
+    },
+    rowLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        flex: 1,
+    },
+    linkTextMain: {
         fontSize: 16,
-        fontWeight: 'bold',
+        color: colors.link,
+        fontWeight: "500",
+        marginLeft: 12,
     },
 });
 
