@@ -73,11 +73,5 @@ class LikePostView(APIView):
                         notification_type="like",
                         text_preview=f"{user.username} like your post!"
                     )
-                    send(
-                        token=post.owner.expo_push_token,
-                        title=f"{user.username} liked your post",
-                        body=post.about
-                        ) 
-                    clear_notification_cache(post.owner.user_id)
             return Response({"data": "Succes"}, status=status.HTTP_200_OK)
         
