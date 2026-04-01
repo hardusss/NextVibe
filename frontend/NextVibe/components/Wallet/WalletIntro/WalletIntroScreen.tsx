@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, useColorScheme, AppState } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -20,6 +21,8 @@ export default function WalletIntroScreen() {
     const colorScheme = useColorScheme();
     const isDarkMode = colorScheme === 'dark';
     const styles = createIntroStyles(isDarkMode);
+
+    const { page } = useLocalSearchParams();
 
     const { connect, disconnect, smartWalletPubkey } = useWallet();
 
@@ -45,7 +48,7 @@ export default function WalletIntroScreen() {
 
         try {
             await Promise.race([
-                connect({ redirectUrl: APP_SCHEME }),
+                connect({ redirectUrl: page ? `nextvibe://${page}` : APP_SCHEME  }),
                 userCancelRace,
             ]);
 
