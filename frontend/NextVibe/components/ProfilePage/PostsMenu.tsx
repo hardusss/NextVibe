@@ -186,7 +186,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
             if (!mintOwnerWallet) throw new Error("Owner wallet not found");
 
             const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
-            paymentSignature = await sendInstructions(ixs);
+            paymentSignature = await sendInstructions(ixs, `user-profile?id=${id}`);
 
             if (!paymentSignature) throw new Error("Payment was not confirmed");
         }
