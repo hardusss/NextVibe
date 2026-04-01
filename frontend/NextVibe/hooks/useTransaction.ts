@@ -18,7 +18,8 @@ export default function useTransaction() {
     const sendTransaction = async (
         recipientAddress: string,
         amount: number,
-        tokenSymbol: string
+        tokenSymbol: string,
+        redirectPage?: string 
     ) => {
         setSignature(null);
         setIsLoading(true);
@@ -65,7 +66,7 @@ export default function useTransaction() {
                         instructions,
                         transactionOptions: { feeToken: 'SOL', clusterSimulation: "devnet" }
                     },
-                    { redirectUrl: "nextvibe://transaction" },
+                    { redirectUrl: `nextvibe://${redirectPage ? redirectPage : "transaction"}` },
                 );
             } else if (wallet.walletType === 'mwa') {
                 const { blockhash } = await wallet.connection.getLatestBlockhash();
@@ -107,7 +108,8 @@ export default function useTransaction() {
      * const sig = await sendInstructions(ixs)
      */
     const sendInstructions = async (
-        instructions: TransactionInstruction[]
+        instructions: TransactionInstruction[],
+        redirectPage?: string 
     ): Promise<string> => {
         setSignature(null);
         setIsLoading(true);
@@ -131,7 +133,7 @@ export default function useTransaction() {
                         instructions,
                         transactionOptions: { feeToken: 'SOL', clusterSimulation: "devnet" }
                     },
-                    { redirectUrl: "nextvibe://transaction" },
+                    { redirectUrl: `nextvibe://${redirectPage ? redirectPage : "transaction"}` },
                 );
             } else if (wallet.walletType === 'mwa') {
                 const { blockhash } = await wallet.connection.getLatestBlockhash();
