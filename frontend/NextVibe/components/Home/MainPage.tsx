@@ -841,6 +841,7 @@ export default function MainPage() {
                 onMint={handleMint}
                 isOwner={mintIsOwner}
                 defaultPrice={mintDefaultPrice}
+                page="home"
             />
 
             <FlatList

@@ -16,7 +16,8 @@ import Reanimated, {
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Wallet, Image as ImageIcon, CheckCircle, AlertCircle, X, ChevronRight, Tag, Coins } from 'lucide-react-native';
+import { Image as ImageIcon, CheckCircle, AlertCircle, X, ChevronRight, Tag, Coins } from 'lucide-react-native';
+import ButtonWallet from '../ProfilePage/ButtonWallet';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.72;
@@ -48,6 +49,7 @@ export interface MintBottomSheetProps {
      * Shown as read-only for collectors. Null for first-time owner setup.
      */
     defaultPrice: string | null;
+    page: string;
 }
 
 type MintStatus = 'idle' | 'minting' | 'success' | 'error';
@@ -293,7 +295,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
     const arrowOpacity1 = arrowAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.9, 0.2] });
     const arrowOpacity2 = arrowAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.1, 0.5, 0.1] });
 
-    // ── Derived display values ────────────────────────────────────────────────
+    // Derived display values
     const isCollector = !props.isOwner;
 
     const headerTitle = () => {
@@ -374,7 +376,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
 
                         {/* Price section */}
                         {isCollector ? (
-                            // ── Collector: locked price display ────────────────────────────────
+                            // Collector: locked price display
                             <View style={[styles.priceLockedCard, { backgroundColor: c.priceLocked, borderColor: c.border }]}>
                                 <View style={styles.priceLockedLeft}>
                                     <Coins size={18} color={c.accent} />
@@ -390,7 +392,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                                 </View>
                             </View>
                         ) : (
-                            // ── Owner: editable price input ────────────────────────────────────
+                            // Owner: editable price input
                             <Animated.View style={[
                                 styles.inputCard,
                                 {
@@ -450,12 +452,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                         )}
 
                         {!props.walletConnected && (
-                            <View style={[styles.alertCard, { backgroundColor: c.warnBg }]}>
-                                <Wallet size={15} color={c.warnText} />
-                                <Text style={[styles.alertText, { color: c.warnText }]}>
-                                    {isCollector ? 'Connect wallet to collect' : 'Connect wallet to monetize'}
-                                </Text>
-                            </View>
+                            <ButtonWallet widthButton={"100%"} page={props.page}/>
                         )}
 
                         {status === 'error' && !!errorMsg && (

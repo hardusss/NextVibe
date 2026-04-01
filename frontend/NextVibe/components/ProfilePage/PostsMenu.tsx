@@ -225,6 +225,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                 onMint={handleMint}
                 isOwner={mintIsOwner}
                 defaultPrice={mintDefaultPrice}
+                page={`user-profile?id=${id}`}
             />
 
             {loading ? (

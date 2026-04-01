@@ -12,12 +12,11 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { useMobileWallet } from '@wallet-ui/react-native-web3js';
 import { WalletOptionCard } from './WalletOptionCard';
 import type { WalletType, WalletCardConfig } from './WalletOptionCard';
-import useWalletAddress from '@/hooks/useWalletAddress';
 import saveWallet from '@/src/api/save.wallet';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 
@@ -61,13 +60,13 @@ const WALLET_CARDS: WalletCardConfig[] = [
     },
 ];
 
-const WalletSelectionScreen: React.FC = () => {
+const WalletSelectionScreen = () => {
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
     const colors = isDark ? COLORS.dark : COLORS.light;
     const router = useRouter();
+    const { page } = useLocalSearchParams();
     const { account, connect, disconnect } = useMobileWallet();
-    const { connection, address, walletType } = useWalletAddress();
 
     const bgColors = isDark
         ? (['#0A0410', '#1a0a2e', '#0A0410'] as const)
@@ -77,13 +76,10 @@ const WalletSelectionScreen: React.FC = () => {
     const [selectedWallet, setSelectedWallet] = useState<WalletType | null>(null);
     const [toast, setToast] = useState<{ message: string; isSuccess: boolean } | null>(null);
 
-    // Коли account з'являється після connect() — спочатку зберігаємо адресу,
-    // редірект тільки після успішного saveWallet
     useEffect(() => {
         if (!isConnecting || !account?.address) return;
 
         const walletAddr = account.address.toString();
-        console.log(address)
         setIsConnecting(false);
 
         saveWallet(walletAddr)
@@ -106,7 +102,6 @@ const WalletSelectionScreen: React.FC = () => {
             if (account) await disconnect();
             setIsConnecting(true);
             await connect();
-            // адреса прийде через useEffect на account
         } catch (error) {
             setIsConnecting(false);
             console.error("MWA Connection failed:", error);
@@ -114,7 +109,7 @@ const WalletSelectionScreen: React.FC = () => {
     }, [account, connect, disconnect]);
 
     const handleLazorKitConnect = useCallback((_id: WalletType) => {
-        router.push("/wallet-init");
+        router.push(`/wallet-init?page=${page}`);
     }, []);
 
     const handleCtaPress = useCallback(
