@@ -1,20 +1,25 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  Animated,
   StyleSheet,
   useColorScheme,
   TextInput,
   Linking,
-  Vibration
+  Vibration,
+  Keyboard
 } from "react-native";
+import {
+  BottomSheetModal,
+  BottomSheetView,
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps
+} from '@gorhom/bottom-sheet';
 import Clipboard from "@react-native-clipboard/clipboard";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { connect2FA, auth } from "@/src/api/2fa";
-import GetApiUrl from "@/src/utils/url_api";
 import LottieView from "lottie-react-native";
 import FastImage from 'react-native-fast-image';
 
@@ -25,14 +30,38 @@ interface Props {
   onSuccess: () => void;
 }
 
+const darkColors = {
+  background: "#130822", // <-- Трохи світліший за #0A0410, щоб не зливався
+  textPrimary: "#ffffff",
+  textSecondary: "#8b949e",
+  border: "#2A1846", // <-- Трохи яскравіший бордер для візуального розділення
+  accent: "#05f0d8",
+  link: "#a371f7",
+  success: "#4ade80",
+  danger: "#ff4d4d",
+  qrBackground: "#ffffff"
+};
+
+const lightColors = {
+  background: "#ffffff",
+  textPrimary: "#000000",
+  textSecondary: "#666666",
+  border: "#e5e5e5",
+  accent: "#05f0d8",
+  link: "#7b05f1",
+  success: "#4ade80",
+  danger: "#ef4444",
+  qrBackground: "#ffffff"
+};
+
 const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
-  const translateY = useRef(new Animated.Value(300)).current;
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === "dark";
+  const colors = isDarkMode ? darkColors : lightColors;
+  const styles = getStyles(colors);
 
   const inputs = useRef<Array<TextInput | null>>([]);
-  const inputAnimations = useRef<Array<Animated.Value>>(
-    Array.from({ length: 6 }, () => new Animated.Value(1))
-  ).current;
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrValue, setQrValue] = useState<string | null>(null);
   const [enterCode, setEnterCode] = useState(false);
@@ -41,27 +70,49 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    Animated.timing(translateY, {
-      toValue: isVisible ? 0 : 300,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    if (isVisible) {
+      bottomSheetModalRef.current?.present();
+      Keyboard.dismiss();
+    } else {
+      bottomSheetModalRef.current?.dismiss();
+      setEnterCode(false);
+      setCode(["", "", "", "", "", ""]);
+      setIsValid(null);
+    }
   }, [isVisible]);
 
   useEffect(() => {
     const fetchData = async () => {
-      const response = await connect2FA();
-      setQrUrl(`${response.data.qrcode}`);
-      setQrValue(response.data.code);
+      try {
+        const response = await connect2FA();
+        setQrUrl(`${response.data.qrcode}`);
+        setQrValue(response.data.code);
+      } catch (error) {
+        console.error("Failed to load 2FA data", error);
+      }
     };
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (isValid) {
-      onSuccess();
+    if (isVisible && !qrUrl) {
+      fetchData();
     }
-  }, [isValid]);
+  }, [isVisible]);
+
+  const handleSheetChanges = useCallback((index: number) => {
+    if (index === -1) {
+      onClose();
+    }
+  }, [onClose]);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={isDarkMode ? 0.7 : 0.4} // У темній темі робимо бекдроп трохи темнішим
+      />
+    ),
+    [isDarkMode]
+  );
 
   const handleCopy = () => {
     if (qrValue) {
@@ -72,8 +123,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
   };
 
   const handleDownload = () => {
-    const playStoreUrl =
-      "https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2";
+    const playStoreUrl = "https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2";
     Linking.openURL(playStoreUrl);
   };
 
@@ -99,54 +149,42 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
 
     const nextIndex = Math.min(index + characters.length, code.length - 1);
     if (inputs.current[nextIndex]) {
-      inputs.current[nextIndex].focus();
+      inputs.current[nextIndex]?.focus();
     }
+    
     if (newCode.join("").length === 6) {
       verifyCode(newCode.join(""));
-      if (!isValid) {
-        Vibration.vibrate();
-        setCode(["", "", "", "", "", ""]);
-        inputs.current[0]?.focus();
-        onFail();
-        };
     }
-    if (text === "") {
-    newCode[index] = "";
-    setCode(newCode);
-    setIsValid(null);
     
-    // Move to previous input
-    if (index > 0) {
-      requestAnimationFrame(() => {
-        inputs.current[index - 1]?.focus();
-      });
+    if (text === "") {
+      newCode[index] = "";
+      setCode(newCode);
+      setIsValid(null);
+      if (index > 0) {
+        requestAnimationFrame(() => {
+          inputs.current[index - 1]?.focus();
+        });
+      }
     }
-    return;
-  }
   };
 
   const cleanupAndClose = () => {
-    // Reset all states
     setCode(["", "", "", "", "", ""]);
     setIsValid(null);
     setQrUrl(null);
     setQrValue(null);
     setEnterCode(false);
-    
-    // Call success callback and close
     onSuccess();
-    onClose();
+    bottomSheetModalRef.current?.dismiss();
   };
 
-  const verifyCode = async (code: string) => {
-    const result = await auth(code);
+  const verifyCode = async (codeString: string) => {
+    const result = await auth(codeString);
     setIsValid(result);
     
     if (result) {
-      // On successful auth
-      setTimeout(cleanupAndClose, 1000);
+      setTimeout(cleanupAndClose, 500);
     } else {
-      // On failed auth
       Vibration.vibrate();
       setTimeout(() => {
         setCode(["", "", "", "", "", ""]);
@@ -174,98 +212,68 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
     }
   };
 
-  const isDarkMode = colorScheme === "dark";
-  const styles = getStyles(isDarkMode);
-
-  if (!isVisible) return null;
-
   return (
-    <View style={styles.overlay}>
-      <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.overlayTouchable} onPress={onClose} activeOpacity={1} />
-      <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
-        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.closeButton} onPress={onClose}>
-          <View style={styles.closeButtonInner}>
-            <MaterialCommunityIcons name="close" size={22} color="#fff" />
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.progressContainer}>
-          <View style={[styles.progressDot, !enterCode && styles.progressDotActive]} />
-          <View style={[styles.progressLine, enterCode && styles.progressLineActive]} />
-          <View style={[styles.progressDot, enterCode && styles.progressDotActive]} />
-        </View>
-
+    <BottomSheetModal
+      ref={bottomSheetModalRef}
+      snapPoints={['75%']}
+      onChange={handleSheetChanges}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={styles.bottomSheetBackground}
+      handleIndicatorStyle={styles.handleIndicator}
+      enablePanDownToClose={true}
+    >
+      <BottomSheetView style={styles.contentContainer}>
         {!enterCode ? (
-          <>
-            <View style={styles.headerSection}>
-              <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="shield-lock" size={32} color="#A78BFA" />
-              </View>
-              <Text style={styles.headerTitle}>Setup 2FA</Text>
-              <Text style={styles.headerSubtitle}>
-                Scan the QR code with Google Authenticator
-              </Text>
-            </View>
+          <View style={styles.viewState}>
+            <Text style={styles.title}>Setup 2FA</Text>
+            <Text style={styles.subtitle}>Scan the QR code with Google Authenticator</Text>
 
             <View style={styles.qrSection}>
-              <View style={styles.qrWrapper}>
-                {qrUrl ? (
-                  <FastImage
-                    source={{
-                      uri: qrUrl,
-                      priority: FastImage.priority.normal,
-                      cache: FastImage.cacheControl.immutable
-                    }}
-                    style={styles.qrImage}
-                    resizeMode={FastImage.resizeMode.contain}
-                  />
-                ) : (
-                  <ActivityIndicator />
-                )}
-              </View>
+              {qrUrl ? (
+                <FastImage
+                  source={{
+                    uri: qrUrl,
+                    priority: FastImage.priority.normal,
+                    cache: FastImage.cacheControl.immutable
+                  }}
+                  style={styles.qrImage}
+                  resizeMode={FastImage.resizeMode.contain}
+                />
+              ) : (
+                <ActivityIndicator />
+              )}
             </View>
 
             <View style={styles.codeSection}>
-              <Text style={styles.orText}>Or enter manually</Text>
-              <View style={styles.codeBox}>
+              <Text style={styles.label}>MANUAL CODE</Text>
+              <View style={styles.codeRow}>
                 <Text style={styles.codeText}>{qrValue || "..."}</Text>
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.copyIconButton} onPress={handleCopy}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleCopy}>
                   <MaterialCommunityIcons
                     name={copied ? "check" : "content-copy"}
                     size={20}
-                    color={copied ? "#4ade80" : "#A78BFA"}
+                    color={copied ? colors.success : colors.link}
                   />
                 </TouchableOpacity>
               </View>
             </View>
 
-            <View style={styles.actionButtons}>
-              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.downloadButton} onPress={handleDownload}>
-                <MaterialCommunityIcons 
-                  name="google-play" 
-                  size={20} 
-                  color={isDarkMode ? "#A78BFA" : "#7b05f1ff"} 
-                />
-                <Text style={styles.downloadButtonText}>Get App</Text>
-              </TouchableOpacity>
+            <View style={styles.spacer} />
 
-              <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.nextButton} onPress={handleNext}>
-                <Text style={styles.nextButtonText}>Continue</Text>
-                <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </>
+            <TouchableOpacity style={styles.row} onPress={handleDownload}>
+              <Text style={styles.rowText}>Get Authenticator App</Text>
+              <MaterialCommunityIcons name="google-play" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.row, styles.lastRow]} onPress={handleNext}>
+              <Text style={styles.linkTextMain}>Continue to Code Entry</Text>
+              <MaterialCommunityIcons name="arrow-right" size={20} color={colors.link} />
+            </TouchableOpacity>
+          </View>
         ) : (
-          <>
-            <View style={styles.headerSection}>
-              <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="shield-check" size={32} color="#A78BFA" />
-              </View>
-              <Text style={styles.headerTitle}>Enter Code</Text>
-              <Text style={styles.headerSubtitle}>
-                Enter the 6-digit code from your authenticator app
-              </Text>
-            </View>
+          <View style={styles.viewState}>
+            <Text style={styles.title}>Enter Code</Text>
+            <Text style={styles.subtitle}>Enter the 6-digit code from your app</Text>
 
             <LottieView
               source={require("@/assets/lottie/code.json")}
@@ -276,312 +284,165 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
 
             <View style={styles.codeInputContainer}>
               {code.map((digit, index) => (
-                <Animated.View 
-                  key={index} 
-                  style={[
-                    styles.codeInputWrapper,
-                    { transform: [{ scale: inputAnimations[index] }] }
-                  ]}
-                >
+                <View key={index} style={styles.codeInputWrapper}>
                   <TextInput
                     style={[
                       styles.codeInput,
-                      isValid === null ? null : isValid ? styles.validInput : styles.invalidInput,
-                      { backgroundColor: isDarkMode ? '#1a1a2e' : '#f5f5f5' }
+                      isValid === true && styles.validInput,
+                      isValid === false && styles.invalidInput,
                     ]}
                     keyboardType="numeric"
                     maxLength={1}
                     value={digit}
                     onChangeText={(text) => handleChange(text, index)}
                     onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
-                    ref={(el: TextInput | null) => { inputs.current[index] = el }}
-                    selectionColor="#A78BFA"
-                    placeholderTextColor={isDarkMode ? '#404040' : '#a0a0a0'}
+                    ref={(el: TextInput | null) => { inputs.current[index] = el; }}
+                    selectionColor={colors.accent}
+                    placeholderTextColor={colors.textSecondary}
                   />
-                  {digit !== "" && (
-                    <View style={styles.digitDot} />
-                  )}
-                </Animated.View>
+                </View>
               ))}
             </View>
 
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              onPress={handleBack}
-              style={styles.backButton}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="arrow-left" size={20} color="#A78BFA" />
-              <Text style={styles.backButtonText}>Back</Text>
+            <View style={styles.spacer} />
+
+            <TouchableOpacity style={[styles.row, styles.lastRow]} onPress={handleBack}>
+              <Text style={styles.rowText}>Go Back</Text>
+              <MaterialCommunityIcons name="arrow-left" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-          </>
+          </View>
         )}
-      </Animated.View>
-    </View>
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 };
 
-const getStyles = (isDarkMode: boolean) =>
+const getStyles = (colors: any) =>
   StyleSheet.create({
-    overlay: {
+    bottomSheetBackground: {
+      backgroundColor: colors.background,
+      borderTopWidth: 1, // Додано тонку лінію для чіткої межі
+      borderTopColor: colors.border,
+    },
+    handleIndicator: {
+      backgroundColor: colors.border,
+      width: 40,
+    },
+    contentContainer: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.7)",
-      justifyContent: "flex-end",
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 40,
     },
-    overlayTouchable: {
+    viewState: {
       flex: 1,
     },
-    container: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      minHeight: 520,
-      backgroundColor: isDarkMode ? "#0A0410" : "#fff",
-      borderTopLeftRadius: 30,
-      borderTopRightRadius: 30,
-      padding: 24,
-      paddingTop: 20,
-      elevation: 5,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      borderTopWidth: 2,
-      borderLeftWidth: 1,
-      borderRightWidth: 1,
-      borderColor: isDarkMode ? "#3b0076ff" : "#e0e0e0"
+    title: {
+      fontSize: 22,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      letterSpacing: 0.5,
+      marginBottom: 8,
+      textAlign: "center"
     },
-    closeButton: {
-      position: "absolute",
-      right: 20,
-      top: 20,
-      zIndex: 10,
-    },
-    closeButtonInner: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: isDarkMode ? "#1a1a2e" : "#f5f5f5",
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: isDarkMode ? "#3b0076ff" : "#e0e0e0",
-    },
-    progressContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 20,
-      marginTop: 10,
-    },
-    progressDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: isDarkMode ? "#2a2a3e" : "#e0e0e0",
-    },
-    progressDotActive: {
-      backgroundColor: "#A78BFA",
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-    },
-    progressLine: {
-      width: 60,
-      height: 2,
-      backgroundColor: isDarkMode ? "#2a2a3e" : "#e0e0e0",
-      marginHorizontal: 10,
-    },
-    progressLineActive: {
-      backgroundColor: "#A78BFA",
-    },
-    headerSection: {
-      alignItems: "center",
-      marginBottom: 20,
-    },
-    iconContainer: {
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-      backgroundColor: isDarkMode ? "#1a1a2e" : "#f5f5f5",
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 12,
-      borderWidth: 2,
-      borderColor: isDarkMode ? "#3b0076ff" : "#e0e0e0",
-    },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: isDarkMode ? "#fff" : "#000",
-      marginBottom: 6,
-    },
-    headerSubtitle: {
+    subtitle: {
       fontSize: 14,
-      color: isDarkMode ? "#aaa" : "#666",
+      color: colors.textSecondary,
       textAlign: "center",
-      paddingHorizontal: 20,
+      marginBottom: 32,
+      fontWeight: "400"
     },
     qrSection: {
       alignItems: "center",
-      marginVertical: 20,
-    },
-    qrWrapper: {
-      padding: 20,
-      backgroundColor: "#fff",
-      borderRadius: 20,
-      shadowColor: "#A78BFA",
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.3,
-      shadowRadius: 15,
-      elevation: 8,
+      marginBottom: 32,
     },
     qrImage: {
-      width: 160,
-      height: 160,
+      width: 180,
+      height: 180,
+      backgroundColor: colors.qrBackground,
+      borderRadius: 8,
     },
     codeSection: {
-      marginTop: 10,
       marginBottom: 20,
     },
-    orText: {
-      textAlign: "center",
-      color: isDarkMode ? "#888" : "#999",
-      fontSize: 12,
-      marginBottom: 12,
-      fontFamily: "Dank Mono Bold",
-    includeFontPadding: false,
+    label: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.textSecondary,
+      letterSpacing: 1.2,
+      marginBottom: 8,
     },
-    codeBox: {
+    codeRow: {
       flexDirection: "row",
-      alignItems: "center",
       justifyContent: "space-between",
-      backgroundColor: isDarkMode ? "#1a1a2e" : "#f5f5f5",
-      padding: 16,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: isDarkMode ? "#3b0076ff" : "#e0e0e0",
+      alignItems: "center",
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     codeText: {
       fontSize: 16,
-      fontFamily: "Dank Mono Bold",
-    includeFontPadding: false,
-      color: isDarkMode ? "#A78BFA" : "#7b05f1ff",
+      fontFamily: "Dank Mono Bold", 
+      color: colors.textPrimary,
       letterSpacing: 2,
     },
-    copyIconButton: {
-      padding: 8,
-    },
-    actionButtons: {
-      flexDirection: "row",
-      gap: 12,
-      marginTop: 10,
-    },
-    downloadButton: {
+    spacer: {
       flex: 1,
+      minHeight: 24,
+    },
+    row: {
       flexDirection: "row",
+      justifyContent: "space-between",
       alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: isDarkMode ? "#1a1a2e" : "#f5f5f5",
-      padding: 16,
-      borderRadius: 12,
-      gap: 8,
-      borderWidth: 1,
-      borderColor: isDarkMode ? "#3b0076ff" : "#e0e0e0",
+      paddingVertical: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
-    downloadButtonText: {
-      color: isDarkMode ? "#A78BFA" : "#7b05f1ff",
+    lastRow: {
+      borderBottomWidth: 0,
+    },
+    rowText: {
       fontSize: 16,
-      fontWeight: "bold",
+      color: colors.textPrimary,
+      fontWeight: "400",
     },
-    nextButton: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#A78BFA",
-      padding: 16,
-      borderRadius: 12,
-      gap: 8,
-      shadowColor: "#A78BFA",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 5,
-    },
-    nextButtonText: {
-      color: "#fff",
+    linkTextMain: {
       fontSize: 16,
-      fontWeight: "bold",
+      color: colors.link,
+      fontWeight: "500",
     },
     lottie: {
-      width: 180,
-      height: 180,
+      width: 140,
+      height: 140,
       alignSelf: "center",
       marginVertical: 10,
     },
     codeInputContainer: {
       flexDirection: "row",
-      justifyContent: "center",
-      gap: 8,
-      marginTop: 20,
+      justifyContent: "space-between",
       paddingHorizontal: 10,
+      marginTop: 20,
     },
     codeInputWrapper: {
-      position: "relative",
+      flex: 1,
+      marginHorizontal: 4,
     },
     codeInput: {
-      width: 48,
-      height: 58,
-      borderWidth: 2,
-      borderColor: isDarkMode ? "#3b0076ff" : "#e0e0e0",
+      height: 50,
+      borderBottomWidth: 2,
+      borderBottomColor: colors.border,
       textAlign: "center",
       fontSize: 24,
-      fontWeight: "bold",
-      color: isDarkMode ? "#c9d1d9" : "#000",
-      borderRadius: 12,
-      shadowColor: "#A78BFA",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    digitDot: {
-      position: "absolute",
-      bottom: 12,
-      left: "50%",
-      marginLeft: -4,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: "#A78BFA",
+      fontWeight: "600",
+      color: colors.textPrimary,
     },
     validInput: {
-      borderColor: "#4ade80",
-      shadowColor: "#4ade80",
-      shadowOpacity: 0.4,
+      borderBottomColor: colors.success,
+      color: colors.success,
     },
     invalidInput: {
-      borderColor: "#FF3B30",
-      shadowColor: "#FF3B30",
-      shadowOpacity: 0.4,
-    },
-    backButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      marginTop: 30,
-      padding: 16,
-      borderRadius: 12,
-      backgroundColor: isDarkMode ? "#1a1a2e" : "#f5f5f5",
-      borderWidth: 2,
-      borderColor: "#A78BFA",
-    },
-    backButtonText: {
-      color: "#A78BFA",
-      fontSize: 16,
-      fontWeight: "bold",
+      borderBottomColor: colors.danger,
+      color: colors.danger,
     },
   });
 
