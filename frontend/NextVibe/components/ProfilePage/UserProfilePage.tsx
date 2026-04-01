@@ -42,7 +42,7 @@ type UserData = {
     about: string;
     avatar_url: string | null;
     post_count: number;
-    cnft_count: number; // Додано для cNFT
+    cnft_count: number; 
     readers_count: number;
     follows_count: number;
     official: boolean;
