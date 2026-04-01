@@ -1,7 +1,13 @@
-import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import React, { useRef, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import {
+  BottomSheetModal,
+  BottomSheetView,
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps
+} from '@gorhom/bottom-sheet';
 import * as ImagePicker from 'expo-image-picker';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Camera, Image as ImageIcon, Trash2 } from 'lucide-react-native';
 import { usePopup } from '../Popup';
 import setAvatar from '@/src/api/set.avatar';
 
@@ -11,16 +17,64 @@ interface Props {
   onReset?: () => void;
 }
 
-const AvatarSheet = ({ isVisible, onClose,  onReset }: Props) => {
-  const isDark = useColorScheme() === 'dark';
+const darkColors = {
+  background: "#130822",
+  textPrimary: "#ffffff",
+  textSecondary: "#8b949e",
+  border: "#2A1846",
+  danger: "#ff4d4d",
+  iconMain: "#c9d1d9"
+};
+
+const lightColors = {
+  background: "#ffffff",
+  textPrimary: "#000000",
+  textSecondary: "#666666",
+  border: "#e5e5e5",
+  danger: "#ef4444",
+  iconMain: "#666666"
+};
+
+const AvatarSheet = ({ isVisible, onClose, onReset }: Props) => {
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+  const colors = isDarkMode ? darkColors : lightColors;
+  const styles = getStyles(colors);
   const { showPopup } = usePopup();
 
+  useEffect(() => {
+    if (isVisible) {
+      bottomSheetModalRef.current?.present();
+    } else {
+      bottomSheetModalRef.current?.dismiss();
+    }
+  }, [isVisible]);
+
+  const handleSheetChanges = useCallback((index: number) => {
+    if (index === -1) {
+      onClose();
+    }
+  }, [onClose]);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={isDarkMode ? 0.7 : 0.4}
+      />
+    ),
+    [isDarkMode]
+  );
+
   const onImageSelected = async (uri: string) => {
-    setAvatar(uri)
+    setAvatar(uri);
   }
 
   const handleCameraPress = async () => {
-    onClose(); // Закриваємо модальне вікно перед відкриттям камери
+    onClose(); 
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -77,87 +131,97 @@ const AvatarSheet = ({ isVisible, onClose,  onReset }: Props) => {
   };
 
   return (
-    <Modal
-      visible={isVisible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
+    <BottomSheetModal
+      ref={bottomSheetModalRef}
+      snapPoints={['35%']} 
+      onChange={handleSheetChanges}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={styles.bottomSheetBackground}
+      handleIndicatorStyle={styles.handleIndicator}
+      enablePanDownToClose={true}
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={onClose}
-        />
-        <View style={[styles.content, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
-          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-            style={[styles.option, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]} 
-            onPress={handleCameraPress}
-          >
-            <MaterialIcons name="camera-alt" size={24} color={isDark ? '#fff' : '#000'} />
-            <Text style={[styles.optionText, { color: isDark ? '#fff' : '#000' }]}>
-              Take Photo
-            </Text>
-          </TouchableOpacity>
+      <BottomSheetView style={styles.contentContainer}>
+        <Text style={styles.title}>Change Photo</Text>
+        
+        <TouchableOpacity style={styles.row} onPress={handleCameraPress}>
+          <View style={styles.rowLeft}>
+            <Camera size={24} color={colors.iconMain} strokeWidth={1.5} />
+            <Text style={styles.rowText}>Take Photo</Text>
+          </View>
+        </TouchableOpacity>
 
-          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-            style={[styles.option, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]} 
-            onPress={handleGalleryPress}
-          >
-            <MaterialIcons name="photo-library" size={24} color={isDark ? '#fff' : '#000'} />
-            <Text style={[styles.optionText, { color: isDark ? '#fff' : '#000' }]}>
-              Choose from Gallery
-            </Text>
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.row} onPress={handleGalleryPress}>
+          <View style={styles.rowLeft}>
+            <ImageIcon size={24} color={colors.iconMain} strokeWidth={1.5} />
+            <Text style={styles.rowText}>Choose from Gallery</Text>
+          </View>
+        </TouchableOpacity>
 
-          {onReset && (
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-              style={[styles.option, styles.resetOption]} 
-              onPress={handleReset}
-            >
-              <MaterialIcons name="delete" size={24} color="#ff4444" />
-              <Text style={[styles.optionText, { color: '#ff4444' }]}>
-                Remove Photo
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-    </Modal>
+        {onReset && (
+          <TouchableOpacity style={[styles.row, styles.lastRow]} onPress={handleReset}>
+            <View style={styles.rowLeft}>
+              <Trash2 size={24} color={colors.danger} strokeWidth={1.5} />
+              <Text style={styles.dangerText}>Remove Photo</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  optionText: {
-    fontSize: 16,
-    marginLeft: 12,
-  },
-  resetOption: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#ff4444',
-  }
-});
+const getStyles = (colors: any) =>
+  StyleSheet.create({
+    bottomSheetBackground: {
+      backgroundColor: colors.background,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    handleIndicator: {
+      backgroundColor: colors.border,
+      width: 40,
+    },
+    contentContainer: {
+      flex: 1,
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 24,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      letterSpacing: 0.5,
+      marginBottom: 16,
+      textAlign: "center"
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 18,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    lastRow: {
+      borderBottomWidth: 0,
+    },
+    rowLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    rowText: {
+      fontSize: 16,
+      color: colors.textPrimary,
+      fontWeight: "400",
+      marginLeft: 16,
+    },
+    dangerText: {
+      fontSize: 16,
+      color: colors.danger,
+      fontWeight: "400",
+      marginLeft: 16,
+    },
+  });
 
 export default AvatarSheet;
