@@ -363,7 +363,7 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
     useEffect(() => {
         if (!videoRef.current) return;
         if (!isVisible) { videoRef.current.unloadAsync(); setShowPreview(true); }
-        return () => { if (videoRef.current) videoRef.current.unloadAsync().catch(() => {}); };
+        return () => { if (videoRef.current) videoRef.current.unloadAsync().catch(() => { }); };
     }, [isVisible, isVideoMedia]);
 
     const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
@@ -472,13 +472,13 @@ const PostItem = memo(({
                 </TouchableOpacity>
 
                 <View style={{ position: "relative", flexDirection: "row" }}>
-                     {collectState !== null && (
-                    <ButtonCollect
-                        onPress={() => onOpenMint(item)}
-                        state={collectState}
-                        supplyLabel={supplyLabel}
-                    />
-                )}
+                    {collectState !== null && (
+                        <ButtonCollect
+                            onPress={() => onOpenMint(item)}
+                            state={collectState}
+                            supplyLabel={supplyLabel}
+                        />
+                    )}
                     <TouchableOpacity
                         hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         style={{ padding: 5 }}
@@ -641,7 +641,7 @@ export default function MainPage() {
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     const isFetchingRef = useRef(false);
 
-    // ── Mint ──────────────────────────────────────────────────────────────────
+    // Mint 
     const mintSheetRef = useRef<MintBottomSheetRef>(null);
     const [mintPostId, setMintPostId] = useState<number>(0);
     const [mintImageUrl, setMintImageUrl] = useState<string | null>(null);
@@ -670,11 +670,10 @@ export default function MainPage() {
         }
         if (!mintOwnerWallet) throw new Error("Owner wallet not found");
         const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
-        const paymentSignature = await sendInstructions(ixs);
+        const paymentSignature = await sendInstructions(ixs, "home");
         if (!paymentSignature) throw new Error("Payment was not confirmed");
         await mintNFT(address, postId, price, paymentSignature);
     }, [address, mintIsOwner, mintOwnerWallet, sendInstructions]);
-    // ─────────────────────────────────────────────────────────────────────────
 
     const getUserID = async () => {
         const id = await storage.getItem("id");
