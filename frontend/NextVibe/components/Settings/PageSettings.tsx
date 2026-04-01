@@ -398,7 +398,7 @@ function PageSettingsContent() {
                             />
                         </View>
 
-                        <View style={styles.spacer} />
+                        <Text style={styles.sectionHeader}>SECURITY & ACCOUNT</Text>
 
                         <TouchableOpacity 
                             style={styles.row} 
@@ -526,6 +526,14 @@ const getStyles = (colors: any) => {
             letterSpacing: 1.2,
             marginBottom: 8,
         },
+        sectionHeader: {
+            fontSize: 11,
+            fontWeight: "700",
+            color: colors.textSecondary,
+            letterSpacing: 1.2,
+            marginTop: 16, 
+            marginBottom: 8,
+        },
         input: {
             color: colors.textPrimary,
             fontSize: 18,
@@ -533,9 +541,6 @@ const getStyles = (colors: any) => {
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
             minHeight: 40,
-        },
-        spacer: {
-            height: 24,
         },
         row: {
             flexDirection: "row",
