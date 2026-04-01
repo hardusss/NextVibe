@@ -1,6 +1,12 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, useColorScheme } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useRef, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import {
+    BottomSheetModal,
+    BottomSheetView,
+    BottomSheetBackdrop,
+    BottomSheetBackdropProps
+} from '@gorhom/bottom-sheet';
+import { LogOut, X } from 'lucide-react-native';
 
 interface Props {
     isVisible: boolean;
@@ -8,146 +14,153 @@ interface Props {
     onConfirm: () => void;
 }
 
+const darkColors = {
+    background: "#130822",
+    textPrimary: "#ffffff",
+    textSecondary: "#8b949e",
+    border: "#2A1846",
+    danger: "#ff4d4d",
+    iconMain: "#c9d1d9"
+};
+
+const lightColors = {
+    background: "#ffffff",
+    textPrimary: "#000000",
+    textSecondary: "#666666",
+    border: "#e5e5e5",
+    danger: "#ef4444",
+    iconMain: "#666666"
+};
+
 const LogoutConfirmationSheet = ({ isVisible, onClose, onConfirm }: Props) => {
-    const isDark = useColorScheme() === 'dark';
+    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const colorScheme = useColorScheme();
+    const isDarkMode = colorScheme === 'dark';
+    const colors = isDarkMode ? darkColors : lightColors;
+    const styles = getStyles(colors);
+
+    useEffect(() => {
+        if (isVisible) {
+            bottomSheetModalRef.current?.present();
+        } else {
+            bottomSheetModalRef.current?.dismiss();
+        }
+    }, [isVisible]);
+
+    const handleSheetChanges = useCallback((index: number) => {
+        if (index === -1) {
+            onClose();
+        }
+    }, [onClose]);
+
+    const renderBackdrop = useCallback(
+        (props: BottomSheetBackdropProps) => (
+            <BottomSheetBackdrop
+                {...props}
+                disappearsOnIndex={-1}
+                appearsOnIndex={0}
+                opacity={isDarkMode ? 0.7 : 0.4}
+            />
+        ),
+        [isDarkMode]
+    );
+
+    const handleConfirm = () => {
+        onConfirm();
+        onClose();
+    };
 
     return (
-        <Modal
-            visible={isVisible}
-            transparent
-            animationType="fade"
-            onRequestClose={onClose}
+        <BottomSheetModal
+            ref={bottomSheetModalRef}
+            snapPoints={['35%']} 
+            onChange={handleSheetChanges}
+            backdropComponent={renderBackdrop}
+            backgroundStyle={styles.bottomSheetBackground}
+            handleIndicatorStyle={styles.handleIndicator}
+            enablePanDownToClose={true}
         >
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                style={styles.overlay}
-                activeOpacity={1}
-                onPress={onClose}
-            >
-                <View 
-                    style={[
-                        styles.container,
-                        { backgroundColor: isDark ? '#1f1f1f' : '#ffffff' }
-                    ]}
-                >
-                    <View style={styles.content}>
-                        <MaterialCommunityIcons 
-                            name="logout" 
-                            size={40} 
-                            color={isDark ? "#05f0d8" : "#007bff"} 
-                            style={styles.icon}
-                        />
-                        <Text style={[
-                            styles.title,
-                            { color: isDark ? '#ffffff' : '#000000' }
-                        ]}>
-                            Logout Confirmation
-                        </Text>
-                        <Text style={[
-                            styles.message,
-                            { color: isDark ? '#cccccc' : '#666666' }
-                        ]}>
-                            Are you sure you want to log out?
-                        </Text>
-                        
-                        <View style={styles.buttonContainer}>
-                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                                style={[styles.button, styles.cancelButton]}
-                                onPress={onClose}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[
-                                    styles.buttonText,
-                                    { color: "#ffffff"}
-                                ]}>
-                                    Cancel
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                                style={[styles.button, styles.logoutButton]}
-                                onPress={onConfirm}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.logoutButtonText}>
-                                    Yes, Logout
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+            <BottomSheetView style={styles.contentContainer}>
+                <Text style={styles.title}>Sign Out</Text>
+                <Text style={styles.subtitle}>Are you sure you want to log out of your account?</Text>
+                
+                <TouchableOpacity style={styles.row} onPress={handleConfirm}>
+                    <View style={styles.rowLeft}>
+                        <LogOut size={24} color={colors.danger} strokeWidth={1.5} />
+                        <Text style={styles.dangerText}>Yes, Log Out</Text>
                     </View>
-                </View>
-            </TouchableOpacity>
-        </Modal>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[styles.row, styles.lastRow]} onPress={onClose}>
+                    <View style={styles.rowLeft}>
+                        <X size={24} color={colors.iconMain} strokeWidth={1.5} />
+                        <Text style={styles.rowText}>Cancel</Text>
+                    </View>
+                </TouchableOpacity>
+            </BottomSheetView>
+        </BottomSheetModal>
     );
 };
 
-const styles = StyleSheet.create({
-    overlay: {
+const getStyles = (colors: any) => StyleSheet.create({
+    bottomSheetBackground: {
+        backgroundColor: colors.background,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+    },
+    handleIndicator: {
+        backgroundColor: colors.border,
+        width: 40,
+    },
+    contentContainer: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    container: {
-        width: '90%',
-        maxWidth: 400,
-        borderRadius: 15,
-        overflow: 'hidden',
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-    },
-    content: {
-        padding: 20,
-        alignItems: 'center'
-    },
-    icon: {
-        marginBottom: 15
+        paddingHorizontal: 24,
+        paddingTop: 8,
+        paddingBottom: 24,
     },
     title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        textAlign: 'center'
+        fontSize: 18,
+        fontWeight: "600",
+        color: colors.textPrimary,
+        letterSpacing: 0.5,
+        marginBottom: 8,
+        textAlign: "center"
     },
-    message: {
-        fontSize: 16,
-        marginBottom: 20,
-        textAlign: 'center'
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: '100%',
-        marginTop: 10
-    },
-    button: {
-        flex: 1,
-        paddingVertical: 12,
+    subtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        textAlign: "center",
+        marginBottom: 24,
+        fontWeight: "400",
         paddingHorizontal: 20,
-        borderRadius: 8,
-        marginHorizontal: 5,
-        alignItems: 'center',
-        justifyContent: 'center'
     },
-    cancelButton: {
-        backgroundColor: 'rgba(35, 35, 35, 0.99)'
+    row: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 18,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
-    logoutButton: {
-        backgroundColor: '#ff4444'
+    lastRow: {
+        borderBottomWidth: 0,
     },
-    buttonText: {
+    rowLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    rowText: {
         fontSize: 16,
-        fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+        color: colors.textPrimary,
+        fontWeight: "500",
+        marginLeft: 12,
     },
-    logoutButtonText: {
-        color: '#ffffff',
+    dangerText: {
         fontSize: 16,
-        fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
-    }
+        color: colors.danger,
+        fontWeight: "600",
+        marginLeft: 12,
+    },
 });
 
 export default LogoutConfirmationSheet;
