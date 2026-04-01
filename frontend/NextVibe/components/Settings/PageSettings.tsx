@@ -38,26 +38,28 @@ interface User {
 
 const darkColors = {
     background: "#0A0410",
-    cardBackground: "#0A0410",
-    inputBackground: "#0A0410",
-    primary: "#58a6ff",
-    secondary: "#1f6feb",
-    textPrimary: "#c9d1d9",
+    inputBackground: "transparent",
+    textPrimary: "#ffffff",
     textSecondary: "#8b949e",
-    border: "#3b0076ff",
-    shadow: "#0917b3",
+    border: "#1F152E",
+    accent: "#05f0d8",
+    link: "#a371f7",
+    danger: "#ff4d4d",
+    saveActive: "#a371f7",
+    saveInactive: "#302640"
 };
 
 const lightColors = {
     background: "#ffffff",
-    cardBackground: "#f5f5f5",
-    inputBackground: "#ffffff",
-    primary: "#007bff",
-    secondary: "#0056b3",
+    inputBackground: "transparent",
     textPrimary: "#000000",
     textSecondary: "#666666",
-    border: "#cccccc",
-    shadow: "#000000",
+    border: "#eeeeee",
+    accent: "#05f0d8",
+    link: "#7b05f1",
+    danger: "#ef4444",
+    saveActive: "#7b05f1",
+    saveInactive: "#e5e5e5"
 };
 
 function PageSettingsContent() {
@@ -80,17 +82,18 @@ function PageSettingsContent() {
 
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
-    const styles = getStyles(isDark);
+    const colors = isDark ? darkColors : lightColors;
+    const styles = getStyles(colors);
     const { showPopup } = usePopup();
     
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-            GoogleSignin.configure({
-               webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
-               offlineAccess: true,
-            });
+        GoogleSignin.configure({
+            webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
+            offlineAccess: true,
+        });
     }, []);
 
     const handleLogoutConfirm = async () => {
@@ -121,8 +124,6 @@ function PageSettingsContent() {
         setToastSuccess(isSuccess);
         setToastVisible(true);
     };
-
-
 
     const fetchUserData = async () => {
         setLoading(true);
@@ -164,7 +165,6 @@ function PageSettingsContent() {
                 }
             }
 
-
             if (about !== user?.about) {
                 if (about.length > 255) {
                     showToast("The about can be a maximum of 255 characters!", false)
@@ -201,9 +201,20 @@ function PageSettingsContent() {
             showToast('Failed to update profile', false);
         }
     }
+
     const handleOpenEdit = () => {
         setIsVisableAvatar((prev) => !prev)
     }
+
+    const handleToggle2FA = () => {
+        if (twoFA === false) {
+            setIsVisable2FA(true);
+        } else {
+            updateStatus(false);
+            setTwoFA(false);
+        }
+    };
+
     useFocusEffect(
         useCallback(() => {
             setLoading(true);
@@ -211,7 +222,7 @@ function PageSettingsContent() {
             
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 500,
+                duration: 400,
                 useNativeDriver: true,
             }).start();
 
@@ -228,7 +239,7 @@ function PageSettingsContent() {
 
     const handlePressIn = () => {
         Animated.timing(scaleAnim, {
-            toValue: 0.9,
+            toValue: 0.95,
             duration: 150,
             useNativeDriver: true,
         }).start();
@@ -261,35 +272,23 @@ function PageSettingsContent() {
     }, [username, about, user]);
 
     const SkeletonAvatar = () => (
-        <View style={[styles.image, { backgroundColor: isDark ? '#333' : '#ddd' }]} />
+        <View style={[styles.image, { backgroundColor: colors.border }]} />
     );
 
-    const SkeletonText = ({ width, height = 15 }: {width: number, height: number}) => (
+    const SkeletonText = ({ width, height = 14 }: {width: number | string, height?: number}) => (
         <View 
             style={{
                 width: width,
                 height: height,
-                backgroundColor: isDark ? '#333' : '#ddd',
+                backgroundColor: colors.border,
                 borderRadius: 4,
-                marginVertical: 5
-            }}
-        />
-    );
-
-    const SkeletonInput = () => (
-        <View 
-            style={{
-                height: 30,
-                backgroundColor: isDark ? '#333' : '#ddd',
-                borderRadius: 4,
-                marginTop: 5,
-                width: '100%'
+                marginVertical: 4
             }}
         />
     );
 
     return (
-        <Animated.View style={[styles.container, { opacity: fadeAnim, position: "relative" }]}>
+        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
             <ConfirmDialog
                 visible={showConfirm}
                 title="Save changes?"
@@ -314,129 +313,127 @@ function PageSettingsContent() {
                 onHide={() => setToastVisible(false)} 
             />
 
-            <StatusBar backgroundColor={isDark ? darkColors.background : lightColors.background} />
+            <StatusBar backgroundColor={colors.background} barStyle={isDark ? "light-content" : "dark-content"} />
+            
             <View style={styles.header}>
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleBackPress}>
+                <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={handleBackPress}>
                     <MaterialCommunityIcons name="arrow-left" style={styles.icon} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Settings Profile</Text>
-
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                    style={{
-                        backgroundColor: isSave ? "#3b0076ff" : "#262626",
-                        padding: 5,
-                        borderRadius: 5,
-                        alignItems: "center",
-                        position: "absolute",
-                        right: 10,
-                        paddingHorizontal: 10,
-                    }} 
+                <Text style={styles.title}>Profile</Text>
+                <TouchableOpacity 
+                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                     disabled={!isSave}
                     onPress={handleSave}
                 >
-                    <Text style={{color: isSave ? "white": "gray", fontWeight: "bold"}}>Save</Text>
+                    <Text style={[styles.saveText, isSave ? styles.saveTextActive : styles.saveTextInactive]}>
+                        Save
+                    </Text>
                 </TouchableOpacity>
             </View>
 
             <ScrollView 
                 contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        tintColor={isDark ? "#fff" : "#000"}
-                        colors={["#05f0d8"]}
-                        progressBackgroundColor={isDark ? "#000" : "#fff"}
+                        tintColor={colors.textPrimary}
+                        colors={[colors.accent]}
+                        progressBackgroundColor={colors.background}
                     />
                 }
             >
                 {loading ? (
                     <>
                         <View style={styles.centeredView}>
-                            <View style={styles.imageContainer}>
-                                <SkeletonAvatar />
-                            </View>
-                            <SkeletonText width={150} height={15}/>
+                            <SkeletonAvatar />
+                            <View style={{marginTop: 16}}><SkeletonText width={100} height={16} /></View>
                         </View>
 
-                        <View style={styles.inputContainer}>
-                            <SkeletonText width={100} height={15}/>
-                            <SkeletonInput />
+                        <View style={styles.section}>
+                            <SkeletonText width={70} height={12} />
+                            <View style={{marginTop: 8}}><SkeletonText width="100%" height={24} /></View>
                         </View>
-
-                        <View style={styles.inputContainer}>
-                            <SkeletonText width={80} height={15}/>
-                            <SkeletonInput />
+                        
+                        <View style={styles.section}>
+                            <SkeletonText width={50} height={12} />
+                            <View style={{marginTop: 8}}><SkeletonText width="100%" height={40} /></View>
                         </View>
                     </>
                 ) : (
                     <>
                         <View style={styles.centeredView}>
-                            <View style={styles.imageContainer}>
-                                <TouchableWithoutFeedback onPressIn={() => {handlePressIn(); handleOpenEdit()}} onPressOut={handlePressOut}>
-                                    <Animated.Image
-                                        style={[styles.image, { transform: [{ scale: scaleAnim }] }]}
-                                        source={{ uri: `${user?.avatar}` }}
-                                    />
-                                </TouchableWithoutFeedback>
-                            </View>
+                            <TouchableWithoutFeedback onPressIn={() => {handlePressIn(); handleOpenEdit()}} onPressOut={handlePressOut}>
+                                <Animated.Image
+                                    style={[styles.image, { transform: [{ scale: scaleAnim }] }]}
+                                    source={{ uri: `${user?.avatar}` }}
+                                />
+                            </TouchableWithoutFeedback>
                             <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleOpenEdit}>
-                                <Text style={styles.linkText}>Edit or remove avatar</Text>
+                                <Text style={styles.linkText}>Change Photo</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Username</Text>
-                            <TextInput style={styles.input} value={username} onChangeText={setUsername} />
+                        <View style={styles.section}>
+                            <Text style={styles.label}>USERNAME</Text>
+                            <TextInput 
+                                style={styles.input} 
+                                value={username} 
+                                onChangeText={setUsername}
+                                placeholderTextColor={colors.textSecondary}
+                                selectionColor={colors.accent}
+                            />
+                        </View>
+                        
+                        <View style={styles.section}>
+                            <Text style={styles.label}>ABOUT</Text>
+                            <TextInput 
+                                style={[styles.input, { minHeight: 40 }]} 
+                                value={about} 
+                                onChangeText={setAbout} 
+                                multiline 
+                                placeholderTextColor={colors.textSecondary}
+                                selectionColor={colors.accent}
+                            />
                         </View>
 
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>About</Text>
-                            <TextInput style={styles.input} value={about} onChangeText={setAbout} multiline />
-                        </View>
+                        <View style={styles.spacer} />
+
+                        <TouchableOpacity 
+                            style={styles.row} 
+                            onPress={handleToggle2FA}
+                            activeOpacity={0.6}
+                        >
+                            <Text style={styles.rowText}>Two-Factor Authentication</Text>
+                            <View pointerEvents="none">
+                                <Switch 
+                                    value={twoFA} 
+                                    trackColor={{ false: colors.border, true: colors.accent }}
+                                    thumbColor={colors.background}
+                                />
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={styles.row} 
+                            onPress={() => setIsVisibleResetPassword(true)}
+                        >
+                            <Text style={styles.linkTextMain}>Reset Password</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.row, styles.lastRow]} 
+                            onPress={handleLogout}
+                        >
+                            <Text style={styles.dangerText}>Sign Out</Text>
+                        </TouchableOpacity>
                     </>                    
                 )}
-
-                {loading ? (
-                    <>
-                        <View style={{flexDirection: "row", justifyContent: "space-between", marginTop: 20}}>
-                            <SkeletonText width={80} height={15}/>
-                            <View style={{ width: 40, height: 20, backgroundColor: isDark ? '#333' : '#ddd', borderRadius: 10 }} />
-                        </View>
-                        <SkeletonText width={120} height={20} />
-                        <SkeletonText width={80} height={20} />
-                    </>
-                ) : (
-                    <>
-                        <View style={{flexDirection: "row", justifyContent: "space-between", marginTop: 20}}>
-                            <Text style={styles.label}>Enable 2FA</Text>
-                            <Switch value={twoFA} onValueChange={() => {
-                                if (twoFA === false) {
-                                    setIsVisable2FA(true);
-                                };
-                                if (twoFA === true) {
-                                    updateStatus(false);
-                                    setTwoFA(false)
-                                }
-                            }}
-                                disabled={false}
-                                trackColor={{ false: "#767577", true: "#05f0d8" }}
-                                thumbColor={twoFA ? "#fff" : "#f4f3f4"}>
-                            </Switch>
-                        </View>
-                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={{marginTop: 15}} onPress={() => setIsVisibleResetPassword(true)}>
-                            <Text style={{color: "#7b05f1ff", fontWeight: "bold"}}>Reset password</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={{marginTop: 15}} onPress={handleLogout}>
-                            <Text style={{color: "red", fontWeight: "bold"}}>Log out</Text>
-                        </TouchableOpacity>
-                    </>
-                )
-                }
             </ScrollView>
-            <AvatarSheet isVisible={isVisibleAvatar} onClose={() => setIsVisableAvatar((prev)=>!prev)} onReset={() => resetAvatar()}></AvatarSheet>
-            <BottomSheet isVisible={isVisable2FA} onClose={() => setIsVisable2FA(false)} onSuccess={() => {setTwoFA(true); updateStatus(true)}} onFail={() => {setTwoFA(false); updateStatus(false)}}></BottomSheet>
+            
+            <AvatarSheet isVisible={isVisibleAvatar} onClose={() => setIsVisableAvatar((prev)=>!prev)} onReset={() => resetAvatar()} />
+            <BottomSheet isVisible={isVisable2FA} onClose={() => setIsVisable2FA(false)} onSuccess={() => {setTwoFA(true); updateStatus(true)}} onFail={() => {setTwoFA(false); updateStatus(false)}} />
             <LogoutConfirmationSheet 
                 isVisible={isVisibleLogoutConfirmation} 
                 onClose={() => {setIsVisibleLogoutConfirmation(false)}} 
@@ -461,80 +458,110 @@ export default function PageSettings() {
         </PopupProvider>
     );
 }
-const getStyles = (isDark: boolean) => {
+
+const getStyles = (colors: any) => {
     return StyleSheet.create({
         container: {
-            backgroundColor: isDark ? darkColors.background : lightColors.background,
+            backgroundColor: colors.background,
             flex: 1,
         },
         header: {
             flexDirection: "row",
             alignItems: "center",
-            padding: 15,
-            backgroundColor: isDark ? darkColors.cardBackground : lightColors.cardBackground,
-            elevation: 5,
+            justifyContent: "space-between",
+            paddingHorizontal: 24,
+            paddingVertical: 16,
+            backgroundColor: colors.background,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
         },
         icon: {
-            color: isDark ? darkColors.textPrimary : lightColors.textPrimary,
-            fontSize: 30,
+            color: colors.textPrimary,
+            fontSize: 24,
         },
         title: {
-            fontSize: 24,
-            fontWeight: "bold",
-            color: isDark ? darkColors.textPrimary : lightColors.textPrimary,
-            marginLeft: 20,
+            fontSize: 18,
+            fontWeight: "600",
+            color: colors.textPrimary,
+            letterSpacing: 0.5,
+        },
+        saveText: {
+            fontSize: 16,
+            fontWeight: "600",
+        },
+        saveTextActive: {
+            color: colors.saveActive,
+        },
+        saveTextInactive: {
+            color: colors.saveInactive,
         },
         contentContainer: {
-            padding: 20,
+            padding: 24,
+            paddingBottom: 60,
         },
         centeredView: {
             alignItems: "center",
-        },
-        imageContainer: {
-            borderWidth: 1,
-            borderColor: "#8000ffff",
-            borderRadius: 55,
-            padding: 2
+            marginTop: 10,
+            marginBottom: 40,
         },
         image: {
-            width: 100,
-            height: 100,
-            borderRadius: 50,
+            width: 96,
+            height: 96,
+            borderRadius: 48,
         },
         linkText: {
-            color: "#7b05f1ff",
-            fontWeight: "bold",
-            marginTop: 10,
+            color: colors.link,
+            fontWeight: "500",
+            fontSize: 14,
+            marginTop: 16,
+            letterSpacing: 0.3,
         },
-        inputContainer: {
-            marginTop: 20,
+        section: {
+            marginBottom: 32,
         },
         label: {
-            fontSize: 16,
-            color: isDark ? darkColors.textSecondary : lightColors.textSecondary,
-            marginBottom: 5,
+            fontSize: 11,
+            fontWeight: "700",
+            color: colors.textSecondary,
+            letterSpacing: 1.2,
+            marginBottom: 8,
         },
         input: {
-            backgroundColor: isDark ? darkColors.inputBackground : lightColors.inputBackground,
-            color: isDark ? darkColors.textPrimary : lightColors.textPrimary,
-            paddingBottom: 5,
-            paddingTop: 5,
-            fontSize: 16,
-            borderBottomColor: "#5700afff",
-            borderBottomWidth: 1
+            color: colors.textPrimary,
+            fontSize: 18,
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+            minHeight: 40,
         },
-        twoFAButton: {
-            marginTop: 30,
-            padding: 15,
-            width: 150,
-            borderRadius: 10,
-            backgroundColor: "#1f6feb",
+        spacer: {
+            height: 24,
+        },
+        row: {
+            flexDirection: "row",
+            justifyContent: "space-between",
             alignItems: "center",
+            paddingVertical: 20,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
         },
-        buttonText: {
-            color: "white",
+        lastRow: {
+            borderBottomWidth: 0,
+        },
+        rowText: {
             fontSize: 16,
-            fontWeight: "bold",
+            color: colors.textPrimary,
+            fontWeight: "400",
+        },
+        linkTextMain: {
+            fontSize: 16,
+            color: colors.textPrimary,
+            fontWeight: "400",
+        },
+        dangerText: {
+            fontSize: 16,
+            color: colors.danger,
+            fontWeight: "400",
         },
     });
 };
