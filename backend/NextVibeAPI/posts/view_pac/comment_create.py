@@ -45,7 +45,6 @@ class CommentCreateView(APIView):
                         text_preview=f"{user.username} commented on your post!",
                         comment=comment_obj
                     )
-                    clear_notification_cache(comment_obj.post.owner.user_id)
 
             user_data = {
                 "username": user.username,
@@ -99,8 +98,6 @@ class CommentReplyView(APIView):
                         notification_type="comment_reply",
                         text_preview=f"{user.username} replied to your reply!"
                     )
-                    clear_notification_cache(parent_reply.owner.user_id)
-
 
             else:
                 if user != comment.owner:
@@ -113,8 +110,6 @@ class CommentReplyView(APIView):
                         notification_type="comment_reply",
                         text_preview=f"{user.username} replied to your comment!"
                     )
-                    clear_notification_cache(comment.owner.user_id)
-
 
             user_data = {
                 "username": user.username,

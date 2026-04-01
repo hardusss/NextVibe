@@ -98,7 +98,6 @@ class LikeCommentView(APIView):
                             comment=comment.comment,  
                             comment_reply=comment  
                         )
-                        clear_notification_cache(comment.owner.user_id)
                 else:
                     post = comment.post
                     text = f"{user.username} liked your comment!"
@@ -120,7 +119,6 @@ class LikeCommentView(APIView):
                             text_preview=text,
                             comment=comment
                         )
-                        clear_notification_cache(comment.owner.user_id)
             
             return Response(
                 {"data": "Success"}, 

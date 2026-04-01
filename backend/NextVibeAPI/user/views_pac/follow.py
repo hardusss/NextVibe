@@ -60,7 +60,6 @@ class FollowView(APIView):
                     notification_type='follow',
                     text_preview=f"{user.username} followed you!"
                 )
-                clear_notification_cache(user2)
 
             user.save()
             user2.save()
