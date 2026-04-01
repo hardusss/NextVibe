@@ -191,7 +191,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
             if (!paymentSignature) throw new Error("Payment was not confirmed");
         }
 
-        await mintNFT(address, postId, price, paymentSignature);
+        await mintNFT(address, postId, price, paymentSignature as string);
     };
 
     const hasBadges = (item: Post) =>
