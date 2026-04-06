@@ -84,7 +84,7 @@ const InviteCodeSheet = forwardRef<BottomSheetModal, InviteCodeSheetProps>(
         );
 
         const handleChange = (val: string) => {
-            const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, CODE_LENGTH);
+            const clean = val.slice(0, CODE_LENGTH);
             setCode(clean);
             if (error) setError('');
         };
@@ -102,11 +102,21 @@ const InviteCodeSheet = forwardRef<BottomSheetModal, InviteCodeSheetProps>(
             try {
                 await onSubmit(code);
             } catch (e: any) {
-                const msg =
-                    e?.response?.data?.detail ||
-                    e?.response?.data?.error ||
-                    e?.message ||
-                    'Invalid invite code. Try again.';
+                const serverError = e?.response?.data?.error;
+                const detail = e?.response?.data?.detail;
+
+                let msg = 'Invalid invite code. Try again.';
+
+                if (serverError === 'invalid_invite_code') {
+                    msg = 'Invalid or expired invite code';
+                } else if (serverError === 'invite_code_required') {
+                    msg = 'Invite code is required';
+                } else if (detail) {
+                    msg = detail;
+                } else if (!e?.response) {
+                    msg = 'Network error. Check your connection.';
+                }
+
                 setError(msg);
                 Vibration.vibrate([0, 30, 50, 30]);
                 playShake();
