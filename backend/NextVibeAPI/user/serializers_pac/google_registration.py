@@ -6,7 +6,7 @@ from django.core.files.base import ContentFile
 import uuid
 from django.db import transaction
 from django.db.models import F
-from users.models import InviteUser 
+from user.models import InviteUser 
 
 User = get_user_model()
 
