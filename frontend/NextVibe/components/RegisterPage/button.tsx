@@ -10,7 +10,7 @@ export default function ButtonRegister(props: RegisterButtonProps) {
 
 
     const handleRegister = () => {
-        Register(props.username, props.email, props.password, router, props.strength, props.privacy);
+        Register(props.username, props.email, props.password, router, props.inviteCode, props.strength, props.privacy);
     }
 
     return (
