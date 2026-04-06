@@ -24,22 +24,30 @@ class GoogleRegisterView(APIView):
         User = get_user_model()
         user = User.objects.filter(email=google_data["email"]).first()
 
-        if not user:
-            username = request.data.get("username")
-            avatar_url = request.data.get("avatar_url")
-
-            if not username:
-                 username = google_data.get("name", "").replace(" ", "_").lower()
-
-            serializer = GoogleRegister(data={
-                "email": google_data["email"],
-                "username": username,
-                "avatar_url": avatar_url
-            })
-            
-            serializer.is_valid(raise_exception=True)
-            user = serializer.save()
-        else:
+        if user:
             serializer = GoogleRegister(user)
+            return Response(serializer.data, status=200)
 
-        return Response(serializer.data, status=200)
+        # If account not created, gets invite code
+        invite_code = request.data.get("from_invite_code")
+        if not invite_code:
+            return Response(
+                {"error": "invite_code_required", "detail": "Account not found. Please provide an invite code to register."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        username = request.data.get("username")
+        avatar_url = request.data.get("avatar_url")
+        if not username:
+            username = google_data.get("name", "").replace(" ", "_").lower()
+
+        serializer = GoogleRegister(data={
+            "email": google_data["email"],
+            "username": username,
+            "avatar_url": avatar_url,
+            "from_invite_code": invite_code,
+        })
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        return Response(GoogleRegister(user).data, status=status.HTTP_201_CREATED)
