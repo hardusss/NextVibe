@@ -2,6 +2,9 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
+from django.utils.crypto import get_random_string
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class UserQuerySet(models.QuerySet):
     def visible(self):
@@ -25,9 +28,6 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
 
         return self.create_user(email, username, password, **extra_fields)
-
-    def get_by_natural_key(self, email):
-        return self.get(email=email)
 
 
 class User(AbstractBaseUser):
@@ -58,6 +58,7 @@ class User(AbstractBaseUser):
     last_activity = models.DateTimeField(default=timezone.now)
     wallet_address = models.CharField(max_length=50, blank=True, null=True)
     expo_push_token = models.CharField(max_length=100, blank=True, null=True)
+    from_invite_code = models.ForeignKey("InviteUser", on_delete=models.SET_NULL, null=True, blank=True, related_name="invited_users")
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
@@ -73,6 +74,26 @@ class User(AbstractBaseUser):
     def has_module_perms(self, app_label):
         return self.is_superuser
 
+class InviteUser(models.Model):
+    owner = models.OneToOneField(User, on_delete=models.CASCADE)
+    invite_code = models.CharField(max_length=6, unique=True)
+    invited_count = models.IntegerField(default=0, null=True, blank=True)
+    
+    def save(self, *args, **kwargs):
+        # If code not created
+        if not self.invite_code:
+            # Generate str with 6 length
+            new_code = get_random_string(length=6)
+
+            while InviteUser.objects.filter(invite_code=new_code).exists():
+                new_code = get_random_string(length=6)
+                
+            self.invite_code = new_code
+            
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Invite profile of {self.owner} ({self.invite_code}) have {self.invited_count} refs"
     
 class HistorySearch(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_history")
@@ -139,8 +160,10 @@ class UserOnlineSession(models.Model):
         return end_time - self.connected_at
 
 
-
-
-
-
-
+@receiver(post_save, sender=User)
+def create_user_invite_profile(sender, instance, created, **kwargs):
+    """
+    Thats signal works every time, when save User model
+    """
+    if created:
+        InviteUser.objects.get_or_create(owner=instance)
