@@ -2,39 +2,31 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
+from django.core.exceptions import ObjectDoesNotExist
 from user.models import InviteUser
 
 
-User = get_user_model()
-
 class GetInviteInfoView(APIView):
     """
-    This api class
-    have a get method which
-    returned info about inivte(referral code, and count invited users)
-    Args:
-        APIView (_type_): A parent class that allows 
-        you to make an API method from a class
+    Returns invite info (referral code and invited users count)
     """
-    
-    permission_classes=[IsAuthenticated] # Checking whether the user who sent the request is authorized
+
+    permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "invite"
 
     def get(self, request, *args, **kwargs) -> Response:
-        user = User.objects.filter(request.user)
-        if not user:
+        user = request.user
+
+        try:
+            invite_data = InviteUser.objects.get(owner=user)
+        except ObjectDoesNotExist:
             return Response({
-                "error": "User not found"
-            }, status=status.HTTP_401_UNAUTHORIZED)
-        
-        invite_data = InviteUser.objects.filter(owner=user).values("invite_code", "invited_count")
-        if not invite_data:
-            return Response({
-                "error": "Something went wrong, please try again"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
+                "error": "Invite data not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
         return Response({
-            "data": invite_data
+            "invite_code": invite_data.invite_code,
+            "invited_count": invite_data.invited_count
         }, status=status.HTTP_200_OK)
