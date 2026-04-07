@@ -168,6 +168,7 @@ REST_FRAMEWORK = {
         "search": "100/min",
         "notifications": "150/min",  
         "auth": "10/min",
+        'invite': '30/min',
 
         # Posts/Feed
         "feed": "110/min",   
