@@ -1,6 +1,6 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
 import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
 import { storage } from "@/src/utils/storage";
@@ -97,6 +97,7 @@ export default function Layout() {
     const router = useRouter();
     const segments = useSegments();
     const currentPage = segments[segments.length - 1];
+    const cachedAvatarRef = useRef<{ userId: number; url: string } | null>(null);
     const [imageProfile, setImageProfile] = useState<string | null>(null);
     const [userID, setUserID] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -177,6 +178,10 @@ export default function Layout() {
     }, [segments]);
 
     useEffect(() => {
+        setImageProfile(null);
+    }, [userID]);
+
+    useEffect(() => {
         const interceptor = axios.interceptors.response.use(
             (res) => res,
             (error) => {
@@ -193,12 +198,19 @@ export default function Layout() {
     useEffect(() => {
         const loadUser = async () => {
             try {
-                const id = await storage.getItem('id'); 
+                const id = await storage.getItem('id');
                 if (id) setUserID(Number(id));
-            } catch (e) {}
+                else setUserID(null);
+            } catch (e) { }
         };
         loadUser();
-    }, []);
+    }, [segments]);
+
+    useEffect(() => {
+        setImageProfile(null);
+        cachedAvatarRef.current = null;
+        FastImage.clearMemoryCache();
+    }, [userID]);
 
     useEffect(() => {
         if (!userID) return;
@@ -206,17 +218,20 @@ export default function Layout() {
         const fetchAvatar = async () => {
             try {
                 const userData = await getUserDetail();
-                
+
                 if (!__DEV__ && isMounted) {
-                    const identifier = userData.username || String(userID);
-                    identifyDevice(identifier);
+                    identifyDevice(userData.username || String(userID));
                 }
 
-                const newAvatarUrl = userData.avatar || "https://media.nextvibe.io/images/default.png";
-                if (isMounted && newAvatarUrl !== cachedAvatarUrl) {
-                    FastImage.preload([{ uri: newAvatarUrl, priority: FastImage.priority.high }]);
-                    cachedAvatarUrl = newAvatarUrl;
-                    setImageProfile(newAvatarUrl);
+                const newUrl = (userData.avatar || 'https://media.nextvibe.io/images/default.png')
+                    + `?t=${Date.now()}`;
+                const bustUrl = `${newUrl}?t=${Date.now()}`;
+
+                const cached = cachedAvatarRef.current;
+                if (isMounted && (cached?.userId !== userID || cached?.url !== newUrl)) {
+                    FastImage.preload([{ uri: newUrl, priority: FastImage.priority.high }]);
+                    cachedAvatarRef.current = { userId: userID!, url: newUrl };
+                    setImageProfile(bustUrl);
                 }
             } catch (e) { }
         };
@@ -249,7 +264,7 @@ export default function Layout() {
                                     />
                                 )}
                                 <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
-                                    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { backgroundColor: 'transparent'} }}>
+                                    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { backgroundColor: 'transparent' } }}>
                                         <Stack.Screen name="home" />
                                         <Stack.Screen name="search" />
                                         <Stack.Screen name="camera" />
@@ -290,7 +305,9 @@ export default function Layout() {
                                                             {tab.name === "profile" && imageProfile && userID ? (
                                                                 <View style={styles.iconContainerProfile}>
                                                                     <FastImage
-                                                                        source={{ uri: imageProfile }}
+                                                                        source={{
+                                                                            uri: imageProfile,
+                                                                        }}
                                                                         style={[styles.avatar, { borderWidth: isActive ? 1 : 0 }]}
                                                                     />
                                                                 </View>
