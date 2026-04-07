@@ -20,3 +20,4 @@ from .check_status import CheckStatusView
 from .public_user import PublicUserDetailView
 from .save_push_token import SavePushTokenView
 from .save_wallet_address import SaveWalletAddressView
+from .invite_info import GetInviteInfoView
