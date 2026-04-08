@@ -31,6 +31,7 @@ import CollectionsGallery from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import RecommendedUsers from "./recommendateProfiles";
 import VerifyBadge from "../VerifyBadge";
+import { AvatarWithFrame } from "./AvatarWithFrame";  
 
 // Styles
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
@@ -47,6 +48,7 @@ type UserData = {
     follows_count: number;
     official: boolean;
     is_subscribed: boolean;
+    invited_count: number; // Added field
 };
 
 const TABS = ["Posts", "cNFTs"] as const;
@@ -191,7 +193,8 @@ const UserProfileView = () => {
         readers_count: 0,
         follows_count: 0,
         official: false,
-        is_subscribed: false
+        is_subscribed: false,
+        invited_count: 0
     });
     const [loading, setLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -252,7 +255,8 @@ const UserProfileView = () => {
                 readers_count: data?.readers_count || 0,
                 follows_count: data?.follows_count || 0,
                 official: data?.official || false,
-                is_subscribed: data?.is_subscribed || false
+                is_subscribed: data?.is_subscribed || false,
+                invited_count: data?.invited_count || 0
             });
         } catch (error) {
             console.error("Failed to fetch user data:", error);
@@ -311,7 +315,8 @@ const UserProfileView = () => {
                     readers_count: 0,
                     follows_count: 0,
                     official: false,
-                    is_subscribed: false
+                    is_subscribed: false,
+                    invited_count: 0
                 });
             }
         }, [id])
@@ -342,12 +347,11 @@ const UserProfileView = () => {
                 >
                     <Modal transparent visible={isVisibleContainer} animationType="fade">
                         <TouchableOpacity
-                            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={{
                                 flex: 1,
                                 justifyContent: "center",
                                 alignItems: "center",
-                                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                                backgroundColor: "rgba(0, 0, 0, 0.75)",
                             }}
                             activeOpacity={1}
                             onPress={() => setVisible(false)}
@@ -356,11 +360,19 @@ const UserProfileView = () => {
                                 backgroundColor: "transparent",
                                 justifyContent: "center",
                                 alignItems: "center",
+                                width: '100%',
                             }, { transform: [{ scale: scaleAnim }] }]}>
+                                
                                 <FastImage
-                                    style={{ width: 200, height: 200, borderRadius: 100 }}
+                                    style={{ 
+                                        width: 320, 
+                                        height: 320, 
+                                        borderRadius: 160 
+                                    }}
                                     source={{ uri: userData.avatar_url as string }}
+                                    resizeMode={FastImage.resizeMode.cover}
                                 />
+
                             </Animated.View>
                         </TouchableOpacity>
                     </Modal>
@@ -383,9 +395,17 @@ const UserProfileView = () => {
                     </View>
 
                     {/* Profile Stats */}
-                    <View style={{ flexDirection: "row", marginTop: 20, marginLeft: -5 }}>
+                    <View style={{ flexDirection: "row", marginTop: 20, marginLeft: 0 }}>
                         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setVisible(true)}>
-                            <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string }} />
+                            
+                            <View style={{ marginLeft: 16, marginTop: 5 }}>
+                                <AvatarWithFrame 
+                                    avatarUrl={userData.avatar_url} 
+                                    size={74} 
+                                    invitedCount={userData.invited_count} 
+                                />
+                            </View>
+
                         </TouchableOpacity>
                         <View style={{ flexDirection: "row", marginTop: 35, marginLeft: 20, flex: 1, justifyContent: "space-around" }}>
                             <View>
@@ -439,7 +459,6 @@ const UserProfileView = () => {
                     }}>
                         {TABS.map((tab) => {
                             const isActive = activeTab === tab;
-                            // Додаємо кількість у дужках для cNFTs
                             const tabLabel = tab === "cNFTs" ? `cNFTs (${userData.cnft_count})` : tab;
                             
                             return (
