@@ -134,6 +134,7 @@ const ProfileView = () => {
     const [id, setId] = useState<number>();
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
+    const hasFetched = useRef(false);
 
     const modalRef = useRef<ShareModalRef>(null);
     const inviteSheetRef = useRef<InviteSheetRef>(null);
@@ -229,9 +230,7 @@ const ProfileView = () => {
                 official: data?.official === true
             });
 
-            // Set invited count directly from the user detail response
             setInvitedCount(data?.invited_count || 0);
-
         } catch (error) {
             console.error("Fetch error reboot page", error);
         } finally {
@@ -248,31 +247,24 @@ const ProfileView = () => {
         setRefreshing(true);
         setRefreshKey(prev => prev + 1);
         setMountedTabs(new Set([activeTab]));
+        hasFetched.current = false;
+        await fetchUserData();
         setRefreshing(false);
-        fetchUserData();
     }, [activeTab]);
 
     const handleOpenModal = () => {
         modalRef.current?.present();
     };
 
+    useEffect(() => {
+        getId();
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
-            getId();
-            fetchUserData();
-
-            return () => {
-                setUserData({
-                    username: "",
-                    about: "",
-                    avatar_url: null,
-                    post_count: 0,
-                    cnft_count: 0,
-                    readers_count: 0,
-                    follows_count: 0,
-                    official: false
-                });
-                setInvitedCount(0);
+            if (!hasFetched.current) {
+                fetchUserData();
+                hasFetched.current = true;
             }
         }, [])
     );
@@ -306,7 +298,7 @@ const ProfileView = () => {
                                 flex: 1,
                                 justifyContent: "center",
                                 alignItems: "center",
-                                backgroundColor: "rgba(0, 0, 0, 0.75)", // Darkened background to focus on the image
+                                backgroundColor: "rgba(0, 0, 0, 0.75)",
                             }}
                             activeOpacity={1}
                             onPress={() => setVisible(false)}
@@ -317,7 +309,6 @@ const ProfileView = () => {
                                 alignItems: "center",
                                 width: '100%',
                             }, { transform: [{ scale: scaleAnim }] }]}>
-
                                 <FastImage
                                     style={{
                                         width: 320,
@@ -327,7 +318,6 @@ const ProfileView = () => {
                                     source={{ uri: userData.avatar_url as string }}
                                     resizeMode={FastImage.resizeMode.cover}
                                 />
-
                             </Animated.View>
                         </TouchableOpacity>
                     </Modal>
@@ -347,7 +337,6 @@ const ProfileView = () => {
 
                     <View style={{ flexDirection: "row", marginTop: 20, marginLeft: 0 }}>
                         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setVisible(true)}>
-
                             <View style={{ marginLeft: 16, marginTop: 5 }}>
                                 <AvatarWithFrame
                                     avatarUrl={userData.avatar_url}
@@ -355,7 +344,6 @@ const ProfileView = () => {
                                     invitedCount={invitedCount}
                                 />
                             </View>
-
                         </TouchableOpacity>
                         <View style={{ flexDirection: "row", marginTop: 35, marginLeft: 20, flex: 1, justifyContent: "space-around" }}>
                             <View>
