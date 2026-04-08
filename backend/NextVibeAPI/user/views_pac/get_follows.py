@@ -71,7 +71,7 @@ class GetFollows(APIView):
                         )
                     )
             .order_by("ordering")
-            .values("avatar_url", "username", "user_id")
+            .values("avatar_url", "username", "user_id", "official")
         )
         for follow in follows_qs:
             follow['avatar'] = follow.pop('avatar_url')
