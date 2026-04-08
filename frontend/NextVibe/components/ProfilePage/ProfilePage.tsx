@@ -15,11 +15,10 @@ import {
 } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import FastImage from 'react-native-fast-image';
-import LottieView from 'lottie-react-native';
+import { AvatarWithFrame } from "./AvatarWithFrame";
 import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
-
+import FastImage from "react-native-fast-image";
 import getUserDetail from "@/src/api/user.detail";
 import { storage } from '@/src/utils/storage';
 import formatNumber from "@/src/utils/formatNumber";
@@ -30,8 +29,12 @@ import PostGallery from "./PostsMenu";
 import CollectionsGallery from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import VerifyBadge from "../VerifyBadge";
+
 import { ShareViaNFC } from "./ShareViaNFC/ButtonShare";
 import ShareModal, { ShareModalRef } from './ShareViaNFC/ShareBottomModal';
+
+import { InviteSecondaryButton } from "./Invite/InviteButton";
+import { InviteBottomSheet, InviteSheetRef } from "./Invite/InviteBottomSheet";
 
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
@@ -41,7 +44,7 @@ type UserData = {
     about: string;
     avatar_url: string | null;
     post_count: number;
-    cnft_count: number; 
+    cnft_count: number;
     readers_count: number;
     follows_count: number;
     official: boolean;
@@ -123,15 +126,17 @@ const ProfileView = () => {
     const [activeTab, setActiveTab] = useState<Tab>("Posts");
     const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(new Set(["Posts"]));
 
+    const [invitedCount, setInvitedCount] = useState<number>(0);
+
     const [visible, setVisible] = useState<boolean>(false);
     const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
     const [showVerifiedToast, setShowVerifiedToast] = useState(false);
     const [id, setId] = useState<number>();
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
-    const lottieRef = useRef<LottieView>(null);
-    const scaleAnimToast = useRef(new Animated.Value(0)).current;
+
     const modalRef = useRef<ShareModalRef>(null);
+    const inviteSheetRef = useRef<InviteSheetRef>(null);
 
     const postsOpacity = useRef(new Animated.Value(1)).current;
     const postsTranslate = useRef(new Animated.Value(0)).current;
@@ -212,6 +217,7 @@ const ProfileView = () => {
     const fetchUserData = async () => {
         try {
             const data = await getUserDetail(0);
+
             setUserData({
                 username: data?.username || "",
                 about: data?.about || "",
@@ -222,8 +228,12 @@ const ProfileView = () => {
                 follows_count: data?.follows_count || 0,
                 official: data?.official === true
             });
+
+            // Set invited count directly from the user detail response
+            setInvitedCount(data?.invited_count || 0);
+
         } catch (error) {
-            console.error("Fetch error reboot page)", error);
+            console.error("Fetch error reboot page", error);
         } finally {
             setLoading(false);
         }
@@ -262,6 +272,7 @@ const ProfileView = () => {
                     follows_count: 0,
                     official: false
                 });
+                setInvitedCount(0);
             }
         }, [])
     );
@@ -291,12 +302,11 @@ const ProfileView = () => {
                 >
                     <Modal transparent visible={isVisibleContainer} animationType="fade">
                         <TouchableOpacity
-                            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={{
                                 flex: 1,
                                 justifyContent: "center",
                                 alignItems: "center",
-                                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                                backgroundColor: "rgba(0, 0, 0, 0.75)", // Darkened background to focus on the image
                             }}
                             activeOpacity={1}
                             onPress={() => setVisible(false)}
@@ -305,11 +315,19 @@ const ProfileView = () => {
                                 backgroundColor: "transparent",
                                 justifyContent: "center",
                                 alignItems: "center",
+                                width: '100%',
                             }, { transform: [{ scale: scaleAnim }] }]}>
+
                                 <FastImage
-                                    style={{ width: 200, height: 200, borderRadius: 100 }}
+                                    style={{
+                                        width: 320,
+                                        height: 320,
+                                        borderRadius: 160
+                                    }}
                                     source={{ uri: userData.avatar_url as string }}
+                                    resizeMode={FastImage.resizeMode.cover}
                                 />
+
                             </Animated.View>
                         </TouchableOpacity>
                     </Modal>
@@ -327,9 +345,17 @@ const ProfileView = () => {
                         </View>
                     </View>
 
-                    <View style={{ flexDirection: "row", marginTop: 20, marginLeft: -5 }}>
+                    <View style={{ flexDirection: "row", marginTop: 20, marginLeft: 0 }}>
                         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setVisible(true)}>
-                            <FastImage style={profileStyle.avatar} source={{ uri: userData.avatar_url as string }} />
+
+                            <View style={{ marginLeft: 16, marginTop: 5 }}>
+                                <AvatarWithFrame
+                                    avatarUrl={userData.avatar_url}
+                                    size={74}
+                                    invitedCount={invitedCount}
+                                />
+                            </View>
+
                         </TouchableOpacity>
                         <View style={{ flexDirection: "row", marginTop: 35, marginLeft: 20, flex: 1, justifyContent: "space-around" }}>
                             <View>
@@ -362,8 +388,23 @@ const ProfileView = () => {
                         )}
                     </View>
 
-                    <ShareViaNFC handlePress={handleOpenModal} />
+                    <View style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        width: "100%",
+                        marginVertical: 16
+                    }}>
+                        <View style={{ flex: 1.6 }}>
+                            <ShareViaNFC handlePress={handleOpenModal} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <InviteSecondaryButton handlePress={() => inviteSheetRef.current?.present()} />
+                        </View>
+                    </View>
+
                     <ShareModal ref={modalRef} avatarUrl={userData.avatar_url} profileUrl={`https://nextvibe.io/u/${id}`} />
+                    <InviteBottomSheet ref={inviteSheetRef} />
 
                     <View style={{
                         marginBottom: 20,
@@ -375,7 +416,7 @@ const ProfileView = () => {
                         {TABS.map((tab) => {
                             const isActive = activeTab === tab;
                             const tabLabel = tab === "Posts" ? `Posts (${userData.post_count})` : `cNFTs (${userData.cnft_count})`;
-                            
+
                             return (
                                 <TouchableOpacity
                                     key={tab}
@@ -423,7 +464,6 @@ const ProfileView = () => {
                     </View>
 
                     <View style={{ overflow: "hidden" }}>
-
                         <Animated.View style={{
                             display: activeTab === "Posts" ? "flex" : "none",
                             opacity: postsOpacity,
@@ -461,7 +501,6 @@ const ProfileView = () => {
                                 )
                             )}
                         </Animated.View>
-
                     </View>
                 </ScrollView>
             )}
