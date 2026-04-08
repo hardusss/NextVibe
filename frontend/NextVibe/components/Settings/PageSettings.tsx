@@ -11,8 +11,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from '@/src/utils/storage';
 import { useFocusEffect } from "expo-router";
 import { useCallback } from 'react';
-import BottomSheet from "../2FA/Connect";
-import updateStatus from "@/src/api/2fa";
 import AvatarSheet from "./AvatarSheet";
 import LogoutConfirmationSheet from "./LogoutConfirmationSheet";
 import ResetPasswordSheet from "./ResetPasswordSheet";
@@ -64,13 +62,11 @@ const lightColors = {
 
 function PageSettingsContent() {
     const [isVisibleAvatar, setIsVisableAvatar] = useState<boolean>(false);
-    const [isVisable2FA, setIsVisable2FA] = useState<boolean>(false);
     const [isVisibleLogoutConfirmation, setIsVisibleLogoutConfirmation] = useState<boolean>(false);
     const [isVisibleResetPassword, setIsVisibleResetPassword] = useState<boolean>(false);
     const [user, setUser] = useState<User | null>(null);
     const [username, setUsername] = useState("");
     const [about, setAbout] = useState("");
-    const [twoFA, setTwoFA] = useState<boolean>(false)
     const [refreshing, setRefreshing] = useState(false);
     const [isSave, setIsSave] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
@@ -129,7 +125,6 @@ function PageSettingsContent() {
         setLoading(true);
         try {
             const response = await getUserDetail();
-            setTwoFA(response.is2FA)
             setUser(response);
             setUsername(response.username);
             setAbout(response.about);
@@ -206,15 +201,6 @@ function PageSettingsContent() {
         setIsVisableAvatar((prev) => !prev)
     }
 
-    const handleToggle2FA = () => {
-        if (twoFA === false) {
-            setIsVisable2FA(true);
-        } else {
-            updateStatus(false);
-            setTwoFA(false);
-        }
-    };
-
     useFocusEffect(
         useCallback(() => {
             setLoading(true);
@@ -278,7 +264,7 @@ function PageSettingsContent() {
     const SkeletonText = ({ width, height = 14 }: {width: number | string, height?: number}) => (
         <View 
             style={{
-                width: width,
+                width: width  as number,
                 height: height,
                 backgroundColor: colors.border,
                 borderRadius: 4,
@@ -402,21 +388,6 @@ function PageSettingsContent() {
 
                         <TouchableOpacity 
                             style={styles.row} 
-                            onPress={handleToggle2FA}
-                            activeOpacity={0.6}
-                        >
-                            <Text style={styles.rowText}>Two-Factor Authentication</Text>
-                            <View pointerEvents="none">
-                                <Switch 
-                                    value={twoFA} 
-                                    trackColor={{ false: colors.border, true: colors.accent }}
-                                    thumbColor={colors.background}
-                                />
-                            </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity 
-                            style={styles.row} 
                             onPress={() => setIsVisibleResetPassword(true)}
                         >
                             <Text style={styles.linkTextMain}>Reset Password</Text>
@@ -433,7 +404,6 @@ function PageSettingsContent() {
             </ScrollView>
             
             <AvatarSheet isVisible={isVisibleAvatar} onClose={() => setIsVisableAvatar((prev)=>!prev)} onReset={() => resetAvatar()} />
-            <BottomSheet isVisible={isVisable2FA} onClose={() => setIsVisable2FA(false)} onSuccess={() => {setTwoFA(true); updateStatus(true)}} onFail={() => {setTwoFA(false); updateStatus(false)}} />
             <LogoutConfirmationSheet 
                 isVisible={isVisibleLogoutConfirmation} 
                 onClose={() => {setIsVisibleLogoutConfirmation(false)}} 
