@@ -1,34 +1,35 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, StatusBar, Animated, FlatList, Dimensions, RefreshControl, ActivityIndicator } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams, useFocusEffect, RelativePathString } from "expo-router";
-import getFollows from '@/src/api/get.follows'; 
-import getReaders from '@/src/api/get.readers'; 
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import getFollows from '@/src/api/get.follows';
+import getReaders from '@/src/api/get.readers';
 import FastImage from 'react-native-fast-image';
-import CreateChat from '@/src/api/create.chat';
+import VerifyBadge from '../VerifyBadge'; 
 
 type UserData = {
     user_id: number;
     username: string;
     avatar: string | null;
+    official: boolean;
 }
 
 export default function FollowsScreen() {
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
-    
+
     // Get params from route
     const { activeTab, userId, username } = useLocalSearchParams();
-    
+
     // Tab State and Page state
     const [activeTabState, setActiveTabState] = useState(activeTab || 'Readers')
-    
+
     // Animated Indicator
     const indicatorPosition = useRef(new Animated.Value(0)).current;
     const screenWidth = Dimensions.get('window').width;
     const tabContainerWidth = screenWidth - 40;
     const indicatorWidth = tabContainerWidth / 2;
-    
+
     // State for Readers
     const [readersData, setReadersData] = useState<UserData[]>([]);
     const [readersIndex, setReadersIndex] = useState(0);
@@ -36,7 +37,7 @@ export default function FollowsScreen() {
     const [isReadersEnd, setIsReadersEnd] = useState(false);
     const [readersRefreshing, setReadersRefreshing] = useState(false);
     const [readersInitialized, setReadersInitialized] = useState(false);
-    
+
     // State for Following
     const [followsData, setFollowsData] = useState<UserData[]>([]);
     const [followsIndex, setFollowsIndex] = useState(0);
@@ -44,7 +45,7 @@ export default function FollowsScreen() {
     const [isFollowsEnd, setIsFollowsEnd] = useState(false);
     const [followsRefreshing, setFollowsRefreshing] = useState(false);
     const [followsInitialized, setFollowsInitialized] = useState(false);
-    
+
     // Reset all data when userId changes
     const resetAllData = useCallback(() => {
         setReadersData([]);
@@ -56,14 +57,14 @@ export default function FollowsScreen() {
         setReadersInitialized(false);
         setFollowsInitialized(false);
     }, [userId]);
-    
+
     // Set active tab when component mounts or activeTab changes    
     useFocusEffect(
         useCallback(() => {
             setActiveTabState(activeTab || 'Readers');
         }, [activeTab])
     );
-    
+
     // Reset data when userId changes
     useFocusEffect(
         useCallback(() => {
@@ -71,55 +72,27 @@ export default function FollowsScreen() {
         }, [resetAllData])
     );
 
-    // Handle Message Button Press
-    const handleCreateChat = async (user_id: number) => {
-        try {
-            const response = await CreateChat(user_id); // Assuming CreateChat returns the new chat ID
-            if (response) {
-                router.push({
-                    pathname: "/(tabs)/chat-room",
-                    params: { id: response.chat_id, userId: user_id }
-                });
-            }
-        
-        // Handle errors
-        } catch (error: any) {
-
-            const errResponse = error.response?.data;
-            const status = error.response?.status;
-
-            if (errResponse?.error === "Chat already exists" && status === 400) {
-                router.push({
-                    pathname: "/(tabs)/chat-room",
-                    params: { id: errResponse.existing_chat_id, userId: user_id }
-                });
-            }
-        }
-    };
-
-
-    
     // Fetch Readers
     const fetchReaders = useCallback(async (isRefresh = false) => {
         if (readersLoading || (!isRefresh && isReadersEnd)) return;
-        
+
         setReadersLoading(true);
         const currentIndex = isRefresh ? 0 : readersIndex;
-        
+
         try {
             const data = await getReaders(Number(userId), currentIndex);
-            
+
             if (data.end) {
                 setIsReadersEnd(true);
             }
-            
+
             if (isRefresh) {
                 setReadersData(data.data || []);
                 setReadersIndex((data.data || []).length);
                 setReadersInitialized(true);
             } else {
                 // Filter duplicates
-                const newItems = (data.data || []).filter((item: UserData) => 
+                const newItems = (data.data || []).filter((item: UserData) =>
                     !readersData.some(existing => existing.user_id === item.user_id)
                 );
                 setReadersData(prev => [...prev, ...newItems]);
@@ -135,28 +108,28 @@ export default function FollowsScreen() {
             if (isRefresh) setReadersRefreshing(false);
         }
     }, [readersLoading, isReadersEnd, readersIndex, readersData, userId]);
-    
+
     // Fetch Follows
     const fetchFollows = useCallback(async (isRefresh = false) => {
         if (followsLoading || (!isRefresh && isFollowsEnd)) return;
-        
+
         setFollowsLoading(true);
         const currentIndex = isRefresh ? 0 : followsIndex;
-        
+
         try {
             const data = await getFollows(Number(userId), currentIndex);
-            
+
             if (data.end) {
                 setIsFollowsEnd(true);
             }
-            
+
             if (isRefresh) {
                 setFollowsData(data.data || []);
                 setFollowsIndex((data.data || []).length);
                 setFollowsInitialized(true);
             } else {
                 // Filter duplicates
-                const newItems = (data.data || []).filter((item: UserData) => 
+                const newItems = (data.data || []).filter((item: UserData) =>
                     !followsData.some(existing => existing.user_id === item.user_id)
                 );
                 setFollowsData(prev => [...prev, ...newItems]);
@@ -172,7 +145,7 @@ export default function FollowsScreen() {
             if (isRefresh) setFollowsRefreshing(false);
         }
     }, [followsLoading, isFollowsEnd, followsIndex, followsData, userId]);
-    
+
     // Pull to Refresh Handler
     const onRefresh = useCallback(() => {
         if (activeTabState === 'Readers') {
@@ -189,20 +162,20 @@ export default function FollowsScreen() {
             fetchFollows(true);
         }
     }, [activeTabState, fetchReaders, fetchFollows]);
-    
+
     // Load initial data when screen becomes focused
     useEffect(() => {
         if (userId && activeTabState === 'Readers' && !readersInitialized && !readersLoading) {
             fetchReaders(true);
         }
     }, [userId, activeTabState, readersInitialized, readersLoading, fetchReaders]);
-    
+
     useEffect(() => {
         if (userId && activeTabState === 'Follows' && !followsInitialized && !followsLoading) {
             fetchFollows(true);
         }
     }, [userId, activeTabState, followsInitialized, followsLoading, fetchFollows]);
-    
+
     // Load data when switching tabs
     useEffect(() => {
         if (activeTabState === 'Readers' && !readersInitialized && !readersLoading) {
@@ -211,7 +184,7 @@ export default function FollowsScreen() {
             fetchFollows(true);
         }
     }, [activeTabState, readersInitialized, followsInitialized, readersLoading, followsLoading, fetchReaders, fetchFollows]);
-    
+
     // Animated indicator
     useEffect(() => {
         Animated.spring(indicatorPosition, {
@@ -219,35 +192,38 @@ export default function FollowsScreen() {
             useNativeDriver: false,
         }).start();
     }, [activeTabState, indicatorWidth]);
-    
+
     // Load more functions
     const loadMoreReaders = useCallback(() => {
         if (!readersLoading && !isReadersEnd && readersInitialized) {
             fetchReaders();
         }
     }, [readersLoading, isReadersEnd, readersInitialized, fetchReaders]);
-    
+
     const loadMoreFollows = useCallback(() => {
         if (!followsLoading && !isFollowsEnd && followsInitialized) {
             fetchFollows();
         }
     }, [followsLoading, isFollowsEnd, followsInitialized, fetchFollows]);
-    
+
     const renderUserItem = ({ item }: { item: UserData }) => (
-        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.userItem}  onPress={() => router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: `/follows-screen?userId=${userId}` } })}>
-            <FastImage 
-                style={styles.avatarPlaceholder} 
+        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.userItem} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: `/follows-screen?userId=${userId}` } })}>
+            <FastImage
+                style={styles.avatarPlaceholder}
                 source={{
                     uri: item.avatar ? `${item.avatar}` : undefined
-                }} 
+                }}
             />
-            <Text style={styles.userName}>{item.username}</Text>
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.messageButton} onPress={() => handleCreateChat(item.user_id)}>
-                <Text style={styles.messageButtonText}>Message</Text>
-            </TouchableOpacity>
+            {/** Wraps username and badge in a row */}
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={styles.userName}>{item.username}</Text>
+                {item.official && (
+                    <VerifyBadge isLooped={true} isVisible={true} haveModal={false} isStatic={true} size={16} />
+                )}
+            </View>
         </TouchableOpacity>
     );
-    
+
     const styles = StyleSheet.create({
         container: {
             flex: 1,
@@ -282,7 +258,7 @@ export default function FollowsScreen() {
         tabButtonText: {
             fontSize: 16,
             fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            includeFontPadding: false,
         },
         indicator: {
             height: 3,
@@ -311,10 +287,9 @@ includeFontPadding:false,
             marginRight: 12,
         },
         userName: {
-            flex: 1,
             fontSize: 16,
             fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            includeFontPadding: false,
             color: isDark ? '#FFFFFF' : '#000',
         },
         messageButton: {
@@ -326,60 +301,60 @@ includeFontPadding:false,
         messageButtonText: {
             color: isDark ? '#0A0410' : '#F5F5F7',
             fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            includeFontPadding: false,
         },
         footerLoader: {
             paddingVertical: 20,
         },
         emptyContainer: {
-        flex: 1,
-        paddingTop: 80,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 40,
-    },
-    iconCircle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-    },
-    emptyTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    emptySubtitle: {
-        fontSize: 15,
-        color: '#A09CB8',
-        textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: 24,
-    },
-    emptyButton: {
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 24,
-        borderWidth: 1,
-    },
-    emptyButtonText: {
-        fontSize: 14,
-        fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
-    }
+            flex: 1,
+            paddingTop: 80,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 40,
+        },
+        iconCircle: {
+            width: 120,
+            height: 120,
+            borderRadius: 60,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 24,
+        },
+        emptyTitle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            textAlign: 'center',
+            marginBottom: 8,
+        },
+        emptySubtitle: {
+            fontSize: 15,
+            color: '#A09CB8',
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 24,
+        },
+        emptyButton: {
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 24,
+            borderWidth: 1,
+        },
+        emptyButtonText: {
+            fontSize: 14,
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
+        }
     });
 
-    const EmptyState = ({ 
-        type, 
-        isDark, 
-        onRefresh 
-    }: { 
-        type: string, 
-        isDark: boolean, 
-        onRefresh: () => void 
+    const EmptyState = ({
+        type,
+        isDark,
+        onRefresh
+    }: {
+        type: string,
+        isDark: boolean,
+        onRefresh: () => void
     }) => {
         const config = type === 'Readers' ? {
             icon: 'ghost-outline',
@@ -396,10 +371,10 @@ includeFontPadding:false,
         return (
             <View style={[styles.emptyContainer, { backgroundColor: isDark ? '#0A0410' : '#F5F5F7' }]}>
                 <View style={[styles.iconCircle, { backgroundColor: isDark ? '#180F2E' : '#EAEAEA' }]}>
-                    <MaterialCommunityIcons 
-                        name={config.icon as any} 
-                        size={64} 
-                        color={isDark ? '#A78BFA' : '#5856D6'} 
+                    <MaterialCommunityIcons
+                        name={config.icon as any}
+                        size={64}
+                        color={isDark ? '#A78BFA' : '#5856D6'}
                         style={{ opacity: 0.8 }}
                     />
                 </View>
@@ -409,9 +384,9 @@ includeFontPadding:false,
                 <Text style={styles.emptySubtitle}>
                     {config.subtitle}
                 </Text>
-                
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                    style={[styles.emptyButton, { borderColor: isDark ? '#A78BFA' : '#5856D6' }]} 
+
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    style={[styles.emptyButton, { borderColor: isDark ? '#A78BFA' : '#5856D6' }]}
                     onPress={onRefresh}
                 >
                     <Text style={[styles.emptyButtonText, { color: isDark ? '#A78BFA' : '#5856D6' }]}>
@@ -422,10 +397,10 @@ includeFontPadding:false,
         );
     };
 
-    
+
     return (
         <View style={styles.container}>
-            <StatusBar 
+            <StatusBar
                 backgroundColor={isDark ? '#0A0410' : '#F5F5F7'}
                 barStyle={isDark ? "light-content" : "dark-content"}
             />
@@ -435,19 +410,19 @@ includeFontPadding:false,
                 </TouchableOpacity>
                 <Text style={styles.nickname}>{username || 'Profile'}</Text>
             </View>
-            
+
             <View style={styles.tabWrapper}>
                 <View style={styles.tabContainer}>
                     <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.tabButton} onPress={() => setActiveTabState('Readers')}>
-                        <Text style={[styles.tabButtonText, { 
-                            color: activeTabState === 'Readers' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' 
+                        <Text style={[styles.tabButtonText, {
+                            color: activeTabState === 'Readers' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8'
                         }]}>
                             Readers
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.tabButton} onPress={() => setActiveTabState('Follows')}>
-                        <Text style={[styles.tabButtonText, { 
-                            color: activeTabState === 'Follows' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8' 
+                        <Text style={[styles.tabButtonText, {
+                            color: activeTabState === 'Follows' ? (isDark ? '#FFFFFF' : '#000000') : '#A09CB8'
                         }]}>
                             Following
                         </Text>
@@ -457,7 +432,7 @@ includeFontPadding:false,
                     <Animated.View style={[styles.indicator, { left: indicatorPosition, width: indicatorWidth }]} />
                 </View>
             </View>
-            
+
             <View style={styles.contentContainer}>
                 {activeTabState === 'Readers' ? (
                     <FlatList
@@ -467,13 +442,13 @@ includeFontPadding:false,
                         onEndReached={loadMoreReaders}
                         onEndReachedThreshold={0.5}
                         ListFooterComponent={
-                            readersLoading && !readersRefreshing ? 
-                            <ActivityIndicator style={styles.footerLoader} size="large" color={isDark ? '#A78BFA' : '#5856D6'} /> 
-                            : null
+                            readersLoading && !readersRefreshing ?
+                                <ActivityIndicator style={styles.footerLoader} size="large" color={isDark ? '#A78BFA' : '#5856D6'} />
+                                : null
                         }
                         refreshControl={
-                            <RefreshControl 
-                                refreshing={readersRefreshing} 
+                            <RefreshControl
+                                refreshing={readersRefreshing}
                                 onRefresh={onRefresh}
                                 tintColor={isDark ? '#FFFFFF' : '#000'}
                             />
@@ -492,13 +467,13 @@ includeFontPadding:false,
                         onEndReached={loadMoreFollows}
                         onEndReachedThreshold={0.5}
                         ListFooterComponent={
-                            followsLoading && !followsRefreshing ? 
-                            <ActivityIndicator style={styles.footerLoader} size="large" color={isDark ? '#A78BFA' : '#5856D6'} /> 
-                            : null
+                            followsLoading && !followsRefreshing ?
+                                <ActivityIndicator style={styles.footerLoader} size="large" color={isDark ? '#A78BFA' : '#5856D6'} />
+                                : null
                         }
                         refreshControl={
-                            <RefreshControl 
-                                refreshing={followsRefreshing} 
+                            <RefreshControl
+                                refreshing={followsRefreshing}
                                 onRefresh={onRefresh}
                                 tintColor={isDark ? '#FFFFFF' : '#000'}
                             />
