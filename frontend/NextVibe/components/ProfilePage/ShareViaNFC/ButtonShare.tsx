@@ -29,17 +29,21 @@ export function ShareViaNFC({
 const getStyles = () => StyleSheet.create({
     button: {
         width: "100%",
-        height: 40,
+        height: 44, 
         borderRadius: 14,
-        marginVertical: 10,
         justifyContent: "center",
         alignItems: "center",
-        flexDirection: "row",
-        gap: 5
+    },
+    contentWrap: {
+        flexDirection: "row", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        gap: 6
     },
     buttonText: {
         includeFontPadding: false,
         color: "white",
-        fontSize: 16
+        fontSize: 15,
+        fontWeight: "600",
     }
-})
+});
