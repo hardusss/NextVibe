@@ -85,7 +85,7 @@ if (__DEV__ && typeof global !== 'undefined') {
     };
 }
 
-let cachedAvatarUrl: string | null = null;
+const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 
 export default function Layout() {
     const [fontsLoaded, fontError] = useFonts({
@@ -178,10 +178,6 @@ export default function Layout() {
     }, [segments]);
 
     useEffect(() => {
-        setImageProfile(null);
-    }, [userID]);
-
-    useEffect(() => {
         const interceptor = axios.interceptors.response.use(
             (res) => res,
             (error) => {
@@ -207,34 +203,46 @@ export default function Layout() {
     }, [segments]);
 
     useEffect(() => {
-        setImageProfile(null);
-        cachedAvatarRef.current = null;
-        FastImage.clearMemoryCache();
+        if (!userID) {
+            setImageProfile(null);
+            cachedAvatarRef.current = null;
+            FastImage.clearMemoryCache();
+        }
     }, [userID]);
 
     useEffect(() => {
         if (!userID) return;
+        
         let isMounted = true;
+        
         const fetchAvatar = async () => {
             try {
+                if (!imageProfile) {
+                    setImageProfile(DEFAULT_AVATAR);
+                }
+
                 const userData = await getUserDetail();
 
                 if (!__DEV__ && isMounted) {
                     identifyDevice(userData.username || String(userID));
                 }
 
-                const newUrl = (userData.avatar || 'https://media.nextvibe.io/images/default.png')
-                    + `?t=${Date.now()}`;
-                const bustUrl = `${newUrl}?t=${Date.now()}`;
+                const newUrl = userData.avatar || DEFAULT_AVATAR;
 
                 const cached = cachedAvatarRef.current;
+                
                 if (isMounted && (cached?.userId !== userID || cached?.url !== newUrl)) {
                     FastImage.preload([{ uri: newUrl, priority: FastImage.priority.high }]);
-                    cachedAvatarRef.current = { userId: userID!, url: newUrl };
-                    setImageProfile(bustUrl);
+                    cachedAvatarRef.current = { userId: userID, url: newUrl };
+                    setImageProfile(newUrl);
                 }
-            } catch (e) { }
+            } catch (e) {
+                if (isMounted && !imageProfile) {
+                    setImageProfile(DEFAULT_AVATAR);
+                }
+            }
         };
+        
         fetchAvatar();
         return () => { isMounted = false; };
     }, [userID]);
@@ -302,13 +310,20 @@ export default function Layout() {
                                                             onPress={() => goToTab(tab.name)}
                                                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                                         >
-                                                            {tab.name === "profile" && imageProfile && userID ? (
+                                                            {tab.name === "profile" && userID ? (
                                                                 <View style={styles.iconContainerProfile}>
                                                                     <FastImage
                                                                         source={{
-                                                                            uri: imageProfile,
+                                                                            uri: imageProfile || DEFAULT_AVATAR,
+                                                                            priority: FastImage.priority.high,
                                                                         }}
-                                                                        style={[styles.avatar, { borderWidth: isActive ? 1 : 0 }]}
+                                                                        style={[
+                                                                            styles.avatar, 
+                                                                            { 
+                                                                                borderWidth: isActive ? 1 : 0,
+                                                                                backgroundColor: theme === "dark" ? "#2a2a2a" : "#e0e0e0" 
+                                                                            }
+                                                                        ]}
                                                                     />
                                                                 </View>
                                                             ) : (
