@@ -37,7 +37,7 @@ class UserDetailView(APIView):
 
             # Get count invited
             try:
-                invite_data = InviteUser.objects.get(user=user)
+                invite_data = InviteUser.objects.get(owner=user)
                 invited_count = invite_data.invited_count
             except InviteUser.DoesNotExist:
                 invited_count = 0
