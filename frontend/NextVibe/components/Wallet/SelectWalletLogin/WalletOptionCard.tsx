@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   useColorScheme,
+  Platform,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -42,10 +43,8 @@ export interface WalletCardConfig {
 export interface WalletOptionCardProps {
   config: WalletCardConfig;
   isExpanded: boolean;
-  /** When true — this is the non-selected sibling, dims and scales down. */
   isDimmed: boolean;
   onCardPress: (id: WalletType) => void;
-  /** Wire your MWA / LazorKit logic here — currently a no-op stub. */
   onCtaPress: (id: WalletType) => void;
 }
 
@@ -59,13 +58,13 @@ const SOFT_SPRING = { damping: 26, stiffness: 160, mass: 1 };
 const CARD_COLLAPSED_HEIGHT = 130;
 const CARD_EXPANDED_HEIGHT = 288;
 
-/**
- * Accordion-style card for a single wallet connection option.
- *
- * Hook order is always fixed — no conditional hook calls anywhere.
- * BlurView is isolated in its own sub-component so its internal hooks
- * never affect the parent's hook order.
- */
+function hexToRgb(hex: string): string {
+  'worklet';
+  const c = hex.replace('#', '').slice(0, 6);
+  if (c.length < 6) return '0, 0, 0';
+  return `${parseInt(c.slice(0, 2), 16)}, ${parseInt(c.slice(2, 4), 16)}, ${parseInt(c.slice(4, 6), 16)}`;
+}
+
 export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
   config,
   isExpanded,
@@ -146,14 +145,8 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
   return (
     <Animated.View style={[styles.cardOuter, cardContainerStyle]}>
       <Animated.View style={[styles.cardBorder, borderStyle]}>
+        <CardBackground isDark={isDark} accentStart={config.accent.gradientStart} />
 
-        {/* Blur + tint stack — isolated so its hooks don't bleed into parent */}
-        <CardBackground
-          isDark={isDark}
-          accentStart={config.accent.gradientStart}
-        />
-
-        {/* Top shimmer line that lights up on expand */}
         <Animated.View style={[styles.shimmerLine, shimmerStyle]} pointerEvents="none">
           <LinearGradient
             colors={['transparent', config.accent.primary, 'transparent']}
@@ -225,16 +218,22 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
   );
 };
 
-const CardBackground: React.FC<{
-  isDark: boolean;
-  accentStart: string;
-}> = ({ isDark, accentStart }) => (
+const CardBackground: React.FC<{ isDark: boolean; accentStart: string }> = ({ isDark, accentStart }) => (
   <>
-    <BlurView
-      style={StyleSheet.absoluteFill}
-      blurType={isDark ? 'dark' : 'light'}
-      blurAmount={18}
-    />
+    {Platform.OS === 'ios' ? (
+      <BlurView
+        style={StyleSheet.absoluteFill}
+        blurType={isDark ? 'dark' : 'light'}
+        blurAmount={18}
+      />
+    ) : (
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: isDark ? 'rgba(10,4,16,0.92)' : 'rgba(255,255,255,0.92)' },
+        ]}
+      />
+    )}
     <View
       style={[
         StyleSheet.absoluteFill,
@@ -288,12 +287,6 @@ const AnimatedChevron: React.FC<{
     </Animated.View>
   );
 };
-
-function hexToRgb(hex: string): string {
-  'worklet';
-  const c = hex.replace('#', '');
-  return `${parseInt(c.slice(0, 2), 16)}, ${parseInt(c.slice(2, 4), 16)}, ${parseInt(c.slice(4, 6), 16)}`;
-}
 
 const styles = StyleSheet.create({
   cardOuter: {
