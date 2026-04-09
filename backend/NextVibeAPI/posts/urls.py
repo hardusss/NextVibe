@@ -37,3 +37,5 @@ urlpatterns = [
     path("cnft-mint/", MintNftView.as_view(), name="mint_cnft"),
     path("collections-menu/<int:id>/", UserCollectionView.as_view(), name="collections_menu"),
 ]
+
+

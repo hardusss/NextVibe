@@ -159,6 +159,18 @@ class UserOnlineSession(models.Model):
         end_time = self.disconnected_at or timezone.now()
         return end_time - self.connected_at
 
+class OgAvatarMint(models.Model):
+    user = models.OneToOneField(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name="og_avatar"
+    )
+    edition = models.PositiveIntegerField(unique=True) 
+    asset_id = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    minted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "OG Avatar Mint"
 
 @receiver(post_save, sender=User)
 def create_user_invite_profile(sender, instance, created, **kwargs):

@@ -132,3 +132,4 @@ class UserCollection(models.Model):
 
     def __str__(self):
         return f"NFT #{self.edition} of post {self.post.id} owned by {self.user.username}"
+    
