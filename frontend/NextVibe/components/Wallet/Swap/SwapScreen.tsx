@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     ScrollView,
     Animated,
+    Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,7 +56,7 @@ const sanitize = (text: string): string => {
  *
  * Features:
  * - Bidirectional amount calculation based on live token prices
- * - Animated floating blob background with BlurView overlay
+ * - Animated floating blob background with BlurView overlay (iOS only)
  * - Token pair flip with mirrored amount state
  * - Percentage-based quick fill buttons
  * - Token picker modal for from/to selection
@@ -73,7 +74,7 @@ export default function SwapScreen() {
 
     const insets = useSafeAreaInsets();
 
-    const tokens: TokenAsset[] = data.tokens;
+    const tokens: TokenAsset[] = data?.tokens ?? [];
 
     const [fromToken, setFromToken] = useState<TokenAsset | null>(null);
     const [toToken, setToToken] = useState<TokenAsset | null>(null);
@@ -93,7 +94,6 @@ export default function SwapScreen() {
      */
     const [isToastVisible, setIsToastVisible] = useState(false);
 
-    // Animated values for the four floating background blobs
     const floatAnim1 = useRef(new Animated.Value(0)).current;
     const floatAnim2 = useRef(new Animated.Value(0)).current;
     const floatAnim3 = useRef(new Animated.Value(0)).current;
@@ -102,33 +102,36 @@ export default function SwapScreen() {
     /**
      * Starts looping float animations for all background blobs.
      * Each blob has a unique duration to create an organic, non-synchronized motion.
+     * Only runs on iOS since the BlurView overlay is iOS-only.
      */
     useEffect(() => {
+        if (Platform.OS !== 'ios') return;
+
         Animated.loop(
             Animated.sequence([
                 Animated.timing(floatAnim1, { toValue: 1, duration: 12000, useNativeDriver: true }),
-                Animated.timing(floatAnim1, { toValue: 0, duration: 12000, useNativeDriver: true })
+                Animated.timing(floatAnim1, { toValue: 0, duration: 12000, useNativeDriver: true }),
             ])
         ).start();
 
         Animated.loop(
             Animated.sequence([
                 Animated.timing(floatAnim2, { toValue: 1, duration: 10000, useNativeDriver: true }),
-                Animated.timing(floatAnim2, { toValue: 0, duration: 10000, useNativeDriver: true })
+                Animated.timing(floatAnim2, { toValue: 0, duration: 10000, useNativeDriver: true }),
             ])
         ).start();
 
         Animated.loop(
             Animated.sequence([
                 Animated.timing(floatAnim3, { toValue: 1, duration: 14000, useNativeDriver: true }),
-                Animated.timing(floatAnim3, { toValue: 0, duration: 14000, useNativeDriver: true })
+                Animated.timing(floatAnim3, { toValue: 0, duration: 14000, useNativeDriver: true }),
             ])
         ).start();
 
         Animated.loop(
             Animated.sequence([
                 Animated.timing(floatAnim4, { toValue: 1, duration: 9000, useNativeDriver: true }),
-                Animated.timing(floatAnim4, { toValue: 0, duration: 9000, useNativeDriver: true })
+                Animated.timing(floatAnim4, { toValue: 0, duration: 9000, useNativeDriver: true }),
             ])
         ).start();
     }, []);
@@ -194,7 +197,6 @@ export default function SwapScreen() {
 
     /**
      * Handles text input changes for the "from" amount field.
-     * Marks this field as the last edited so the calculator updates "to".
      *
      * @param text - Raw input from the TextInput
      */
@@ -205,7 +207,6 @@ export default function SwapScreen() {
 
     /**
      * Handles text input changes for the "to" amount field.
-     * Marks this field as the last edited so the calculator updates "from".
      *
      * @param text - Raw input from the TextInput
      */
@@ -239,7 +240,6 @@ export default function SwapScreen() {
 
     /**
      * Handles token selection from the picker modal.
-     * Assigns the chosen token to the correct side (from/to) and closes the picker.
      *
      * @param token - The TokenAsset selected by the user
      */
@@ -254,16 +254,14 @@ export default function SwapScreen() {
 
     /**
      * Handles the swipe-to-confirm gesture.
-     * Swaps are currently restricted to Mainnet only —
-     * shows a Web3Toast notification to inform the user.
+     * Swaps are currently restricted to Mainnet only.
      */
     const handleSwipe = async () => {
         setIsToastVisible(true);
     };
 
     /**
-     * Filters the token list to exclude the token already selected on the opposite side,
-     * preventing the user from selecting the same token for both from and to.
+     * Filters the token list to exclude the token already selected on the opposite side.
      *
      * @param side - Which picker is open ('from' or 'to')
      * @returns Filtered array of selectable tokens
@@ -275,35 +273,33 @@ export default function SwapScreen() {
 
     /**
      * Computes the display exchange rate between the selected token pair.
-     * Returns null if either token is missing or has an invalid price.
      */
     const displayRate = fromToken?.price && toToken?.price && toToken.price > 0
         ? (fromToken.price / toToken.price).toFixed(6)
         : null;
 
-    // Transform arrays for each floating background blob
     const blob1Transform = [
         { translateX: floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, 80] }) },
         { translateY: floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, 40] }) },
-        { scale: floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] }) }
+        { scale: floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] }) },
     ];
 
     const blob2Transform = [
         { translateX: floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, -60] }) },
         { translateY: floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, -50] }) },
-        { scale: floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) }
+        { scale: floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) },
     ];
 
     const blob3Transform = [
         { translateX: floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [0, 70] }) },
         { translateY: floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [0, -60] }) },
-        { scale: floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] }) }
+        { scale: floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] }) },
     ];
 
     const blob4Transform = [
         { translateX: floatAnim4.interpolate({ inputRange: [0, 1], outputRange: [0, -80] }) },
         { translateY: floatAnim4.interpolate({ inputRange: [0, 1], outputRange: [0, 70] }) },
-        { scale: floatAnim4.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }) }
+        { scale: floatAnim4.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }) },
     ];
 
     return (
@@ -320,46 +316,52 @@ export default function SwapScreen() {
                 style={StyleSheet.absoluteFill}
             />
 
-            {/* Animated blob layer with BlurView overlay for the hazy background effect */}
-            <View style={StyleSheet.absoluteFill}>
-                <Animated.View
-                    style={[
-                        styles.blobTopLeft,
-                        { transform: blob1Transform },
-                        { backgroundColor: isDark ? '#6B21A8' : '#C084FC' }
-                    ]}
-                />
-                <Animated.View
-                    style={[
-                        styles.blobBottomRight,
-                        { transform: blob2Transform },
-                        { backgroundColor: isDark ? '#3B0764' : '#A855F7' }
-                    ]}
-                />
-                <Animated.View
-                    style={[
-                        styles.blobMiddleLeft,
-                        { transform: blob3Transform },
-                        { backgroundColor: isDark ? '#4A148C' : '#CE93D8' }
-                    ]}
-                />
-                <Animated.View
-                    style={[
-                        styles.blobMiddleRight,
-                        { transform: blob4Transform },
-                        { backgroundColor: isDark ? '#311B92' : '#B39DDB' }
-                    ]}
-                />
+            {/*
+             * Animated blob layer — iOS only.
+             * On Android, BlurView from @react-native-community/blur does not support
+             * rendering over arbitrary native views and will crash. The LinearGradient
+             * background above provides sufficient visual depth on Android.
+             */}
+            {Platform.OS === 'ios' && (
+                <View style={StyleSheet.absoluteFill}>
+                    <Animated.View
+                        style={[
+                            styles.blobTopLeft,
+                            { transform: blob1Transform },
+                            { backgroundColor: isDark ? '#6B21A8' : '#C084FC' },
+                        ]}
+                    />
+                    <Animated.View
+                        style={[
+                            styles.blobBottomRight,
+                            { transform: blob2Transform },
+                            { backgroundColor: isDark ? '#3B0764' : '#A855F7' },
+                        ]}
+                    />
+                    <Animated.View
+                        style={[
+                            styles.blobMiddleLeft,
+                            { transform: blob3Transform },
+                            { backgroundColor: isDark ? '#4A148C' : '#CE93D8' },
+                        ]}
+                    />
+                    <Animated.View
+                        style={[
+                            styles.blobMiddleRight,
+                            { transform: blob4Transform },
+                            { backgroundColor: isDark ? '#311B92' : '#B39DDB' },
+                        ]}
+                    />
 
-                <BlurView
-                    style={StyleSheet.absoluteFill}
-                    blurType={isDark ? 'dark' : 'light'}
-                    blurAmount={90}
-                    reducedTransparencyFallbackColor={isDark ? '#120820' : '#F7F3FF'}
-                />
-            </View>
+                    <BlurView
+                        style={StyleSheet.absoluteFill}
+                        blurType={isDark ? 'dark' : 'light'}
+                        blurAmount={90}
+                        reducedTransparencyFallbackColor={isDark ? '#120820' : '#F7F3FF'}
+                    />
+                </View>
+            )}
 
-            {/* Mainnet-only toast — shown when user tries to confirm a swap on devnet */}
             <Web3Toast
                 message="Swaps are available on Mainnet only"
                 visible={isToastVisible}
@@ -379,15 +381,11 @@ export default function SwapScreen() {
                             styles.iconBtn,
                             {
                                 borderColor: colors.cardBorder,
-                                backgroundColor: colors.chip
-                            }
+                                backgroundColor: colors.chip,
+                            },
                         ]}
                     >
-                        <ArrowLeft
-                            size={18}
-                            color={colors.text}
-                            strokeWidth={1.8}
-                        />
+                        <ArrowLeft size={18} color={colors.text} strokeWidth={1.8} />
                     </TouchableOpacity>
 
                     <Text style={[styles.title, { color: colors.text }]}>
@@ -399,8 +397,8 @@ export default function SwapScreen() {
                             styles.slippagePill,
                             {
                                 borderColor: colors.chipBorder,
-                                backgroundColor: colors.chip
-                            }
+                                backgroundColor: colors.chip,
+                            },
                         ]}
                     >
                         <Text style={[styles.slippageText, { color: colors.muted }]}>

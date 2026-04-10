@@ -1,7 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import {
     Animated, View, StyleSheet, PanResponder,
-    Dimensions, Vibration, Text,
+    Dimensions, Vibration,
 } from 'react-native';
 import { ChevronsRight, Check, X, Loader } from 'lucide-react-native';
 import type { SwapColors } from '@/src/types/swap';
@@ -48,7 +48,6 @@ export default function SwapSwipeButton({
     const prevDx = useRef(0);
     const lastVibe = useRef(0);
 
-    // Breathing idle label
     useEffect(() => {
         const loop = Animated.loop(
             Animated.sequence([
@@ -60,7 +59,6 @@ export default function SwapSwipeButton({
         return () => loop.stop();
     }, []);
 
-    // Spinner loop while loading
     useEffect(() => {
         if (isLoading) {
             Animated.loop(
@@ -72,7 +70,6 @@ export default function SwapSwipeButton({
         }
     }, [isLoading]);
 
-    // Success bounce
     useEffect(() => {
         if (isSuccess) {
             Animated.spring(successScale, { toValue: 1, useNativeDriver: true }).start();
@@ -81,25 +78,29 @@ export default function SwapSwipeButton({
         }
     }, [isSuccess]);
 
-    // Auto-reset after failure
-    useEffect(() => {
-        if (isFailed) {
-            const t = setTimeout(resetSwipe, 2000);
-            return () => clearTimeout(t);
-        }
-    }, [isFailed]);
-
     useEffect(() => {
         const id = pan.x.addListener(c => { panXVal.current = c.value; });
         return () => pan.x.removeListener(id);
     }, []);
 
-    const resetSwipe = () => {
+    /**
+     * Springs the thumb back to the start and restores label opacity.
+     * Wrapped in useCallback so it has a stable reference for use inside
+     * both the PanResponder closure and the isFailed useEffect.
+     */
+    const resetSwipe = useCallback(() => {
         Animated.parallel([
             Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }),
             Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
         ]).start();
-    };
+    }, [pan, textOpacity]);
+
+    useEffect(() => {
+        if (isFailed) {
+            const t = setTimeout(resetSwipe, 2000);
+            return () => clearTimeout(t);
+        }
+    }, [isFailed, resetSwipe]);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -137,7 +138,10 @@ export default function SwapSwipeButton({
                     onSwipeSuccess();
                 } else {
                     Vibration.vibrate(15);
-                    resetSwipe();
+                    Animated.parallel([
+                        Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }),
+                        Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+                    ]).start();
                 }
             },
         })
@@ -160,33 +164,29 @@ export default function SwapSwipeButton({
         <View style={[styles.track, { borderColor: colors.cardBorder }]}>
             <LinearTrack colors={colors} />
 
-            {/* Idle label */}
             {isIdle && (
                 <Animated.Text style={[styles.label, { color: colors.muted, opacity: textOpacity }]}>
                     swipe to swap
                 </Animated.Text>
             )}
 
-            {/* Failure label */}
             {isFailed && !isLoading && (
                 <Animated.Text style={[styles.label, { color: 'rgba(239,68,68,0.8)', opacity: breathAnim }]}>
                     failed — try again
                 </Animated.Text>
             )}
 
-            {/* Swipeable thumb */}
             {isIdle && (
                 <Animated.View
                     style={[styles.thumb, { transform: [{ translateX: pan.x }] }]}
                     {...panResponder.panHandlers}
                 >
-                    <View style={[styles.thumbInner, { backgroundColor: "#A855F7" }]}>
+                    <View style={[styles.thumbInner, { backgroundColor: '#A855F7' }]}>
                         <ChevronsRight size={22} color="#fff" strokeWidth={2} />
                     </View>
                 </Animated.View>
             )}
 
-            {/* Status overlay */}
             {(isSuccess || isLoading || isFailed) && (
                 <View
                     style={[
@@ -215,8 +215,7 @@ export default function SwapSwipeButton({
 }
 
 /**
- * Renders a subtle purple gradient fill inside the track
- * to give it visual depth without dominating the UI.
+ * Renders a subtle purple fill inside the track to give it visual depth.
  */
 function LinearTrack({ colors }: { colors: SwapColors }) {
     return (
@@ -245,14 +244,12 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         position: 'relative',
     },
-
     label: {
         fontFamily: 'Dank Mono',
         fontSize: 13,
         includeFontPadding: false,
         letterSpacing: 1,
     },
-
     thumb: {
         position: 'absolute',
         left: 4,
@@ -262,7 +259,6 @@ const styles = StyleSheet.create({
         borderRadius: THUMB_SIZE / 2,
         overflow: 'hidden',
     },
-
     thumbInner: {
         flex: 1,
         justifyContent: 'center',
@@ -274,7 +270,6 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 8,
     },
-
     statusOverlay: {
         justifyContent: 'center',
         alignItems: 'center',
