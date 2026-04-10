@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import {
     useColorScheme, StyleSheet, Text,
-    TouchableOpacity, View, Pressable, Vibration, ActivityIndicator
+    TouchableOpacity, View, Pressable, Vibration, ActivityIndicator, Modal
 } from 'react-native';
 import {
     BottomSheetModal,
@@ -87,7 +87,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
 
     /**
      * Exposing imperative methods to the parent via forwardRef.
-     * Network requests are intentionally deferred until present() is invoked 
+     * Network requests are intentionally deferred until present() is invoked
      * to avoid redundant API calls if the component mounts but remains unopened.
      */
     useImperativeHandle(ref, () => ({
@@ -122,111 +122,136 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
     const progressPercentage = Math.min((invitedCount / 10) * 100, 100);
 
     return (
-        <BottomSheetModal
-            ref={bottomSheetModalRef}
-            snapPoints={['75%']}
-            index={0}
-            backdropComponent={CustomBackdrop}
-            backgroundStyle={{ backgroundColor: bg }}
-            handleIndicatorStyle={{ backgroundColor: handleColor, width: 36 }}
-        >
-            <BottomSheetView style={[styles.container, { backgroundColor: bg }]}>
-                <Web3Toast visible={toastVisible} message={toastMessage} isSuccess={toastIsSuccess} onHide={() => setToastVisible(false)} />
-
-                <View style={styles.header}>
-                    <Users size={18} color={iconColor} strokeWidth={1.5} />
-                    <Text style={[styles.headerTitle, { color: mainColor }]}>Invite Friends</Text>
+        <>
+            <Modal visible={toastVisible} transparent animationType="none">
+                <View style={styles.toastOverlay} pointerEvents="box-none">
+                    <Web3Toast
+                        visible={toastVisible}
+                        message={toastMessage}
+                        isSuccess={toastIsSuccess}
+                        onHide={() => setToastVisible(false)}
+                    />
                 </View>
+            </Modal>
 
-                {isLoading ? (
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <ActivityIndicator color={accentText} />
+            <BottomSheetModal
+                ref={bottomSheetModalRef}
+                snapPoints={['75%']}
+                index={0}
+                backdropComponent={CustomBackdrop}
+                backgroundStyle={{ backgroundColor: bg }}
+                handleIndicatorStyle={{ backgroundColor: handleColor, width: 36 }}
+            >
+                <BottomSheetView style={[styles.container, { backgroundColor: bg }]}>
+                    <View style={styles.header}>
+                        <Users size={18} color={iconColor} strokeWidth={1.5} />
+                        <Text style={[styles.headerTitle, { color: mainColor }]}>Invite Friends</Text>
                     </View>
-                ) : (
-                    <>
-                        <Text style={[styles.sectionLabel, { color: mutedColor }]}>YOUR INVITE CODE</Text>
-                        <TouchableOpacity
-                            style={styles.inputWrap}
-                            onPress={copyToClipboard}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={[styles.inviteCodeText, { color: mainColor }]}>
-                                {inviteCode}
-                            </Text>
-                            <View style={[styles.copyBadge, { backgroundColor: inputBg, borderColor: borderColor }]}>
-                                <Copy size={14} color={mutedColor} />
+
+                    {isLoading ? (
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <ActivityIndicator color={accentText} />
+                        </View>
+                    ) : (
+                        <>
+                            <Text style={[styles.sectionLabel, { color: mutedColor }]}>YOUR INVITE CODE</Text>
+                            <TouchableOpacity
+                                style={styles.inputWrap}
+                                onPress={copyToClipboard}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.inviteCodeText, { color: mainColor }]}>
+                                    {inviteCode}
+                                </Text>
+                                <View style={[styles.copyBadge, { backgroundColor: inputBg, borderColor: borderColor }]}>
+                                    <Copy size={14} color={mutedColor} />
+                                </View>
+                            </TouchableOpacity>
+
+                            <View style={styles.progressHeader}>
+                                <Text style={[styles.sectionLabel, { color: mutedColor, marginBottom: 0 }]}>INVITE PROGRESS</Text>
+                                <Text style={[styles.countText, { color: accentText }]}>{invitedCount} / 10</Text>
                             </View>
-                        </TouchableOpacity>
 
-                        <View style={styles.progressHeader}>
-                            <Text style={[styles.sectionLabel, { color: mutedColor, marginBottom: 0 }]}>INVITE PROGRESS</Text>
-                            <Text style={[styles.countText, { color: accentText }]}>{invitedCount} / 10</Text>
-                        </View>
+                            <View style={[styles.progressBarContainer, { backgroundColor: inputBg }]}>
+                                <Animated.View
+                                    style={[
+                                        styles.progressBarFill,
+                                        { backgroundColor: accentText, width: `${progressPercentage}%` }
+                                    ]}
+                                />
+                            </View>
 
-                        <View style={[styles.progressBarContainer, { backgroundColor: inputBg }]}>
-                            <Animated.View
-                                style={[
-                                    styles.progressBarFill,
-                                    { backgroundColor: accentText, width: `${progressPercentage}%` }
-                                ]}
-                            />
-                        </View>
+                            <View style={styles.milestonesWrapper}>
+                                {MILESTONES.map((milestone, index) => {
+                                    const isUnlocked = invitedCount >= milestone.target;
+                                    const MIcon = milestone.Icon;
 
-                        <View style={styles.milestonesWrapper}>
-                            {MILESTONES.map((milestone, index) => {
-                                const isUnlocked = invitedCount >= milestone.target;
-                                const MIcon = milestone.Icon;
+                                    return (
+                                        <View
+                                            key={index}
+                                            style={[
+                                                styles.milestoneRow,
+                                                {
+                                                    backgroundColor: isUnlocked ? tokenActiveBg : inputBg,
+                                                    borderColor: isUnlocked ? tokenActiveBorder : borderColor,
+                                                }
+                                            ]}
+                                        >
+                                            <View style={[
+                                                styles.iconContainer,
+                                                { backgroundColor: isUnlocked ? tokenActiveBorder : 'transparent' }
+                                            ]}>
+                                                <MIcon size={20} color={isUnlocked ? accentText : mutedColor} strokeWidth={1.5} />
+                                            </View>
 
-                                return (
-                                    <View
-                                        key={index}
-                                        style={[
-                                            styles.milestoneRow,
-                                            {
-                                                backgroundColor: isUnlocked ? tokenActiveBg : inputBg,
-                                                borderColor: isUnlocked ? tokenActiveBorder : borderColor,
-                                            }
-                                        ]}
-                                    >
-                                        <View style={[
-                                            styles.iconContainer,
-                                            { backgroundColor: isUnlocked ? tokenActiveBorder : 'transparent' }
-                                        ]}>
-                                            <MIcon size={20} color={isUnlocked ? accentText : mutedColor} strokeWidth={1.5} />
-                                        </View>
-
-                                        <View style={styles.milestoneInfo}>
-                                            <Text style={[styles.milestoneTitle, { color: isUnlocked ? accentText : mainColor }]}>
-                                                {milestone.title}
-                                            </Text>
-                                            <Text style={[styles.milestoneSub, { color: mutedColor }]}>
-                                                {milestone.desc}
-                                            </Text>
-                                        </View>
-
-                                        <View style={styles.targetBadge}>
-                                            {isUnlocked ? (
-                                                <CheckCircle2 size={20} color={accentText} strokeWidth={2} />
-                                            ) : (
-                                                <Text style={[styles.targetText, { color: mutedColor }]}>
-                                                    {milestone.target}
+                                            <View style={styles.milestoneInfo}>
+                                                <Text style={[styles.milestoneTitle, { color: isUnlocked ? accentText : mainColor }]}>
+                                                    {milestone.title}
                                                 </Text>
-                                            )}
+                                                <Text style={[styles.milestoneSub, { color: mutedColor }]}>
+                                                    {milestone.desc}
+                                                </Text>
+                                            </View>
+
+                                            <View style={styles.targetBadge}>
+                                                {isUnlocked ? (
+                                                    <CheckCircle2 size={20} color={accentText} strokeWidth={2} />
+                                                ) : (
+                                                    <Text style={[styles.targetText, { color: mutedColor }]}>
+                                                        {milestone.target}
+                                                    </Text>
+                                                )}
+                                            </View>
                                         </View>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                    </>
-                )}
-            </BottomSheetView>
-        </BottomSheetModal>
+                                    );
+                                })}
+                            </View>
+
+                            {invitedCount >= 10 && (
+                                <TouchableOpacity
+                                    style={[styles.claimButton, { backgroundColor: tokenActiveBg, borderColor: tokenActiveBorder }]}
+                                    activeOpacity={0.75}
+                                    onPress={() => showToast("OG cNFT claim coming soon!", true)}
+                                >
+                                    <Crown size={16} color={accentText} strokeWidth={1.5} />
+                                    <Text style={[styles.claimButtonText, { color: accentText }]}>Claim OG cNFT</Text>
+                                </TouchableOpacity>
+                            )}
+                        </>
+                    )}
+                </BottomSheetView>
+            </BottomSheetModal>
+        </>
     );
 });
 
 InviteBottomSheet.displayName = 'InviteBottomSheet';
 
 const styles = StyleSheet.create({
+    toastOverlay: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         paddingHorizontal: 24,
@@ -339,5 +364,20 @@ const styles = StyleSheet.create({
     targetText: {
         fontFamily: 'Dank Mono Bold',
         fontSize: 16,
-    }
+    },
+    claimButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        marginTop: 20,
+        paddingVertical: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+    },
+    claimButtonText: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 15,
+        includeFontPadding: false,
+    },
 });
