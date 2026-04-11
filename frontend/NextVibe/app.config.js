@@ -11,10 +11,6 @@ export default {
         userInterfaceStyle: "automatic",
         newArchEnabled: false,
         jsEngine: "hermes",
-        androidStatusBar: {
-            translucent: true,
-            backgroundColor: "transparent"
-        },
         ios: {
             jsEngine: "hermes",
             supportsTablet: true,
@@ -130,7 +126,7 @@ export default {
                     locationWhenInUsePermission: "NextVibe needs your location to show you on the VibeMap."
                 }
             ],
-            ["@rnmapbox/maps", { RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN }],
+            ["@rnmapbox/maps"],
             "./withMapboxMaven.js",
             "./withSolanaMWA.js",
             "./withHCE.js"
