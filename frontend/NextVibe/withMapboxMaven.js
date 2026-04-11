@@ -47,7 +47,7 @@ module.exports = function withMapboxMaven(config) {
 allprojects {
     configurations.all {
         resolutionStrategy {
-            force 'com.google.android.gms:play-services-base:18.6.0'
+            force 'com.google.android.gms:play-services-base:18.4.0'
         }
     }
 }`;
