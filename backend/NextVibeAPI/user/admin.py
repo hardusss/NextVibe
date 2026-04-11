@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, HistorySearch, Notification, UserOnlineSession, InviteUser
+from .models import User, HistorySearch, Notification, UserOnlineSession, InviteUser, OgAvatarMint
 from django.contrib import admin
 
 @admin.register(User)
@@ -17,3 +17,4 @@ admin.site.register(HistorySearch)
 admin.site.register(Notification)
 admin.site.register(UserOnlineSession)
 admin.site.register(InviteUser)
+admin.site.register(OgAvatarMint)
