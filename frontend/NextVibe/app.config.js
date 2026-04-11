@@ -130,9 +130,8 @@ export default {
                     locationWhenInUsePermission: "NextVibe needs your location to show you on the VibeMap."
                 }
             ],
-            [
-                "@rnmapbox/maps",
-            ],
+            ["@rnmapbox/maps", { RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN }],
+            "./withMapboxMaven.js",
             "./withSolanaMWA.js",
             "./withHCE.js"
         ],
