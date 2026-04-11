@@ -92,17 +92,17 @@ new Elysia()
          */
         let assetId = null;
         let retries = 3;
-        
+
         while (retries > 0) {
             try {
                 // Wait 1.5 seconds before attempting to parse the transaction logs
                 await delay(1500);
-                
+
                 const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, signature);
                 assetId = leaf.id;
-                
+
                 // Break out of the loop if parsing is successful
-                break; 
+                break;
             } catch (error) {
                 retries--;
                 if (retries === 0) {
@@ -118,6 +118,20 @@ new Elysia()
         }
     })
 
+    .post("/mint/avatar", async ({ body }: { body: any }) => {
+        const { recipient, userId, edition } = body;
+
+        /**
+         * Fetch dynamic og metadata from the NextVibe API.
+         */
+        const metaResponse = await fetch(
+            `https://api.nextvibe.io/api/v1/posts/0/metadata/${edition}?isOg=true&userId=${userId}`
+        );
+        const meta = await metaResponse.json();
+
+        
+
+    })
     .listen(3000)
 
 console.log("NFT service running on port 3000")
