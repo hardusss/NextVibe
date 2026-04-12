@@ -41,7 +41,7 @@ class PostMetadataView(APIView):
                 "symbol": "NVOG",
                 "description": f"Exclusive NextVibe OG PFP owned by @{user.username}. Only 25 exist.",
                 "image": og_image_url,
-                "seller_fee_basis_points": 0,
+                "seller_fee_basis_points": 500,
                 "attributes": [
                     {"trait_type": "Status", "value": "OG"},
                     {"trait_type": "Edition", "value": f"{edition} of 25"},
