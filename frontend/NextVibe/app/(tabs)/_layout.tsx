@@ -15,7 +15,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { House, Search, BadgePlus, UserRound } from "lucide-react-native";
+import { House, Search, BadgePlus, UserRound, Radar, Icon } from "lucide-react-native";
 import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
 import { clusterApiUrl } from '@solana/web3.js';
 import * as Device from 'expo-device';
@@ -125,6 +125,7 @@ export default function Layout() {
     const tabs = [
         { name: "home", IconOutline: House, IconFilled: House },
         { name: "search", IconOutline: Search, IconFilled: Search },
+        { name: "vibe-map", IconOutline: Radar, IconFilled: Radar },
         { name: "camera", IconOutline: BadgePlus, IconFilled: BadgePlus },
         { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
     ];
@@ -275,6 +276,7 @@ export default function Layout() {
                                     <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { backgroundColor: 'transparent' } }}>
                                         <Stack.Screen name="home" />
                                         <Stack.Screen name="search" />
+                                        <Stack.Screen name="vibe-map" />
                                         <Stack.Screen name="camera" />
                                         <Stack.Screen name="profile" />
                                         {stackScreens.map((item) => (
