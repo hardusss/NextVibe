@@ -7,7 +7,7 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from ..serializers_pac import UserDetailSerializer
 from posts.models import UserCollection
-from user.models import InviteUser
+from user.models import InviteUser, OgAvatarMint
 
 User = get_user_model()
 
@@ -33,7 +33,8 @@ class UserDetailView(APIView):
             user = User.objects.get(user_id=id)
             isProfile = request.query_params.get('isProfile')
 
-            cnft_count = UserCollection.objects.filter(user=user, post__is_hide=False).count()
+            # Count cNFTs posts and og
+            cnft_count = UserCollection.objects.filter(user=user, post__is_hide=False).count() + OgAvatarMint.objects.filter(user=user).count()
 
             # Get count invited
             try:
