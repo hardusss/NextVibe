@@ -12,10 +12,5 @@ def grant_og_status(user):
              return {"success": False, "message": "User already has an OG avatar."}
 
         next_edition = current_mints + 1
- 
-        og_mint = OgAvatarMint.objects.create(
-            user=user,
-            edition=next_edition
-        )
         
     return {"success": True, "edition": next_edition}
