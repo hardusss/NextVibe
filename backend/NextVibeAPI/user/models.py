@@ -167,6 +167,7 @@ class OgAvatarMint(models.Model):
     )
     edition = models.PositiveIntegerField(unique=True) 
     asset_id = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    signature = models.CharField(max_length=128, null=True, blank=True)
     minted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
