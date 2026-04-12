@@ -48,6 +48,8 @@ type UserData = {
     readers_count: number;
     follows_count: number;
     official: boolean;
+    isOg: boolean;
+    ogEdition: number | null;
 };
 
 const TABS = ["Posts", "cNFTs"] as const;
@@ -117,7 +119,9 @@ const ProfileView = () => {
         cnft_count: 0,
         readers_count: 0,
         follows_count: 0,
-        official: false
+        official: false,
+        isOg: false,
+        ogEdition: null,
     });
 
     const [loading, setLoading] = useState<boolean>(true);
@@ -227,7 +231,9 @@ const ProfileView = () => {
                 cnft_count: data?.cnft_count || 0,
                 readers_count: data?.readers_count || 0,
                 follows_count: data?.follows_count || 0,
-                official: data?.official === true
+                official: data?.official === true,
+                isOg: data?.isOg === true,
+                ogEdition: data?.edition ?? null,
             });
 
             setInvitedCount(data?.invited_count || 0);
@@ -273,7 +279,7 @@ const ProfileView = () => {
         <SafeAreaView style={profileStyle.container}>
             <StatusBar
                 animated={true}
-                backgroundColor={colorScheme === 'dark' ? '#0A0410' : '#f0f0f0'}
+                backgroundColor={colorScheme === 'dark' ? '#0A0410' : '#ffffff'}
             />
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{ flex: 1, justifyContent: "center", alignItems: "center" }} />
@@ -342,6 +348,8 @@ const ProfileView = () => {
                                     avatarUrl={userData.avatar_url}
                                     size={74}
                                     invitedCount={invitedCount}
+                                    isOg={userData.isOg}
+                                    ogEdition={userData.ogEdition}
                                 />
                             </View>
                         </TouchableOpacity>

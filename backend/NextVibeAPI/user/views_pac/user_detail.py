@@ -56,12 +56,22 @@ class UserDetailView(APIView):
                 for banned_field in BANED_FIELDS:
                     data.pop(banned_field, None)
 
+            og_mint = getattr(user, "og_avatar", None)
+            additonal = {}
+            if og_mint is not None:
+                additonal = {
+                    "isOg": True,
+                    "edition": og_mint.edition,
+                }
             return Response(
                 {
                     **data, 
                     "is_subscribed": is_subscribed, 
                     "cnft_count": cnft_count,
-                    "invited_count": invited_count  
+                    "invited_count": invited_count,
+                    **additonal
+                    
+                    
                 }, 
                 status=status.HTTP_200_OK
             )
