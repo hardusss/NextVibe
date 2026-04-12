@@ -29,5 +29,5 @@ class GetInviteInfoView(APIView):
         return Response({
             "invite_code": invite_data.invite_code,
             "invited_count": invite_data.invited_count,
-            "og_avatar": True if user.og_avatar else False
+            "og_avatar": bool(getattr(user, "og_avatar", False))
         }, status=status.HTTP_200_OK)
