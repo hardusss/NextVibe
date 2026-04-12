@@ -35,10 +35,10 @@ const umi = createUmi(process.env.HELIUS_RPC_URL!)
     .use(keypairIdentity(fromWeb3JsKeypair(keypair)))
 
 /** Verified collection NFT address */
-const COLLECTION_ADDRESS = process.env.COLLECTION_ADDRESS!
-
+const COLLECTION_ADDRESS = process.env.COLLECTION_ADDRESS!;
+const OG_COLLECTION_ADDRESS = process.env.OG_COLLECTION_ADDRESS!;
 /** Merkle tree address for storing compressed NFT leaves */
-const MERKLE_TREE_ADDRESS = process.env.MERKLE_TREE_ADDRESS!
+const MERKLE_TREE_ADDRESS = process.env.MERKLE_TREE_ADDRESS!;
 
 new Elysia()
 
@@ -118,18 +118,78 @@ new Elysia()
         }
     })
 
-    .post("/mint/avatar", async ({ body }: { body: any }) => {
+    /**
+     * POST /mint/og
+     *
+     * Mints a compressed OG NFT (cNFT) and verifies it against the NextVibe
+     * OG collection in a single transaction. Intended for early/founding users
+     * receiving a special OG edition badge. The recipient receives the NFT
+     * without needing to sign.
+     *
+     * @body recipient  - Solana wallet address of the user receiving the OG cNFT
+     * @body userId     - NextVibe user ID used to generate personalized OG metadata
+     * @body edition    - Edition number of the OG NFT
+     */
+    .post("/mint/og", async ({ body }: { body: any }) => {
         const { recipient, userId, edition } = body;
 
+        if (edition > 25){
+            return {
+                success: false,
+                error: "Edition can't be > 25."
+            }
+        }
         /**
          * Fetch dynamic og metadata from the NextVibe API.
          */
+        const metaUrl = `https://api.nextvibe.io/api/v1/posts/0/metadata/${edition}?isOg=true&userId=${userId}`
         const metaResponse = await fetch(
-            `https://api.nextvibe.io/api/v1/posts/0/metadata/${edition}?isOg=true&userId=${userId}`
+            metaUrl
         );
         const meta = await metaResponse.json();
 
-        
+        const { signature } = await mintToCollectionV1(umi, {
+            leafOwner: publicKey(recipient),
+            merkleTree: publicKey(MERKLE_TREE_ADDRESS),
+            collectionMint: publicKey(OG_COLLECTION_ADDRESS),
+            collectionAuthority: umi.identity,
+            metadata: {
+                name: meta.name,
+                uri: metaUrl,
+                sellerFeeBasisPoints: 500,
+                collection: { key: publicKey(OG_COLLECTION_ADDRESS), verified: false },
+                creators: [],
+            },
+        }).sendAndConfirm(umi, {
+            confirm: { commitment: "finalized" },
+        });
+
+        let assetId = null;
+        let retries = 3;
+
+        while (retries > 0) {
+            try {
+                // Wait 1.5 seconds before attempting to parse the transaction logs
+                await delay(1500);
+
+                const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, signature);
+                assetId = leaf.id;
+
+                // Break out of the loop if parsing is successful
+                break;
+            } catch (error) {
+                retries--;
+                if (retries === 0) {
+                    console.error("Failed to parse leaf from transaction after 3 attempts.", error);
+                }
+            }
+        }
+
+        return {
+            success: true,
+            signature: Buffer.from(signature).toString('base64'),
+            assetId: assetId || "Minted successfully, but RPC delayed asset ID parsing",
+        }
 
     })
     .listen(3000)
