@@ -5,16 +5,19 @@ import {
     TouchableOpacity,
     StyleSheet,
     Dimensions,
-    Text
+    Text,
+    ActivityIndicator as RNActivityIndicator,
+    Vibration,
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getCollectionsMenu from "@/src/api/get.collections.menu";
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import FastImage from 'react-native-fast-image';
-import { Image, Video, Sparkles, Gem, Crown, CheckCircle2 } from "lucide-react-native";
+import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2 } from "lucide-react-native";
 import { useColorScheme } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import setAvatar from "@/src/api/set.avatar";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
@@ -48,26 +51,73 @@ type MediaCheck =
     | { storage: string; is_video: true }
     | false;
 
+type SetAvatarState = 'idle' | 'loading' | 'done';
+
 interface CollectionsGalleryProps {
     id: number;
 }
 
+interface OgAvatarCardProps {
+    og: OgAvatar;
+    isDark: boolean;
+    onSetAvatar: () => Promise<void>;
+}
+
 /**
- * Renders the OG Avatar card pinned above the collection grid.
+ * Renders the OG cNFT card pinned above the collection grid.
  * Only shown when the profile owner has minted an OG Avatar cNFT.
+ *
+ * Set as Avatar button states:
+ * - idle    : pressable, shows UserCircle2 icon
+ * - loading : request in flight, shows spinner, button disabled
+ * - done    : avatar was set, shows CheckCircle2, button locked
  */
-function OgAvatarCard({ og, isDark }: { og: OgAvatar; isDark: boolean }) {
+function OgAvatarCard({ og, isDark, onSetAvatar }: OgAvatarCardProps) {
     const accentColor = isDark ? '#d8b4fe' : '#7c3aed';
     const borderColor = isDark ? 'rgba(196,167,255,0.35)' : 'rgba(109,40,217,0.25)';
     const cardBg = isDark ? 'rgba(167,139,250,0.08)' : 'rgba(109,40,217,0.05)';
     const mutedColor = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)';
     const mainColor = isDark ? '#ffffff' : '#1f2937';
+    const btnBg = isDark ? 'rgba(167,139,250,0.12)' : 'rgba(109,40,217,0.07)';
+
+    const [setAvatarState, setSetAvatarState] = useState<SetAvatarState>('idle');
+
+    const isDisabled = setAvatarState !== 'idle';
+
+    /**
+     * Handles the "Set as Avatar" press.
+     * Delegates the actual request to the onSetAvatar prop — caller owns the API logic.
+     * On success transitions to 'done' (permanently locked for the session).
+     * On error resets to 'idle' so the user can retry.
+     */
+    const handleSetAvatar = async () => {
+        if (isDisabled) return;
+
+        setSetAvatarState('loading');
+        Vibration.vibrate(20);
+
+        try {
+            await onSetAvatar();
+            setSetAvatarState('done');
+            Vibration.vibrate([0, 40, 60, 80]);
+        } catch {
+            setSetAvatarState('idle');
+        }
+    };
 
     const formattedDate = new Date(og.minted_at).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
     });
+
+    const doneBtnBorder = isDark ? 'rgba(52,211,153,0.4)' : 'rgba(16,185,129,0.3)';
+    const doneBtnBg = isDark ? 'rgba(52,211,153,0.1)' : 'rgba(16,185,129,0.06)';
+    const doneColor = isDark ? '#6ee7b7' : '#059669';
+
+    const btnBorderColor = setAvatarState === 'done' ? doneBtnBorder : borderColor;
+    const btnBackground = setAvatarState === 'done' ? doneBtnBg : btnBg;
+    const btnTextColor = setAvatarState === 'done' ? doneColor : accentColor;
 
     return (
         <View style={[styles.ogCard, { backgroundColor: cardBg, borderColor }]}>
@@ -77,7 +127,6 @@ function OgAvatarCard({ og, isDark }: { og: OgAvatar; isDark: boolean }) {
                     style={styles.ogImage}
                     resizeMode={FastImage.resizeMode.cover}
                 />
-                {/* Edition badge pinned to bottom-left of the avatar */}
                 <LinearGradient
                     colors={['#7c3aed', '#a855f7']}
                     start={{ x: 0, y: 0 }}
@@ -91,7 +140,7 @@ function OgAvatarCard({ og, isDark }: { og: OgAvatar; isDark: boolean }) {
 
             <View style={styles.ogInfo}>
                 <View style={styles.ogTitleRow}>
-                    <Text style={[styles.ogTitle, { color: mainColor }]}>OG Avatar</Text>
+                    <Text style={[styles.ogTitle, { color: mainColor }]}>OG cNFT</Text>
                     <View style={[styles.ogVerifiedPill, { borderColor, backgroundColor: cardBg }]}>
                         <CheckCircle2 size={11} color={accentColor} strokeWidth={2} />
                         <Text style={[styles.ogVerifiedText, { color: accentColor }]}>Verified OG</Text>
@@ -109,6 +158,45 @@ function OgAvatarCard({ og, isDark }: { og: OgAvatar; isDark: boolean }) {
                 <Text style={[styles.ogDesc, { color: mutedColor }]}>
                     Max supply cNFT · Bubblegum protocol
                 </Text>
+
+                <TouchableOpacity
+                    style={[
+                        styles.setAvatarBtn,
+                        {
+                            backgroundColor: btnBackground,
+                            borderColor: btnBorderColor,
+                            opacity: isDisabled && setAvatarState !== 'done' ? 0.7 : 1,
+                        },
+                    ]}
+                    onPress={handleSetAvatar}
+                    activeOpacity={isDisabled ? 1 : 0.75}
+                    disabled={isDisabled}
+                >
+                    {setAvatarState === 'loading' && (
+                        <>
+                            <RNActivityIndicator size={12} color={accentColor} />
+                            <Text style={[styles.setAvatarText, { color: accentColor }]}>
+                                Setting...
+                            </Text>
+                        </>
+                    )}
+                    {setAvatarState === 'done' && (
+                        <>
+                            <CheckCircle2 size={12} color={doneColor} strokeWidth={2} />
+                            <Text style={[styles.setAvatarText, { color: doneColor }]}>
+                                Avatar Set!
+                            </Text>
+                        </>
+                    )}
+                    {setAvatarState === 'idle' && (
+                        <>
+                            <UserCircle2 size={12} color={accentColor} strokeWidth={1.8} />
+                            <Text style={[styles.setAvatarText, { color: btnTextColor }]}>
+                                Set as Avatar
+                            </Text>
+                        </>
+                    )}
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -169,6 +257,11 @@ const CollectionsGallery = ({ id }: CollectionsGalleryProps) => {
         }, [])
     );
 
+    const handleSetOgAvatar = async () => {
+        if (!ogAvatar) throw new Error("No OG avatar data");
+        await setAvatar(ogAvatar.image_url);
+    };
+
     const isVideo = (url: string): MediaCheck => {
         if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
         const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
@@ -206,7 +299,11 @@ const CollectionsGallery = ({ id }: CollectionsGalleryProps) => {
                     contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
                     ListHeaderComponent={
                         ogAvatar ? (
-                            <OgAvatarCard og={ogAvatar} isDark={isDark} />
+                            <OgAvatarCard
+                                og={ogAvatar}
+                                isDark={isDark}
+                                onSetAvatar={handleSetOgAvatar}
+                            />
                         ) : null
                     }
                     renderItem={({ item }) => {
@@ -283,7 +380,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    // OG Avatar card
     ogCard: {
         flexDirection: "row",
         alignItems: "center",
@@ -365,7 +461,22 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
         letterSpacing: 0.3,
     },
-    // Grid
+    setAvatarBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        alignSelf: "flex-start",
+        marginTop: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+        borderWidth: 1,
+    },
+    setAvatarText: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: 11,
+        includeFontPadding: false,
+    },
     postContainer: {
         width: imageSize,
         height: imageSize,
