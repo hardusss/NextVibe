@@ -8,7 +8,6 @@ from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
  
 from ..models import PostsMedia, UserCollection
-from user.models import
  
 User = get_user_model()
  
