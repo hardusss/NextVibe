@@ -27,10 +27,10 @@ class MintNftView(APIView):
             price = Decimal(str(raw_price))
             post = Post.objects.select_related("owner").get(id=post_id)
         except (Post.DoesNotExist, ValueError, TypeError):
-            return Response({"error": "Invalid post or price."}, status=status.HTTP_4o00_BAD_REQUEST)
+            return Response({"error": "Invalid post or price."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Supply and duplication checks
-        if post.minted_count >= post.total_supply:
+        if int(post.minted_count) >= int(post.total_supply if post.total_supply is not None else 50):
             return Response({"error": "Edition sold out."}, status=status.HTTP_400_BAD_REQUEST)
 
         if UserCollection.objects.filter(user=request.user, post=post).exists():
