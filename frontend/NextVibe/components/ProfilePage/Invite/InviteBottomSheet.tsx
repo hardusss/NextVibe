@@ -17,11 +17,14 @@ import { BlurView } from '@react-native-community/blur';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 import * as Clipboard from 'expo-clipboard';
 import getInviteInfo from "@/src/api/get.invite.info";
+import mintOgNFT from '@/src/api/mint.og';
 
 export interface InviteSheetRef {
     present: () => void;
     dismiss: () => void;
 }
+
+type ClaimState = 'idle' | 'loading' | 'claimed';
 
 /**
  * Custom backdrop leveraging reanimated for smooth opacity transitions.
@@ -63,6 +66,14 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
     const [invitedCount, setInvitedCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
 
+    /**
+     * Tracks the OG cNFT claim lifecycle.
+     * - idle    : button is pressable, shows Crown icon
+     * - loading : mint tx in flight, shows ActivityIndicator, button disabled
+     * - claimed : mint succeeded, button locked permanently with green check
+     */
+    const [claimState, setClaimState] = useState<ClaimState>('idle');
+
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastIsSuccess, setToastIsSuccess] = useState(true);
@@ -75,7 +86,11 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
         setIsLoading(true);
         try {
             const response = await getInviteInfo();
-            setInviteCode(response?.invite_code || 'NXVIBE');
+            if (response.og_avatar == true){
+                setClaimState("claimed");
+            };
+
+            setInviteCode(response?.invite_code || 'SEEKER');
             setInvitedCount(response?.invited_count || 0);
         } catch (error) {
             console.error("Failed to fetch invite info:", error);
@@ -107,6 +122,29 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
         showToast("Invite code copied!", true);
     };
 
+    /**
+     * Initiates the OG cNFT mint flow.
+     * Guard on claimState prevents duplicate submissions — once loading or claimed,
+     * the handler returns early and the button is also marked disabled at the UI level.
+     * On error the state resets to idle so the user can retry.
+     */
+    const handleClaimOgNFT = async () => {
+        if (claimState !== 'idle') return;
+
+        setClaimState('loading');
+        Vibration.vibrate(20);
+
+        try {
+            await mintOgNFT();
+            setClaimState('claimed');
+            Vibration.vibrate([0, 40, 60, 80]);
+            showToast("OG cNFT successfully minted!", true);
+        } catch (error) {
+            setClaimState('idle');
+            showToast("Mint failed. Try again.", false);
+        }
+    };
+
     const bg = isDark ? '#0f021c' : '#ffffff';
     const mainColor = isDark ? '#ffffff' : '#1f2937';
     const mutedColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.32)';
@@ -120,6 +158,20 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
 
     // Clamping the maximum progress value to 100 ensures the animated fill width doesn't overflow the container bounds if invitedCount exceeds the max milestone.
     const progressPercentage = Math.min((invitedCount / 10) * 100, 100);
+
+    const claimIsDisabled = claimState !== 'idle';
+
+    const claimBg = claimState === 'claimed'
+        ? (isDark ? 'rgba(52,211,153,0.14)' : 'rgba(16,185,129,0.08)')
+        : tokenActiveBg;
+
+    const claimBorder = claimState === 'claimed'
+        ? (isDark ? 'rgba(52,211,153,0.4)' : 'rgba(16,185,129,0.3)')
+        : tokenActiveBorder;
+
+    const claimColor = claimState === 'claimed'
+        ? (isDark ? '#6ee7b7' : '#059669')
+        : accentText;
 
     return (
         <>
@@ -230,12 +282,41 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
 
                             {invitedCount >= 10 && (
                                 <TouchableOpacity
-                                    style={[styles.claimButton, { backgroundColor: tokenActiveBg, borderColor: tokenActiveBorder }]}
-                                    activeOpacity={0.75}
-                                    onPress={() => showToast("OG cNFT claim coming soon!", true)}
+                                    style={[
+                                        styles.claimButton,
+                                        { backgroundColor: claimBg, borderColor: claimBorder },
+                                        claimIsDisabled && styles.claimButtonDisabled,
+                                    ]}
+                                    activeOpacity={claimIsDisabled ? 1 : 0.75}
+                                    onPress={handleClaimOgNFT}
+                                    disabled={claimIsDisabled}
                                 >
-                                    <Crown size={16} color={accentText} strokeWidth={1.5} />
-                                    <Text style={[styles.claimButtonText, { color: accentText }]}>Claim OG cNFT</Text>
+                                    {claimState === 'loading' && (
+                                        <>
+                                            <ActivityIndicator size="small" color={accentText} />
+                                            <Text style={[styles.claimButtonText, { color: accentText }]}>
+                                                Minting...
+                                            </Text>
+                                        </>
+                                    )}
+
+                                    {claimState === 'claimed' && (
+                                        <>
+                                            <CheckCircle2 size={16} color={claimColor} strokeWidth={2} />
+                                            <Text style={[styles.claimButtonText, { color: claimColor }]}>
+                                                OG cNFT Claimed!
+                                            </Text>
+                                        </>
+                                    )}
+
+                                    {claimState === 'idle' && (
+                                        <>
+                                            <Crown size={16} color={claimColor} strokeWidth={1.5} />
+                                            <Text style={[styles.claimButtonText, { color: claimColor }]}>
+                                                Claim OG cNFT
+                                            </Text>
+                                        </>
+                                    )}
                                 </TouchableOpacity>
                             )}
                         </>
@@ -374,6 +455,9 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         borderRadius: 16,
         borderWidth: 1,
+    },
+    claimButtonDisabled: {
+        opacity: 0.75,
     },
     claimButtonText: {
         fontFamily: 'Dank Mono Bold',
