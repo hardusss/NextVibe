@@ -25,6 +25,14 @@ class OgNftMintView(APIView):
         if not wallet_address:
             return Response({"error": "Wallet not connected"}, status=status.HTTP_400_BAD_REQUEST)
         
+        already_claimed = OgAvatarMint.objects.filter(user=user).exists()
+
+        if already_claimed:
+            return Response(
+                {"error": "You are already claimed"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
         og_status =  grant_og_status(user)
         if not og_status.get("success"):
             return Response({
