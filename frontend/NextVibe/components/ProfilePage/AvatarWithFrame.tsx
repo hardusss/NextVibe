@@ -98,23 +98,33 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
              * via zIndex: 20. Uses a purple gradient consistent with the cNFT card design.
              */}
             {isOg && ogEdition !== null && (
-                <LinearGradient
-                    colors={['#7c3aed', '#a855f7']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[
-                        styles.ogBadge,
-                        {
-                            bottom: -8,
-                            // Horizontally centered relative to the avatar
-                            left: '50%',
-                            transform: [{ translateX: -22 }],
-                        },
-                    ]}
-                >
-                    <Crown size={8} color="#fff" strokeWidth={2.5} />
-                    <Text style={styles.ogBadgeText}>#{ogEdition}</Text>
-                </LinearGradient>
+                <View style={{
+                    position: 'absolute',
+                    bottom: -(size * 0.12),
+                    left: 0,
+                    right: 0,
+                    alignItems: 'center',
+                    zIndex: 20,
+                }}>
+                    <LinearGradient
+                        colors={['#7c3aed', '#a855f7']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: size * 0.04,
+                            paddingHorizontal: size * 0.08,
+                            paddingVertical: size * 0.03,
+                            borderRadius: size * 0.1,
+                        }}
+                    >
+                        <Crown size={size * 0.12} color="#fff" strokeWidth={2.5} />
+                        <Text style={[styles.ogBadgeText, { fontSize: size * 0.13 }]}>
+                            #{ogEdition}
+                        </Text>
+                    </LinearGradient>
+                </View>
             )}
         </View>
     );
@@ -126,15 +136,10 @@ const styles = StyleSheet.create({
         zIndex: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 7,
     },
     ogBadgeText: {
         color: '#fff',
         fontFamily: 'Dank Mono Bold',
-        fontSize: 9,
         includeFontPadding: false,
     },
 });
