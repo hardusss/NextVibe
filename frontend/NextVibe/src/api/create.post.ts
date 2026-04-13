@@ -72,6 +72,8 @@ export default async function createPost(
     content: string,
     mediaUrls: string[],
     location?: string,
+    coords?: Record<string, number>,
+    resolution?: number,
     isAiGenerated: boolean = false,
     isCommentsEnabled: boolean = true
 ): Promise<{ success: boolean; message?: string }> {
@@ -97,7 +99,7 @@ export default async function createPost(
             return { success: false, message: "User not found" };
         }
 
-        const postUrl = `${GetApiUrl()}/posts/posts/`;
+        const postUrl = `${GetApiUrl()}/posts/posts/?v2=true`;
         const mediaUploadUrl = `${GetApiUrl()}/posts/add-media/`;
 
         console.log("Creating post body...");
@@ -111,6 +113,8 @@ export default async function createPost(
                 about: content,
                 owner: OWNER_ID,
                 location: location || null,
+                coords: coords,
+                resolution: resolution,
                 is_ai_generated: isAiGenerated,
                 is_comments_enabled: isCommentsEnabled,
             }),
