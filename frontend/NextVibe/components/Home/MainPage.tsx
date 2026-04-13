@@ -39,8 +39,9 @@ import useTransaction from "@/hooks/useTransaction";
 import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
 import {
     Heart, MessageCircle, MapPin, Volume2, VolumeX,
-    Sparkles, Calendar, Clock
+    Sparkles, Clock
 } from "lucide-react-native";
+import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -76,9 +77,9 @@ const getStyles = (theme: typeof darkTheme) => {
         listContainer: { backgroundColor: theme.background, paddingBottom: 50 },
         postContainer: { borderRadius: 12, padding: 14, position: "relative" },
         postHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-        avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
-        userInfo: { flex: 1 },
-        usernameContainer: { flexDirection: "row", alignItems: "center" },
+        avatar: { width: 40, height: 40, borderRadius: 20 },
+        userInfo: { flex: 1, marginLeft: 12  },
+        usernameContainer: { flexDirection: "row", alignItems: "center"},
         usernameRow: { flexDirection: "row", alignItems: "center" },
         badgeWrapper: { marginLeft: 1, justifyContent: 'center', alignItems: 'center' },
         username: {
@@ -233,6 +234,9 @@ interface Post {
     owner__username: string;
     owner__avatar: string;
     owner__official: boolean;
+    owner__is_og: boolean;
+    owner__edition: number | null;
+    owner__invited_count: number;
     media: MediaItem[];
     is_ai_generated: boolean;
     moderation_status: string;
@@ -452,9 +456,12 @@ const PostItem = memo(({
 
             {/* ── Header: avatar | username | dots ── */}
             <View style={styles.postHeader}>
-                <FastImage
-                    source={{ uri: item.owner__avatar, priority: FastImage.priority.normal, cache: FastImage.cacheControl.immutable }}
-                    style={styles.avatar}
+               <AvatarWithFrame
+                    avatarUrl={item.owner__avatar}
+                    size={40}
+                    isOg={item.owner__is_og}
+                    ogEdition={item.owner__edition}
+                    invitedCount={item.owner__invited_count}
                 />
                 <TouchableOpacity
                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
@@ -616,6 +623,8 @@ const PostItem = memo(({
     if (prev.item.about !== next.item.about) return false;
     if (prev.item.already_claimed !== next.item.already_claimed) return false;
     if (prev.item.minted_count !== next.item.minted_count) return false;
+    if (prev.item.owner__is_og !== next.item.owner__is_og) return false;
+    if (prev.item.owner__invited_count !== next.item.owner__invited_count) return false;
     return true;
 });
 

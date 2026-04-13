@@ -1,17 +1,17 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { 
-    View, 
-    SafeAreaView, 
-    Text, 
-    StatusBar, 
-    Modal, 
-    ScrollView, 
-    RefreshControl, 
-    TouchableOpacity, 
-    Animated, 
-    Easing, 
-    Linking, 
-    useColorScheme 
+import {
+    View,
+    SafeAreaView,
+    Text,
+    StatusBar,
+    Modal,
+    ScrollView,
+    RefreshControl,
+    TouchableOpacity,
+    Animated,
+    Easing,
+    Linking,
+    useColorScheme
 } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -31,7 +31,7 @@ import CollectionsGallery from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import RecommendedUsers from "./recommendateProfiles";
 import VerifyBadge from "../VerifyBadge";
-import { AvatarWithFrame } from "./AvatarWithFrame";  
+import { AvatarWithFrame } from "./AvatarWithFrame";
 
 // Styles
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
@@ -43,10 +43,12 @@ type UserData = {
     about: string;
     avatar_url: string | null;
     post_count: number;
-    cnft_count: number; 
+    cnft_count: number;
     readers_count: number;
     follows_count: number;
     official: boolean;
+    isOg: boolean;
+    ogEdition: number | null;
     is_subscribed: boolean;
     invited_count: number; // Added field
 };
@@ -54,19 +56,19 @@ type UserData = {
 const TABS = ["Posts", "cNFTs"] as const;
 type Tab = typeof TABS[number];
 
-const EmptyState = ({ 
-    iconName, 
-    title, 
-    description, 
-    colorScheme 
-}: { 
-    iconName: keyof typeof MaterialIcons.glyphMap, 
-    title: string, 
-    description: string, 
-    colorScheme: "light" | "dark" | null | undefined 
+const EmptyState = ({
+    iconName,
+    title,
+    description,
+    colorScheme
+}: {
+    iconName: keyof typeof MaterialIcons.glyphMap,
+    title: string,
+    description: string,
+    colorScheme: "light" | "dark" | null | undefined
 }) => {
     const isDark = colorScheme === 'dark';
-    
+
     return (
         <View style={{
             marginTop: 20,
@@ -132,54 +134,6 @@ const ButtonSubscribe = ({ isSubscribed, onPress, isDark }: { isSubscribed: bool
     </TouchableOpacity>
 );
 
-const ButtonMessage = ({ user, isDark }: { user: UserData, isDark: boolean }) => {
-    const router = useRouter();
-
-    const handleCreateChat = async () => {
-        try {
-            const response = await CreateChat(user.user_id);
-            if (response) {
-                router.push({
-                    pathname: "/(tabs)/chat-room",
-                    params: { id: response.chat_id, userId: user.user_id }
-                });
-            }
-        } catch (error: any) {
-            const errResponse = error.response?.data;
-            const status = error.response?.status;
-            if (errResponse?.error === "Chat already exists" && status === 400) {
-                router.push({
-                    pathname: "/(tabs)/chat-room",
-                    params: { id: errResponse.existing_chat_id, userId: user.user_id }
-                });
-            }
-        }
-    }
-
-    return (
-        <TouchableOpacity
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            style={{
-                backgroundColor: isDark ? '#0A0410' : '#fff',
-                padding: 10,
-                borderRadius: 8,
-                width: '48%',
-                borderWidth: 1,
-                borderColor: '#62218eff',
-            }}
-            onPress={() => { handleCreateChat() }}
-        >
-            <Text style={{
-                color: '#8d11e0ff',
-                textAlign: 'center',
-                fontWeight: 'bold'
-            }}>
-                Message
-            </Text>
-        </TouchableOpacity>
-    );
-};
-
 const UserProfileView = () => {
     const { id } = useLocalSearchParams();
     const router = useRouter();
@@ -194,6 +148,8 @@ const UserProfileView = () => {
         follows_count: 0,
         official: false,
         is_subscribed: false,
+        isOg: false,
+        ogEdition: null,
         invited_count: 0
     });
     const [loading, setLoading] = useState<boolean>(true);
@@ -251,10 +207,12 @@ const UserProfileView = () => {
                 about: data?.about || "",
                 avatar_url: data?.avatar ? `${data.avatar}` : null,
                 post_count: data?.post_count || 0,
-                cnft_count: data?.cnft_count || 0, 
+                cnft_count: data?.cnft_count || 0,
                 readers_count: data?.readers_count || 0,
                 follows_count: data?.follows_count || 0,
                 official: data?.official || false,
+                isOg: data?.isOg === true,
+                ogEdition: data?.edition ?? null,
                 is_subscribed: data?.is_subscribed || false,
                 invited_count: data?.invited_count || 0
             });
@@ -315,6 +273,8 @@ const UserProfileView = () => {
                     readers_count: 0,
                     follows_count: 0,
                     official: false,
+                    isOg: false,
+                    ogEdition: 0,
                     is_subscribed: false,
                     invited_count: 0
                 });
@@ -362,12 +322,12 @@ const UserProfileView = () => {
                                 alignItems: "center",
                                 width: '100%',
                             }, { transform: [{ scale: scaleAnim }] }]}>
-                                
+
                                 <FastImage
-                                    style={{ 
-                                        width: 320, 
-                                        height: 320, 
-                                        borderRadius: 160 
+                                    style={{
+                                        width: 320,
+                                        height: 320,
+                                        borderRadius: 160
                                     }}
                                     source={{ uri: userData.avatar_url as string }}
                                     resizeMode={FastImage.resizeMode.cover}
@@ -397,12 +357,14 @@ const UserProfileView = () => {
                     {/* Profile Stats */}
                     <View style={{ flexDirection: "row", marginTop: 20, marginLeft: 0 }}>
                         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setVisible(true)}>
-                            
+
                             <View style={{ marginLeft: 16, marginTop: 5 }}>
-                                <AvatarWithFrame 
-                                    avatarUrl={userData.avatar_url} 
-                                    size={74} 
-                                    invitedCount={userData.invited_count} 
+                                <AvatarWithFrame
+                                    avatarUrl={userData.avatar_url}
+                                    size={74}
+                                    invitedCount={userData.invited_count}
+                                    isOg={userData.isOg}
+                                    ogEdition={userData.ogEdition}
                                 />
                             </View>
 
@@ -460,7 +422,7 @@ const UserProfileView = () => {
                         {TABS.map((tab) => {
                             const isActive = activeTab === tab;
                             const tabLabel = tab === "cNFTs" ? `cNFTs (${userData.cnft_count})` : tab;
-                            
+
                             return (
                                 <TouchableOpacity
                                     key={tab}
@@ -509,7 +471,7 @@ const UserProfileView = () => {
 
                     {/* Tabs Content */}
                     <View style={{ overflow: "hidden" }}>
-                        
+
                         {/* Posts Tab */}
                         <Animated.View style={{
                             display: activeTab === "Posts" ? "flex" : "none",
@@ -518,7 +480,7 @@ const UserProfileView = () => {
                         }}>
                             {mountedTabs.has("Posts") && (
                                 userData.post_count === 0 ? (
-                                    <EmptyState 
+                                    <EmptyState
                                         iconName="photo-camera"
                                         title="No Posts Yet"
                                         description="This user hasn't shared any moments yet."
@@ -538,7 +500,7 @@ const UserProfileView = () => {
                         }}>
                             {mountedTabs.has("cNFTs") && (
                                 userData.cnft_count === 0 ? (
-                                    <EmptyState 
+                                    <EmptyState
                                         iconName="collections"
                                         title="No cNFTs Yet"
                                         description="This user hasn't collected or created any cNFTs yet."
@@ -549,7 +511,7 @@ const UserProfileView = () => {
                                 )
                             )}
                         </Animated.View>
-                        
+
                     </View>
                 </ScrollView>
             )}
