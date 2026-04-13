@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from posts.models import Post, Comment, UserCollection
 from posts.serializers_pac.recommendation_feed_serializer import PostFeedSerializer
-from user.models import HistorySearch
+from user.models import HistorySearch, InviteUser
 from django.db.models import Case, When, Value, IntegerField
 from django.core.cache import cache
 import random
@@ -54,7 +54,7 @@ class RecommendationFeedView(APIView):
 
         posts_queryset = (
             Post.objects
-            .select_related('owner')
+            .select_related('owner', 'owner__og_avatar')
             .prefetch_related('media')
             .exclude(owner__user_id=user.user_id)
             .filter(moderation_status="approved", is_hide=False)
@@ -89,7 +89,7 @@ class RecommendationFeedView(APIView):
                 random_ids = random.sample(candidate_ids, sample_size)
                 additional = (
                     Post.objects
-                    .select_related('owner')
+                    .select_related('owner', 'owner__og_avatar')
                     .prefetch_related('media')
                     .filter(id__in=random_ids, moderation_status="approved")
                 )
@@ -99,26 +99,33 @@ class RecommendationFeedView(APIView):
         final_batch = posts_list[:BATCH_SIZE]
 
         post_ids = [p.id for p in final_batch]
+        owner_ids = [p.owner.user_id for p in final_batch]
 
         edition_ones = UserCollection.objects.filter(
             post_id__in=post_ids,
             edition=1,
         ).values('post_id', 'price')
         nft_prices = {e['post_id']: str(e['price']) for e in edition_ones}
-        
+
         claimed_post_ids = set(
             UserCollection.objects
             .filter(user=user, post_id__in=post_ids)
             .values_list('post_id', flat=True)
         )
 
+        invite_counts = {
+            inv.owner_id: inv.invited_count
+            for inv in InviteUser.objects.filter(owner_id__in=owner_ids)
+        }
+
         serializer = PostFeedSerializer(
             final_batch,
             many=True,
             context={
                 'request': request,
-                'nft_prices': nft_prices,           # {post_id: "0.5"}
-                'claimed_post_ids': claimed_post_ids,  # {post_id, ...}
+                'nft_prices': nft_prices,
+                'claimed_post_ids': claimed_post_ids,
+                'invite_counts': invite_counts,
             }
         )
 

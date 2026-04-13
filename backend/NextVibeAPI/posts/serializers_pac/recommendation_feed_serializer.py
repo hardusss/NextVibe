@@ -4,9 +4,9 @@ from django.conf import settings
 
 
 class MediaItemSerializer(serializers.ModelSerializer):
-    media_url    = serializers.SerializerMethodField()
+    media_url     = serializers.SerializerMethodField()
     media_preview = serializers.SerializerMethodField()
-    type         = serializers.SerializerMethodField()
+    type          = serializers.SerializerMethodField()
 
     class Meta:
         model  = PostsMedia
@@ -33,12 +33,14 @@ class PostFeedSerializer(serializers.ModelSerializer):
     owner__avatar   = serializers.SerializerMethodField()
     owner__official = serializers.BooleanField(source='owner.official')
     media           = serializers.SerializerMethodField()
-
     nft_price       = serializers.SerializerMethodField()
     already_claimed = serializers.SerializerMethodField()
     sold_out        = serializers.SerializerMethodField()
     is_owner        = serializers.SerializerMethodField()
     owner_wallet    = serializers.SerializerMethodField()
+    owner__is_og    = serializers.SerializerMethodField()
+    owner__edition  = serializers.SerializerMethodField()
+    owner__invited_count = serializers.SerializerMethodField()
 
     class Meta:
         model  = Post
@@ -51,6 +53,8 @@ class PostFeedSerializer(serializers.ModelSerializer):
             'is_nft', 'minted_count', 'total_supply',
             'nft_price', 'already_claimed', 'sold_out',
             'is_owner', 'owner_wallet',
+            # OG / invite
+            'owner__is_og', 'owner__edition', 'owner__invited_count',
         ]
 
     def get_owner__avatar(self, obj):
@@ -81,3 +85,15 @@ class PostFeedSerializer(serializers.ModelSerializer):
 
     def get_owner_wallet(self, obj):
         return getattr(obj.owner, 'wallet_address', None)
+
+    def get_owner__is_og(self, obj):
+        og = getattr(obj.owner, 'og_avatar', None)
+        return og is not None
+
+    def get_owner__edition(self, obj):
+        og = getattr(obj.owner, 'og_avatar', None)
+        return og.edition if og is not None else None
+
+    def get_owner__invited_count(self, obj):
+        invite_counts = self.context.get('invite_counts', {})
+        return invite_counts.get(obj.owner.user_id, 0)
