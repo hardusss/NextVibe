@@ -116,3 +116,4 @@ wcwidth==0.2.13
 web3==7.14.0
 websockets==10.4
 yarl==1.22.0
+h3
