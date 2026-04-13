@@ -7,13 +7,14 @@ import formatNumber from "@/src/utils/formatNumber";
 import { setSearchHistory, getSearchHistory, deleteUserFromHistory } from "@/src/api/history.search";
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
-import FastImage from 'react-native-fast-image';
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from 'expo-blur';
 import { storage } from "@/src/utils/storage";
 import VerifyBadge from "../VerifyBadge";
+import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
+
 const darkColors = {
     background: '#0A0410',
     cardBackground: '#0a0c1a',
@@ -44,12 +45,15 @@ interface User {
     username: string;
     official: boolean;
     readers_count: number;
+    is_og: boolean;
+    og_edition: number | null;
+    invited_count: number;
 }
 
 export default function SearchPage() {
     const colorScheme = useColorScheme();
     const colors = colorScheme === "dark" ? darkColors : lightColors;
-    const router = useRouter(); 
+    const router = useRouter();
     const [searchName, setSearchName] = useState<string>("");
     const [users, setUsers] = useState<User[]>([]);
     const [notExist, setNotExist] = useState<boolean>(false);
@@ -60,20 +64,21 @@ export default function SearchPage() {
         const response = await getSearchHistory();
         setSearchHistoryUser(response.data);
     };
+
     const checkUser = async (user_id: number) => {
-        const id = await storage.getItem("id")
-        return Number(id) == Number(user_id)
-    }
+        const id = await storage.getItem("id");
+        return Number(id) == Number(user_id);
+    };
 
     const handlePress = async (item: any) => {
         setSearchHistory(item.user_id);
-        if (await checkUser(Number(item.user_id))){
-            router.push("/profile")
+        if (await checkUser(Number(item.user_id))) {
+            router.push("/profile");
+        } else {
+            router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: "search" } });
         }
-        else {
-            router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: "search" }})
-        } 
-    }
+    };
+
     useFocusEffect(
         useCallback(() => {
             fetchHistory();
@@ -83,7 +88,7 @@ export default function SearchPage() {
                 setNotExist(false);
                 setLoading(false);
                 setSearchHistoryUser([]);
-            }
+            };
         }, [])
     );
 
@@ -93,11 +98,10 @@ export default function SearchPage() {
                 setUsers([]);
                 setNotExist(false);
                 setLoading(false);
-                fetchHistory(); 
+                fetchHistory();
             }
         }, [searchName])
-    )
-
+    );
 
     useFocusEffect(
         useCallback(() => {
@@ -124,120 +128,126 @@ export default function SearchPage() {
 
             return () => clearTimeout(timeout);
         }, [searchName])
-    )
+    );
 
     const handleDeleteUser = async (userId: number) => {
         await deleteUserFromHistory(userId);
         fetchHistory();
     };
 
+    const renderUserRow = (item: User, showDelete = false) => (
+        <TouchableOpacity
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}
+            onPress={() => handlePress(item)}
+        >
+            <AvatarWithFrame
+                avatarUrl={item.avatar}
+                size={40}
+                isOg={item.is_og}
+                ogEdition={item.og_edition}
+                invitedCount={item.invited_count}
+            />
+            <View style={{ marginLeft: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
+                    {item.official ? (
+                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16} />
+                    ) : null}
+                </View>
+                <Text style={{ color: "gray", fontFamily: "Dank Mono Bold", includeFontPadding: false }}>
+                    {formatNumber(item.readers_count)} Subs
+                </Text>
+            </View>
+            {showDelete && (
+                <TouchableOpacity
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    onPress={() => handleDeleteUser(item.user_id)}
+                    style={{ position: "absolute", right: 10 }}
+                >
+                    <MaterialIcons name="close" color={colors.textPrimary} size={24} />
+                </TouchableOpacity>
+            )}
+        </TouchableOpacity>
+    );
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"}></StatusBar>
+            <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"} />
+
+            {/* Search Input */}
             <View style={{ position: "relative", alignItems: "center", marginBottom: 20 }}>
                 <BlurView
                     intensity={0}
                     tint={colorScheme === "dark" ? "dark" : "light"}
                     style={{
-                    position: "absolute",
-                    top: -4,
-                    left: -4,
-                    right: -4,
-                    bottom: -4,
-                    borderRadius: 50,
-                    zIndex: 0,
+                        position: "absolute",
+                        top: -4, left: -4, right: -4, bottom: -4,
+                        borderRadius: 50,
+                        zIndex: 0,
                     }}
                 >
                     <LinearGradient
-                    colors={["#00FFF7", "#7B00FF"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                        flex: 1,
-                        borderRadius: 50,
-                        opacity: 0.5,
-                    }}
+                        colors={["#00FFF7", "#7B00FF"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ flex: 1, borderRadius: 50, opacity: 0.5 }}
                     />
                 </BlurView>
-                
+
                 <LinearGradient
                     colors={["#00FFF7", "#7B00FF"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={{
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderRadius: 32,
-                    padding: 2,
-                    width: width - 32,
-                    zIndex: 1,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        borderRadius: 32,
+                        padding: 2,
+                        width: width - 32,
+                        zIndex: 1,
                     }}
                 >
                     <View style={{ flexDirection: "row" }}>
-                    <View
-                        style={{
-                        height: 50,
-                        width: 50,
-                        backgroundColor: colors.inputBackground,
-                        borderTopLeftRadius: 32,
-                        borderBottomLeftRadius: 32,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        }}
-                    >
-                        <MaterialIcons color={colors.textSecondary} size={24} style={{ marginLeft: 10 }} name="search" />
-                    </View>
-                    <TextInput
-                        style={[
-                        styles.input,
-                        {
+                        <View style={{
+                            height: 50, width: 50,
                             backgroundColor: colors.inputBackground,
-                            color: colors.textPrimary,
-                        },
-                        ]}
-                        value={searchName}
-                        placeholder="Search profiles..."
-                        placeholderTextColor={colors.textSecondary}
-                        onChangeText={setSearchName}
-                    />
+                            borderTopLeftRadius: 32,
+                            borderBottomLeftRadius: 32,
+                            justifyContent: "center",
+                            alignItems: "center",
+                        }}>
+                            <MaterialIcons color={colors.textSecondary} size={24} style={{ marginLeft: 10 }} name="search" />
+                        </View>
+                        <TextInput
+                            style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
+                            value={searchName}
+                            placeholder="Search profiles..."
+                            placeholderTextColor={colors.textSecondary}
+                            onChangeText={setSearchName}
+                        />
                     </View>
                 </LinearGradient>
             </View>
 
-
-
+            {/* History */}
             {!searchName.length && searchHistoryUser.length > 0 && (
                 <FlatList
                     data={searchHistoryUser}
                     keyExtractor={(item) => item.user_id.toString()}
                     showsVerticalScrollIndicator={false}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}  onPress={() => handlePress(item)}>
-                            <FastImage source={{ uri: `${item.avatar}` }} style={styles.avatar} />
-                            <View>
-                                <View style={{flexDirection: "row", "alignItems": "center"}}>
-                                    <Text style={[styles.username, {color: colors.textPrimary}]}>{item.username}</Text>
-                                    {item.official ? (
-                                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
-                                    ) : null}
-                                </View>
-                                <Text style={{ color: "gray", fontFamily: "Dank Mono Bold",
-    includeFontPadding: false, }}>{formatNumber(item.readers_count)} Subs</Text>
-                            </View>
-                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => handleDeleteUser(item.user_id)} style={{ position: "absolute", right: 10 }}>
-                                <MaterialIcons name="close" color={colors.textPrimary} size={24} />
-                            </TouchableOpacity>
-                        </TouchableOpacity>
-                    )}
+                    renderItem={({ item }) => renderUserRow(item, true)}
                 />
             )}
 
+            {/* Loading */}
             {loading && (
                 <View style={{ flex: 1, justifyContent: "center", alignItems: "center", marginTop: -70 }}>
                     <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 10 }} />
                 </View>
             )}
 
+            {/* Search Results */}
             {!loading && !notExist ? (
                 <FlatList
                     data={users}
@@ -245,21 +255,7 @@ export default function SearchPage() {
                     showsVerticalScrollIndicator={false}
                     onEndReachedThreshold={0.5}
                     initialNumToRender={2}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.userContainer, { borderBottomColor: colors.border }]} onPress={() => handlePress(item)}>
-                            <FastImage source={{ uri: `${item.avatar}` }} style={styles.avatar} />
-                            <View>
-                                <View style={{flexDirection: "row", "alignItems": "center"}}>
-                                    <Text style={[styles.username, {color: colors.textPrimary}]}>{item.username}</Text>
-                                    {item.official ? (
-                                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16}/>
-                                    ) : null}
-                                </View>
-                                <Text style={{ color: "gray", fontFamily: "Dank Mono Bold",
-    includeFontPadding: false, }}>{formatNumber(item.readers_count)} Subs</Text>
-                            </View>
-                        </TouchableOpacity>
-                    )}
+                    renderItem={({ item }) => renderUserRow(item, false)}
                 />
             ) : (
                 !loading && (
@@ -276,7 +272,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 16,
-        paddingBottom: 80
+        paddingBottom: 80,
     },
     input: {
         height: 50,
@@ -285,18 +281,13 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 32,
         paddingHorizontal: 10,
         width: width - (35 + 50),
-        fontSize: 16
+        fontSize: 16,
     },
     userContainer: {
         flexDirection: "row",
         alignItems: "center",
         paddingVertical: 10,
-    },
-    avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 30,
-        marginRight: 10,
+        paddingLeft: 10
     },
     username: {
         fontSize: 16,

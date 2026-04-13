@@ -3,12 +3,13 @@ import {
     View, Text, FlatList, TouchableOpacity, 
     StyleSheet, useColorScheme, Dimensions 
 } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import FastImage from "react-native-fast-image";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import getRoccomendationsProfiles from "@/src/api/recommendations.profiles";
 import followUser from "@/src/api/follow";
 import VerifyBadge from "../VerifyBadge";
+import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
+
 const screenWidth = Dimensions.get("window").width;
 
 const lightTheme = {
@@ -25,8 +26,8 @@ const lightTheme = {
 };
 
 const darkTheme = {
-    background: "#0A0410", 
-    cardBackground: "#180B32", 
+    background: "#0A0410",
+    cardBackground: "#180B32",
     textPrimary: "#ffffff",
     textSecondary: "#8b949e",
     border: "transparent",
@@ -49,7 +50,7 @@ const RecommendedUsers = () => {
             try {
                 const response = await getRoccomendationsProfiles();
                 setUsers(response.recommended_users);
-                setFollowedUsers(prev => [...prev, ...response.follow_for])
+                setFollowedUsers(prev => [...prev, ...response.follow_for]);
             } catch (error) {
                 console.error("Error fetching recommendations:", error);
             }
@@ -74,11 +75,15 @@ const RecommendedUsers = () => {
                 <Text style={[styles.title, { color: theme.textPrimary }]}>
                     Recommended for you
                 </Text>
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setExpanded(!expanded)} style={styles.iconButton}>
-                    <Ionicons 
-                        name={expanded ? "chevron-up" : "chevron-down"} 
-                        size={24} 
-                        color={theme.iconColor} 
+                <TouchableOpacity
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    onPress={() => setExpanded(!expanded)}
+                    style={styles.iconButton}
+                >
+                    <Ionicons
+                        name={expanded ? "chevron-up" : "chevron-down"}
+                        size={24}
+                        color={theme.iconColor}
                     />
                 </TouchableOpacity>
             </View>
@@ -92,32 +97,37 @@ const RecommendedUsers = () => {
                     renderItem={({ item }) => {
                         const isFollowed = followedUsers.includes(item.id);
                         return (
-                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+                            <TouchableOpacity
+                                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 style={[
-                                    styles.userCard, 
+                                    styles.userCard,
                                     { backgroundColor: theme.cardBackground, borderColor: theme.border }
-                                ]} 
-                                onPress={() => 
-                                    router.push({ 
-                                        pathname: "/user-profile", 
-                                        params: { id: item.id, last_page: "profile" } 
+                                ]}
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/user-profile",
+                                        params: { id: item.id, last_page: "profile" }
                                     })
                                 }
-                            > 
-                                <FastImage 
-                                    source={{ uri: `${item.avatar}` }} 
-                                    style={styles.avatar} 
+                            >
+                                <AvatarWithFrame
+                                    avatarUrl={item.avatar}
+                                    size={75}
+                                    isOg={item.is_og}
+                                    ogEdition={item.og_edition}
+                                    invitedCount={item.invited_count}
                                 />
+
                                 <View style={styles.userInfo}>
                                     <View style={{
-                                        flexDirection: "row", 
-                                        alignItems: "center", 
+                                        flexDirection: "row",
+                                        alignItems: "center",
                                         paddingBottom: 10,
                                         width: "100%",
                                         justifyContent: "center",
                                     }}>
-                                        <Text 
-                                            style={[styles.username, {color: theme.textPrimary}]}
+                                        <Text
+                                            style={[styles.username, { color: theme.textPrimary }]}
                                             numberOfLines={1}
                                             ellipsizeMode="tail"
                                         >
@@ -125,42 +135,39 @@ const RecommendedUsers = () => {
                                         </Text>
                                         {item.official ? (
                                             <View style={{ marginLeft: 4 }}>
-                                                <VerifyBadge 
-                                                    isLooped={false} 
-                                                    isVisible={true} 
-                                                    haveModal={false} 
-                                                    isStatic={true} 
+                                                <VerifyBadge
+                                                    isLooped={false}
+                                                    isVisible={true}
+                                                    haveModal={false}
+                                                    isStatic={true}
                                                     size={16}
                                                 />
                                             </View>
                                         ) : null}
                                     </View>
 
-                                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                                        onPress={() => handleFollowUnfollow(item.id)} 
+                                    <TouchableOpacity
+                                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                        onPress={() => handleFollowUnfollow(item.id)}
                                         activeOpacity={0.8}
                                         style={[
                                             styles.followButton,
-                                            { 
-                                                backgroundColor: isFollowed 
-                                                    ? theme.followedButton 
+                                            {
+                                                backgroundColor: isFollowed
+                                                    ? theme.followedButton
                                                     : undefined,
-                                                
                                             }
                                         ]}
                                     >
                                         <View style={[
-                                            styles.followGradient, 
-                                            { 
-                                                backgroundColor: isFollowed 
-                                                    ? "#2d075eff" 
+                                            styles.followGradient,
+                                            {
+                                                backgroundColor: isFollowed
+                                                    ? "#2d075eff"
                                                     : theme.followButtonGradient[0]
                                             }
                                         ]}>
-                                            <Text style={[
-                                                styles.followText,
-                                                { color: theme.followText }
-                                            ]}>
+                                            <Text style={[styles.followText, { color: theme.followText }]}>
                                                 {isFollowed ? "Unfollow" : "Follow"}
                                             </Text>
                                         </View>
@@ -184,7 +191,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
         marginBottom: 10,
-        paddingHorizontal: 10
+        paddingHorizontal: 10,
     },
     title: {
         fontSize: 18,
@@ -200,22 +207,10 @@ const styles = StyleSheet.create({
         padding: 12,
         alignItems: "center",
     },
-    avatar: {
-        width: 75,
-        height: 75,
-        borderRadius: 40,
-        marginBottom: 10,
-    },
     userInfo: {
         alignItems: "center",
         width: "100%",
-    },
-    nameContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        maxWidth: "90%",
-        marginBottom: 8,
+        marginTop: 10,
     },
     username: {
         fontWeight: "bold",
@@ -241,7 +236,7 @@ const styles = StyleSheet.create({
     followText: {
         fontSize: 14,
         fontFamily: "Dank Mono Bold",
-    includeFontPadding: false,
+        includeFontPadding: false,
     },
 });
 
