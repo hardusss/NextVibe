@@ -33,7 +33,8 @@ class DeletePostView(APIView):
                 else:
                     user.post_count = 0
                 user.save()
-                post.delete()
+                post.is_hide = True
+                post.save()
                 return Response({"data": "Post deleted"}, status=status.HTTP_200_OK)
             except Exception as ex:
                 return Response({"error": f"Can't delete the post. Error: {ex}"}, status=status.HTTP_400_BAD_REQUEST)
