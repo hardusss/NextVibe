@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -15,7 +15,6 @@ import {
     Animated,
     StatusBar,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import getComments from '@/src/api/get.comments';
 import { MaterialIcons, Entypo, AntDesign } from '@expo/vector-icons';
 import timeAgo from '@/src/utils/formatTime';
@@ -27,8 +26,9 @@ import commentLike from '@/src/api/comment.like';
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import VerifyBadge from '../VerifyBadge';
+import { AvatarWithFrame } from '@/components/ProfilePage/AvatarWithFrame';
 
-const { height: SCREEN_HEIGHT, width } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -40,6 +40,9 @@ interface User {
     username: string;
     avatar: string;
     official: boolean;
+    is_og: boolean;
+    og_edition: number | null;
+    invited_count: number;
 }
 
 interface BaseComment {
@@ -93,7 +96,6 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
     const [commentText, setCommentText] = useState('');
     const [expandedTexts, setExpandedTexts] = useState<{ [key: string]: boolean }>({});
 
-    // Open animation on mount
     useEffect(() => {
         Animated.spring(slideAnim, {
             toValue: 0,
@@ -257,7 +259,13 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
     const renderReply = ({ item }: { item: Reply }) => (
         <View style={styles.replyContainer}>
             <View style={styles.userInfo}>
-                <FastImage source={{ uri: item.user.avatar }} style={styles.avatar} />
+                <AvatarWithFrame
+                    avatarUrl={item.user.avatar}
+                    size={32}
+                    isOg={item.user.is_og}
+                    ogEdition={item.user.og_edition}
+                    invitedCount={item.user.invited_count}
+                />
                 <View style={styles.commentContent}>
                     <View style={styles.userDetails}>
                         <Text style={styles.username}>{item.user?.username}</Text>
@@ -293,7 +301,13 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
         return (
             <View style={styles.commentContainer}>
                 <View style={styles.userInfo}>
-                    <FastImage source={{ uri: item.user.avatar, priority: FastImage.priority.normal }} style={styles.avatar} resizeMode={FastImage.resizeMode.cover} />
+                    <AvatarWithFrame
+                        avatarUrl={item.user.avatar}
+                        size={36}
+                        isOg={item.user.is_og}
+                        ogEdition={item.user.og_edition}
+                        invitedCount={item.user.invited_count}
+                    />
                     <View style={styles.commentContent}>
                         <View style={styles.userDetails}>
                             <Text style={styles.username}>{item.user?.username}</Text>
@@ -364,7 +378,6 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
             <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
 
             <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-
                 <KeyboardAvoidingView
                     style={styles.keyboardWrapper}
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -468,8 +481,8 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: '100%',
-        maxHeight: SCREEN_HEIGHT * 0.70, 
-        marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0, 
+        maxHeight: SCREEN_HEIGHT * 0.70,
+        marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
         backgroundColor: '#0f0f0f',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
@@ -534,12 +547,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 10,
-    },
-    avatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#1a1a1a',
     },
     commentContent: {
         flex: 1,

@@ -28,6 +28,7 @@ import likePost from "@/src/api/like.post";
 import DropDown from "../Shared/Posts/PostsDropdown";
 import VerifyBadge from "../VerifyBadge";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
+import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
@@ -44,13 +45,15 @@ interface PostMedia {
     media_url: string;
 }
 
-/** Full post data shape returned by GetPostView */
 interface PostData {
     user_id: number;
     post_id: number;
     username: string;
     avatar: string | null;
     official: boolean;
+    is_og: boolean;
+    og_edition: number | null;
+    invited_count: number;
     about: string;
     count_likes: number;
     media: PostMedia[];
@@ -227,14 +230,9 @@ const PostPopup: React.FC<PostPopupProps> = ({
         );
     };
 
-    /**
-     * Resolves the visual state of the collect button based on post NFT data.
-     * Returns null if the post has no NFT functionality yet and the user is not the owner.
-     */
     const resolveCollectState = (p: PostData): CollectState | null => {
         if (p.already_claimed) return "claimed";
         if (p.sold_out) return "soldout";
-        // Show collect button if: post is already an NFT OR current user is the owner (first mint)
         if (p.is_nft || p.is_owner) return "collect";
         return null;
     };
@@ -272,11 +270,13 @@ const PostPopup: React.FC<PostPopupProps> = ({
                         {/* Header */}
                         <View style={styles.postHeader}>
                             <View style={styles.userInfo}>
-                                {post?.avatar ? (
-                                    <FastImage source={{ uri: post.avatar }} style={styles.avatar} />
-                                ) : (
-                                    <View style={[styles.avatar, { backgroundColor: "#222" }]} />
-                                )}
+                                <AvatarWithFrame
+                                    avatarUrl={post?.avatar ?? null}
+                                    size={38}
+                                    isOg={post?.is_og ?? false}
+                                    ogEdition={post?.og_edition ?? null}
+                                    invitedCount={post?.invited_count ?? 0}
+                                />
                                 <View style={styles.usernameRow}>
                                     <Text style={styles.username} numberOfLines={1}>{post?.username ?? ""}</Text>
                                     {post?.official && (
@@ -288,7 +288,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             </View>
 
                             <View style={styles.headerActions}>
-                                {/* Single button handles all 3 states */}
                                 {collectState !== null && (
                                     <ButtonCollect
                                         onPress={handleOpenMint}
@@ -477,12 +476,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 10,
         flex: 1,
-    },
-    avatar: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        backgroundColor: "#1a1a1a",
     },
     usernameRow: {
         flexDirection: "row",
