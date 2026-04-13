@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
 from ..tasks import send_post_for_moderation
+import h3
 
 User = get_user_model()
 
@@ -18,7 +19,29 @@ class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        is_v2 = self.request.query_params.get("v2") == "true"
+
+        extra_data = {
+            "owner": self.request.user
+        }
+
+        if is_v2:
+            coords = self.request.data.get("coords")
+            resolution = self.request.data.get("resolution")
+
+            if coords and resolution:
+                try:
+                    lat, lng = coords
+                    h3_index = h3.latlng_to_cell(
+                        lat=float(lat),
+                        lng=float(lng),
+                        res=int(resolution)
+                    )
+                    extra_data["h3_geo"] = h3_index
+                except Exception as ex:
+                    print("H3 error:", ex)
+
+        serializer.save(**extra_data)
 
     @action(detail=True, methods=['post'], url_path='finalize')
     def finalize_creation(self, request, pk=None):
