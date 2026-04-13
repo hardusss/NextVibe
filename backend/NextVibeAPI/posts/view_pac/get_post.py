@@ -5,8 +5,10 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import Post, Comment, UserCollection
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
+from user.models import InviteUser
 
 User = get_user_model()
+
 
 class GetPostView(APIView):
     permission_classes = [IsAuthenticated]
@@ -21,17 +23,15 @@ class GetPostView(APIView):
         post = (
             Post.objects
             .prefetch_related("media")
-            .select_related("owner")          # fix: select_related on model, not field
+            .select_related("owner", "owner__og_avatar")
             .filter(id=post_id)
             .first()
         )
-
         if not post:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         owner = post.owner
 
-        # Build avatar URL
         avatar_url = None
         if owner.avatar:
             raw = str(owner.avatar)
@@ -42,9 +42,7 @@ class GetPostView(APIView):
             .filter(post=post_id)
             .prefetch_related("replies")
         )
-
         comments_count = comments.count()
-        replies_count = sum(len(comment.replies.all()) for comment in comments)
 
         nft_price = None
         is_owner = post.owner == request.user
@@ -52,11 +50,19 @@ class GetPostView(APIView):
         if post.is_nft:
             edition_one = UserCollection.objects.filter(post=post, edition=1).first()
             nft_price = str(edition_one.price) if edition_one else None
-
             already_claimed = UserCollection.objects.filter(
                 user=request.user,
                 post=post
             ).exists()
+
+        og = getattr(owner, 'og_avatar', None)
+
+        try:
+            invite_data = InviteUser.objects.get(owner=owner)
+            invited_count = invite_data.invited_count
+        except InviteUser.DoesNotExist:
+            invited_count = 0
+
         return Response({
             "status": "ok",
             "data": {
@@ -66,6 +72,9 @@ class GetPostView(APIView):
                 "liked_posts": request.user.liked_posts,
                 "avatar": avatar_url,
                 "official": getattr(owner, "official", False),
+                "is_og": og is not None,
+                "og_edition": og.edition if og is not None else None,
+                "invited_count": invited_count,
                 "about": post.about,
                 "count_likes": post.count_likes,
                 "comments_count": comments_count,
@@ -86,10 +95,10 @@ class GetPostView(APIView):
                 "is_comments_enabled": post.is_comments_enabled,
                 "is_owner": is_owner,
                 "is_nft": post.is_nft,
-                "nft_price": nft_price,              
+                "nft_price": nft_price,
                 "minted_count": post.minted_count,
                 "total_supply": post.total_supply,
-                "already_claimed": already_claimed, 
+                "already_claimed": already_claimed,
                 "sold_out": post.minted_count >= (post.total_supply or 50),
                 "owner_wallet": getattr(post.owner, "wallet_address", None),
             }
