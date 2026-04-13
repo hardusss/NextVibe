@@ -59,6 +59,12 @@
     <string>NextVibe needs access to your Camera.</string>
     <key>NSFaceIDUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>NextVibe needs your location to show you on the VibeMap and find nearby drops.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>NextVibe needs your location to notify you about Vibe Zones nearby.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>NextVibe needs your location to show you on the VibeMap.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>NextVibe needs access to your Microphone.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
