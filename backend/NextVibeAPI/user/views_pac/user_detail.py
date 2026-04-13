@@ -34,7 +34,7 @@ class UserDetailView(APIView):
             isProfile = request.query_params.get('isProfile')
 
             # Count cNFTs posts and og
-            cnft_count = UserCollection.objects.filter(user=user, post__is_hide=False).count() + OgAvatarMint.objects.filter(user=user).count()
+            cnft_count = UserCollection.objects.filter(user=user).count() + OgAvatarMint.objects.filter(user=user).count()
 
             # Get count invited
             try:
