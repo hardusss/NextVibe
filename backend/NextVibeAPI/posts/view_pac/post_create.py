@@ -31,10 +31,11 @@ class PostViewSet(viewsets.ModelViewSet):
 
             if coords and resolution:
                 try:
-                    lat, lng = coords
+                    lat = float(coords["lat"])
+                    lng = float(coords["lng"])
                     h3_index = h3.latlng_to_cell(
-                        lat=float(lat),
-                        lng=float(lng),
+                        lat=lat,
+                        lng=lng,
                         res=int(resolution)
                     )
                     extra_data["h3_geo"] = h3_index
