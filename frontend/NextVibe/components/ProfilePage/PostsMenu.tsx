@@ -1,16 +1,17 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
     View,
     FlatList,
     TouchableOpacity,
     StyleSheet,
     Dimensions,
-    Text
+    Text,
+    Animated,
+    Easing,
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getMenuPosts from "@/src/api/menu.posts";
 import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
 import { ImageIcon, Video, Clock3, Sparkles, Gem } from "lucide-react-native";
@@ -49,6 +50,45 @@ type MediaCheck =
 interface PostGalleryProps {
     id: number;
     previous: string;
+}
+
+function ModerationDot({ delay }: { delay: number }) {
+    const opacity = useRef(new Animated.Value(0.25)).current;
+    useEffect(() => {
+        const anim = Animated.loop(
+            Animated.sequence([
+                Animated.delay(delay),
+                Animated.timing(opacity, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                    easing: Easing.out(Easing.ease),
+                }),
+                Animated.timing(opacity, {
+                    toValue: 0.25,
+                    duration: 400,
+                    useNativeDriver: true,
+                    easing: Easing.in(Easing.ease),
+                }),
+                Animated.delay(840 - delay),
+            ])
+        );
+        anim.start();
+        return () => anim.stop();
+    }, []);
+
+    return (
+        <Animated.View
+            style={{
+                width: 4,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: 'rgba(168,85,247,0.8)',
+                opacity,
+                marginHorizontal: 2,
+            }}
+        />
+    );
 }
 
 const PostGallery = ({ id, previous }: PostGalleryProps) => {
@@ -291,16 +331,28 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                 )}
 
                                 {isPending && (
-                                    <BlurView
-                                        style={styles.moderationOverlay}
-                                        blurType="dark"
-                                        blurAmount={12}
-                                    >
+                                    <View style={styles.moderationOverlay}>
+                                        <BlurView
+                                            style={StyleSheet.absoluteFill}
+                                            blurType="dark"
+                                            blurAmount={14}
+                                        />
                                         <View style={styles.moderationContent}>
-                                            <Clock3 size={26} color="rgba(255,255,255,0.85)" strokeWidth={1.8} />
-                                            <Text style={styles.moderationText}>On Moderation</Text>
+                                            <View style={styles.moderationIconWrap}>
+                                                <Clock3
+                                                    size={15}
+                                                    color="rgba(196,181,253,0.9)"
+                                                    strokeWidth={1.8}
+                                                />
+                                            </View>
+                                            <Text style={styles.moderationText}>reviewing</Text>
+                                            <View style={styles.moderationDots}>
+                                                <ModerationDot delay={0} />
+                                                <ModerationDot delay={280} />
+                                                <ModerationDot delay={560} />
+                                            </View>
                                         </View>
-                                    </BlurView>
+                                    </View>
                                 )}
 
                                 {hasMedia && isApproved && (
@@ -366,7 +418,7 @@ const styles = StyleSheet.create({
     placeholderInner: {
         width: 46,
         height: 46,
-        borderRadius: 23, 
+        borderRadius: 23,
         backgroundColor: "rgba(109,40,217,0.15)",
         borderWidth: 1,
         borderColor: "rgba(167,139,250,0.3)",
@@ -377,7 +429,7 @@ const styles = StyleSheet.create({
     placeholderText: {
         color: "rgba(167,139,250,0.6)",
         fontSize: 10,
-        fontFamily: "Dank Mono Bold", 
+        fontFamily: "Dank Mono Bold",
         letterSpacing: 0.5,
     },
     media: {
@@ -399,29 +451,46 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 12,
     },
     moderationOverlay: {
-        position: "absolute",
-        width: "100%",
-        height: "100%",
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
         zIndex: 9999,
         borderRadius: 12,
-        overflow: "hidden",
-        justifyContent: "center",
-        alignItems: "center",
+        overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 0.5,
+        borderColor: 'rgba(168,85,247,0.25)',
     },
     moderationContent: {
         flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 5,
+    },
+    moderationIconWrap: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: 'rgba(168,85,247,0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(168,85,247,0.35)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 2,
     },
     moderationText: {
-        color: "rgba(255,255,255,0.8)",
-        fontSize: 10,
-        textAlign: "center",
-        fontFamily: "Dank Mono Bold",
+        color: 'rgba(196,181,253,0.75)',
+        fontSize: 9,
+        fontFamily: 'Dank Mono Bold',
         includeFontPadding: false,
-        lineHeight: 13,
-        letterSpacing: 0.4,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+    },
+    moderationDots: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 2,
     },
     badgeRow: {
         position: "absolute",
