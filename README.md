@@ -11,6 +11,23 @@
 * **📱 Download APK:** https://media.nextvibe.io/NextVibe.apk
 * **🔗 Site:** https://nextvibe.io
 
+> 🚨 **Solana Mobile Judges Update (Post-Submission Grind):** We didn't stop building after March 10th. NextVibe is now in closed beta! 
+> Download our latest release and use the exclusive judge code **`SEEKER`** to bypass the waitlist and claim your OG cNFT Avatar!
+
+## 🔥 The Asymmetric Advantage: Making the Solana Seeker Superior
+
+QR codes are dead. We built a custom **Cross-Platform APDU NFC Module** that transforms any Android device (like the Solana Seeker or Saga) into an active Web3 emitter. 
+
+**Here is the killer hook:** Apple strictly locks down their NFC hardware. An iPhone cannot act as a host. But with NextVibe, a **Solana Seeker can actively push a profile, cNFT, or Solana Pay transaction directly to any iPhone or Android phone** with a single physical tap. The iPhone can receive it instantly without even having the app installed, but it cannot do the reverse. 
+
+*We just made the Solana Mobile device the most powerful Web3 networking tool in the room.*
+
+* 🍏 **Bypassing Apple Wallet:** Our custom APDU logic cleanly bypasses the aggressive Apple Wallet pop-ups on iOS. A tap triggers the native Phantom/Solflare wallet instantly via universal links.
+* 🛡️ **Hardware-Level Proof of Presence:** You can't fake a physical tap. This ensures every interaction on NextVibe happens strictly In-Real-Life.
+
+### 🎥 Live Demo: Cross-Platform NFC Transaction
+*Watch how seamlessly a Solana phone pushes data to another device using our APDU module.*
+
 ## ❌ The Problem
 Web3 social apps today are plagued by friction. For a mobile user, saving content or interacting with creators requires deep blockchain knowledge, seed phrases, and constant transaction signing. Furthermore, existing apps completely ignore the physical world (IRL) — your real-life connections don't translate into your digital social graph.
 
