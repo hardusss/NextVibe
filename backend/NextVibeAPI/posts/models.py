@@ -15,6 +15,7 @@ class Post(models.Model):
     count_likes = models.IntegerField(default=0, null=True)
     create_at = models.DateTimeField(auto_now_add=True)
     location = models.CharField(default=None, null=True, blank=True, max_length=255)
+    h3_geo = models.CharField(default=None, null=True, blank=True, max_length=255)
     is_ai_generated = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)  
     moderation_status = models.CharField(max_length=20, default="pending")
