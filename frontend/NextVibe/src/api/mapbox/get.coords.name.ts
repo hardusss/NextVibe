@@ -7,7 +7,7 @@ export const getLocationName = async (lng: number, lat: number) => {
         const data = await response.json();
 
         if (data.features && data.features.length > 0) {
-            const placeName = data.features[0].place_name;
+            const placeName = data.features[0].place_name_en ?? data.features[0].place_name;
 
             return (placeName.split(',')[0]);
         }
