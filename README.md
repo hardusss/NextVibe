@@ -1,7 +1,3 @@
-
-
-https://github.com/user-attachments/assets/fd864d7d-6128-4adf-b2e7-3d19b49c6c53
-
 # 🚀 NextVibe: The IRL-to-Web3 Social Graph
 
 **Built for the Solana Mobile Hackathon 2026**
