@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/fd864d7d-6128-4adf-b2e7-3d19b49c6c53
+
 # 🚀 NextVibe: The IRL-to-Web3 Social Graph
 
 **Built for the Solana Mobile Hackathon 2026**
@@ -27,6 +31,8 @@ QR codes are dead. We built a custom **Cross-Platform APDU NFC Module** that tra
 
 ### 🎥 Live Demo: Cross-Platform NFC Transaction
 *Watch how seamlessly a Solana phone pushes data to another device using our APDU module.*
+
+https://github.com/user-attachments/assets/4c6867ce-055c-4259-b840-75a5ff21657e
 
 ## ❌ The Problem
 Web3 social apps today are plagued by friction. For a mobile user, saving content or interacting with creators requires deep blockchain knowledge, seed phrases, and constant transaction signing. Furthermore, existing apps completely ignore the physical world (IRL) — your real-life connections don't translate into your digital social graph.
