@@ -35,5 +35,5 @@ __pycache__/
 *.log
 
 # Native folders
-android/
-ios/
+frontend/NextVibe/android/
+frontend/NextVibe/ios/
