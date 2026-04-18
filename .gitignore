@@ -33,3 +33,7 @@ __pycache__/
 
 # Logs
 *.log
+
+# Native folders
+android/
+ios/
