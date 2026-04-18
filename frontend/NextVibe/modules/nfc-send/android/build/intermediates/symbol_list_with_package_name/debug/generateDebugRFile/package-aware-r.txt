@@ -1,0 +1,2 @@
+expo.modules.nfcsend
+xml apdu_service
