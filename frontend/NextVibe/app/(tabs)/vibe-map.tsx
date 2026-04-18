@@ -1,2 +1,2 @@
-import VibeMapScreen from "@/components/VibeMap/VibeMapScreen";
-export default VibeMapScreen;
+import MapScreen from "@/components/VibeMap/Map";
+export default MapScreen;

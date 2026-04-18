@@ -23,6 +23,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MapboxGL from '@rnmapbox/maps';
 
 import { vexo, identifyDevice } from 'vexo-analytics';
 
@@ -39,6 +40,13 @@ if (!__DEV__ && process.env.EXPO_PUBLIC_VEXO_API_KEY) {
 }
 
 SplashScreen.preventAutoHideAsync();
+console.log("MAPBOX TOKEN IS:", process.env.EXPO_PUBLIC_MAPBOX_TOKEN);
+
+if (process.env.EXPO_PUBLIC_MAPBOX_TOKEN) {
+    MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN);
+} else {
+    console.warn("Mapbox token is missing in .env!");
+}
 
 const defaultFontFamily = 'Dank Mono';
 const boldFontFamily = 'Dank Mono Bold';
@@ -250,7 +258,7 @@ export default function Layout() {
 
     if (!fontsLoaded && !fontError) return null;
 
-    const goToTab = (tab: string) => router.push(tab as RelativePathString);
+    const goToTab = (tab: string) => router.navigate(tab as RelativePathString);
     const showTabBar = ![...blacklist, "camera"].includes(currentPage);
 
     return (
@@ -276,7 +284,7 @@ export default function Layout() {
                                     <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { backgroundColor: 'transparent' } }}>
                                         <Stack.Screen name="home" />
                                         <Stack.Screen name="search" />
-                                        <Stack.Screen name="vibe-map" />
+                                        <Stack.Screen name="vibe-map" options={{ headerShown: false,animation: "none" }}  />
                                         <Stack.Screen name="camera" />
                                         <Stack.Screen name="profile" />
                                         {stackScreens.map((item) => (
