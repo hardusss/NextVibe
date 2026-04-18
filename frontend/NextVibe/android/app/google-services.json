@@ -51,6 +51,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "1063264156706-7r154im23dpslvvd468ps3ovtaj5j6kc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nextvibe.app",
+            "certificate_hash": "83dd60551dcc61796d44c16214e33f3915863dec"
+          }
+        },
+        {
+          "client_id": "1063264156706-k1bgaou1c8ctj21jaheso4idle2gqnuh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nextvibe.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "1063264156706-pcn13bmu7dvl2rghsf1o4ph2lpqig726.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
