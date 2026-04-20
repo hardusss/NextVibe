@@ -188,6 +188,7 @@ REST_FRAMEWORK = {
         'invite': '30/min',
 
         # Posts/Feed
+        "get_vibemap_nfts": "40/min",
         "feed": "110/min",   
         "post_menu": "170/min",
         "report": "5/min",         
