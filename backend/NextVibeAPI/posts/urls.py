@@ -8,7 +8,7 @@ from .view_pac import (
     DeletePostView, SendReportForPostView,
     GetGenerationImageStatusView, GetPostView,
     PostMetadataView, CollectionMetadataView,
-    MintNftView, UserCollectionView
+    MintNftView, UserCollectionView, GetVibemapNFTsView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -36,6 +36,7 @@ urlpatterns = [
     path("collection/metadata/", CollectionMetadataView.as_view(), name="metadata"),
     path("cnft-mint/", MintNftView.as_view(), name="mint_cnft"),
     path("collections-menu/<int:id>/", UserCollectionView.as_view(), name="collections_menu"),
+    path("get-vibemap-nfts/", GetVibemapNFTsView.as_view(), name="get_vibemap_nfts"),
 ]
 
 
