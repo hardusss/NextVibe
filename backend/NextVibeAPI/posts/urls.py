@@ -8,7 +8,8 @@ from .view_pac import (
     DeletePostView, SendReportForPostView,
     GetGenerationImageStatusView, GetPostView,
     PostMetadataView, CollectionMetadataView,
-    MintNftView, UserCollectionView, GetVibemapNFTsView
+    MintNftView, UserCollectionView, GetVibemapNFTsView,
+    LumaEventPreviewView, LumaEventVerifyView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -37,6 +38,8 @@ urlpatterns = [
     path("cnft-mint/", MintNftView.as_view(), name="mint_cnft"),
     path("collections-menu/<int:id>/", UserCollectionView.as_view(), name="collections_menu"),
     path("get-vibemap-nfts/", GetVibemapNFTsView.as_view(), name="get_vibemap_nfts"),
+    path("luma-event/preview/", LumaEventPreviewView.as_view(), name="luma_event_preview"),
+    path("luma-event/verify/", LumaEventVerifyView.as_view(), name="luma_event_verify"),
 ]
 
 
