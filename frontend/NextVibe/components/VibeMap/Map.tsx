@@ -64,6 +64,22 @@ export default function MapScreen() {
         return nfts.filter((x) => typeof x.lat === "number" && typeof x.lng === "number");
     }, [nfts]);
 
+    const nftsGeoJson = useMemo(() => {
+        return {
+            type: "FeatureCollection",
+            features: mapNfts.map((item) => ({
+                type: "Feature" as const,
+                geometry: {
+                    type: "Point" as const,
+                    coordinates: [item.lng as number, item.lat as number],
+                },
+                properties: {
+                    post_id: item.post_id,
+                },
+            })),
+        } as const;
+    }, [mapNfts]);
+
     return (
         <View style={styles.container}>
             <StatusBar translucent backgroundColor='#000000'/>
@@ -98,6 +114,60 @@ export default function MapScreen() {
                         }}
                     />
 
+                    {/* Big halo so markers are visible even from far zoom */}
+                    <MapboxGL.ShapeSource id="vibemap-nfts" shape={nftsGeoJson}>
+                        <MapboxGL.CircleLayer
+                            id="vibemap-nfts-halo"
+                            style={{
+                                circleColor: "#BCBBFD",
+                                circleOpacity: [
+                                    "interpolate",
+                                    ["linear"],
+                                    ["zoom"],
+                                    0,
+                                    0.55,
+                                    3,
+                                    0.35,
+                                    6,
+                                    0.2,
+                                    10,
+                                    0.0,
+                                ],
+                                circleRadius: [
+                                    "interpolate",
+                                    ["linear"],
+                                    ["zoom"],
+                                    0,
+                                    18,
+                                    2,
+                                    14,
+                                    4,
+                                    10,
+                                    6,
+                                    7,
+                                    8,
+                                    5,
+                                    10,
+                                    3,
+                                ],
+                                circleBlur: 1,
+                                circleStrokeWidth: 1,
+                                circleStrokeColor: "rgba(82, 5, 159, 0.85)",
+                                circleStrokeOpacity: [
+                                    "interpolate",
+                                    ["linear"],
+                                    ["zoom"],
+                                    0,
+                                    0.75,
+                                    6,
+                                    0.35,
+                                    10,
+                                    0.0,
+                                ],
+                            }}
+                        />
+                    </MapboxGL.ShapeSource>
+
                     <MapboxGL.VectorSource id="vibe-borders" url="mapbox://mapbox.mapbox-streets-v8">
                         <MapboxGL.LineLayer
                             id="neon-borders"
@@ -125,35 +195,39 @@ export default function MapScreen() {
                     </MapboxGL.VectorSource>
 
                     {mapNfts.map((item) => (
-                        <MapboxGL.PointAnnotation
+                        <MapboxGL.MarkerView
                             key={String(item.post_id)}
                             id={`vibemap-nft-${item.post_id}`}
                             coordinate={[item.lng as number, item.lat as number]}
+                            anchor={{ x: 0.5, y: 0.5 }}
+                            allowOverlap
                         >
-                            <Pressable style={styles.markerContainer}>
-                                {item.image ? (
-                                    <Image
-                                        source={{ uri: item.image }}
-                                        style={styles.markerPostImage}
-                                        resizeMode="cover"
-                                    />
-                                ) : (
-                                    <View style={styles.markerPostFallback} />
-                                )}
-
-                                <View style={styles.markerAvatarRing}>
-                                    {item.owner_avatar ? (
+                            <Pressable style={styles.markerShadowWrap}>
+                                <View style={styles.markerContainer}>
+                                    {item.image ? (
                                         <Image
-                                            source={{ uri: item.owner_avatar }}
-                                            style={styles.markerAvatar}
+                                            source={{ uri: item.image }}
+                                            style={styles.markerPostImage}
                                             resizeMode="cover"
                                         />
                                     ) : (
-                                        <View style={styles.markerAvatarFallback} />
+                                        <View style={styles.markerPostFallback} />
                                     )}
+
+                                    <View style={styles.markerAvatarRing}>
+                                        {item.owner_avatar ? (
+                                            <Image
+                                                source={{ uri: item.owner_avatar }}
+                                                style={styles.markerAvatar}
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <View style={styles.markerAvatarFallback} />
+                                        )}
+                                    </View>
                                 </View>
                             </Pressable>
-                        </MapboxGL.PointAnnotation>
+                        </MapboxGL.MarkerView>
                     ))}
 
                     {isNftsLoading ? (
@@ -224,6 +298,14 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "rgba(188, 187, 253, 0.18)",
     },
+    markerShadowWrap: {
+        borderRadius: 12,
+        shadowColor: "#A855F7",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.35,
+        shadowRadius: 18,
+        elevation: 10,
+    },
     markerPostImage: {
         position: "absolute",
         top: 0,
@@ -246,9 +328,14 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         backgroundColor: "rgba(0,0,0,0.6)",
         borderWidth: 2,
-        borderColor: "rgba(188, 187, 253, 0.75)",
+        borderColor: "#A855F7",
         alignItems: "center",
         justifyContent: "center",
+        shadowColor: "#A855F7",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 8,
     },
     markerAvatar: {
         width: 30,
