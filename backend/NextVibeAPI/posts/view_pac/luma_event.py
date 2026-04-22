@@ -64,15 +64,25 @@ def _fetch_luma_event(url: str) -> dict:
     soup = BeautifulSoup(r.text, 'html.parser')
 
     def _meta(name: str) -> str | None:
-        tag = soup.find('meta', property=name) or soup.find('meta', attrs={'name': name})
-        return tag['content'] if tag and tag.has_attr('content') else None
+        tag = soup.find("meta", property=name) or soup.find("meta", attrs={"name": name})
+        return tag["content"] if tag and tag.has_attr("content") else None
+ 
+    title = _meta("og:title") or _meta("twitter:title")
+    cover_image = _meta("og:image") or _meta("twitter:image")
+    description = _meta("description") or _meta("og:description") or _meta("twitter:description")
 
+    for tag in soup(["script", "style", "noscript"]):
+        tag.decompose()
+    full_text = soup.get_text(separator=" ", strip=True)
+ 
     return {
-        "url": url,
-        "title": _meta("og:title") or _meta("twitter:title"),
-        "cover_image": _meta("og:image") or _meta("twitter:image"),
-        "description": _meta("description") or _meta("og:description") or _meta("twitter:description"),
+        "url":         url,
+        "title":       title,
+        "cover_image": cover_image,
+        "description": description,
+        "_full_text":  full_text,   
     }
+
 
 
 class LumaEventPreviewView(APIView):
