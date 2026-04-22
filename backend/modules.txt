@@ -117,3 +117,4 @@ web3==7.14.0
 websockets==10.4
 yarl==1.22.0
 h3
+bs4
