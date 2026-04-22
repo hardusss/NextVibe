@@ -21,6 +21,11 @@ class Post(models.Model):
     moderation_status = models.CharField(max_length=20, default="pending")
     categories = models.JSONField(default=list, blank=True)
     is_comments_enabled = models.BooleanField(default=True, blank=True, null=True)
+    is_luma_event = models.BooleanField(default=False)
+    luma_event_url = models.CharField(default=None, null=True, blank=True, max_length=255)
+    luma_event_verified = models.BooleanField(default=False)
+    luma_event_start_time = models.DateTimeField(default=None, null=True, blank=True)
+    luma_event_end_time = models.DateTimeField(default=None, null=True, blank=True)
     is_hide = models.BooleanField(default=False)
     # NFT logic
     is_nft = models.BooleanField(default=False)
