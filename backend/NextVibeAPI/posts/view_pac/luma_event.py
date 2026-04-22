@@ -11,6 +11,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from bs4 import BeautifulSoup
+from geopy.geocoders import Nominatim
+import urllib.parse
+
 
 def _normalize_luma_url(url: str) -> str | None:
     raw = (url or "").strip()
@@ -87,32 +90,44 @@ def _fetch_luma_event(url: str) -> dict:
             for item in items:
                 if item.get("@type") in ("Event", "SocialEvent"):
                     loc = item.get("location", {})
-                    # 1. Search for coordinates in the standard geo object
-                    geo = loc.get("geo", {})
-                    lat = geo.get("latitude")
-                    lng = geo.get("longitude")
-                    
+                    loc_name = loc.get("name")
+                    loc_address = loc.get("address") if isinstance(loc.get("address"), str) else loc.get("address", {}).get("streetAddress")
                     gmaps_url = loc.get("url") or ""
                     
-                    # 2. If there is no direct geo, try to get it from the Google Maps URL using a regular expression
-                    if not lat or not lng:
-                        # Search for patterns like @49.839,24.029 or q=49.839,24.029
-                        match = re.search(r'[@=](-?\d+\.\d+),(-?\d+\.\d+)', gmaps_url)
+                    lat, lng = None, None
+
+                    geo = loc.get("geo", {})
+                    if geo.get("latitude") and geo.get("longitude"):
+                        lat = geo.get("latitude")
+                        lng = geo.get("longitude")
+                    elif gmaps_url:
+                        decoded_url = urllib.parse.unquote(gmaps_url)
+                        match = re.search(r'[@=](-?\d+\.\d+),(-?\d+\.\d+)', decoded_url)
                         if match:
                             lat = match.group(1)
                             lng = match.group(2)
-                            
-                    # Safely convert to float
+
                     try:
                         lat = float(lat) if lat else None
                         lng = float(lng) if lng else None
                     except (ValueError, TypeError):
                         lat, lng = None, None
 
+                    if (lat is None or lng is None) and (loc_name or loc_address):
+                        search_query = f"{loc_name or ''} {loc_address or ''}".strip()
+                        if search_query.lower() != "register to see address":
+                            try:
+                                geolocator = Nominatim(user_agent="nextvibe_irl_parser")
+                                geo_result = geolocator.geocode(search_query, timeout=3)
+                                if geo_result:
+                                    lat = geo_result.latitude
+                                    lng = geo_result.longitude
+                            except Exception as e:
+                                print(f"[GeoPy Error] Failed to geocode '{search_query}': {e}")
+
                     location = {
-                        "name": loc.get("name"),
-                        "address": loc.get("address") if isinstance(loc.get("address"), str)
-                                   else loc.get("address", {}).get("streetAddress"),
+                        "name": loc_name,
+                        "address": loc_address,
                         "url": gmaps_url if gmaps_url else None,
                         "lat": lat,
                         "lng": lng,
