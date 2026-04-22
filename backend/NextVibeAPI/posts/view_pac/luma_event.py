@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-
+from bs4 import BeautifulSoup
 
 def _normalize_luma_url(url: str) -> str | None:
     raw = (url or "").strip()
@@ -54,32 +54,24 @@ def _fetch_luma_event(url: str) -> dict:
     r = requests.get(
         url,
         headers={
-            "User-Agent": "NextVibe/1.0 (+https://nextvibe.io)",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Accept": "text/html,application/xhtml+xml",
         },
         timeout=12,
     )
     r.raise_for_status()
-    html = r.text
+    
+    soup = BeautifulSoup(r.text, 'html.parser')
 
     def _meta(name: str) -> str | None:
-        # og:title, og:image, description etc.
-        m = re.search(rf'<meta[^>]+property="{re.escape(name)}"[^>]+content="([^"]*)"', html, re.IGNORECASE)
-        if not m:
-            m = re.search(rf'<meta[^>]+name="{re.escape(name)}"[^>]+content="([^"]*)"', html, re.IGNORECASE)
-        return m.group(1).strip() if m else None
-
-    title = _meta("og:title") or _meta("twitter:title")
-    image = _meta("og:image") or _meta("twitter:image")
-
-    # best-effort description: meta description usually contains short summary
-    desc = _meta("description") or _meta("og:description") or _meta("twitter:description")
+        tag = soup.find('meta', property=name) or soup.find('meta', attrs={'name': name})
+        return tag['content'] if tag and tag.has_attr('content') else None
 
     return {
         "url": url,
-        "title": title,
-        "cover_image": image,
-        "description": desc,
+        "title": _meta("og:title") or _meta("twitter:title"),
+        "cover_image": _meta("og:image") or _meta("twitter:image"),
+        "description": _meta("description") or _meta("og:description") or _meta("twitter:description"),
     }
 
 
