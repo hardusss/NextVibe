@@ -122,8 +122,8 @@ class LumaEventVerifyView(APIView):
         except Exception:
             return Response({"status": "error", "error": "fetch_failed"}, status=status.HTTP_502_BAD_GATEWAY)
 
-        hay = (event.get("description") or "").lower()
-        ok = code.lower() in hay
+        full_text = (event.get("_full_text") or "").lower()
+        ok = code.lower() in full_text
 
         return Response(
             {"status": "ok", "data": {"verified": ok, "code": code, "event": event}},
