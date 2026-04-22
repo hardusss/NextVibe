@@ -1,7 +1,8 @@
 import random
 import re
+import json
 from urllib.parse import urlparse
-
+from datetime import datetime
 import requests
 from django.core.cache import cache
 from rest_framework import status
@@ -46,6 +47,13 @@ def _cache_key(user_id: int, luma_url: str) -> str:
     return f"luma_verify:{user_id}:{luma_url}"
 
 
+def _parse_dt(value: str | None):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        return None
 def _fetch_luma_event(url: str) -> dict:
     """
     Minimal Luma fetch by scraping public page HTML.
@@ -71,16 +79,39 @@ def _fetch_luma_event(url: str) -> dict:
     cover_image = _meta("og:image") or _meta("twitter:image")
     description = _meta("description") or _meta("og:description") or _meta("twitter:description")
 
+    location = None
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "")
+            items = data if isinstance(data, list) else [data]
+            for item in items:
+                if item.get("@type") in ("Event", "SocialEvent"):
+                    loc = item.get("location", {})
+                    location = {
+                        "name":    loc.get("name"),
+                        "address": loc.get("address") if isinstance(loc.get("address"), str)
+                                   else loc.get("address", {}).get("streetAddress"),
+                        "url":     loc.get("url"),
+                    }
+                    start_time = _parse_dt(item.get("startDate"))
+                    end_time = _parse_dt(item.get("endDate"))
+                    break
+        except (json.JSONDecodeError, AttributeError):
+            continue
+
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
     full_text = soup.get_text(separator=" ", strip=True)
  
     return {
-        "url":         url,
-        "title":       title,
+        "url": url,
+        "title": title,
         "cover_image": cover_image,
         "description": description,
-        "_full_text":  full_text,   
+        "location": location,
+        "full_text": full_text,   
+        "start_time": start_time,
+        "end_time": end_time,
     }
 
 
