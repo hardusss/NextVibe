@@ -87,11 +87,35 @@ def _fetch_luma_event(url: str) -> dict:
             for item in items:
                 if item.get("@type") in ("Event", "SocialEvent"):
                     loc = item.get("location", {})
+                    # 1. Search for coordinates in the standard geo object
+                    geo = loc.get("geo", {})
+                    lat = geo.get("latitude")
+                    lng = geo.get("longitude")
+                    
+                    gmaps_url = loc.get("url") or ""
+                    
+                    # 2. If there is no direct geo, try to get it from the Google Maps URL using a regular expression
+                    if not lat or not lng:
+                        # Search for patterns like @49.839,24.029 or q=49.839,24.029
+                        match = re.search(r'[@=](-?\d+\.\d+),(-?\d+\.\d+)', gmaps_url)
+                        if match:
+                            lat = match.group(1)
+                            lng = match.group(2)
+                            
+                    # Safely convert to float
+                    try:
+                        lat = float(lat) if lat else None
+                        lng = float(lng) if lng else None
+                    except (ValueError, TypeError):
+                        lat, lng = None, None
+
                     location = {
-                        "name":    loc.get("name"),
+                        "name": loc.get("name"),
                         "address": loc.get("address") if isinstance(loc.get("address"), str)
                                    else loc.get("address", {}).get("streetAddress"),
-                        "url":     loc.get("url"),
+                        "url": gmaps_url if gmaps_url else None,
+                        "lat": lat,
+                        "lng": lng,
                     }
                     start_time = _parse_dt(item.get("startDate"))
                     end_time = _parse_dt(item.get("endDate"))
