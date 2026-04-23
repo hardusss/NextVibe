@@ -83,6 +83,11 @@ class UserCollectionView(APIView):
                 "price": str(col.price),
                 "asset_id": col.asset_id,
                 "minted_at": col.minted_at,
+                "is_luma_event": col.post.is_luma_event,
+                "luma_event_url": col.post.luma_event_url,
+                "luma_event_verified": col.post.luma_event_verified,
+                "luma_event_start_time": col.post.luma_event_start_time,
+                "luma_event_end_time": col.post.luma_event_end_time,
             }
             for col in collections_qs
         ]

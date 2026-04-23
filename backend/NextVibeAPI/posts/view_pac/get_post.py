@@ -101,5 +101,10 @@ class GetPostView(APIView):
                 "already_claimed": already_claimed,
                 "sold_out": post.minted_count >= (post.total_supply or 50),
                 "owner_wallet": getattr(post.owner, "wallet_address", None),
+                "is_luma_event": post.is_luma_event,
+                "luma_event_url": post.luma_event_url,
+                "luma_event_verified": post.luma_event_verified,
+                "luma_event_start_time": post.luma_event_start_time,
+                "luma_event_end_time": post.luma_event_end_time,
             }
         })
