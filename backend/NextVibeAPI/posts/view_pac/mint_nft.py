@@ -14,13 +14,12 @@ class MintNftView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request) -> Response:
-        wallet_address = request.data.get("walletAddress")
         post_id = request.data.get("postId")
         raw_price = request.data.get("price")
         payment_signature = request.data.get("paymentSignature")
 
         # Basic validation
-        if not wallet_address or not post_id:
+        if not post_id:
             return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -31,7 +30,11 @@ class MintNftView(APIView):
 
         if not post.is_approved:
             return Response({"error": "Post is not approved."}, status=status.HTTP_400_BAD_REQUEST)
-            
+        
+        wallet_address = request.user.wallet_address
+        if not wallet_address:
+            return Response({"error": "User wallet address is not set."}, status=status.HTTP_400_BAD_REQUEST)
+
         # Supply and duplication checks
         if int(post.minted_count) >= int(post.total_supply if post.total_supply is not None else 50):
             return Response({"error": "Edition sold out."}, status=status.HTTP_400_BAD_REQUEST)
@@ -55,7 +58,7 @@ class MintNftView(APIView):
             mint_res = requests.post(
                 url="http://localhost:3000/mint",
                 json={
-                    "recipient": wallet_address,
+                    "recipient": request.user.wallet_address,
                     "postId": post_id,
                     "edition": edition,
                 },
