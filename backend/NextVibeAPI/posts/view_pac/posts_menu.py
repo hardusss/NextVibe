@@ -59,7 +59,12 @@ class PostMenuView(APIView):
                 "location": post.location,
                 "moderation_status": post.moderation_status,
                 "is_comments_enabled": post.is_comments_enabled,
-                "is_nft": post.is_nft
+                "is_nft": post.is_nft,
+                "is_luma_event": post.is_luma_event,
+                "luma_event_url": post.luma_event_url,
+                "luma_event_verified": post.luma_event_verified,
+                "luma_event_start_time": post.luma_event_start_time,
+                "luma_event_end_time": post.luma_event_end_time
             }
             for post in posts_qs
         ]
