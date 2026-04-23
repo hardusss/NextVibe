@@ -102,6 +102,15 @@ def _fetch_luma_event(url: str) -> dict:
                         lng = geo.get("longitude")
                     elif gmaps_url:
                         decoded_url = urllib.parse.unquote(gmaps_url)
+                        
+                        # Unshorten URL if it's a shortlink
+                        if "maps.app.goo.gl" in decoded_url or "g.page" in decoded_url or "goo.gl/maps" in decoded_url:
+                            try:
+                                r_map = requests.head(decoded_url, allow_redirects=True, timeout=5)
+                                decoded_url = urllib.parse.unquote(r_map.url)
+                            except Exception as e:
+                                print(f"[GMaps Redirect Error]: {e}")
+
                         match = re.search(r'[@=](-?\d+\.\d+),(-?\d+\.\d+)', decoded_url)
                         if match:
                             lat = match.group(1)
@@ -114,16 +123,26 @@ def _fetch_luma_event(url: str) -> dict:
                         lat, lng = None, None
 
                     if (lat is None or lng is None) and (loc_name or loc_address):
-                        search_query = f"{loc_name or ''} {loc_address or ''}".strip()
-                        if search_query.lower() != "register to see address":
+                        queries_to_try = []
+                        if loc_address:
+                            queries_to_try.append(loc_address.strip())
+                        if loc_name and loc_address:
+                            queries_to_try.append(f"{loc_name} {loc_address}".strip())
+                        elif loc_name:
+                            queries_to_try.append(loc_name.strip())
+
+                        for q in queries_to_try:
+                            if q.lower() == "register to see address":
+                                continue
                             try:
                                 geolocator = Nominatim(user_agent="nextvibe_irl_parser")
-                                geo_result = geolocator.geocode(search_query, timeout=3)
+                                geo_result = geolocator.geocode(q, timeout=3)
                                 if geo_result:
                                     lat = geo_result.latitude
                                     lng = geo_result.longitude
+                                    break
                             except Exception as e:
-                                print(f"[GeoPy Error] Failed to geocode '{search_query}': {e}")
+                                print(f"[GeoPy Error] Failed to geocode '{q}': {e}")
 
                     location = {
                         "name": loc_name,
