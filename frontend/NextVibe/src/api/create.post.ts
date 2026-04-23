@@ -2,6 +2,14 @@ import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 import * as FileSystem from 'expo-file-system';
 
+export interface LumaEvent {
+    is_luma_event: boolean;
+    luma_event_url: string;
+    luma_event_verified: boolean;
+    luma_event_start_time: Date | string | null | undefined;
+    luma_event_end_time: Date | string | null | undefined;
+};
+
 function getFileExtension(uri: string): string {
     const uriLower = uri.toLowerCase();
 
@@ -75,8 +83,9 @@ export default async function createPost(
     coords?: Record<string, number>,
     resolution?: number,
     isAiGenerated: boolean = false,
-    isCommentsEnabled: boolean = true
-): Promise<{ success: boolean; message?: string }> {
+    isCommentsEnabled: boolean = true,
+    lumaEvent?: LumaEvent,
+): Promise<{ success: boolean; message?: string, postId?: string }> {
 
     const uploadedTempFiles: string[] = [];
 
@@ -117,6 +126,11 @@ export default async function createPost(
                 resolution: resolution,
                 is_ai_generated: isAiGenerated,
                 is_comments_enabled: isCommentsEnabled,
+                is_luma_event: lumaEvent?.is_luma_event,
+                luma_event_url: lumaEvent?.luma_event_url,
+                luma_event_verified: lumaEvent?.luma_event_verified,
+                luma_event_start_time: lumaEvent?.luma_event_start_time, 
+                luma_event_end_time: lumaEvent?.luma_event_end_time,
             }),
         });
 
@@ -193,7 +207,7 @@ export default async function createPost(
         });
 
         await clearTemp();
-        return { success: true, message: "Post created and sent to moderation" };
+        return { success: true, message: "Post created and sent to moderation", postId: postId };
 
     } catch (error) {
         await clearTemp();

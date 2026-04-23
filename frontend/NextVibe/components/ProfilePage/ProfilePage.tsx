@@ -391,11 +391,38 @@ const ProfileView = () => {
                         width: "100%",
                         marginVertical: 16
                     }}>
-                        <View style={{ flex: 1.6 }}>
+                        <View style={{ flex: 1.2 }}>
                             <ShareViaNFC handlePress={handleOpenModal} />
                         </View>
-                        <View style={{ flex: 1 }}>
+                        <View style={{ flex: 0.9 }}>
                             <InviteSecondaryButton handlePress={() => inviteSheetRef.current?.present()} />
+                        </View>
+                        <View style={{ flex: 0.9 }}>
+                            <TouchableOpacity
+                                activeOpacity={0.84}
+                                onPress={() => router.push("/events")}
+                                style={{
+                                    height: 52,
+                                    borderRadius: 16,
+                                    borderWidth: 1,
+                                    borderColor: colorScheme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
+                                    backgroundColor: colorScheme === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexDirection: "row",
+                                    gap: 8,
+                                }}
+                            >
+                                <MaterialIcons name="event" size={18} color="#A855F7" />
+                                <Text style={{
+                                    color: "#A855F7",
+                                    fontFamily: "Dank Mono Bold",
+                                    fontSize: 12,
+                                    includeFontPadding: false,
+                                }}>
+                                    Events
+                                </Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
