@@ -20,7 +20,7 @@ class MintNftView(APIView):
         payment_signature = request.data.get("paymentSignature")
 
         # Basic validation
-        if not wallet_address or not post_id or raw_price is None:
+        if not wallet_address or not post_id:
             return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -29,6 +29,9 @@ class MintNftView(APIView):
         except (Post.DoesNotExist, ValueError, TypeError):
             return Response({"error": "Invalid post or price."}, status=status.HTTP_400_BAD_REQUEST)
 
+        if not post.is_approved:
+            return Response({"error": "Post is not approved."}, status=status.HTTP_400_BAD_REQUEST)
+            
         # Supply and duplication checks
         if int(post.minted_count) >= int(post.total_supply if post.total_supply is not None else 50):
             return Response({"error": "Edition sold out."}, status=status.HTTP_400_BAD_REQUEST)
