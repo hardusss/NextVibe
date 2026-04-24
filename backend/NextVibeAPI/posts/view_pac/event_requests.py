@@ -83,3 +83,29 @@ class EventRequestActionView(APIView):
         )
         
         return Response({"status": event_request.status}, status=status.HTTP_200_OK)
+
+
+class EventAttendeesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id, is_luma_event=True)
+
+        # Only owner can see attendees
+        if post.owner != request.user:
+            return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        approved = EventRequest.objects.filter(
+            post=post, status=EventRequest.Status.APPROVED
+        ).select_related('user')
+
+        data = [
+            {
+                "user_id": req.user.user_id,
+                "username": req.user.username,
+                "avatar": req.user.avatar.url if req.user.avatar and getattr(req.user.avatar, 'name', None) else None,
+                "created_at": req.created_at,
+            }
+            for req in approved
+        ]
+        return Response({"count": len(data), "attendees": data}, status=status.HTTP_200_OK)
