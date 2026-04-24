@@ -54,6 +54,14 @@ const icons = {
   moderation_fail: {
     icon: "close-circle-multiple-outline",
     color: "#fa0101ff"
+  },
+  event_request: {
+    icon: "calendar-plus",
+    color: "#7F00FF"
+  },
+  event_request_status: {
+    icon: "calendar-check",
+    color: "#7F00FF"
   }
 };
 
@@ -66,7 +74,9 @@ type NotificationType =
   | 'revived_transaction'
   | 'deleted_post'
   | 'moderation_success'
-  | 'moderation_fail';
+  | 'moderation_fail'
+  | 'event_request'
+  | 'event_request_status';
 
 interface Notification {
   id: number;
