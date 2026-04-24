@@ -110,6 +110,8 @@ class Notification(models.Model):
         ('deleted_post', 'Post Deleted'),
         ("moderation_success", "Moderation Success"),
         ("moderation_fail", "Moderation Fail"),
+        ("event_request", "Event Request"),
+        ("event_request_status", "Event Request Status"),
     )
 
     sender = models.ForeignKey(

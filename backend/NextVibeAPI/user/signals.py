@@ -23,6 +23,16 @@ def trigger_push_and_cache(sender, instance, created, **kwargs):
             
         elif instance.notification_type == 'moderation_fail':
             body_text = "Please review our community guidelines."
+            
+        elif instance.notification_type == 'event_request':
+            body_text = "Someone requested to join your event!"
+            if instance.post and instance.post.about:
+                body_text = f"Event: {instance.post.about}"
+                
+        elif instance.notification_type == 'event_request_status':
+            body_text = "The organizer has responded to your request."
+            if instance.post and instance.post.about:
+                body_text = f"Event: {instance.post.about}"
 
         token = getattr(instance.recipient, 'expo_push_token', None)
         if token:
