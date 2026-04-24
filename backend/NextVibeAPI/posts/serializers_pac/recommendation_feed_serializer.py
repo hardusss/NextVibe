@@ -41,6 +41,7 @@ class PostFeedSerializer(serializers.ModelSerializer):
     owner__is_og    = serializers.SerializerMethodField()
     owner__edition  = serializers.SerializerMethodField()
     owner__invited_count = serializers.SerializerMethodField()
+    event_request_status = serializers.SerializerMethodField()
 
     class Meta:
         model  = Post
@@ -57,7 +58,7 @@ class PostFeedSerializer(serializers.ModelSerializer):
             'owner__is_og', 'owner__edition', 'owner__invited_count',
             # Luma
             'is_luma_event', 'luma_event_url', 'luma_event_verified',
-            'luma_event_start_time', 'luma_event_end_time',
+            'luma_event_start_time', 'luma_event_end_time', 'event_request_status',
         ]
 
     def get_owner__avatar(self, obj):
@@ -100,3 +101,6 @@ class PostFeedSerializer(serializers.ModelSerializer):
     def get_owner__invited_count(self, obj):
         invite_counts = self.context.get('invite_counts', {})
         return invite_counts.get(obj.owner.user_id, 0)
+
+    def get_event_request_status(self, obj):
+        return self.context.get('event_request_statuses', {}).get(obj.id)

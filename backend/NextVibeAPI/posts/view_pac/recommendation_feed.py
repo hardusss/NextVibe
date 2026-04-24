@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
-from posts.models import Post, Comment, UserCollection
+from posts.models import Post, Comment, UserCollection, EventRequest
 from posts.serializers_pac.recommendation_feed_serializer import PostFeedSerializer
 from user.models import HistorySearch, InviteUser
 from django.db.models import Case, When, Value, IntegerField
@@ -118,6 +118,12 @@ class RecommendationFeedView(APIView):
             for inv in InviteUser.objects.filter(owner_id__in=owner_ids)
         }
 
+        event_requests = EventRequest.objects.filter(
+            post_id__in=post_ids,
+            user=user
+        ).values_list('post_id', 'status')
+        event_request_statuses = dict(event_requests)
+
         serializer = PostFeedSerializer(
             final_batch,
             many=True,
@@ -126,6 +132,7 @@ class RecommendationFeedView(APIView):
                 'nft_prices': nft_prices,
                 'claimed_post_ids': claimed_post_ids,
                 'invite_counts': invite_counts,
+                'event_request_statuses': event_request_statuses,
             }
         )
 
