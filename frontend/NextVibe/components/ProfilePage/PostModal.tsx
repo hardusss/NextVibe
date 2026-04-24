@@ -9,6 +9,8 @@ import {
     Animated,
     ScrollView,
     Pressable,
+    Image,
+    Linking,
 } from "react-native";
 import FastImage from "react-native-fast-image";
 import { BlurView } from "@react-native-community/blur";
@@ -20,15 +22,19 @@ import {
     Heart,
     X,
     Image as ImageIcon,
+    Link2,
 } from "lucide-react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { MaterialIcons } from "@expo/vector-icons";
 import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
+import { requestToAttend } from "@/src/api/event.requests";
+import { Alert } from 'react-native';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import VerifyBadge from "../VerifyBadge";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
+import Web3Toast from "../Shared/Toasts/Web3Toast";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
@@ -72,6 +78,12 @@ interface PostData {
     minted_count: number;
     total_supply: number;
     owner_wallet: string | null;
+    is_luma_event?: boolean;
+    luma_event_url?: string;
+    luma_event_verified?: boolean;
+    luma_event_start_time?: string;
+    luma_event_end_time?: string;
+    event_request_status?: "pending" | "approved" | "rejected" | null;
 }
 
 interface PostPopupProps {
@@ -97,6 +109,12 @@ const formatDate = (isoString: string): string => {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
+const formatEventDate = (isoString: string): string => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+};
+
 const PostPopup: React.FC<PostPopupProps> = ({
     visible,
     postId,
@@ -112,6 +130,8 @@ const PostPopup: React.FC<PostPopupProps> = ({
     const [dropdownVisible, setDropdownVisible] = useState(false);
     const [showHeart, setShowHeart] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
+    const [eventImageHeight, setEventImageHeight] = useState<number | null>(null);
+    const [toastConfig, setToastConfig] = useState({ visible: false, message: "", isSuccess: true });
 
     const translateY = useRef(new Animated.Value(OPEN_TRANSLATE_Y)).current;
     const scale = useRef(new Animated.Value(OPEN_SCALE_FROM)).current;
@@ -163,6 +183,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             setPost(response.data);
                             setLikeCount(response.data.count_likes);
                             setLiked(response.data.liked_posts?.includes(response.data.post_id) ?? false);
+                            setEventImageHeight(null);
                         }
                     })
                     .catch((err) => console.error("fetchPost error:", err))
@@ -212,6 +233,16 @@ const PostPopup: React.FC<PostPopupProps> = ({
         setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
     };
 
+    const handleRequestToAttend = async (postId: number) => {
+        try {
+            await requestToAttend(postId);
+            setToastConfig({ visible: true, message: "Your request to attend has been sent!", isSuccess: true });
+            setPost((prev) => prev ? { ...prev, event_request_status: "pending" } : null);
+        } catch (e: any) {
+            setToastConfig({ visible: true, message: e.response?.data?.error || "Failed to send request", isSuccess: false });
+        }
+    };
+
     const handleClose = () => {
         runCloseAnimation(() => { setModalVisible(false); onClose(); });
     };
@@ -246,9 +277,15 @@ const PostPopup: React.FC<PostPopupProps> = ({
             visible={modalVisible}
             transparent
             animationType="none"
-            statusBarTranslucent
+            statusBarTranslucent={false}
             onRequestClose={handleClose}
         >
+            <Web3Toast 
+                visible={toastConfig.visible}
+                message={toastConfig.message}
+                isSuccess={toastConfig.isSuccess}
+                onHide={() => setToastConfig(prev => ({ ...prev, visible: false }))}
+            />
             <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="auto">
                 <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
             </Animated.View>
@@ -336,11 +373,26 @@ const PostPopup: React.FC<PostPopupProps> = ({
                         ) : post ? (
                             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                                 {mediaUrl ? (
-                                    <Pressable style={styles.imageWrapper} onPress={handleDoubleTap}>
+                                    <Pressable 
+                                        style={[
+                                            styles.imageWrapper, 
+                                            eventImageHeight ? { height: eventImageHeight } : {},
+                                            post.is_luma_event ? { borderTopLeftRadius: 16, borderTopRightRadius: 16 } : {}
+                                        ]} 
+                                        onPress={handleDoubleTap}
+                                    >
                                         <FastImage
                                             source={{ uri: mediaUrl }}
                                             style={styles.image}
-                                            resizeMode={FastImage.resizeMode.cover}
+                                            resizeMode={post.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                            onLoad={(evt) => {
+                                                if (post.is_luma_event) {
+                                                    const { width, height } = evt.nativeEvent;
+                                                    if (width > 0) {
+                                                        setEventImageHeight((CARD_WIDTH / width) * height);
+                                                    }
+                                                }
+                                            }}
                                         />
                                         {showHeart && (
                                             <Animated.View
@@ -358,6 +410,12 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                 <View style={styles.badge}>
                                                     <Sparkles size={11} color="#05f0d8" />
                                                     <Text style={styles.badgeText}>AI Generated</Text>
+                                                </View>
+                                            )}
+                                            {post.is_luma_event && (
+                                                <View style={[styles.badge, { borderColor: "rgba(168,85,247,0.6)", backgroundColor: "rgba(30, 0, 50, 0.85)" }]}>
+                                                    <Calendar size={11} color="#d8b4fe" />
+                                                    <Text style={[styles.badgeText, { color: "#d8b4fe" }]}>Event</Text>
                                                 </View>
                                             )}
                                             {post.location && (
@@ -398,6 +456,88 @@ const PostPopup: React.FC<PostPopupProps> = ({
 
                                     {!!post.about && (
                                         <Text style={styles.aboutText}>{post.about}</Text>
+                                    )}
+
+                                    {post.is_luma_event && post.luma_event_url && (
+                                        <View style={{ marginTop: 16, padding: 14, backgroundColor: "rgba(168,85,247,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(168,85,247,0.2)" }}>
+                                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    {post.luma_event_start_time && (
+                                                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                                                            <Calendar size={16} color="#d8b4fe" style={{ flexShrink: 0, marginTop: 2 }} />
+                                                            <Text style={{ color: "#d8b4fe", fontSize: 13, fontFamily: "Dank Mono Bold", flexShrink: 1, lineHeight: 20 }}>
+                                                                {formatEventDate(post.luma_event_start_time)}
+                                                                {post.luma_event_end_time ? ` → ${formatEventDate(post.luma_event_end_time)}` : ""}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                {(() => {
+                                                    const dateToCheck = post.luma_event_end_time || post.luma_event_start_time;
+                                                    const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
+                                                    return (
+                                                        <View style={{ backgroundColor: isEnded ? "rgba(255,255,255,0.1)" : "rgba(5,240,216,0.15)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexShrink: 0 }}>
+                                                            <Text style={{ color: isEnded ? "#999" : "#05f0d8", fontSize: 11, fontFamily: "Dank Mono Bold" }}>
+                                                                {isEnded ? "Ended" : "Active"}
+                                                            </Text>
+                                                        </View>
+                                                    );
+                                                })()}
+                                            </View>
+                                            
+                                            {(() => {
+                                                const dateToCheck = post.luma_event_end_time || post.luma_event_start_time;
+                                                const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
+                                                const isApproved = post.event_request_status === "approved";
+                                                const isPending = post.event_request_status === "pending";
+                                                const isRejected = post.event_request_status === "rejected";
+                                                const canViewLuma = post.is_owner || isEnded || isApproved;
+
+                                                // "You are going" green badge (non-clickable info)
+                                                if (isApproved && !post.is_owner) {
+                                                    return (
+                                                        <View>
+                                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(34,197,94,0.12)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 4 }}>
+                                                                <Text style={{ color: "#4ade80", fontSize: 14, fontFamily: "Dank Mono Bold" }}>✓ You are going</Text>
+                                                            </View>
+                                                            <TouchableOpacity
+                                                                onPress={() => Linking.openURL(post.luma_event_url!)}
+                                                                style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(168,85,247,0.2)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 8 }}
+                                                            >
+                                                                <Link2 size={16} color="#d8b4fe" />
+                                                                <Text style={{ color: "#d8b4fe", fontSize: 14, fontFamily: "Dank Mono Bold" }}>View Event on Luma</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    );
+                                                }
+
+                                                const btnBg = isRejected ? "rgba(239,68,68,0.2)" : "rgba(168,85,247,0.2)";
+                                                const btnOpacity = (isPending || isRejected) ? 0.7 : 1;
+                                                const iconColor = isRejected ? "#ef4444" : "#d8b4fe";
+                                                const btnDisabled = isPending || isRejected;
+                                                const btnLabel = canViewLuma
+                                                    ? "View Event on Luma"
+                                                    : isPending ? "Requested"
+                                                    : isRejected ? "Request Denied"
+                                                    : "Request to Attend";
+                                                const labelColor = isRejected ? "#ef4444" : "#d8b4fe";
+
+                                                return (
+                                                    <TouchableOpacity
+                                                        disabled={btnDisabled}
+                                                        onPress={() => {
+                                                            if (canViewLuma) Linking.openURL(post.luma_event_url!);
+                                                            else handleRequestToAttend(post.post_id);
+                                                        }}
+                                                        style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: btnBg, padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 4, opacity: btnOpacity }}
+                                                    >
+                                                        <Link2 size={16} color={iconColor} />
+                                                        <Text style={{ color: labelColor, fontSize: 14, fontFamily: "Dank Mono Bold" }}>{btnLabel}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })()}
+
+                                        </View>
                                     )}
 
                                     <View style={styles.divider} />
@@ -540,12 +680,12 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 4,
-        backgroundColor: "rgba(0,0,0,0.6)",
+        backgroundColor: "rgba(0,0,0,0.85)",
         borderRadius: 20,
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.12)",
+        borderColor: "rgba(255,255,255,0.2)",
     },
     badgeText: {
         color: "#fff",
@@ -553,8 +693,8 @@ const styles = StyleSheet.create({
         letterSpacing: 0.3,
     },
     nftBadge: {
-        borderColor: "rgba(168,85,247,0.4)",
-        backgroundColor: "rgba(168,85,247,0.2)",
+        borderColor: "rgba(168,85,247,0.6)",
+        backgroundColor: "rgba(30, 0, 50, 0.85)",
     },
     nftBadgeText: {
         color: "#d8b4fe",

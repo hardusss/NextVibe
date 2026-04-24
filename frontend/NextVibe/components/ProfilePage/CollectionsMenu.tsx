@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import {
     View,
     FlatList,
@@ -12,9 +11,10 @@ import {
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getCollectionsMenu from "@/src/api/get.collections.menu";
 import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import FastImage from 'react-native-fast-image';
-import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2 } from "lucide-react-native";
+import { BlurView } from "@react-native-community/blur";
+import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2, Calendar } from "lucide-react-native";
 import { useColorScheme } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import setAvatar from "@/src/api/set.avatar";
@@ -38,6 +38,7 @@ interface CollectionItem {
     price: string;
     asset_id: string;
     minted_at: string;
+    is_luma_event?: boolean;
 }
 
 interface OgAvatar {
@@ -319,18 +320,32 @@ const CollectionsGallery = ({ id }: CollectionsGalleryProps) => {
                                 {hasMedia ? (
                                     isMediaVideo ? (
                                         <View style={styles.videoContainer}>
+                                            {item.is_luma_event && (
+                                                <>
+                                                    <FastImage source={{ uri: getPreviewUrl(mediaUrl!, item as any) }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
+                                                    <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} />
+                                                </>
+                                            )}
                                             <FastImage
-                                                source={{ uri: getPreviewUrl(mediaUrl!, item) }}
+                                                source={{ uri: getPreviewUrl(mediaUrl!, item as any) }}
                                                 style={styles.media}
-                                                resizeMode={FastImage.resizeMode.cover}
+                                                resizeMode={item.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
                                             />
                                         </View>
                                     ) : (
-                                        <FastImage
-                                            source={{ uri: mediaUrl! }}
-                                            style={styles.media}
-                                            resizeMode={FastImage.resizeMode.cover}
-                                        />
+                                        <View style={styles.videoContainer}>
+                                            {item.is_luma_event && (
+                                                <>
+                                                    <FastImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
+                                                    <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} />
+                                                </>
+                                            )}
+                                            <FastImage
+                                                source={{ uri: mediaUrl! }}
+                                                style={styles.media}
+                                                resizeMode={item.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                            />
+                                        </View>
                                     )
                                 ) : (
                                     <View style={styles.placeholderContainer}>
@@ -347,6 +362,9 @@ const CollectionsGallery = ({ id }: CollectionsGalleryProps) => {
                                             }
                                             {(item as any).is_ai_generated && (
                                                 <Sparkles size={16} color="#05f0d8" />
+                                            )}
+                                            {item.is_luma_event && (
+                                                <Calendar size={16} color="#d8b4fe" />
                                             )}
                                             {item.is_nft && (
                                                 <Gem size={16} color="#a78bfa" />

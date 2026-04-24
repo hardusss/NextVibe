@@ -14,7 +14,7 @@ import getMenuPosts from "@/src/api/menu.posts";
 import { useFocusEffect } from 'expo-router';
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
-import { ImageIcon, Video, Clock3, Sparkles, Gem } from "lucide-react-native";
+import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { storage } from '@/src/utils/storage';
 import PostPopup from "./PostModal";
@@ -41,6 +41,7 @@ interface Post {
     is_ai_generated: boolean;
     is_nft: boolean;
     moderation_status: string;
+    is_luma_event?: boolean;
 }
 
 type MediaCheck =
@@ -235,7 +236,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     };
 
     const hasBadges = (item: Post) =>
-        item.is_nft || item.is_ai_generated;
+        item.is_nft || item.is_ai_generated || item.is_luma_event;
 
     return (
         <View style={styles.container}>
@@ -296,18 +297,32 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                 {hasMedia ? (
                                     isMediaVideo ? (
                                         <View style={styles.videoContainer}>
+                                            {item.is_luma_event && (
+                                                <>
+                                                    <FastImage source={{ uri: getPreviewUrl(mediaUrl!, item) }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
+                                                    <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} />
+                                                </>
+                                            )}
                                             <FastImage
                                                 source={{ uri: getPreviewUrl(mediaUrl!, item) }}
                                                 style={styles.media}
-                                                resizeMode={FastImage.resizeMode.cover}
+                                                resizeMode={item.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
                                             />
                                         </View>
                                     ) : (
-                                        <FastImage
-                                            source={{ uri: mediaUrl! }}
-                                            style={styles.media}
-                                            resizeMode={FastImage.resizeMode.cover}
-                                        />
+                                        <View style={styles.videoContainer}>
+                                            {item.is_luma_event && (
+                                                <>
+                                                    <FastImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
+                                                    <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} />
+                                                </>
+                                            )}
+                                            <FastImage
+                                                source={{ uri: mediaUrl! }}
+                                                style={styles.media}
+                                                resizeMode={item.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                            />
+                                        </View>
                                     )
                                 ) : (
                                     <View style={styles.placeholderContainer}>
@@ -370,6 +385,11 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                         {item.is_ai_generated && (
                                             <View style={[styles.badge, styles.badgeAi]}>
                                                 <Sparkles size={11} color="#05f0d8" strokeWidth={2} />
+                                            </View>
+                                        )}
+                                        {item.is_luma_event && (
+                                            <View style={[styles.badge, styles.badgeEvent]}>
+                                                <Calendar size={11} color="#d8b4fe" strokeWidth={2} />
                                             </View>
                                         )}
                                     </View>
@@ -517,6 +537,10 @@ const styles = StyleSheet.create({
     badgeAi: {
         backgroundColor: "rgba(5,240,216,0.15)",
         borderColor: "rgba(5,240,216,0.25)",
+    },
+    badgeEvent: {
+        backgroundColor: "rgba(168,85,247,0.25)",
+        borderColor: "rgba(168,85,247,0.4)",
     },
 });
 
