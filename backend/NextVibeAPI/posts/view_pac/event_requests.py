@@ -37,9 +37,9 @@ class EventRequestListView(APIView):
                 "id": req.id,
                 "post_id": req.post.id,
                 "post_about": req.post.about,
-                "user_id": req.user.id,
+                "user_id": req.user.user_id,
                 "username": req.user.username,
-                "avatar": req.user.avatar.url if req.user.avatar else None,
+                "avatar": req.user.avatar.url if req.user.avatar and getattr(req.user.avatar, 'name', None) else None,
                 "status": req.status,
                 "created_at": req.created_at
             })
