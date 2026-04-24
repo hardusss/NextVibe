@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest
+from user.models import Notification
 from django.db import IntegrityError
 
 class EventRequestCreateView(APIView):
@@ -21,6 +22,14 @@ class EventRequestCreateView(APIView):
                 post=post,
                 defaults={'status': EventRequest.Status.PENDING}
             )
+            if created:
+                Notification.objects.create(
+                    sender=request.user,
+                    recipient=post.owner,
+                    notification_type='event_request',
+                    post=post,
+                    text_preview=f"{request.user.username} requested to attend your event"
+                )
             return Response({"status": event_request.status}, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
         except IntegrityError:
             return Response({"error": "Already requested"}, status=status.HTTP_400_BAD_REQUEST)
@@ -58,9 +67,19 @@ class EventRequestActionView(APIView):
         
         if action == 'approve':
             event_request.status = EventRequest.Status.APPROVED
+            text_preview = f"Your request for event was approved!"
         else:
             event_request.status = EventRequest.Status.REJECTED
+            text_preview = f"Your request for event was denied"
             
         event_request.save(update_fields=['status'])
+        
+        Notification.objects.create(
+            sender=request.user,
+            recipient=event_request.user,
+            notification_type='event_request_status',
+            post=event_request.post,
+            text_preview=text_preview
+        )
         
         return Response({"status": event_request.status}, status=status.HTTP_200_OK)
