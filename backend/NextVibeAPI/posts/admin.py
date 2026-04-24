@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import Post, PostsMedia, PostReport, Comment, CommentReply, UserCollection
 from django.contrib import admin
 from user.models import User
-
+from .models import EventRequest
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
@@ -17,6 +17,7 @@ class PostAdmin(admin.ModelAdmin):
 admin.site.register(PostsMedia)
 admin.site.register(PostReport)
 admin.site.register(UserCollection)
+admin.site.register(EventRequest)
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
