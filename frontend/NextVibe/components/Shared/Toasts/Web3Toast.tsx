@@ -43,7 +43,7 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: { mes
     }
   }, [visible, slideAnim, opacityAnim, progressAnim]);
 
-  const handleClose = () => {
+  function handleClose() {
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: -100,
@@ -56,7 +56,7 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: { mes
         useNativeDriver: true,
       }),
     ]).start(() => onHide());
-  };
+  }
 
   if (!visible) return null;
 
