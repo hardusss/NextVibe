@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from ..models import Post, PostsMedia
+from ..models import Post, PostsMedia, EventRequest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Prefetch
@@ -37,7 +37,10 @@ class PostMenuView(APIView):
             posts_qs
             .exclude(moderation_status="denied")
             .select_related("owner") 
-            .prefetch_related(Prefetch("media", queryset=PostsMedia.objects.all()))
+            .prefetch_related(
+                Prefetch("media", queryset=PostsMedia.objects.all()),
+                Prefetch("event_requests", queryset=EventRequest.objects.filter(user=request.user), to_attr="user_request")
+            )
             .order_by("-id")[index:index + limit]
         )
 
@@ -73,7 +76,8 @@ class PostMenuView(APIView):
                 "luma_event_url": post.luma_event_url,
                 "luma_event_verified": post.luma_event_verified,
                 "luma_event_start_time": post.luma_event_start_time,
-                "luma_event_end_time": post.luma_event_end_time
+                "luma_event_end_time": post.luma_event_end_time,
+                "event_request_status": post.user_request[0].status if hasattr(post, 'user_request') and post.user_request else None
             }
             for post in posts_qs
         ]
