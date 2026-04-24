@@ -11,7 +11,8 @@ import {
     RefreshControl,
     ActivityIndicator,
     Pressable,
-    Linking
+    Linking,
+    Image
 } from "react-native";
 import Header from "./Header";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
@@ -21,6 +22,8 @@ import { useRouter, useFocusEffect } from "expo-router";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { requestToAttend } from "@/src/api/event.requests";
+import { Alert } from 'react-native';
 import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
 import timeAgo from "@/src/utils/formatTime";
@@ -39,7 +42,7 @@ import useTransaction from "@/hooks/useTransaction";
 import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
 import {
     Heart, MessageCircle, MapPin, Volume2, VolumeX,
-    Sparkles, Clock
+    Sparkles, Clock, Calendar, Link2
 } from "lucide-react-native";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 
@@ -190,12 +193,12 @@ const getStyles = (theme: typeof darkTheme) => {
             flexDirection: "row",
             alignItems: "center",
             gap: 4,
-            backgroundColor: "rgba(0,0,0,0.6)",
+            backgroundColor: "rgba(0,0,0,0.85)",
             borderRadius: 20,
             paddingHorizontal: 10,
             paddingVertical: 5,
             borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.12)",
+            borderColor: "rgba(255,255,255,0.2)",
         },
         imageBadgeText: {
             color: "#fff",
@@ -204,8 +207,8 @@ const getStyles = (theme: typeof darkTheme) => {
             includeFontPadding: false,
         },
         nftBadge: {
-            borderColor: "rgba(168,85,247,0.4)",
-            backgroundColor: "rgba(168,85,247,0.2)",
+            borderColor: "rgba(168,85,247,0.6)",
+            backgroundColor: "rgba(30, 0, 50, 0.85)",
         },
         nftBadgeText: {
             color: "#d8b4fe",
@@ -249,7 +252,19 @@ interface Post {
     minted_count: number;
     total_supply: number;
     owner_wallet: string | null;
+    is_luma_event?: boolean;
+    luma_event_url?: string;
+    luma_event_verified?: boolean;
+    luma_event_start_time?: string;
+    luma_event_end_time?: string;
+    event_request_status?: "pending" | "approved" | "rejected" | null;
 }
+
+const formatEventDate = (isoString: string): string => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+};
 
 interface LikedPosts { [key: number]: boolean; }
 
@@ -322,9 +337,11 @@ const PostSkeleton = memo(() => {
     );
 });
 
-const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
+const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dynamicHeight, isLumaEvent, onMediaSize }: {
     item: MediaItem; postId: number; onLike: (postId: number) => void;
-    isLiked: boolean; isVisible: boolean;
+    isLiked: boolean; isVisible: boolean; dynamicHeight?: number;
+    isLumaEvent?: boolean;
+    onMediaSize?: (width: number, height: number) => void;
 }) => {
     const { preview, hd, isVideo: isVideoMedia } = getVideoUrls(item);
     const [isMuted, setIsMuted] = useState(true);
@@ -376,7 +393,7 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
     };
 
     return (
-        <Pressable onPress={handleDoublePress} style={styles.mediaContainer}>
+        <Pressable onPress={handleDoublePress} style={[styles.mediaContainer, dynamicHeight ? { height: dynamicHeight } : {}]}>
             {isVideoMedia ? (
                 <>
                     {(showPreview || !isVisible) && (
@@ -389,7 +406,7 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
                     {isVideoMedia && isVisible && (
                         <Video
                             ref={videoRef}
-                            style={styles.fullMedia}
+                            style={[styles.fullMedia, dynamicHeight ? { height: dynamicHeight } : {}]}
                             source={{ uri: hd }}
                             resizeMode={ResizeMode.COVER}
                             isLooping isMuted={isMuted} shouldPlay={isVisible}
@@ -415,7 +432,13 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible }: {
                 <FastImage
                     source={{ uri: item.media_url, priority: FastImage.priority.normal, cache: FastImage.cacheControl.immutable }}
                     style={styles.mediaImage}
-                    resizeMode={FastImage.resizeMode.cover}
+                    resizeMode={isLumaEvent ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                    onLoad={(e) => {
+                        if (isLumaEvent && onMediaSize) {
+                            const { width, height } = e.nativeEvent;
+                            if (width > 0) onMediaSize(width, height);
+                        }
+                    }}
                 />
             )}
             {showHeart && (
@@ -439,9 +462,15 @@ const PostItem = memo(({
     toggleLike, onDelete, openComments, dropdownVisible, setDropdownVisible,
     setToastMessage, setToastSuccess, setIsToastVisible,
     onOpenMint,
+    handleRequestToAttend,
 }: any) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+    const [eventImageHeight, setEventImageHeight] = useState<number | null>(null);
+
+    const handleMediaSize = useCallback((width: number, height: number) => {
+        if (width > 0) setEventImageHeight((screenWidth / width) * height);
+    }, []);
 
     const needsMoreButton = item.about?.length > 100;
     const displayText = needsMoreButton && !isExpanded ? `${item.about.slice(0, 100)}...` : item.about;
@@ -517,15 +546,22 @@ const PostItem = memo(({
 
             {/* ── Media ── */}
             {hasMedia && (
-                <View style={styles.mediaPlaceholder}>
+                <View style={[
+                    styles.mediaPlaceholder, 
+                    eventImageHeight ? { height: eventImageHeight } : {},
+                    item.is_luma_event ? { borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 } : {}
+                ]}>
                     {mediaItems.length > 1 ? (
-                        <View style={{ width: screenWidth, height: screenWidth, position: "relative" }}>
+                        <View style={{ width: screenWidth, height: eventImageHeight || screenWidth, position: "relative" }}>
                             <FlatList
                                 data={mediaItems}
                                 renderItem={({ item: mediaItem, index: mediaIndex }) => (
                                     <MediaItemComponent
                                         item={mediaItem} postId={item.id} onLike={toggleLike}
                                         isLiked={isLiked} isVisible={isVisible && currentMediaIndex === mediaIndex}
+                                        dynamicHeight={eventImageHeight || undefined}
+                                        isLumaEvent={item.is_luma_event}
+                                        onMediaSize={handleMediaSize}
                                     />
                                 )}
                                 keyExtractor={mediaItem => mediaItem.id.toString()}
@@ -544,6 +580,9 @@ const PostItem = memo(({
                         <MediaItemComponent
                             item={mediaItems[0]} postId={item.id} onLike={toggleLike}
                             isLiked={isLiked} isVisible={isVisible}
+                            dynamicHeight={eventImageHeight || undefined}
+                            isLumaEvent={item.is_luma_event}
+                            onMediaSize={handleMediaSize}
                         />
                     )}
 
@@ -553,6 +592,12 @@ const PostItem = memo(({
                             <View style={styles.imageBadge}>
                                 <Sparkles size={11} color="#05f0d8" />
                                 <Text style={styles.imageBadgeText}>AI</Text>
+                            </View>
+                        )}
+                        {item.is_luma_event && (
+                            <View style={[styles.imageBadge, { borderColor: "rgba(168,85,247,0.6)", backgroundColor: "rgba(30, 0, 50, 0.85)" }]}>
+                                <Calendar size={11} color="#d8b4fe" />
+                                <Text style={[styles.imageBadgeText, { color: "#d8b4fe" }]}>Event</Text>
                             </View>
                         )}
                         {item.is_nft && (
@@ -600,6 +645,87 @@ const PostItem = memo(({
                 </View>
             )}
 
+            {item.is_luma_event && item.luma_event_url && (
+                <View style={{ marginBottom: 12, padding: 14, backgroundColor: "rgba(168,85,247,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(168,85,247,0.2)" }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                        <View style={{ flex: 1, paddingRight: 10 }}>
+                            {item.luma_event_start_time && (
+                                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                                    <Calendar size={16} color="#d8b4fe" style={{ flexShrink: 0, marginTop: 2 }} />
+                                    <Text style={{ color: "#d8b4fe", fontSize: 13, fontFamily: "Dank Mono Bold", flexShrink: 1, lineHeight: 20 }}>
+                                        {formatEventDate(item.luma_event_start_time)}
+                                        {item.luma_event_end_time ? ` → ${formatEventDate(item.luma_event_end_time)}` : ""}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                        {(() => {
+                            const dateToCheck = item.luma_event_end_time || item.luma_event_start_time;
+                            const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
+                            return (
+                                <View style={{ backgroundColor: isEnded ? "rgba(255,255,255,0.1)" : "rgba(5,240,216,0.15)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexShrink: 0 }}>
+                                    <Text style={{ color: isEnded ? "#999" : "#05f0d8", fontSize: 11, fontFamily: "Dank Mono Bold" }}>
+                                        {isEnded ? "Ended" : "Active"}
+                                    </Text>
+                                </View>
+                            );
+                        })()}
+                    </View>
+                    
+                    {(() => {
+                        const dateToCheck = item.luma_event_end_time || item.luma_event_start_time;
+                        const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
+                        const isApproved = item.event_request_status === "approved";
+                        const isPending = item.event_request_status === "pending";
+                        const isRejected = item.event_request_status === "rejected";
+                        const isOwner = item.owner__user_id === userID;
+                        const canViewLuma = isOwner || isEnded || isApproved;
+
+                        if (isApproved && !isOwner) {
+                            return (
+                                <View>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(34,197,94,0.12)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 4 }}>
+                                        <Text style={{ color: "#4ade80", fontSize: 14, fontFamily: "Dank Mono Bold" }}>✓ You are going</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        onPress={() => Linking.openURL(item.luma_event_url!)}
+                                        style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(168,85,247,0.2)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 8 }}
+                                    >
+                                        <Link2 size={16} color="#d8b4fe" />
+                                        <Text style={{ color: "#d8b4fe", fontSize: 14, fontFamily: "Dank Mono Bold" }}>View Event on Luma</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            );
+                        }
+
+                        const btnBg = isRejected ? "rgba(239,68,68,0.2)" : "rgba(168,85,247,0.2)";
+                        const btnOpacity = (isPending || isRejected) ? 0.7 : 1;
+                        const iconColor = isRejected ? "#ef4444" : "#d8b4fe";
+                        const btnLabel = canViewLuma
+                            ? "View Event on Luma"
+                            : isPending ? "Requested"
+                            : isRejected ? "Request Denied"
+                            : "Request to Attend";
+                        const labelColor = isRejected ? "#ef4444" : "#d8b4fe";
+
+                        return (
+                            <TouchableOpacity
+                                disabled={isPending || isRejected}
+                                onPress={() => {
+                                    if (canViewLuma) Linking.openURL(item.luma_event_url!);
+                                    else handleRequestToAttend(item.id);
+                                }}
+                                style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: btnBg, padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 4, opacity: btnOpacity }}
+                            >
+                                <Link2 size={16} color={iconColor} />
+                                <Text style={{ color: labelColor, fontSize: 14, fontFamily: "Dank Mono Bold" }}>{btnLabel}</Text>
+                            </TouchableOpacity>
+                        );
+                    })()}
+
+                </View>
+            )}
+
             {/* ── Footer: like | comment | spacer | ButtonCollect ── */}
             <View style={styles.postFooter}>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
@@ -625,6 +751,7 @@ const PostItem = memo(({
     if (prev.item.minted_count !== next.item.minted_count) return false;
     if (prev.item.owner__is_og !== next.item.owner__is_og) return false;
     if (prev.item.owner__invited_count !== next.item.owner__invited_count) return false;
+    if (prev.item.event_request_status !== next.item.event_request_status) return false;
     return true;
 });
 
@@ -744,6 +871,22 @@ export default function MainPage() {
         }, [])
     );
 
+    const handleRequestToAttend = useCallback(async (postId: number) => {
+        try {
+            await requestToAttend(postId);
+            setToastMessage("Your request to attend has been sent!");
+            setToastSuccess(true);
+            setIsToastVisible(true);
+            setPosts(prev => prev.map(post => 
+                post.id === postId ? { ...post, event_request_status: "pending" } : post
+            ));
+        } catch (e: any) {
+            setToastMessage(e.response?.data?.error || "Failed to send request");
+            setToastSuccess(false);
+            setIsToastVisible(true);
+        }
+    }, []);
+
     const toggleLike = useCallback((postId: number) => {
         likePost(postId);
         setLikedPosts(prev => ({ ...prev, [postId]: !prev[postId] }));
@@ -818,9 +961,10 @@ export default function MainPage() {
                 setToastSuccess={setToastSuccess}
                 setIsToastVisible={setIsToastVisible}
                 onOpenMint={handleOpenMint}
+                handleRequestToAttend={handleRequestToAttend}
             />
         );
-    }, [loading, likedPosts, visiblePostId, userID, theme, styles, activeDropdownId, handleOpenMint]);
+    }, [loading, likedPosts, visiblePostId, userID, theme, styles, activeDropdownId, handleOpenMint, handleRequestToAttend]);
 
     return (
         <View style={styles.container}>
