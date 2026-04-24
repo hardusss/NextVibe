@@ -19,3 +19,4 @@ from .mint_nft import MintNftView
 from .get_nfts_menu import UserCollectionView
 from .get_vibemap_nfts import GetVibemapNFTsView
 from .luma_event import LumaEventPreviewView, LumaEventVerifyView
+from .event_requests import EventRequestCreateView, EventRequestListView, EventRequestActionView

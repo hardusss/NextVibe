@@ -20,17 +20,26 @@ class PostMenuView(APIView):
     def get(self, request, id: int) -> Response:
         index = int(request.query_params.get("index", 0))
         limit = int(request.query_params.get("limit", 9))
+        is_event = request.query_params.get("is_event", "false").lower() == "true"
 
         posts_qs = (
             Post.objects
             .filter(owner__user_id=id, is_hide=False, is_ai_generated=False)
+        )
+        
+        if is_event:
+            posts_qs = posts_qs.filter(is_luma_event=True)
+            total_posts = Post.objects.filter(owner__user_id=id, is_luma_event=True).exclude(moderation_status="denied").count()
+        else:
+            total_posts = Post.objects.filter(owner__user_id=id).exclude(moderation_status="denied").count()
+
+        posts_qs = (
+            posts_qs
             .exclude(moderation_status="denied")
             .select_related("owner") 
             .prefetch_related(Prefetch("media", queryset=PostsMedia.objects.all()))
             .order_by("-id")[index:index + limit]
         )
-
-        total_posts = Post.objects.filter(owner__user_id=id).exclude(moderation_status="denied").count()
 
         if not posts_qs:
             return Response({
