@@ -106,5 +106,6 @@ class GetPostView(APIView):
                 "luma_event_verified": post.luma_event_verified,
                 "luma_event_start_time": post.luma_event_start_time,
                 "luma_event_end_time": post.luma_event_end_time,
+                "event_request_status": (lambda req: req.status if req else None)(post.event_requests.filter(user=request.user).first()),
             }
         })
