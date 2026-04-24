@@ -138,4 +138,21 @@ class UserCollection(models.Model):
 
     def __str__(self):
         return f"NFT #{self.edition} of post {self.post.id} owned by {self.user.username}"
-    
+
+class EventRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+
+    user = models.ForeignKey("user.User", on_delete=models.CASCADE, related_name='event_requests')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='event_requests')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'post')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} request for event {self.post.id} ({self.status})"

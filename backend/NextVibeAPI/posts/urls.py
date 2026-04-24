@@ -9,7 +9,8 @@ from .view_pac import (
     GetGenerationImageStatusView, GetPostView,
     PostMetadataView, CollectionMetadataView,
     MintNftView, UserCollectionView, GetVibemapNFTsView,
-    LumaEventPreviewView, LumaEventVerifyView
+    LumaEventPreviewView, LumaEventVerifyView,
+    EventRequestCreateView, EventRequestListView, EventRequestActionView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -40,6 +41,9 @@ urlpatterns = [
     path("get-vibemap-nfts/", GetVibemapNFTsView.as_view(), name="get_vibemap_nfts"),
     path("luma-event/preview/", LumaEventPreviewView.as_view(), name="luma_event_preview"),
     path("luma-event/verify/", LumaEventVerifyView.as_view(), name="luma_event_verify"),
+    path("event-requests/create/<int:post_id>/", EventRequestCreateView.as_view(), name="event_request_create"),
+    path("event-requests/", EventRequestListView.as_view(), name="event_request_list"),
+    path("event-requests/action/<int:request_id>/", EventRequestActionView.as_view(), name="event_request_action"),
 ]
 
 
