@@ -520,7 +520,7 @@ const ProfileView = () => {
                                         colorScheme={colorScheme}
                                     />
                                 ) : (
-                                    <CollectionsGallery key={`collections-${refreshKey}`} id={id as number} />
+                                    <CollectionsGallery key={`collections-${refreshKey}`} id={id as number} isOwnProfile={true} />
                                 )
                             )}
                         </Animated.View>
