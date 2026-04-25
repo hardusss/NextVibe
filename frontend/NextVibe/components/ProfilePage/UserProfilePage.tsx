@@ -507,7 +507,7 @@ const UserProfileView = () => {
                                         colorScheme={colorScheme}
                                     />
                                 ) : (
-                                    <CollectionsGallery key={`collections-${refreshKey}`} id={+id} />
+                                    <CollectionsGallery key={`collections-${refreshKey}`} id={+id} isOwnProfile={false} />
                                 )
                             )}
                         </Animated.View>
