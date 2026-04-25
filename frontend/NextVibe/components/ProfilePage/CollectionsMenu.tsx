@@ -56,11 +56,14 @@ type SetAvatarState = 'idle' | 'loading' | 'done';
 
 interface CollectionsGalleryProps {
     id: number;
+    /** Pass false when rendering another user's profile to hide the "Set as Avatar" button */
+    isOwnProfile?: boolean;
 }
 
 interface OgAvatarCardProps {
     og: OgAvatar;
     isDark: boolean;
+    isOwnProfile: boolean;
     onSetAvatar: () => Promise<void>;
 }
 
@@ -73,7 +76,7 @@ interface OgAvatarCardProps {
  * - loading : request in flight, shows spinner, button disabled
  * - done    : avatar was set, shows CheckCircle2, button locked
  */
-function OgAvatarCard({ og, isDark, onSetAvatar }: OgAvatarCardProps) {
+function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatarCardProps) {
     const accentColor = isDark ? '#d8b4fe' : '#7c3aed';
     const borderColor = isDark ? 'rgba(196,167,255,0.35)' : 'rgba(109,40,217,0.25)';
     const cardBg = isDark ? 'rgba(167,139,250,0.08)' : 'rgba(109,40,217,0.05)';
@@ -160,50 +163,52 @@ function OgAvatarCard({ og, isDark, onSetAvatar }: OgAvatarCardProps) {
                     Max supply cNFT · Bubblegum protocol
                 </Text>
 
-                <TouchableOpacity
-                    style={[
-                        styles.setAvatarBtn,
-                        {
-                            backgroundColor: btnBackground,
-                            borderColor: btnBorderColor,
-                            opacity: isDisabled && setAvatarState !== 'done' ? 0.7 : 1,
-                        },
-                    ]}
-                    onPress={handleSetAvatar}
-                    activeOpacity={isDisabled ? 1 : 0.75}
-                    disabled={isDisabled}
-                >
-                    {setAvatarState === 'loading' && (
-                        <>
-                            <RNActivityIndicator size={12} color={accentColor} />
-                            <Text style={[styles.setAvatarText, { color: accentColor }]}>
-                                Setting...
-                            </Text>
-                        </>
-                    )}
-                    {setAvatarState === 'done' && (
-                        <>
-                            <CheckCircle2 size={12} color={doneColor} strokeWidth={2} />
-                            <Text style={[styles.setAvatarText, { color: doneColor }]}>
-                                Avatar Set!
-                            </Text>
-                        </>
-                    )}
-                    {setAvatarState === 'idle' && (
-                        <>
-                            <UserCircle2 size={12} color={accentColor} strokeWidth={1.8} />
-                            <Text style={[styles.setAvatarText, { color: btnTextColor }]}>
-                                Set as Avatar
-                            </Text>
-                        </>
-                    )}
-                </TouchableOpacity>
+                {isOwnProfile && (
+                    <TouchableOpacity
+                        style={[
+                            styles.setAvatarBtn,
+                            {
+                                backgroundColor: btnBackground,
+                                borderColor: btnBorderColor,
+                                opacity: isDisabled && setAvatarState !== 'done' ? 0.7 : 1,
+                            },
+                        ]}
+                        onPress={handleSetAvatar}
+                        activeOpacity={isDisabled ? 1 : 0.75}
+                        disabled={isDisabled}
+                    >
+                        {setAvatarState === 'loading' && (
+                            <>
+                                <RNActivityIndicator size={12} color={accentColor} />
+                                <Text style={[styles.setAvatarText, { color: accentColor }]}>
+                                    Setting...
+                                </Text>
+                            </>
+                        )}
+                        {setAvatarState === 'done' && (
+                            <>
+                                <CheckCircle2 size={12} color={doneColor} strokeWidth={2} />
+                                <Text style={[styles.setAvatarText, { color: doneColor }]}>
+                                    Avatar Set!
+                                </Text>
+                            </>
+                        )}
+                        {setAvatarState === 'idle' && (
+                            <>
+                                <UserCircle2 size={12} color={accentColor} strokeWidth={1.8} />
+                                <Text style={[styles.setAvatarText, { color: btnTextColor }]}>
+                                    Set as Avatar
+                                </Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );
 }
 
-const CollectionsGallery = ({ id }: CollectionsGalleryProps) => {
+const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProps) => {
     const isDark = useColorScheme() === "dark";
 
     const [items, setItems] = useState<CollectionItem[]>([]);
@@ -303,6 +308,7 @@ const CollectionsGallery = ({ id }: CollectionsGalleryProps) => {
                             <OgAvatarCard
                                 og={ogAvatar}
                                 isDark={isDark}
+                                isOwnProfile={isOwnProfile}
                                 onSetAvatar={handleSetOgAvatar}
                             />
                         ) : null
