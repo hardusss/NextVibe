@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..serializers_pac import UserRegistrationSerializer
 from rest_framework.throttling import ScopedRateThrottle
+from user.src.notify_admin_new_user import notify_admin_new_user
 
 
 class RegisterUserView(APIView):
@@ -15,6 +16,7 @@ class RegisterUserView(APIView):
         serializer = UserRegistrationSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             user = serializer.save()
+            notify_admin_new_user(user)
             user_data = UserRegistrationSerializer(user, context={'request': request}).data
             return Response(
                 {
