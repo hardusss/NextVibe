@@ -5,6 +5,7 @@ from ..serializers_pac import GoogleRegister
 from rest_framework.throttling import ScopedRateThrottle
 from user.src.validate_google_token_id import validate
 from django.contrib.auth import get_user_model
+from user.src.notify_admin_new_user import notify_admin_new_user
 
 
 class GoogleRegisterView(APIView):
@@ -40,4 +41,5 @@ class GoogleRegisterView(APIView):
         })
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        notify_admin_new_user(user)
         return Response(GoogleRegister(user).data, status=status.HTTP_201_CREATED)

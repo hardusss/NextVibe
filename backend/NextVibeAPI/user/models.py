@@ -112,6 +112,7 @@ class Notification(models.Model):
         ("moderation_fail", "Moderation Fail"),
         ("event_request", "Event Request"),
         ("event_request_status", "Event Request Status"),
+        ("new_user", "New User Registered"),
     )
 
     sender = models.ForeignKey(

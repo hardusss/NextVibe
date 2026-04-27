@@ -34,6 +34,9 @@ def trigger_push_and_cache(sender, instance, created, **kwargs):
             if instance.post and instance.post.about:
                 body_text = f"Event: {instance.post.about}"
 
+        elif instance.notification_type == 'new_user':
+            body_text = instance.text_preview
+
         token = getattr(instance.recipient, 'expo_push_token', None)
         if token:
             send(
