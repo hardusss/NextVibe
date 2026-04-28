@@ -1,7 +1,16 @@
-import { Pressable, Animated, Easing, View, Text, StyleSheet, Modal } from "react-native";
-import { BlurView } from "expo-blur";
+import { Pressable, View, Text, StyleSheet, useColorScheme } from "react-native";
 import LottieView from "lottie-react-native";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from "react";
+import {
+    BottomSheetModal,
+    BottomSheetView,
+    BottomSheetBackdropProps,
+    useBottomSheet,
+} from '@gorhom/bottom-sheet';
+import Animated, {
+    interpolate, Extrapolation, useAnimatedStyle
+} from 'react-native-reanimated';
+import { BlurView } from '@react-native-community/blur';
 
 interface PropsVerifyBadge {
     isLooped: boolean;
@@ -11,50 +20,38 @@ interface PropsVerifyBadge {
     size: number;
 };
 
-export default function VerifyBadge ({ isLooped, isVisible, haveModal, isStatic, size }: PropsVerifyBadge) {
-    const [showVerifiedToast, setShowVerifiedToast] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
-    const scaleAnim = useRef(new Animated.Value(0)).current;
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const lottieRef = useRef<LottieView>(null);
+export interface VerifyBadgeSheetRef {
+    present: () => void;
+    dismiss: () => void;
+}
 
-    useEffect(() => {
-        if (showVerifiedToast) {
-            setModalVisible(true);
-            Animated.parallel([
-                Animated.spring(scaleAnim, {
-                    toValue: 1,
-                    friction: 5,
-                    tension: 150,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 200,
-                    easing: Easing.out(Easing.ease),
-                    useNativeDriver: true,
-                })
-            ]).start();
-        } else {
-            Animated.parallel([
-                Animated.timing(scaleAnim, {
-                    toValue: 0.8,
-                    duration: 150,
-                    easing: Easing.in(Easing.ease),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(fadeAnim, {
-                    toValue: 0,
-                    duration: 150,
-                    useNativeDriver: true,
-                })
-            ]).start(() => {
-                setModalVisible(false);
-                scaleAnim.setValue(0);
-            });
-        }
-    }, [showVerifiedToast]);
-    
+/**
+ * Custom backdrop – same pattern used across the app (InviteBottomSheet, etc.)
+ */
+const VerifyBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProps) => {
+    const isDark = useColorScheme() === 'dark';
+    const { close } = useBottomSheet();
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(animatedIndex.value, [-1, 0], [0, 1], Extrapolation.CLAMP),
+    }));
+
+    return (
+        <Animated.View style={[StyleSheet.absoluteFill, style, animatedStyle]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => close()}>
+                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={2} />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.2)' }]} />
+            </Pressable>
+        </Animated.View>
+    );
+};
+
+export default function VerifyBadge ({ isLooped, isVisible, haveModal, isStatic, size }: PropsVerifyBadge) {
+    const [sheetVisible, setSheetVisible] = useState(false);
+    const lottieRef = useRef<LottieView>(null);
+    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const isDark = useColorScheme() === 'dark';
+
     useEffect(() => {
         const lottie = lottieRef.current;
         if (!lottie) return;
@@ -79,12 +76,22 @@ export default function VerifyBadge ({ isLooped, isVisible, haveModal, isStatic,
 
 
     const onPressVerified = () => {
-        setShowVerifiedToast(true);
+        bottomSheetModalRef.current?.present();
     };
 
-    const closeModal = () => {
-        setShowVerifiedToast(false);
-    };
+    const handleSheetChanges = useCallback((index: number) => {
+        if (index === -1) {
+            setSheetVisible(false);
+        }
+    }, []);
+
+    // Theme colors matching the app's design system
+    const bg = isDark ? '#0f021c' : '#ffffff';
+    const mainColor = isDark ? '#ffffff' : '#1f2937';
+    const mutedColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.32)';
+    const handleColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';
+    const accentText = isDark ? '#d8b4fe' : '#7c3aed';
+    const borderColor = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
     
     return (
         <>
@@ -114,49 +121,23 @@ export default function VerifyBadge ({ isLooped, isVisible, haveModal, isStatic,
                     : undefined
                 }
                 />
-
-
         </Pressable>
 
-        <Modal
-            visible={modalVisible}
-            transparent={true}
-            animationType="none"
-            statusBarTranslucent
-            onRequestClose={closeModal}
-        >
-            <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-                <BlurView
-                    intensity={100}
-                    tint="dark"
-                    style={styles.blurContainer}
-                >
-                    <Pressable 
-                        style={styles.backdrop}
-                        onPress={closeModal}
-                    >
-                        <View style={styles.darkOverlay} />
-                    </Pressable>
-                    
-                    <Animated.View
-                        style={[
-                            styles.modalCard,
-                            {
-                                transform: [{ scale: scaleAnim }],
-                            }
-                        ]}
-                    >
-                        {/* Close button */}
-                        <Pressable 
-                            style={styles.closeButton}
-                            onPress={closeModal}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <Text style={styles.closeIcon}>✕</Text>
-                        </Pressable>
-
-                        {/* Animated checkmark icon */}
-                        <View style={styles.iconCircle}>
+        {haveModal && (
+            <BottomSheetModal
+                ref={bottomSheetModalRef}
+                snapPoints={['38%']}
+                index={0}
+                onChange={handleSheetChanges}
+                backdropComponent={VerifyBackdrop}
+                backgroundStyle={{ backgroundColor: bg }}
+                handleIndicatorStyle={{ backgroundColor: handleColor, width: 36 }}
+                enablePanDownToClose={true}
+            >
+                <BottomSheetView style={[styles.container, { backgroundColor: bg }]}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={[styles.iconCircle, { borderColor: accentText, backgroundColor: isDark ? 'rgba(163, 100, 245, 0.15)' : 'rgba(163, 100, 245, 0.1)' }]}>
                             <LottieView
                                 speed={0.7}
                                 progress={1}
@@ -166,147 +147,106 @@ export default function VerifyBadge ({ isLooped, isVisible, haveModal, isStatic,
                                 style={{ width: 56, height: 56 }}
                             />
                         </View>
-                        
-                        <Text style={styles.mainTitle}>Verified Account</Text>
-                        
-                        <View style={styles.divider} />
-                        
-                        <Text style={styles.description}>
-                            This account has been verified by the{"\n"}
-                            <Text style={styles.brandHighlight}>NextVibe</Text> team
-                        </Text>
-                        
-                        <View style={styles.badgeContainer}>
-                            <View style={styles.badge}>
-                                <Text style={styles.badgeText}>✓</Text>
-                                <Text style={styles.badgeLabel}>OFFICIAL</Text>
-                            </View>
+                    </View>
+
+                    {/* Title */}
+                    <Text style={[styles.mainTitle, { color: mainColor }]}>Verified Account</Text>
+
+                    {/* Divider */}
+                    <View style={[styles.divider, { backgroundColor: accentText }]} />
+
+                    {/* Description */}
+                    <Text style={[styles.description, { color: mutedColor }]}>
+                        This account has been verified by the{"\n"}
+                        <Text style={[styles.brandHighlight, { color: accentText }]}>NextVibe</Text> team
+                    </Text>
+
+                    {/* Official Badge */}
+                    <View style={styles.badgeContainer}>
+                        <View style={[styles.badge, { 
+                            backgroundColor: isDark ? 'rgba(163, 100, 245, 0.14)' : 'rgba(163, 100, 245, 0.08)',
+                            borderColor: isDark ? 'rgba(163, 100, 245, 0.4)' : 'rgba(163, 100, 245, 0.3)',
+                        }]}>
+                            <Text style={[styles.badgeText, { color: accentText }]}>✓</Text>
+                            <Text style={[styles.badgeLabel, { color: accentText }]}>OFFICIAL</Text>
                         </View>
-                    </Animated.View>
-                </BlurView>
-            </Animated.View>
-        </Modal>
+                    </View>
+                </BottomSheetView>
+            </BottomSheetModal>
+        )}
         </>
     )
 }
 
 const styles = StyleSheet.create({
-    blurContainer: {
+    container: {
         flex: 1,
-        justifyContent: 'center',
+        paddingHorizontal: 24,
+        paddingTop: 8,
+        paddingBottom: 32,
         alignItems: 'center',
-        padding: 24,
     },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    darkOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    },
-    modalCard: {
-        width: '100%',
-        maxWidth: 340,
-        backgroundColor: 'rgba(20, 20, 20, 0.95)',
-        borderRadius: 32,
-        padding: 36,
+    header: {
         alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: 'rgba(163, 100, 245, 0.3)',
-        overflow: 'visible',
-        shadowColor: '#000',
-        shadowOpacity: 0.5,
-        shadowRadius: 20,
-        shadowOffset: { width: 0, height: 10 },
-        elevation: 20,
-    },
-    closeButton: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
-    },
-    closeIcon: {
-        fontSize: 18,
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
-        lineHeight: 18,
+        marginBottom: 20,
     },
     iconCircle: {
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: 'rgba(163, 100, 245, 0.15)',
         borderWidth: 2,
-        borderColor: '#a364f5',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 24,
         overflow: 'hidden',
     },
     mainTitle: {
-        fontSize: 26,
+        fontSize: 24,
         fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
-        color: '#ffffff',
-        marginBottom: 16,
+        includeFontPadding: false,
+        marginBottom: 14,
         letterSpacing: 0.5,
         textAlign: 'center',
     },
     divider: {
         width: 60,
         height: 3,
-        backgroundColor: '#a364f5',
         borderRadius: 2,
-        marginBottom: 20,
+        marginBottom: 16,
     },
     description: {
         fontSize: 15,
-        fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
-        color: 'rgba(255, 255, 255, 0.75)',
+        fontFamily: "Dank Mono",
+        includeFontPadding: false,
         textAlign: 'center',
         lineHeight: 22,
-        marginBottom: 24,
+        marginBottom: 20,
     },
     brandHighlight: {
-        color: '#a364f5',
         fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+        includeFontPadding: false,
         fontSize: 16,
     },
     badgeContainer: {
-        marginTop: 8,
+        marginTop: 4,
     },
     badge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(163, 100, 245, 0.2)',
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(163, 100, 245, 0.4)',
         gap: 8,
     },
     badgeText: {
         fontSize: 16,
-        color: '#a364f5',
         fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+        includeFontPadding: false,
     },
     badgeLabel: {
         fontSize: 12,
         fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
-        color: '#a364f5',
+        includeFontPadding: false,
         letterSpacing: 1.5,
     },
 });
