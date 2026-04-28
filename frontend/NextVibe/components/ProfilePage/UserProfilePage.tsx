@@ -341,15 +341,17 @@ const UserProfileView = () => {
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                         <TouchableOpacity
                             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                            style={{ flexDirection: 'row', alignItems: 'center', paddingRight: 10 }}
+                            style={{ flexDirection: 'row', alignItems: 'center', paddingRight: 10, flexShrink: 0 }}
                             onPress={() => router.back()}
                         >
                             <MaterialIcons name="arrow-back" size={32} color={colorScheme === 'dark' ? '#fff' : '#000'} />
                         </TouchableOpacity>
-                        <View style={{ flexDirection: "row", alignItems: "center" }}>
-                            <Text style={profileStyle.username}>{userData.username}</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, flexShrink: 1, overflow: "hidden" }}>
+                            <Text style={[profileStyle.username, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{userData.username}</Text>
                             {userData.official ? (
-                                <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={24} />
+                                <View style={{ flexShrink: 0, marginLeft: 2 }}>
+                                    <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={24} />
+                                </View>
                             ) : null}
                         </View>
                     </View>

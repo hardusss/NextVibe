@@ -329,13 +329,15 @@ const ProfileView = () => {
                     </Modal>
 
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center" }}>
-                            <Text style={profileStyle.username}>{userData.username}</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, flexShrink: 1, marginRight: 8, overflow: "hidden" }}>
+                            <Text style={[profileStyle.username, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{userData.username}</Text>
                             {userData.official && (
-                                <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={24} />
+                                <View style={{ flexShrink: 0, marginLeft: 2 }}>
+                                    <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={24} />
+                                </View>
                             )}
                         </View>
-                        <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", flexShrink: 0 }}>
                             <ButtonWallet />
                             <ButtonSettings />
                         </View>
