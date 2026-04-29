@@ -189,6 +189,7 @@ REST_FRAMEWORK = {
 
         # Posts/Feed
         "get_vibemap_nfts": "40/min",
+        "get_vibemap_events": "40/min",
         "luma_event_preview": "20/min",
         "luma_event_verify": "20/min",
         "feed": "110/min",   
