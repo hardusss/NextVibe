@@ -1,15 +1,22 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, Image, Pressable } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
 import { useFocusEffect } from 'expo-router';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import { getVibemapNfts, VibemapNftItem } from '@/src/api/get.vibemap.nfts';
+import { getVibemapEvents, VibemapEventItem } from '@/src/api/get.vibemap.events';
+import EventDetailSheet, { EventDetailSheetRef } from './EventDetailSheet';
+
 export default function MapScreen() {
     const [showMap, setShowMap] = useState(false);
     const [userCoords, setUserCoords] = useState<[number, number]>([24.03, 49.84]);
     const [nfts, setNfts] = useState<VibemapNftItem[]>([]);
+    const [events, setEvents] = useState<VibemapEventItem[]>([]);
     const [isNftsLoading, setIsNftsLoading] = useState(false);
+    const [isEventsLoading, setIsEventsLoading] = useState(false);
+
+    const eventSheetRef = useRef<EventDetailSheetRef>(null);
 
     const getUserLocation = async () => {
         try {
@@ -45,6 +52,19 @@ export default function MapScreen() {
         }
     }, []);
 
+    const loadEvents = useCallback(async () => {
+        setIsEventsLoading(true);
+        try {
+            const data = await getVibemapEvents();
+            setEvents(data);
+        } catch (e) {
+            console.error("get vibemap events error:", e);
+            setEvents([]);
+        } finally {
+            setIsEventsLoading(false);
+        }
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
             const timer = setTimeout(() => {
@@ -52,17 +72,22 @@ export default function MapScreen() {
             }, 450);
 
             loadNfts();
+            loadEvents();
 
             return () => {
                 setShowMap(false);
                 clearTimeout(timer);
             };
-        }, [loadNfts])
+        }, [loadNfts, loadEvents])
     );
 
     const mapNfts = useMemo(() => {
         return nfts.filter((x) => typeof x.lat === "number" && typeof x.lng === "number");
     }, [nfts]);
+
+    const mapEvents = useMemo(() => {
+        return events.filter((x) => typeof x.lat === "number" && typeof x.lng === "number");
+    }, [events]);
 
     const nftsGeoJson = useMemo(() => {
         return {
@@ -79,6 +104,25 @@ export default function MapScreen() {
             })),
         } as const;
     }, [mapNfts]);
+
+    const eventsGeoJson = useMemo(() => {
+        return {
+            type: "FeatureCollection",
+            features: mapEvents.map((item) => ({
+                type: "Feature" as const,
+                geometry: {
+                    type: "Point" as const,
+                    coordinates: [item.lng, item.lat],
+                },
+                properties: {
+                    post_id: item.post_id,
+                    is_active: item.is_active,
+                },
+            })),
+        } as const;
+    }, [mapEvents]);
+
+    const isLoading = isNftsLoading || isEventsLoading;
 
     return (
         <View style={styles.container}>
@@ -114,7 +158,7 @@ export default function MapScreen() {
                         }}
                     />
 
-                    {/* Big halo so markers are visible even from far zoom */}
+                    {/* NFT halo layer */}
                     <MapboxGL.ShapeSource id="vibemap-nfts" shape={nftsGeoJson}>
                         <MapboxGL.CircleLayer
                             id="vibemap-nfts-halo"
@@ -124,31 +168,21 @@ export default function MapScreen() {
                                     "interpolate",
                                     ["linear"],
                                     ["zoom"],
-                                    0,
-                                    0.55,
-                                    3,
-                                    0.35,
-                                    6,
-                                    0.2,
-                                    10,
-                                    0.0,
+                                    0, 0.55,
+                                    3, 0.35,
+                                    6, 0.2,
+                                    10, 0.0,
                                 ],
                                 circleRadius: [
                                     "interpolate",
                                     ["linear"],
                                     ["zoom"],
-                                    0,
-                                    18,
-                                    2,
-                                    14,
-                                    4,
-                                    10,
-                                    6,
-                                    7,
-                                    8,
-                                    5,
-                                    10,
-                                    3,
+                                    0, 18,
+                                    2, 14,
+                                    4, 10,
+                                    6, 7,
+                                    8, 5,
+                                    10, 3,
                                 ],
                                 circleBlur: 1,
                                 circleStrokeWidth: 1,
@@ -157,12 +191,60 @@ export default function MapScreen() {
                                     "interpolate",
                                     ["linear"],
                                     ["zoom"],
-                                    0,
-                                    0.75,
-                                    6,
-                                    0.35,
-                                    10,
-                                    0.0,
+                                    0, 0.75,
+                                    6, 0.35,
+                                    10, 0.0,
+                                ],
+                            }}
+                        />
+                    </MapboxGL.ShapeSource>
+
+                    {/* Event halo layer — distinct green/cyan glow */}
+                    <MapboxGL.ShapeSource id="vibemap-events-halo-source" shape={eventsGeoJson}>
+                        <MapboxGL.CircleLayer
+                            id="vibemap-events-halo"
+                            style={{
+                                circleColor: [
+                                    "case",
+                                    ["==", ["get", "is_active"], true],
+                                    "#05f0d8",
+                                    "#f87171",
+                                ],
+                                circleOpacity: [
+                                    "interpolate",
+                                    ["linear"],
+                                    ["zoom"],
+                                    0, 0.6,
+                                    3, 0.4,
+                                    6, 0.25,
+                                    10, 0.0,
+                                ],
+                                circleRadius: [
+                                    "interpolate",
+                                    ["linear"],
+                                    ["zoom"],
+                                    0, 22,
+                                    2, 18,
+                                    4, 14,
+                                    6, 10,
+                                    8, 7,
+                                    10, 4,
+                                ],
+                                circleBlur: 1,
+                                circleStrokeWidth: 1.5,
+                                circleStrokeColor: [
+                                    "case",
+                                    ["==", ["get", "is_active"], true],
+                                    "rgba(5, 240, 216, 0.85)",
+                                    "rgba(248, 113, 113, 0.6)",
+                                ],
+                                circleStrokeOpacity: [
+                                    "interpolate",
+                                    ["linear"],
+                                    ["zoom"],
+                                    0, 0.8,
+                                    6, 0.4,
+                                    10, 0.0,
                                 ],
                             }}
                         />
@@ -194,6 +276,7 @@ export default function MapScreen() {
                         />
                     </MapboxGL.VectorSource>
 
+                    {/* NFT markers */}
                     {mapNfts.map((item) => (
                         <MapboxGL.MarkerView
                             key={String(item.post_id)}
@@ -230,7 +313,69 @@ export default function MapScreen() {
                         </MapboxGL.MarkerView>
                     ))}
 
-                    {isNftsLoading ? (
+                    {/* Event markers — distinct look */}
+                    {mapEvents.map((item) => (
+                        <MapboxGL.MarkerView
+                            key={`event-${item.post_id}`}
+                            id={`vibemap-event-${item.post_id}`}
+                            coordinate={[item.lng, item.lat]}
+                            anchor={{ x: 0.5, y: 0.5 }}
+                            allowOverlap
+                        >
+                            <Pressable
+                                style={[
+                                    styles.eventMarkerShadow,
+                                    { shadowColor: item.is_active ? "#05f0d8" : "#f87171" },
+                                ]}
+                                onPress={() => eventSheetRef.current?.present(item)}
+                            >
+                                <View style={[
+                                    styles.eventMarkerContainer,
+                                    {
+                                        borderColor: item.is_active
+                                            ? "rgba(5, 240, 216, 0.6)"
+                                            : "rgba(248, 113, 113, 0.4)",
+                                    },
+                                ]}>
+                                    {/* Event image */}
+                                    {item.image ? (
+                                        <Image
+                                            source={{ uri: item.image }}
+                                            style={styles.eventMarkerImage}
+                                            resizeMode="cover"
+                                        />
+                                    ) : (
+                                        <View style={styles.eventMarkerImageFallback} />
+                                    )}
+
+                                    {/* Calendar icon overlay */}
+                                    <View style={styles.eventIconOverlay}>
+                                        <View style={[
+                                            styles.eventIconBadge,
+                                            {
+                                                backgroundColor: item.is_active
+                                                    ? "rgba(5, 240, 216, 0.9)"
+                                                    : "rgba(248, 113, 113, 0.85)",
+                                            },
+                                        ]}>
+                                            <Text style={styles.eventIconEmoji}>📅</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Status dot */}
+                                    <View style={[
+                                        styles.eventStatusDot,
+                                        {
+                                            backgroundColor: item.is_active ? "#05f0d8" : "#f87171",
+                                            borderColor: "#000",
+                                        },
+                                    ]} />
+                                </View>
+                            </Pressable>
+                        </MapboxGL.MarkerView>
+                    ))}
+
+                    {isLoading ? (
                         <View style={styles.mapLoadingBadge}>
                             <ActivityIndicator size="small" color="#BCBBFD" />
                             <Text style={styles.mapLoadingText}>Loading drops…</Text>
@@ -243,6 +388,8 @@ export default function MapScreen() {
                     <Text style={styles.loaderText}>Mapping the VibeWorld...</Text>
                 </View>
             )}
+
+            <EventDetailSheet ref={eventSheetRef} />
         </View>
     );
 }
@@ -287,6 +434,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0.2,
     },
 
+    // ── NFT markers ──────────────────────────────
     markerContainer: {
         width: 54,
         height: 76,
@@ -348,5 +496,63 @@ const styles = StyleSheet.create({
         height: 30,
         borderRadius: 999,
         backgroundColor: "rgba(188, 187, 253, 0.22)",
+    },
+
+    // ── Event markers ──────────────────────────────
+    eventMarkerShadow: {
+        borderRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.5,
+        shadowRadius: 16,
+        elevation: 12,
+    },
+    eventMarkerContainer: {
+        width: 62,
+        height: 62,
+        borderRadius: 16,
+        overflow: "hidden",
+        borderWidth: 2,
+        backgroundColor: "rgba(5, 240, 216, 0.08)",
+    },
+    eventMarkerImage: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 14,
+    },
+    eventMarkerImageFallback: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(5, 240, 216, 0.12)",
+    },
+    eventIconOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    eventIconBadge: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    eventIconEmoji: {
+        fontSize: 14,
+        includeFontPadding: false,
+    },
+    eventStatusDot: {
+        position: "absolute",
+        top: -3,
+        right: -3,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
     },
 });
