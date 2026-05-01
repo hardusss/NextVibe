@@ -156,3 +156,17 @@ class EventRequest(models.Model):
 
     def __str__(self):
         return f"{self.user.username} request for event {self.post.id} ({self.status})"
+
+class EventCheckin(models.Model):
+    user = models.ForeignKey("user.User", on_delete=models.CASCADE, related_name='event_checkins')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='event_checkins')
+    is_registered = models.BooleanField(default=False)
+    checked_in_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'post')
+        ordering = ['-checked_in_at']
+
+    def __str__(self):
+        status = "registered" if self.is_registered else "unregistered"
+        return f"{self.user.username} checked in ({status}) at event {self.post.id}"
