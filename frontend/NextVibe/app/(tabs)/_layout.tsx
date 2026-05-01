@@ -125,7 +125,7 @@ export default function Layout() {
         "transactions", "transaction-detail", "chat-room",
         "chats", "follows-screen", "notifications",
         "user-banned", "wallet-init", "wallet-dash",
-        "wallet-select", "send", "swap"
+        "wallet-select", "send", "swap", "event-checkin"
     ];
 
     const stackScreens = blacklist.filter(item => item !== "send");

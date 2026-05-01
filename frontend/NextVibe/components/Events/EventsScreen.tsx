@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, useColorScheme, FlatList, ActivityIndicator, Linking } from "react-native";
 import { useRouter } from "expo-router";
-import { CalendarPlus, ChevronLeft, Calendar, Link2, Users } from "lucide-react-native";
+import { CalendarPlus, ChevronLeft, Calendar, Link2, Users, Nfc } from "lucide-react-native";
 import AddLumaEventSheet, { AddLumaEventSheetRef } from "./AddLumaEventSheet";
 import EventRequestsSheet, { EventRequestsSheetRef } from "./EventRequestsSheet";
 import AttendeesSheet, { AttendeesSheetRef } from "./AttendeesSheet";
+import NfcCheckinSheet, { NfcCheckinSheetRef } from "./NfcCheckinSheet";
 import { storage } from "@/src/utils/storage";
 import getMenuPosts from "@/src/api/menu.posts";
 import { getEventRequests } from "@/src/api/event.requests";
@@ -28,6 +29,7 @@ export default function EventsScreen() {
   const [pageIndex, setPageIndex] = useState(0);
   const requestsSheetRef = useRef<EventRequestsSheetRef>(null);
   const attendeesSheetRef = useRef<AttendeesSheetRef>(null);
+  const nfcCheckinSheetRef = useRef<NfcCheckinSheetRef>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const pendingCount = requests.filter(r => r.status === 'pending').length;
 
@@ -97,6 +99,20 @@ export default function EventsScreen() {
       }
   };
 
+  // Theme-aware card colors
+  const dateColor = isDark ? "#d8b4fe" : "#7c3aed";
+  const lumaColor = isDark ? "#d8b4fe" : "#6d28d9";
+  const attendeesColor = isDark ? "#c084fc" : "#7c3aed";
+  const nfcColor = isDark ? "#05f0d8" : "#0d9488";
+  const activeStatusBg = isDark ? "rgba(5,240,216,0.15)" : "rgba(13,148,136,0.12)";
+  const activeStatusText = isDark ? "#05f0d8" : "#0d9488";
+  const endedStatusBg = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)";
+  const endedStatusText = isDark ? "#999" : "#9ca3af";
+  const btnBg = isDark ? "rgba(168,85,247,0.2)" : "rgba(124,58,237,0.08)";
+  const attendeesBtnBg = isDark ? "rgba(168,85,247,0.1)" : "rgba(124,58,237,0.06)";
+  const nfcBtnBg = isDark ? "rgba(5,240,216,0.1)" : "rgba(13,148,136,0.08)";
+  const nfcBtnBorder = isDark ? "rgba(5,240,216,0.15)" : "rgba(13,148,136,0.18)";
+
   const renderEvent = ({ item }: { item: any }) => {
       const mediaUrl = item.media?.[0]?.media_url;
       const isEnded = (item.luma_event_end_time || item.luma_event_start_time) ? new Date(item.luma_event_end_time || item.luma_event_start_time) < new Date() : false;
@@ -104,9 +120,9 @@ export default function EventsScreen() {
       return (
           <View style={[styles.eventCard, { backgroundColor: t.card, borderColor: t.border }]}>
               {mediaUrl && (
-                  <View style={styles.imageContainer}>
+                  <View style={[styles.imageContainer, { backgroundColor: isDark ? "#1a1a1a" : "#f3f4f6" }]}>
                       <FastImage source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                      <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} />
+                      <BlurView blurType={isDark ? "dark" : "light"} blurAmount={20} style={StyleSheet.absoluteFill} />
                       <FastImage source={{ uri: mediaUrl }} style={styles.eventImage} resizeMode="contain" />
                   </View>
               )}
@@ -116,16 +132,16 @@ export default function EventsScreen() {
                       <View style={{ flex: 1, paddingRight: 10 }}>
                           {item.luma_event_start_time && (
                               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                                  <Calendar size={16} color="#d8b4fe" style={{ flexShrink: 0, marginTop: 2 }} />
-                                  <Text style={{ color: "#d8b4fe", fontSize: 13, fontFamily: "Dank Mono Bold", flexShrink: 1, lineHeight: 20 }}>
+                                  <Calendar size={16} color={dateColor} style={{ flexShrink: 0, marginTop: 2 }} />
+                                  <Text style={{ color: dateColor, fontSize: 13, fontFamily: "Dank Mono Bold", flexShrink: 1, lineHeight: 20 }}>
                                       {formatEventDate(item.luma_event_start_time)}
                                       {item.luma_event_end_time ? ` → ${formatEventDate(item.luma_event_end_time)}` : ""}
                                   </Text>
                               </View>
                           )}
                       </View>
-                      <View style={{ backgroundColor: isEnded ? "rgba(255,255,255,0.1)" : "rgba(5,240,216,0.15)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexShrink: 0 }}>
-                          <Text style={{ color: isEnded ? "#999" : "#05f0d8", fontSize: 11, fontFamily: "Dank Mono Bold" }}>
+                      <View style={{ backgroundColor: isEnded ? endedStatusBg : activeStatusBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexShrink: 0 }}>
+                          <Text style={{ color: isEnded ? endedStatusText : activeStatusText, fontSize: 11, fontFamily: "Dank Mono Bold" }}>
                               {isEnded ? "Ended" : "Active"}
                           </Text>
                       </View>
@@ -138,23 +154,34 @@ export default function EventsScreen() {
                   {item.luma_event_url && (
                       <TouchableOpacity 
                           onPress={() => Linking.openURL(item.luma_event_url)} 
-                          style={styles.eventBtn}
+                          style={[styles.eventBtn, { backgroundColor: btnBg }]}
                       >
-                          <Link2 size={16} color="#d8b4fe" />
-                          <Text style={styles.eventBtnText}>
+                          <Link2 size={16} color={lumaColor} />
+                          <Text style={[styles.eventBtnText, { color: lumaColor }]}>
                               View Event on Luma
                           </Text>
                       </TouchableOpacity>
                   )}
 
-                  {/* Who's going button — only for event owner */}
+                  {/* Who's going button */}
                   <TouchableOpacity
                       onPress={() => attendeesSheetRef.current?.presentForPost(item.post_id, item.about)}
-                      style={[styles.eventBtn, styles.attendeesBtn]}
+                      style={[styles.eventBtn, styles.attendeesBtn, { backgroundColor: attendeesBtnBg }]}
                   >
-                      <Users size={15} color="#c084fc" strokeWidth={1.8} />
-                      <Text style={[styles.eventBtnText, { color: "#c084fc" }]}>Who's going</Text>
+                      <Users size={15} color={attendeesColor} strokeWidth={1.8} />
+                      <Text style={[styles.eventBtnText, { color: attendeesColor }]}>Who's going</Text>
                   </TouchableOpacity>
+
+                  {/* NFC Check-in button — only for active events */}
+                  {!isEnded && (
+                      <TouchableOpacity
+                          onPress={() => nfcCheckinSheetRef.current?.presentForPost(item.post_id, item.about)}
+                          style={[styles.eventBtn, styles.nfcCheckinBtn, { backgroundColor: nfcBtnBg, borderColor: nfcBtnBorder }]}
+                      >
+                          <Nfc size={15} color={nfcColor} strokeWidth={1.8} />
+                          <Text style={[styles.eventBtnText, { color: nfcColor }]}>Check users via NFC</Text>
+                      </TouchableOpacity>
+                  )}
               </View>
           </View>
       );
@@ -215,6 +242,7 @@ export default function EventsScreen() {
       <AddLumaEventSheet ref={sheetRef} />
       <EventRequestsSheet ref={requestsSheetRef} requests={requests} onRefresh={fetchRequests} />
       <AttendeesSheet ref={attendeesSheetRef} />
+      <NfcCheckinSheet ref={nfcCheckinSheetRef} />
     </SafeAreaView>
   );
 }
@@ -293,7 +321,6 @@ const styles = StyleSheet.create({
   imageContainer: {
       width: "100%",
       height: 180,
-      backgroundColor: "#1a1a1a",
   },
   eventImage: {
       width: "100%",
@@ -313,18 +340,19 @@ const styles = StyleSheet.create({
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      backgroundColor: "rgba(168,85,247,0.2)",
       padding: 12,
       borderRadius: 10,
   },
   eventBtnText: {
-      color: "#d8b4fe",
       fontSize: 14,
       fontFamily: "Dank Mono Bold",
   },
   attendeesBtn: {
       marginTop: 8,
-      backgroundColor: "rgba(168,85,247,0.1)",
+  },
+  nfcCheckinBtn: {
+      marginTop: 8,
+      borderWidth: 1,
   }
 });
 

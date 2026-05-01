@@ -10,7 +10,8 @@ from .view_pac import (
     PostMetadataView, CollectionMetadataView,
     MintNftView, UserCollectionView, GetVibemapNFTsView, GetVibemapEventsView,
     LumaEventPreviewView, LumaEventVerifyView,
-    EventRequestCreateView, EventRequestListView, EventRequestActionView, EventAttendeesView
+    EventRequestCreateView, EventRequestListView, EventRequestActionView, EventAttendeesView,
+    EventCheckinView, EventCheckinListView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -46,6 +47,8 @@ urlpatterns = [
     path("event-requests/", EventRequestListView.as_view(), name="event_request_list"),
     path("event-requests/action/<int:request_id>/", EventRequestActionView.as_view(), name="event_request_action"),
     path("event-requests/attendees/<int:post_id>/", EventAttendeesView.as_view(), name="event_attendees"),
+    path("event-checkin/<int:post_id>/", EventCheckinView.as_view(), name="event_checkin"),
+    path("event-checkin/list/<int:post_id>/", EventCheckinListView.as_view(), name="event_checkin_list"),
 ]
 
 
