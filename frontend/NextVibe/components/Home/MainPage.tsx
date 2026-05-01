@@ -508,7 +508,7 @@ const PostItem = memo(({
                 </TouchableOpacity>
 
                 <View style={{ position: "relative", flexDirection: "row" }}>
-                    {collectState !== null && (
+                    {collectState !== null && !item?.is_luma_event && (
                         <ButtonCollect
                             onPress={() => onOpenMint(item)}
                             state={collectState}
