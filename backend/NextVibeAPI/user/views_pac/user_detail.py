@@ -6,8 +6,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 
 from ..serializers_pac import UserDetailSerializer
-from posts.models import UserCollection
+from posts.models import UserCollection, Reputation
 from user.models import InviteUser, OgAvatarMint
+from django.db.models import Sum
 
 User = get_user_model()
 
@@ -63,15 +64,19 @@ class UserDetailView(APIView):
                     "isOg": True,
                     "edition": og_mint.edition,
                 }
+            # Count reputation
+            reputation_count = Reputation.objects.filter(user=user).aggregate(
+                total=Sum('points')
+            )['total'] or 0
+
             return Response(
                 {
                     **data, 
                     "is_subscribed": is_subscribed, 
                     "cnft_count": cnft_count,
                     "invited_count": invited_count,
+                    "reputation": reputation_count,
                     **additonal
-                    
-                    
                 }, 
                 status=status.HTTP_200_OK
             )
