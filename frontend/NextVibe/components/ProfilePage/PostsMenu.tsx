@@ -114,6 +114,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const [mintMintedCount, setMintMintedCount] = useState<number>(0);
     const { sendInstructions } = useTransaction();
     const { address } = useWalletAddress();
+    const [mintSuccessId, setMintSuccessId] = useState<number | null>(null);
 
     const POSTS_PER_PAGE = 9;
 
@@ -233,6 +234,8 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         }
 
         await mintNFT(address, postId, price, paymentSignature as string);
+        // Signal PostPopup to update collect button state
+        setMintSuccessId(postId);
     };
 
     const hasBadges = (item: Post) =>
@@ -247,6 +250,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                 currentUserId={userID ?? undefined}
                 onOpenComments={(id) => setCommentsPostId(id)}
                 onOpenMint={handleOpenMint}
+                mintSuccessPostId={mintSuccessId}
             />
 
             {commentsPostId !== null && (

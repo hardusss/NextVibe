@@ -802,13 +802,19 @@ export default function MainPage() {
         if (!address) throw new Error("Wallet not connected");
         if (mintIsOwner) {
             await mintNFT(address, postId, price);
-            return;
+        } else {
+            if (!mintOwnerWallet) throw new Error("Owner wallet not found");
+            const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
+            const paymentSignature = await sendInstructions(ixs, "home");
+            if (!paymentSignature) throw new Error("Payment was not confirmed");
+            await mintNFT(address, postId, price, paymentSignature);
         }
-        if (!mintOwnerWallet) throw new Error("Owner wallet not found");
-        const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
-        const paymentSignature = await sendInstructions(ixs, "home");
-        if (!paymentSignature) throw new Error("Payment was not confirmed");
-        await mintNFT(address, postId, price, paymentSignature);
+        // Update local state so the Collect button switches to "Collected"
+        setPosts(prev => prev.map(p =>
+            p.id === postId
+                ? { ...p, already_claimed: true, minted_count: (p.minted_count ?? 0) + 1 }
+                : p
+        ));
     }, [address, mintIsOwner, mintOwnerWallet, sendInstructions]);
 
     const getUserID = async () => {
