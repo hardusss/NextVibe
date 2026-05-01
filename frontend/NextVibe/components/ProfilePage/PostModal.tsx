@@ -102,6 +102,8 @@ interface PostPopupProps {
         ownerWallet: string | null,
         mintedCount: number
     ) => void;
+    /** Set to the postId after a successful mint so PostModal updates its button state */
+    mintSuccessPostId?: number | null;
 }
 
 const formatDate = (isoString: string): string => {
@@ -122,6 +124,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     currentUserId,
     onOpenComments,
     onOpenMint,
+    mintSuccessPostId,
 }) => {
     const [post, setPost] = useState<PostData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -267,6 +270,17 @@ const PostPopup: React.FC<PostPopupProps> = ({
         if (p.is_nft || p.is_owner) return "collect";
         return null;
     };
+
+    // When the parent signals a successful mint for this post, update local state
+    useEffect(() => {
+        if (mintSuccessPostId && post && mintSuccessPostId === post.post_id) {
+            setPost(prev => prev ? {
+                ...prev,
+                already_claimed: true,
+                minted_count: (prev.minted_count ?? 0) + 1,
+            } : null);
+        }
+    }, [mintSuccessPostId]);
 
     const mediaUrl = post?.media?.[0]?.media_url ?? null;
     const collectState = post ? resolveCollectState(post) : null;
