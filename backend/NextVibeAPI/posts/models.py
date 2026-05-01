@@ -170,3 +170,43 @@ class EventCheckin(models.Model):
     def __str__(self):
         status = "registered" if self.is_registered else "unregistered"
         return f"{self.user.username} checked in ({status}) at event {self.post.id}"
+
+
+class Reputation(models.Model):
+    """Tracks reputation points earned through interactions."""
+    user = models.ForeignKey(
+        "user.User",
+        on_delete=models.CASCADE,
+        related_name='reputation_received',
+        help_text="The user who received reputation",
+    )
+    given_by = models.ForeignKey(
+        "user.User",
+        on_delete=models.CASCADE,
+        related_name='reputation_given',
+        help_text="The user who gave the reputation",
+    )
+    points = models.IntegerField(
+        default=1,
+        help_text="How many reputation points were awarded",
+    )
+    is_checkin = models.BooleanField(
+        default=False,
+        help_text="Whether this reputation was from an event check-in",
+    )
+    event = models.ForeignKey(
+        Post,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reputation_entries',
+        help_text="The event (post) where this interaction took place",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        src = "check-in" if self.is_checkin else "interaction"
+        return f"{self.given_by.username} → {self.user.username}: +{self.points} rep ({src})"
