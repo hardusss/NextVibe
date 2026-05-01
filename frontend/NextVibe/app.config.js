@@ -57,6 +57,11 @@ export default {
                             scheme: "https",
                             host: "nextvibe.io",
                             pathPrefix: "/transaction"
+                        },
+                        {
+                            scheme: "https",
+                            host: "nextvibe.io",
+                            pathPrefix: "/event-checkin"
                         }
                     ],
                     category: [
