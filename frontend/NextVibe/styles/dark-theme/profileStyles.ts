@@ -1,48 +1,41 @@
 import { StyleSheet } from 'react-native';
 
 const colors = {
-    background: '#0A0410', // #09080f
-    cardBackground: '#0a0c1a',
-    inputBackground: '#0a0c1a',
-    primary: '#fafafa',
-    secondary: '#1f6feb',
-    textPrimary: '#c9d1d9',
-    textSecondary: '#8b949e',
-    border: '#0b0c2e',
-    shadow: '#0917b3',
+    background: '#0A0410',
+    cardBackground: 'rgba(255,255,255,0.03)',
+    cardBorder: 'rgba(168,85,247,0.15)',
+    textPrimary: '#e8e0f0',
+    textSecondary: '#8b7aab',
+    accent: '#a855f7',
 };
 
 const profileDarkStyles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
-        paddingHorizontal: 20,
-        overflow: "hidden", 
+        paddingHorizontal: 16,
+        overflow: "hidden",
     },
     username: {
         color: colors.textPrimary,
         fontSize: 22,
         includeFontPadding: false,
-        fontFamily: "Dank Mono Bold"
-        },
-    avatar: {
-        marginLeft: 10,
-        width: 100,
-        height: 100,
-        borderRadius: 60,
-        objectFit: "cover"
+        fontFamily: "Dank Mono Bold",
     },
     text: {
         color: colors.textPrimary,
         textAlign: "center",
-        fontFamily: "Dank Mono"
+        fontFamily: "Dank Mono",
+        includeFontPadding: false,
     },
     about: {
-        color: colors.textPrimary,
-        marginTop: 20,
-        marginLeft: 5,
-        fontFamily: "Dank Mono"
-    }
-})
+        color: colors.textSecondary,
+        fontSize: 13,
+        lineHeight: 20,
+        textAlign: "center",
+        fontFamily: "Dank Mono",
+        includeFontPadding: false,
+    },
+});
 
 export default profileDarkStyles;

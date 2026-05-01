@@ -2,49 +2,40 @@ import { StyleSheet } from 'react-native';
 
 const colors = {
     background: '#ffffff',
-    cardBackground: '#f0f0f0',
-    inputBackground: '#eaeaea',
-    primary: '#000000',
-    secondary: '#1f6feb',
-    textPrimary: '#333333',
-    textSecondary: '#666666',
-    border: '#d1d1d1',
-    shadow: '#cccccc',
+    cardBackground: 'rgba(0,0,0,0.02)',
+    cardBorder: 'rgba(168,85,247,0.12)',
+    textPrimary: '#1a1025',
+    textSecondary: '#6b5f7a',
+    accent: '#a855f7',
 };
 
 const profileLightStyles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
-        paddingLeft: 20,
-        paddingRight: 20
+        paddingHorizontal: 16,
+        overflow: "hidden",
     },
     username: {
         color: colors.textPrimary,
         fontSize: 22,
         includeFontPadding: false,
-        fontFamily: "Dank Mono Bold"
-    },
-    avatar: {
-        width: 110,
-        height: 110,
-        borderRadius: 60,
-        objectFit: "cover",
-        marginLeft: 10,
-        
+        fontFamily: "Dank Mono Bold",
     },
     text: {
         color: colors.textPrimary,
         textAlign: "center",
+        fontFamily: "Dank Mono",
         includeFontPadding: false,
-        fontFamily: "Dank Mono"
     },
     about: {
-        color: colors.textPrimary,
-        marginTop: 20,
+        color: colors.textSecondary,
+        fontSize: 13,
+        lineHeight: 20,
+        textAlign: "center",
+        fontFamily: "Dank Mono",
         includeFontPadding: false,
-        fontFamily: "Dank Mono"
-    }
+    },
 });
 
 export default profileLightStyles;
