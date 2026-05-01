@@ -325,7 +325,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             </View>
 
                             <View style={styles.headerActions}>
-                                {collectState !== null && (
+                                {collectState !== null && !post?.is_luma_event && (
                                     <ButtonCollect
                                         onPress={handleOpenMint}
                                         state={collectState}
