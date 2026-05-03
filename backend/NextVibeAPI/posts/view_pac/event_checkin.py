@@ -44,16 +44,18 @@ class EventCheckinView(APIView):
                 checkin.is_registered = is_registered
                 checkin.save(update_fields=['is_registered'])
         
-        if created and is_registered:
-            # 1. Grant reputation randomly from 5 to 20
-            earned_points = random.randint(5, 20)
-            Reputation.objects.create(
-                user=request.user,
-                given_by=post.owner,
-                points=earned_points,
-                is_checkin=True,
-                event=post
-            )
+        if is_registered:
+            # 1. Grant reputation if not already granted
+            has_rep = Reputation.objects.filter(user=request.user, event=post, is_checkin=True).exists()
+            if not has_rep:
+                earned_points = random.randint(5, 20)
+                Reputation.objects.create(
+                    user=request.user,
+                    given_by=post.owner,
+                    points=earned_points,
+                    is_checkin=True,
+                    event=post
+                )
 
             # 2. Mint NFT of the event if possible
             total_supply = int(post.total_supply if post.total_supply is not None else 50)

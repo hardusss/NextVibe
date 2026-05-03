@@ -22,3 +22,4 @@ from .get_vibemap_events import GetVibemapEventsView
 from .luma_event import LumaEventPreviewView, LumaEventVerifyView
 from .event_requests import EventRequestCreateView, EventRequestListView, EventRequestActionView, EventAttendeesView
 from .event_checkin import EventCheckinView, EventCheckinListView
+from .event_connections import UserEventConnectionsView
