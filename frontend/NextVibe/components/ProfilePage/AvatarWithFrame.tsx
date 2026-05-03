@@ -83,11 +83,13 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
 
     return (
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-            <View style={{ width: '100%', height: '100%', borderRadius: 999, overflow: 'hidden' }}>
-                <FastImage
-                    style={{ width: '100%', height: '100%' }}
-                    source={{ uri: avatarUrl as string }}
-                />
+            <View style={{ width: '100%', height: '100%', borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(128,128,128,0.2)' }}>
+                {avatarUrl && (
+                    <FastImage
+                        style={{ width: '100%', height: '100%' }}
+                        source={{ uri: avatarUrl as string }}
+                    />
+                )}
             </View>
 
             {renderFrame()}
