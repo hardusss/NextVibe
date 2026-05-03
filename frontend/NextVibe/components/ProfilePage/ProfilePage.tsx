@@ -276,11 +276,13 @@ const ProfileView = () => {
                             activeOpacity={1} onPress={() => setVisible(false)}
                         >
                             <Animated.View style={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", width: '100%', transform: [{ scale: scaleAnim }] }}>
-                                <FastImage
-                                    style={{ width: 320, height: 320, borderRadius: 160 }}
-                                    source={{ uri: userData.avatar_url as string }}
-                                    resizeMode={FastImage.resizeMode.cover}
-                                />
+                                {userData.avatar_url && (
+                                    <FastImage
+                                        style={{ width: 320, height: 320, borderRadius: 160 }}
+                                        source={{ uri: userData.avatar_url as string }}
+                                        resizeMode={FastImage.resizeMode.cover}
+                                    />
+                                )}
                             </Animated.View>
                         </TouchableOpacity>
                     </Modal>
@@ -342,7 +344,7 @@ const ProfileView = () => {
 
                     {/* ── Avatar centered, overlapping header ── */}
                     <TouchableOpacity
-                        onPress={() => setVisible(true)}
+                        onPress={() => { if (userData.avatar_url) setVisible(true); }}
                         activeOpacity={0.85}
                         style={st.avatarWrap}
                     >

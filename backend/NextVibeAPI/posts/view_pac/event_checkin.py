@@ -15,6 +15,10 @@ class EventCheckinView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, post_id):
+        import random
+        import requests
+        from ..models import Reputation, UserCollection
+
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
 
         # Check if user has an approved event request
@@ -31,15 +35,70 @@ class EventCheckinView(APIView):
             defaults={'is_registered': is_registered}
         )
 
+        earned_points = 0
+        nft_minted = False
+
         if not created:
             # Update registration status in case it changed
             if checkin.is_registered != is_registered:
                 checkin.is_registered = is_registered
                 checkin.save(update_fields=['is_registered'])
+        
+        if created and is_registered:
+            # 1. Grant reputation randomly from 5 to 20
+            earned_points = random.randint(5, 20)
+            Reputation.objects.create(
+                user=request.user,
+                given_by=post.owner,
+                points=earned_points,
+                is_checkin=True,
+                event=post
+            )
+
+            # 2. Mint NFT of the event if possible
+            total_supply = int(post.total_supply if post.total_supply is not None else 50)
+            if request.user.wallet_address and int(post.minted_count) < total_supply:
+                if not UserCollection.objects.filter(user=request.user, post=post).exists():
+                    edition = post.minted_count + 1
+                    try:
+                        mint_res = requests.post(
+                            url="http://localhost:3000/mint",
+                            json={
+                                "recipient": request.user.wallet_address,
+                                "postId": post.id,
+                                "edition": edition,
+                            },
+                            timeout=10,
+                        ).json()
+
+                        if mint_res.get("success"):
+                            UserCollection.objects.create(
+                                user=request.user,
+                                post=post,
+                                asset_id=mint_res.get("assetId"),
+                                signature=mint_res.get("signature"),
+                                edition=edition,
+                                price=0,
+                            )
+                            post.minted_count += 1
+                            post.is_nft = True
+                            post.save(update_fields=["minted_count", "is_nft"])
+                            nft_minted = True
+                    except Exception as e:
+                        print(f"Mint error on check-in: {e}")
 
         avatar_url = None
         if request.user.avatar and getattr(request.user.avatar, 'name', None):
             avatar_url = request.user.avatar.url
+
+        message = "You're verified! Welcome to the event."
+        if is_registered:
+            if earned_points > 0:
+                message += f" +{earned_points} Rep!"
+            if nft_minted:
+                message += " Event NFT minted!"
+        else:
+            message = "You are not registered for this event."
 
         return Response({
             "verified": is_registered,
@@ -48,8 +107,9 @@ class EventCheckinView(APIView):
             "username": request.user.username,
             "avatar": avatar_url,
             "checked_in_at": checkin.checked_in_at,
-            "message": "You're verified! Welcome to the event." if is_registered
-                       else "You are not registered for this event."
+            "earned_points": earned_points,
+            "nft_minted": nft_minted,
+            "message": message
         }, status=status.HTTP_200_OK)
 
 
