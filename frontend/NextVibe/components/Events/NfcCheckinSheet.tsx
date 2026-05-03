@@ -107,7 +107,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const startNfcBroadcast = useCallback((pid: number) => {
         if (isBroadcasting) return;
         try {
-            const url = `nextvibe://event-checkin/${pid}`;
+            const url = `nextvibe://event-checkin?postId=${pid}`;
 
             removeListenerRef.current = addNfcReadListener(() => {
                 const now = Date.now();
