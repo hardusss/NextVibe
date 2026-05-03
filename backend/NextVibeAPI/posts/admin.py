@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Post, PostsMedia, PostReport, Comment, CommentReply, UserCollection
+from .models import Post, PostsMedia, PostReport, Comment, CommentReply, UserCollection, EventCheckin, Reputation
 from django.contrib import admin
 from user.models import User
 from .models import EventRequest
@@ -18,6 +18,9 @@ admin.site.register(PostsMedia)
 admin.site.register(PostReport)
 admin.site.register(UserCollection)
 admin.site.register(EventRequest)
+admin.site.register(EventCheckin)
+admin.site.register(Reputation)
+
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
