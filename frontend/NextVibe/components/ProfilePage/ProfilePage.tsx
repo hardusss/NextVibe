@@ -40,7 +40,7 @@ import ShareModal, { ShareModalRef } from './ShareViaNFC/ShareBottomModal';
 import { InviteSecondaryButton } from "./Invite/InviteButton";
 import { InviteBottomSheet, InviteSheetRef } from "./Invite/InviteBottomSheet";
 
-import Web3Toast from "../Shared/Toasts/Web3Toast";
+import { EventConnectionsSheet, EventConnectionsSheetRef } from "./EventConnectionsSheet";
 
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
 import profileLightStyles from "@/styles/light-theme/profileStyles";
@@ -143,12 +143,12 @@ const ProfileView = () => {
     const [visible, setVisible] = useState<boolean>(false);
     const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
     const [id, setId] = useState<number>();
-    const [showRepTip, setShowRepTip] = useState(false);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const hasFetched = useRef(false);
     const modalRef = useRef<ShareModalRef>(null);
     const inviteSheetRef = useRef<InviteSheetRef>(null);
+    const eventConnectionsSheetRef = useRef<EventConnectionsSheetRef>(null);
 
     const postsOpacity = useRef(new Animated.Value(1)).current;
     const postsTranslate = useRef(new Animated.Value(0)).current;
@@ -373,7 +373,7 @@ const ProfileView = () => {
                     <View style={st.repRow}>
                         <TouchableOpacity
                             activeOpacity={0.7}
-                            onPress={() => setShowRepTip(true)}
+                            onPress={() => eventConnectionsSheetRef.current?.present()}
                             style={[st.repBadge, {
                                 backgroundColor: isDark ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.1)',
                                 borderColor: isDark ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.25)',
@@ -441,10 +441,6 @@ const ProfileView = () => {
                         </View>
                     </View>
 
-                    {/* Bottom sheets */}
-                    <ShareModal ref={modalRef} avatarUrl={userData.avatar_url} profileUrl={`https://nextvibe.io/u/${id}`} />
-                    <InviteBottomSheet ref={inviteSheetRef} />
-
                     {/* ── Tabs ── */}
                     <View style={[st.tabBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
                         {TABS.map((tab) => {
@@ -510,12 +506,10 @@ const ProfileView = () => {
                 </ScrollView>
             )}
 
-            <Web3Toast
-                visible={showRepTip}
-                onHide={() => setShowRepTip(false)}
-                message="Earn reputation by attending events, interacting with organizers and other participants 🚀"
-                isSuccess={true}
-            />
+            {/* Bottom sheets */}
+            <ShareModal ref={modalRef} avatarUrl={userData.avatar_url} profileUrl={`https://nextvibe.io/u/${id}`} />
+            <InviteBottomSheet ref={inviteSheetRef} />
+            <EventConnectionsSheet ref={eventConnectionsSheetRef} />
         </SafeAreaView>
     );
 };
