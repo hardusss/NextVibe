@@ -139,8 +139,7 @@ export default {
                 }
             ],
             "./withMapboxMaven.js",
-            "./withSolanaMWA.js",
-            "./withHCE.js"
+            "./withSolanaMWA.js"
         ],
         experiments: {
             typedRoutes: true
