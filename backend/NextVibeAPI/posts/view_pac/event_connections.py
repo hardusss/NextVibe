@@ -53,7 +53,7 @@ class UserEventConnectionsView(APIView):
                     peer_map[uid] = {
                         "user_id": uid,
                         "username": other.username,
-                        "is_official": other.is_official,
+                        "is_official": other.official,
                         "avatar": avatar_url,
                         "rep_received": 0,
                         "rep_given": 0,
