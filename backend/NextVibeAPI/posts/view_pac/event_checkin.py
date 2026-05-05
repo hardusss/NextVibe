@@ -7,60 +7,26 @@ from ..models import Post, EventRequest, EventCheckin
 
 
 class EventCheckinView(APIView):
-    """
-    POST /posts/event-checkin/<post_id>/
-    Called by the attendee after tapping NFC and opening the deeplink.
-    Checks if the user has an approved EventRequest, creates a check-in record.
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, post_id):
-        import random
-        import requests
-        from ..models import Reputation, UserCollection
-
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
 
-        # Check if user has an approved event request
         is_registered = EventRequest.objects.filter(
             user=request.user,
             post=post,
             status=EventRequest.Status.APPROVED
         ).exists()
 
-        # Create or get check-in record
         checkin, created = EventCheckin.objects.get_or_create(
             user=request.user,
             post=post,
             defaults={'is_registered': is_registered}
         )
 
-        earned_points = 0
-
-        if not created:
-            # Update registration status in case it changed
-            if checkin.is_registered != is_registered:
-                checkin.is_registered = is_registered
-                checkin.save(update_fields=['is_registered'])
-        
-        if is_registered:
-            # 1. Grant reputation if not already granted
-            has_rep = Reputation.objects.filter(user=request.user, event=post, is_checkin=True).exists()
-            if not has_rep:
-                earned_points = random.randint(5, 20)
-                Reputation.objects.create(
-                    user=request.user,
-                    given_by=post.owner,
-                    points=earned_points,
-                    is_checkin=True,
-                    event=post
-                )
-            else:
-                # If they already have rep, fetch it to show in UI if we want, or leave as 0
-                rep = Reputation.objects.filter(user=request.user, event=post, is_checkin=True).first()
-                if rep:
-                    earned_points = rep.points
-
+        if not created and checkin.is_registered != is_registered:
+            checkin.is_registered = is_registered
+            checkin.save(update_fields=['is_registered'])
 
         avatar_url = None
         if request.user.avatar and getattr(request.user.avatar, 'name', None):
@@ -71,12 +37,7 @@ class EventCheckinView(APIView):
         if media and getattr(media, 'file', None):
             post_image = media.file_url
 
-        message = "You're verified! Welcome to the event."
-        if is_registered:
-            if earned_points > 0:
-                message += f" +{earned_points} Rep!"
-        else:
-            message = "You are not registered for this event."
+        message = "You're verified! Welcome to the event." if is_registered else "You are not registered for this event."
 
         return Response({
             "verified": is_registered,
@@ -87,25 +48,19 @@ class EventCheckinView(APIView):
             "post_image": post_image,
             "post_name": post.name,
             "checked_in_at": checkin.checked_in_at,
-            "earned_points": earned_points,
-            "message": message
+            "message": message,
         }, status=status.HTTP_200_OK)
 
 
 class ClaimEventNftView(APIView):
-    """
-    POST /posts/claim-event-cnft/<post_id>/
-    Called after check-in to claim the event cNFT.
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, post_id):
-        import requests
-        from ..models import UserCollection
+        import random, requests, traceback
+        from ..models import UserCollection, Reputation
 
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
 
-        # Ensure user is checked in
         is_checked_in = EventCheckin.objects.filter(
             user=request.user, post=post, is_registered=True
         ).exists()
@@ -124,6 +79,7 @@ class ClaimEventNftView(APIView):
             return Response({"error": "You already have an NFT for this event."}, status=status.HTTP_400_BAD_REQUEST)
 
         edition = post.minted_count + 1
+
         try:
             mint_res = requests.post(
                 url="http://localhost:3000/mint",
@@ -147,16 +103,45 @@ class ClaimEventNftView(APIView):
                 post.minted_count += 1
                 post.is_nft = True
                 post.save(update_fields=["minted_count", "is_nft"])
-                
-                return Response({"success": True, "message": "Event NFT minted successfully!"}, status=status.HTTP_200_OK)
+
+                earned_points = 0
+                existing_rep = Reputation.objects.filter(
+                    user=request.user, event=post, is_checkin=True
+                ).first()
+
+                if existing_rep:
+                    earned_points = existing_rep.points
+                else:
+                    earned_points = random.randint(5, 20)
+                    Reputation.objects.create(
+                        user=request.user,
+                        given_by=post.owner,
+                        points=earned_points,
+                        is_checkin=True,
+                        event=post,
+                    )
+
+                return Response({
+                    "success": True,
+                    "message": "Event NFT minted successfully!",
+                    "earned_points": earned_points,  # ✅ Повертаємо звідси
+                }, status=status.HTTP_200_OK)
+
             else:
                 print(f"Mint error response from Node service: {mint_res}")
-                return Response({"error": f"Failed to mint NFT: {mint_res.get('error', 'Unknown error')}"}, status=status.HTTP_400_BAD_REQUEST)
+                # ✅ Мінт провалився — репутація НЕ нарахована
+                return Response(
+                    {"error": f"Failed to mint NFT: {mint_res.get('error', 'Unknown error')}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         except Exception as e:
-            import traceback
             print(f"Mint exception on claim: {e}")
             traceback.print_exc()
-            return Response({"error": "Minting service error. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Minting service error. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class EventCheckinListView(APIView):
