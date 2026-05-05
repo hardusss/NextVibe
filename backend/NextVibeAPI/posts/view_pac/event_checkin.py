@@ -67,8 +67,9 @@ class EventCheckinView(APIView):
             avatar_url = request.user.avatar.url
 
         post_image = None
-        if post.file and getattr(post.file, 'name', None):
-            post_image = post.file.url
+        media = post.media.first()
+        if media and getattr(media, 'file', None):
+            post_image = media.file_url
 
         message = "You're verified! Welcome to the event."
         if is_registered:
@@ -149,9 +150,12 @@ class ClaimEventNftView(APIView):
                 
                 return Response({"success": True, "message": "Event NFT minted successfully!"}, status=status.HTTP_200_OK)
             else:
-                return Response({"error": "Failed to mint NFT. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+                print(f"Mint error response from Node service: {mint_res}")
+                return Response({"error": f"Failed to mint NFT: {mint_res.get('error', 'Unknown error')}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print(f"Mint error on claim: {e}")
+            import traceback
+            print(f"Mint exception on claim: {e}")
+            traceback.print_exc()
             return Response({"error": "Minting service error. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
