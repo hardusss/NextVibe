@@ -3,7 +3,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import EventCheckin, Reputation
-from django.db.models import Sum
+from django.db.models import Sum, Q
+from django.utils import timezone
+from datetime import timedelta
 
 class UserEventConnectionsView(APIView):
     """
@@ -13,20 +15,19 @@ class UserEventConnectionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        from django.db.models import Q
-
         my_checkins = EventCheckin.objects.filter(
             user=request.user, is_registered=True
         ).select_related('post')
 
         events_data = []
+        now = timezone.now()
+
         for checkin in my_checkins:
             post = checkin.post
 
             checkin_rep = Reputation.objects.filter(
                 user=request.user, event=post, is_checkin=True
             ).aggregate(total=Sum('points'))['total'] or 0
-
 
             peer_reps = Reputation.objects.filter(
                 event=post,
@@ -68,6 +69,17 @@ class UserEventConnectionsView(APIView):
             if media and getattr(media, 'file', None):
                 event_image = media.file_url
 
+            is_active = False
+            start = post.luma_event_start_time
+            end = post.luma_event_end_time
+
+            if start and end:
+                is_active = start <= now <= end
+            elif start:
+                is_active = start <= now <= (start + timedelta(days=1))
+            else:
+                is_active = now <= (checkin.checked_in_at + timedelta(days=1))
+
             events_data.append({
                 "event_id": post.id,
                 "event_name": post.about or "Event",
@@ -76,7 +88,7 @@ class UserEventConnectionsView(APIView):
                 "total_rep": checkin_rep + sum(c["rep_received"] for c in connections),
                 "connections": connections,
                 "checked_in_at": checkin.checked_in_at,
+                "is_active": is_active, 
             })
 
         return Response(events_data, status=status.HTTP_200_OK)
-
