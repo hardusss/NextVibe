@@ -13,11 +13,14 @@ class UserEventConnectionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        my_checkins = EventCheckin.objects.filter(user=request.user, is_registered=True).select_related('post')
-        
+        my_checkins = EventCheckin.objects.filter(
+            user=request.user, is_registered=True
+        ).select_related('post')
+
         events_data = []
         for checkin in my_checkins:
             post = checkin.post
+
             rep_earned = Reputation.objects.filter(
                 user=request.user, event=post, is_checkin=True
             ).aggregate(total=Sum('points'))['total'] or 0
@@ -37,12 +40,20 @@ class UserEventConnectionsView(APIView):
                     "avatar": avatar_url,
                 })
 
+            # ✅ Додаємо фото події
+            event_image = None
+            media = post.media.first()
+            if media and getattr(media, 'file', None):
+                event_image = media.file_url
+
             events_data.append({
                 "event_id": post.id,
-                "event_name": post.about,
+                "event_name": post.about or "Event",
+                "event_image": event_image,  # ✅
                 "reputation_earned": rep_earned,
                 "connections": connections,
-                "checked_in_at": checkin.checked_in_at
+                "checked_in_at": checkin.checked_in_at,
             })
 
         return Response(events_data, status=status.HTTP_200_OK)
+
