@@ -13,6 +13,8 @@ class UserEventConnectionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        from django.db.models import Q
+
         my_checkins = EventCheckin.objects.filter(
             user=request.user, is_registered=True
         ).select_related('post')
@@ -21,26 +23,46 @@ class UserEventConnectionsView(APIView):
         for checkin in my_checkins:
             post = checkin.post
 
-            rep_earned = Reputation.objects.filter(
+            checkin_rep = Reputation.objects.filter(
                 user=request.user, event=post, is_checkin=True
             ).aggregate(total=Sum('points'))['total'] or 0
 
-            other_checkins = EventCheckin.objects.filter(
-                post=post, is_registered=True
-            ).exclude(user=request.user).select_related('user')
 
-            connections = []
-            for oc in other_checkins:
-                avatar_url = None
-                if oc.user.avatar and getattr(oc.user.avatar, 'name', None):
-                    avatar_url = oc.user.avatar.url
-                connections.append({
-                    "user_id": oc.user.user_id,
-                    "username": oc.user.username,
-                    "avatar": avatar_url,
-                })
+            peer_reps = Reputation.objects.filter(
+                event=post,
+                is_checkin=False,
+            ).filter(
+                Q(user=request.user) | Q(given_by=request.user)
+            ).select_related('user', 'given_by')
 
-            # ✅ Додаємо фото події
+            peer_map = {}
+            for rep in peer_reps:
+                if rep.user == request.user:
+                    other = rep.given_by
+                    direction = "received"
+                else:
+                    other = rep.user
+                    direction = "given"
+
+                uid = other.user_id
+                if uid not in peer_map:
+                    avatar_url = None
+                    if other.avatar and getattr(other.avatar, 'name', None):
+                        avatar_url = other.avatar.url
+                    peer_map[uid] = {
+                        "user_id": uid,
+                        "username": other.username,
+                        "avatar": avatar_url,
+                        "rep_received": 0,
+                        "rep_given": 0,
+                    }
+                if direction == "received":
+                    peer_map[uid]["rep_received"] += rep.points
+                else:
+                    peer_map[uid]["rep_given"] += rep.points
+
+            connections = list(peer_map.values())
+
             event_image = None
             media = post.media.first()
             if media and getattr(media, 'file', None):
@@ -49,8 +71,9 @@ class UserEventConnectionsView(APIView):
             events_data.append({
                 "event_id": post.id,
                 "event_name": post.about or "Event",
-                "event_image": event_image,  # ✅
-                "reputation_earned": rep_earned,
+                "event_image": event_image,
+                "checkin_rep": checkin_rep,
+                "total_rep": checkin_rep + sum(c["rep_received"] for c in connections),
                 "connections": connections,
                 "checked_in_at": checkin.checked_in_at,
             })
