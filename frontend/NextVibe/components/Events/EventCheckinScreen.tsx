@@ -21,9 +21,10 @@ import Animated, {
     withTiming,
     withSpring,
 } from "react-native-reanimated";
-import { checkinEvent } from "@/src/api/event.checkin";
+import FastImage from "react-native-fast-image";
+import { checkinEvent, claimEventNft } from "@/src/api/event.checkin";
 
-type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error";
+type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error" | "claiming" | "claim_success" | "claim_failed";
 
 export default function EventCheckinScreen() {
     const router = useRouter();
@@ -34,6 +35,10 @@ export default function EventCheckinScreen() {
     const [state, setState] = useState<CheckinState>("idle");
     const [message, setMessage] = useState("");
     const [username, setUsername] = useState("");
+    const [postImage, setPostImage] = useState<string | null>(null);
+    const [postName, setPostName] = useState<string>("");
+    const [earnedPoints, setEarnedPoints] = useState(0);
+    const [displayPoints, setDisplayPoints] = useState(0);
 
     const bg = isDark ? "#0A0410" : "#FFFFFF";
     const main = isDark ? "#ffffff" : "#111827";
@@ -77,8 +82,12 @@ export default function EventCheckinScreen() {
         try {
             const result = await checkinEvent(postId);
             if (result.verified) {
+                if (result.post_image) {
+                    setPostImage(result.post_image.startsWith("http") ? result.post_image : `https://nextvibe.s3.amazonaws.com/${result.post_image}`);
+                }
+                setPostName(result.post_name || "Event");
                 setState("verified");
-                setMessage(result.message || "You're verified! Welcome to the event.");
+                setMessage("You're verified! Welcome to the event.");
                 setUsername(result.username || "");
                 Vibration.vibrate([0, 100, 80, 100]);
             } else {
@@ -98,6 +107,43 @@ export default function EventCheckinScreen() {
             Vibration.vibrate([0, 200]);
         }
     };
+
+    const handleClaim = async () => {
+        if (!postId) return;
+        setState("claiming");
+        try {
+            const result = await claimEventNft(postId);
+            if (result.success) {
+                setEarnedPoints(result.earned_points || 0);
+                setState("claim_success");
+                Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+            } else {
+                setState("claim_failed");
+                setMessage(result.error || "Failed to mint NFT.");
+            }
+        } catch (error: any) {
+            console.log("STATUS:", error.response?.status);
+            console.log("DATA:", JSON.stringify(error.response?.data));
+            console.log("MSG:", error.message);
+
+            setState("claim_failed"); 
+            setMessage(error.response?.data?.error || "Something went wrong during claim. Please try again.");
+            Vibration.vibrate([0, 200]);
+        }
+    };
+
+    useEffect(() => {
+        if (state === "claim_success" && earnedPoints > 0) {
+            let current = 0;
+            const interval = setInterval(() => {
+                current += 1;
+                setDisplayPoints(current);
+                Vibration.vibrate(40);
+                if (current >= earnedPoints) clearInterval(interval);
+            }, 120);
+            return () => clearInterval(interval);
+        }
+    }, [state, earnedPoints]);
 
     const renderContent = () => {
         switch (state) {
@@ -147,32 +193,138 @@ export default function EventCheckinScreen() {
             case "verified":
                 return (
                     <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
-                        <View style={[styles.iconCircle, {
-                            backgroundColor: "rgba(34,197,94,0.1)",
-                            borderColor: "rgba(34,197,94,0.25)",
-                        }]}>
-                            <ShieldCheck size={48} color="#4ade80" strokeWidth={1.5} />
-                        </View>
+                        {postImage ? (
+                            <FastImage
+                                source={{ uri: postImage }}
+                                style={styles.eventPhoto}
+                                resizeMode={FastImage.resizeMode.cover}
+                            />
+                        ) : (
+                            <View style={[styles.iconCircle, {
+                                backgroundColor: "rgba(34,197,94,0.1)",
+                                borderColor: "rgba(34,197,94,0.25)",
+                            }]}>
+                                <ShieldCheck size={48} color="#4ade80" strokeWidth={1.5} />
+                            </View>
+                        )}
 
-                        <Text style={[styles.heading, { color: "#4ade80" }]}>
-                            You're Verified!
+                        <Text style={[styles.heading, { color: main }]}>
+                            {postName}
                         </Text>
                         <Text style={[styles.description, { color: muted }]}>
                             {message}
                         </Text>
 
                         <TouchableOpacity
+                            onPress={handleClaim}
+                            activeOpacity={0.8}
+                            style={[styles.verifyBtn, {
+                                backgroundColor: "rgba(168,85,247,0.15)",
+                                borderColor: "rgba(168,85,247,0.35)",
+                                marginTop: 16,
+                            }]}
+                        >
+                            <Text style={[styles.verifyBtnText, { color: accent }]}>
+                                Claim Event cNFT
+                            </Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                );
+
+            case "claiming":
+                return (
+                    <View style={styles.centerContent}>
+                        <ActivityIndicator size="large" color={accent} />
+                        <Text style={[styles.loadingText, { color: muted }]}>
+                            Minting your cNFT...
+                        </Text>
+                    </View>
+                );
+
+            case "claim_failed":
+                return (
+                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
+                        <View style={[styles.iconCircle, {
+                            backgroundColor: "rgba(239,68,68,0.1)",
+                            borderColor: "rgba(239,68,68,0.25)",
+                        }]}>
+                            <ShieldX size={48} color="#f87171" strokeWidth={1.5} />
+                        </View>
+
+                        <Text style={[styles.heading, { color: "#f87171" }]}>
+                            Claim Failed
+                        </Text>
+                        <Text style={[styles.description, { color: muted }]}>
+                            {message}
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={handleClaim}
+                            activeOpacity={0.8}
+                            style={[styles.verifyBtn, {
+                                backgroundColor: "rgba(168,85,247,0.12)",
+                                borderColor: "rgba(168,85,247,0.3)",
+                            }]}
+                        >
+                            <Text style={[styles.verifyBtnText, { color: accent }]}>
+                                Retry Claim
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
                             onPress={() => router.back()}
                             activeOpacity={0.8}
                             style={[styles.verifyBtn, {
-                                backgroundColor: "rgba(34,197,94,0.12)",
-                                borderColor: "rgba(34,197,94,0.3)",
+                                backgroundColor: "transparent",
+                                borderColor: "transparent",
+                                marginTop: 0,
                             }]}
                         >
-                            <Text style={[styles.verifyBtnText, { color: "#4ade80" }]}>
-                                Done
+                            <Text style={[styles.verifyBtnText, { color: muted }]}>
+                                Maybe Later
                             </Text>
                         </TouchableOpacity>
+                    </Animated.View>
+                );
+
+            case "claim_success":
+                return (
+                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.fullScreenSuccess}>
+                        <Animated.View entering={FadeInDown.delay(300).springify()}>
+                            <View style={[styles.iconCircle, {
+                                backgroundColor: "rgba(34,197,94,0.1)",
+                                borderColor: "rgba(34,197,94,0.25)",
+                                alignSelf: "center",
+                                width: 140,
+                                height: 140,
+                                borderRadius: 70,
+                                marginBottom: 20,
+                            }]}>
+                                <Text style={styles.repPointsText}>+{displayPoints}</Text>
+                            </View>
+                        </Animated.View>
+
+                        <Animated.Text entering={FadeInDown.delay(500)} style={[styles.heading, { color: "#4ade80", fontSize: 28 }]}>
+                            cNFT Claimed!
+                        </Animated.Text>
+                        <Animated.Text entering={FadeInDown.delay(700)} style={[styles.description, { color: muted, fontSize: 16, marginTop: 10 }]}>
+                            Event NFT minted to your collection and reputation points added!
+                        </Animated.Text>
+
+                        <Animated.View entering={FadeInUp.delay(1200)} style={{ width: "100%", paddingHorizontal: 40, marginTop: 40 }}>
+                            <TouchableOpacity
+                                onPress={() => router.back()}
+                                activeOpacity={0.8}
+                                style={[styles.verifyBtn, {
+                                    backgroundColor: "rgba(34,197,94,0.12)",
+                                    borderColor: "rgba(34,197,94,0.3)",
+                                }]}
+                            >
+                                <Text style={[styles.verifyBtnText, { color: "#4ade80" }]}>
+                                    Awesome
+                                </Text>
+                            </TouchableOpacity>
+                        </Animated.View>
                     </Animated.View>
                 );
 
@@ -367,5 +519,26 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: 10,
         width: "100%",
+    },
+    eventPhoto: {
+        width: 140,
+        height: 140,
+        borderRadius: 24,
+        marginBottom: 10,
+        borderWidth: 2,
+        borderColor: "rgba(168,85,247,0.3)",
+    },
+    fullScreenSuccess: {
+        flex: 1,
+        width: "100%",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingBottom: 40,
+    },
+    repPointsText: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: 42,
+        color: "#4ade80",
+        includeFontPadding: false,
     },
 });

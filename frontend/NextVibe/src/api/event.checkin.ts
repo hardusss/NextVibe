@@ -17,3 +17,11 @@ export const getCheckinList = async (postId: number) => {
     });
     return response.data;
 };
+
+export const claimEventNft = async (postId: number) => {
+    const TOKEN = await storage.getItem("access");
+    const response = await axios.post(`${GetApiUrl()}/posts/claim-event-cnft/${postId}/`, {}, {
+        headers: { "Authorization": `Bearer ${TOKEN}` }
+    });
+    return response.data;
+};

@@ -188,7 +188,7 @@ export default function EventsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]} >
       <View style={styles.header}>
         <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={22} color={t.text} strokeWidth={2} />
@@ -235,6 +235,7 @@ export default function EventsScreen() {
               refreshing={refreshing}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}
+              showsVerticalScrollIndicator={false}
               ListFooterComponent={hasMore ? <ActivityIndicator size="small" color={t.accent} style={{ marginVertical: 20 }} /> : null}
           />
       )}
@@ -355,4 +356,3 @@ const styles = StyleSheet.create({
       borderWidth: 1,
   }
 });
-
