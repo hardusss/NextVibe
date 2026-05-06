@@ -64,7 +64,7 @@ const AttendeesSheet = forwardRef<AttendeesSheetRef>((_, ref) => {
         const avatarUrl = item.avatar
             ? item.avatar.startsWith("http")
                 ? item.avatar
-                : `https://nextvibe.s3.amazonaws.com/${item.avatar}`
+                : `https://media.nextvibe.io/images/${item.avatar}`
             : null;
 
         return (
