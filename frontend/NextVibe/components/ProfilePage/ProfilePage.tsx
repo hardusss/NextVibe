@@ -373,7 +373,7 @@ const ProfileView = () => {
                     <View style={st.repRow}>
                         <TouchableOpacity
                             activeOpacity={0.7}
-                            onPress={() => eventConnectionsSheetRef.current?.present()}
+                            onPress={() => eventConnectionsSheetRef.current?.present(userData.reputation)}
                             style={[st.repBadge, {
                                 backgroundColor: isDark ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.1)',
                                 borderColor: isDark ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.25)',
