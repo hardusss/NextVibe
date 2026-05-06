@@ -35,8 +35,8 @@ class User(AbstractBaseUser):
     avatar = models.ImageField(upload_to='images/', default='images/default.png')
     about = models.CharField(default="",max_length=120, null=True, blank=True)
     username = models.CharField(max_length=150, unique=True)
-    email = models.EmailField(unique=True)
-    password = models.CharField(max_length=128, null=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
+    password = models.CharField(max_length=128, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     post_count = models.IntegerField(default=0)
     readers_count = models.IntegerField(default=0)
@@ -56,9 +56,10 @@ class User(AbstractBaseUser):
     is_active = models.BooleanField(default=True)
     is_baned = models.BooleanField(default=False)
     last_activity = models.DateTimeField(default=timezone.now)
-    wallet_address = models.CharField(max_length=50, blank=True, null=True)
+    wallet_address = models.CharField(unique=True, max_length=50, blank=True, null=True)
     expo_push_token = models.CharField(max_length=100, blank=True, null=True)
     from_invite_code = models.ForeignKey("InviteUser", on_delete=models.SET_NULL, null=True, blank=True, related_name="invited_users")
+    auth_provider = models.CharField(max_length=20, null=True, blank=True, default="email")
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

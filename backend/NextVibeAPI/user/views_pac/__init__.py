@@ -22,3 +22,4 @@ from .save_push_token import SavePushTokenView
 from .save_wallet_address import SaveWalletAddressView
 from .invite_info import GetInviteInfoView
 from .mint_og import OgNftMintView
+from .wallet_singin import WalletSignInView

@@ -4,3 +4,4 @@ from .google_registration import GoogleRegister
 from .google_login import GoogleUserLoginSerializer
 from .user_details import UserDetailSerializer
 from .public_user_serializer import PublicUserDetailSerializer
+from .wallet_login import UserWalletSignInSerializer
