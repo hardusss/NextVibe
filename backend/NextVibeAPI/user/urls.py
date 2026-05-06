@@ -11,7 +11,8 @@ from .views_pac import (
                             GetNotificationsView, ReadNotificationsView,
                             CheckStatusView, PublicUserDetailView,
                             SavePushTokenView, SaveWalletAddressView,
-                            GetInviteInfoView, OgNftMintView
+                            GetInviteInfoView, OgNftMintView,
+                            WalletSignInView
                         )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -43,5 +44,6 @@ urlpatterns = [
     path("save-push-token/", SavePushTokenView.as_view(), name="token_push_save"),
     path("save-wallet/", SaveWalletAddressView.as_view()),
     path("invite-info/", GetInviteInfoView.as_view(), name="invite_info"),
-    path("mint-og/", OgNftMintView.as_view(), name="mint_og")
+    path("mint-og/", OgNftMintView.as_view(), name="mint_og"),
+    path("wallet-sign-in/", WalletSignInView.as_view(), name="waller_signin")
 ]
