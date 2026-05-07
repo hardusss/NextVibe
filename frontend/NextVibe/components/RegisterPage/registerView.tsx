@@ -24,6 +24,8 @@ import { toastConfig } from '../../src/config/toast-config';
 import { useRouter } from 'expo-router';
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
 import FastImage from 'react-native-fast-image';
+import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
+
 
 type FieldErrors = {
     username?: string;
@@ -144,6 +146,29 @@ export default function RegisterView() {
         focusedInput === field && !hasError(field) && styles.inputFocused,
         hasError(field) && styles.inputError,
     ];
+
+    // Handle successful wallet authentication
+    const handleWalletSuccess = (backendResponse: any) => {
+        Toast.show({
+            type: 'success',
+            text1: 'Connected Successfully',
+            text2: 'Welcome to NextVibe!',
+        });
+
+        // Redirect user to the main application flow
+        router.replace('/home');
+    };
+
+    // Handle wallet connection errors or user cancellations
+    const handleWalletError = (error: any) => {
+        const realError = error?.response?.data?.error || error?.message || 'Unknown error';
+
+        Toast.show({
+            type: 'error',
+            text1: 'Connection Failed',
+            text2: realError,
+        });
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -369,7 +394,10 @@ export default function RegisterView() {
                             <View style={styles.dividerLine} />
                         </View>
 
-                        <GoogleButtonAuth page="register" />
+                        <View style={{ gap: 16 }}>
+                            <GoogleButtonAuth page="register" />
+                            <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                        </View>
 
                         <View style={styles.footerContainer}>
                             <Text style={styles.footerText}>Already have an account?</Text>
@@ -418,14 +446,12 @@ const getTheme = (isDark: boolean, accent: string) => {
             width: 80,
             height: 80,
             borderRadius: 20,
-            marginBottom: 16,
         },
         title: {
             fontSize: 28,
             fontFamily: 'Dank Mono Bold',
             includeFontPadding: false,
             color: isDark ? '#ffffff' : '#1a1a1a',
-            marginBottom: 8,
         },
         subtitle: {
             fontSize: 14,
@@ -443,7 +469,7 @@ const getTheme = (isDark: boolean, accent: string) => {
             backgroundColor: isDark ? '#1A1625' : '#f5f5f5',
             borderRadius: 16,
             paddingHorizontal: 16,
-            height: 56,
+            height: 52,
             marginBottom: 6,
             borderWidth: 1.5,
             borderColor: 'transparent',
@@ -513,8 +539,6 @@ const getTheme = (isDark: boolean, accent: string) => {
         privacyContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            marginBottom: 24,
-            marginTop: 8,
         },
         privacyText: {
             fontSize: 13,
@@ -523,7 +547,7 @@ const getTheme = (isDark: boolean, accent: string) => {
             color: isDark ? '#ccc' : '#444',
             flex: 1,
             marginLeft: 4,
-            lineHeight: 20,
+
         },
         linkText: {
             color: accent,
