@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
     StyleSheet, Text, View, useColorScheme, FlatList,
-    ActivityIndicator, TouchableOpacity, Vibration,
+    ActivityIndicator, Vibration,
 } from "react-native";
 import {
     BottomSheetBackdrop,
@@ -28,7 +28,6 @@ export interface NfcCheckinSheetRef {
     dismiss: () => void;
 }
 
-const AnimatedNfc = Animated.createAnimatedComponent(Nfc);
 
 const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const isDark = useColorScheme() === "dark";
@@ -107,7 +106,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const startNfcBroadcast = useCallback((pid: number) => {
         if (isBroadcasting) return;
         try {
-            const url = `nextvibe://event-checkin?postId=${pid}`;
+            const url = `https://nextvibe.io/event-checkin?postId=${pid}`;
 
             removeListenerRef.current = addNfcReadListener(() => {
                 const now = Date.now();
