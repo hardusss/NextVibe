@@ -1,60 +1,206 @@
-import React from "react";
-import { View, StyleSheet, Dimensions, StatusBar } from "react-native";
-import LottieView from "lottie-react-native";
+import React, { useEffect, useRef } from "react";
+import {
+    View,
+    StyleSheet,
+    Dimensions,
+    StatusBar,
+    Animated,
+    Easing,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { storage } from "@/src/utils/storage";
 import getStatusProfile from "@/src/api/check.status";
-const {width, height} = Dimensions.get("window")
 
+const { width } = Dimensions.get("window");
+
+const C = {
+    bg: "#0A0410",
+    violet: "#6D28D9",
+    line: "#2D1F52",
+    text: "#C4B5FD",
+    muted: "#4B3D72",
+};
+
+const BRACKET = 18; // corner bracket arm length
+const FRAME = 112; // logo frame size
 
 export default function SplashScreen() {
     const router = useRouter();
+
+    // All animated values
+    const fadeAll = useRef(new Animated.Value(0)).current;
+    const logoOpacity = useRef(new Animated.Value(0)).current;
+    const bracketAnim = useRef(new Animated.Value(0)).current; // 0→1 draws brackets
+    const lineAnim = useRef(new Animated.Value(0)).current;
+    const nameOpacity = useRef(new Animated.Value(0)).current;
+    const nameY = useRef(new Animated.Value(8)).current;
+    const sloganOp = useRef(new Animated.Value(0)).current;
+
     const redirectTo = async () => {
-        storage.getItem("access").then(async (token) => {
-            if (token) {
-                const status = await getStatusProfile();
-                if (status.ban) {
-                    router.replace("/user-banned");
-                    return;
-                };
-                router.replace("/home");
-            } else {
-                router.replace("/register");
-            }
-        });
-    }
-    const finishSplash = () => {
-        setTimeout(() => {
-            redirectTo();
-        }, 1000)
-    }
-    return (
-    <View style={styles.container}>
-        <StatusBar backgroundColor="black" />
-            <LottieView
-                source={require("../assets/lottie/splash.json")}
-                autoPlay
-                loop={false}
-                style={styles.lottie}
-                onAnimationFinish={finishSplash}
+        const token = await storage.getItem("access");
+        if (token) {
+            const status = await getStatusProfile();
+            if (status.ban) { router.replace("/user-banned"); return; }
+            router.replace("/home");
+        } else {
+            router.replace("/register");
+        }
+    };
+
+    useEffect(() => {
+        Animated.sequence([
+            // 1. BG
+            Animated.timing(fadeAll, { toValue: 1, duration: 300, useNativeDriver: true }),
+            // 2. Logo fade
+            Animated.timing(logoOpacity, { toValue: 1, duration: 400, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+            // 3. Brackets draw in
+            Animated.timing(bracketAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+            // 4. Line expands
+            Animated.timing(lineAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+            // 5. Name
+            Animated.parallel([
+                Animated.timing(nameOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+                Animated.timing(nameY, { toValue: 0, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            ]),
+            // 6. Slogan
+            Animated.timing(sloganOp, { toValue: 1, duration: 400, useNativeDriver: true }),
+        ]).start();
+
+        const navTimer = setTimeout(redirectTo, 2400);
+        return () => clearTimeout(navTimer);
+    }, []);
+
+    const bracketLen = bracketAnim.interpolate({ inputRange: [0, 1], outputRange: [0, BRACKET] });
+    const lineWidth = lineAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 64] });
+
+    // Corner bracket helper — renders an L-shape from 4 views
+    const Corner = ({
+        top, left, right, bottom, flipH, flipV,
+    }: { top?: number; left?: number; right?: number; bottom?: number; flipH?: boolean; flipV?: boolean }) => (
+        <View style={[styles.corner, { top, left, right, bottom }]}>
+            {/* horizontal arm */}
+            <Animated.View
+                style={[
+                    styles.bracketH,
+                    flipH ? { right: 0 } : { left: 0 },
+                    flipV ? { bottom: 0 } : { top: 0 },
+                    { width: bracketLen },
+                ]}
             />
+            {/* vertical arm */}
+            <Animated.View
+                style={[
+                    styles.bracketV,
+                    flipH ? { right: 0 } : { left: 0 },
+                    flipV ? { bottom: 0 } : { top: 0 },
+                    { height: bracketLen },
+                ]}
+            />
+        </View>
+    );
+
+    return (
+        <View style={styles.root}>
+            <StatusBar backgroundColor={C.bg} barStyle="light-content" />
+
+            <Animated.View style={[StyleSheet.absoluteFill, styles.center, { opacity: fadeAll }]}>
+
+                {/* Logo + corner brackets */}
+                <View style={[styles.frame]}>
+                    <Corner top={0} left={0} />
+                    <Corner top={0} right={0} flipH />
+                    <Corner bottom={0} left={0} flipV />
+                    <Corner bottom={0} right={0} flipH flipV />
+
+                    <Animated.Image
+                        source={require("@/assets/logo.png")}
+                        style={[styles.logo, { opacity: logoOpacity }]}
+                        resizeMode="contain"
+                    />
+                </View>
+
+                {/* Separator */}
+                <Animated.View style={[styles.line, { width: lineWidth }]} />
+
+                {/* Name */}
+                <Animated.Text style={[styles.name, { opacity: nameOpacity, transform: [{ translateY: nameY }] }]}>
+                    NextVibe
+                </Animated.Text>
+
+                {/* Slogan */}
+                <Animated.Text style={[styles.slogan, { opacity: sloganOp }]}>
+                    your firefly in the networking noise
+                </Animated.Text>
+
+            </Animated.View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    root: {
         flex: 1,
-        justifyContent: "center",
+        backgroundColor: C.bg,
+    },
+    center: {
         alignItems: "center",
-        backgroundColor: "black",
+        justifyContent: "center",
     },
-    lottie: {
-        width: width ,
-        height: height,
+
+    // Logo frame
+    frame: {
+        width: FRAME,
+        height: FRAME,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 32,
     },
-    text: {
-        marginTop: 20,
-        fontSize: 20,
+    logo: {
+        width: 80,
+        height: 80,
+    },
+
+    // Bracket arms
+    corner: {
+        position: "absolute",
+        width: BRACKET,
+        height: BRACKET,
+    },
+    bracketH: {
+        position: "absolute",
+        height: 1,
+        backgroundColor: C.violet,
+        opacity: 0.7,
+    },
+    bracketV: {
+        position: "absolute",
+        width: 1,
+        backgroundColor: C.violet,
+        opacity: 0.7,
+    },
+
+    // Separator
+    line: {
+        height: 1,
+        backgroundColor: C.line,
+        marginBottom: 20,
+    },
+
+    // Text
+    name: {
+        fontSize: 26,
+        fontWeight: "300",
+        color: C.text,
+        letterSpacing: 10,
+        textTransform: "uppercase",
+        marginBottom: 10,
+    },
+    slogan: {
+        fontSize: 11,
+        color: C.muted,
+        letterSpacing: 1.8,
+        textAlign: "center",
+        paddingHorizontal: 48,
+        fontStyle: "italic",
     },
 });
