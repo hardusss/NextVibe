@@ -16,10 +16,12 @@
   },
   "dependencies": {
     "@babel/plugin-transform-typescript": "^7.26.8",
+    "@bonfida/spl-name-service": "^3.0.21",
     "@expo/vector-icons": "^14.1.0",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@lazorkit/wallet": "^2.0.1",
     "@lazorkit/wallet-mobile-adapter": "^1.5.1",
+    "@noble/ed25519": "^3.1.0",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-native-clipboard/clipboard": "^1.16.2",
     "@react-native-community/blur": "^4.4.1",
