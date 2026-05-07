@@ -62,6 +62,11 @@ export default {
                             scheme: "https",
                             host: "nextvibe.io",
                             pathPrefix: "/event-checkin"
+                        },
+                        {
+                            scheme: "https",
+                            host: "nextvibe.io",
+                            pathPrefix: "/event-nfc-receive"
                         }
                     ],
                     category: [
