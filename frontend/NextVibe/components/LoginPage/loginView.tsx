@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Text, 
-    View, 
-    TextInput, 
-    TouchableOpacity, 
-    SafeAreaView, 
-    StatusBar, 
-    ScrollView, 
-    StyleSheet, 
-    KeyboardAvoidingView, 
+import {
+    Text,
+    View,
+    TextInput,
+    TouchableOpacity,
+    SafeAreaView,
+    StatusBar,
+    ScrollView,
+    StyleSheet,
+    KeyboardAvoidingView,
     Platform,
     useColorScheme,
-    ActivityIndicator
+    ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '../../src/config/toast-config';
 import Login from '../../src/api/login';
-import { useRouter } from "expo-router";
+import { useRouter } from 'expo-router';
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
 import FastImage from 'react-native-fast-image';
-import { BackHandler } from "react-native";
+import { BackHandler } from 'react-native';
+import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 
 export default function LoginView() {
     const router = useRouter();
@@ -38,14 +39,9 @@ export default function LoginView() {
     const { styles, colors } = getModernTheme(isDark, ACCENT_COLOR);
 
     useEffect(() => {
-        const handler = BackHandler.addEventListener(
-            "hardwareBackPress",
-            () => true 
-        );
-
+        const handler = BackHandler.addEventListener('hardwareBackPress', () => true);
         return () => handler.remove();
     }, []);
-    
 
     const handleLogin = async () => {
         if (isLoading) return;
@@ -59,31 +55,55 @@ export default function LoginView() {
         }
     };
 
+    // Handle successful wallet authentication
+    const handleWalletSuccess = (backendResponse: any) => {
+        Toast.show({
+            type: 'success',
+            text1: 'Connected Successfully',
+            text2: 'Welcome to NextVibe!',
+        });
+
+        // Redirect user to the main application flow
+        router.replace('/home');
+    };
+
+    // Handle wallet connection errors or user cancellations
+    const handleWalletError = (error: any) => {
+        const realError = error?.response?.data?.error || error?.message || 'Unknown error';
+        
+        Toast.show({
+            type: 'error',
+            text1: 'Connection Failed',
+            text2: realError, 
+        });
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={{ position: 'absolute', zIndex: 9999, width: '100%', alignItems: 'center' }}>
                 <Toast config={toastConfig} />
             </View>
-            <StatusBar 
-                animated={true} 
+            <StatusBar
+                animated={true}
                 barStyle={isDark ? 'light-content' : 'dark-content'}
-                backgroundColor={isDark ? '#0A0410' : '#ffffff'} 
+                backgroundColor={isDark ? '#0A0410' : '#ffffff'}
             />
-            
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === "ios" ? "padding" : undefined}
+
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
-                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+                keyboardVerticalOffset={0}
             >
-                <ScrollView 
-                    contentContainerStyle={styles.scrollContent} 
-                    keyboardShouldPersistTaps="handled" 
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
+                    {/* Header */}
                     <View style={styles.headerContainer}>
-                        <FastImage 
-                            source={require('../../assets/logo.png')} 
-                            style={styles.logo} 
+                        <FastImage
+                            source={require('../../assets/logo.png')}
+                            style={styles.logo}
                             resizeMode={FastImage.resizeMode.contain}
                         />
                         <Text style={styles.title}>Welcome Back!</Text>
@@ -91,14 +111,14 @@ export default function LoginView() {
                     </View>
 
                     <View style={styles.formContainer}>
-                        
+
                         {/* Email Input */}
                         <View style={[styles.inputContainer, focusedInput === 'email' && styles.inputFocused]}>
-                            <MaterialCommunityIcons 
-                                name="email-outline" 
-                                size={22} 
-                                color={focusedInput === 'email' ? colors.iconActive : colors.iconInactive} 
-                                style={styles.inputIcon} 
+                            <MaterialCommunityIcons
+                                name="email-outline"
+                                size={22}
+                                color={focusedInput === 'email' ? colors.iconActive : colors.iconInactive}
+                                style={styles.inputIcon}
                             />
                             <TextInput
                                 placeholder="Email Address"
@@ -115,11 +135,11 @@ export default function LoginView() {
 
                         {/* Password Input */}
                         <View style={[styles.inputContainer, focusedInput === 'password' && styles.inputFocused]}>
-                            <MaterialCommunityIcons 
-                                name="lock-outline" 
-                                size={22} 
-                                color={focusedInput === 'password' ? colors.iconActive : colors.iconInactive} 
-                                style={styles.inputIcon} 
+                            <MaterialCommunityIcons
+                                name="lock-outline"
+                                size={22}
+                                color={focusedInput === 'password' ? colors.iconActive : colors.iconInactive}
+                                style={styles.inputIcon}
                             />
                             <TextInput
                                 placeholder="Password"
@@ -131,7 +151,10 @@ export default function LoginView() {
                                 onFocus={() => setFocusedInput('password')}
                                 onBlur={() => setFocusedInput(null)}
                             />
-                            <TouchableOpacity onPress={() => setHidePassword(!hidePassword)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <TouchableOpacity
+                                onPress={() => setHidePassword(!hidePassword)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
                                 <MaterialIcons
                                     name={hidePassword ? 'visibility-off' : 'visibility'}
                                     size={22}
@@ -139,10 +162,10 @@ export default function LoginView() {
                                 />
                             </TouchableOpacity>
                         </View>
-                        
+
                         {/* Login Button */}
-                        <TouchableOpacity 
-                            style={styles.loginButton} 
+                        <TouchableOpacity
+                            style={styles.loginButton}
                             onPress={handleLogin}
                             activeOpacity={0.8}
                             disabled={isLoading}
@@ -161,15 +184,19 @@ export default function LoginView() {
                             <View style={styles.dividerLine} />
                         </View>
 
-                        <GoogleButtonAuth page='login'/>
+                        <View style={{ gap: 16 }}>
+                            <GoogleButtonAuth page="login" />
+                            <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                        </View>
 
                         {/* Footer */}
                         <View style={styles.footerContainer}>
                             <Text style={styles.footerText}>Don't have an account?</Text>
-                            <TouchableOpacity onPress={() => router.replace("/register")}>
+                            <TouchableOpacity onPress={() => router.replace('/register')}>
                                 <Text style={styles.registerLink}>Register</Text>
                             </TouchableOpacity>
                         </View>
+
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -194,7 +221,7 @@ const getModernTheme = (isDark: boolean, accentColor: string) => {
             flexGrow: 1,
             paddingHorizontal: 24,
             paddingBottom: 40,
-            paddingTop: 40, 
+            paddingTop: 40,
         },
         headerContainer: {
             alignItems: 'center',
@@ -209,8 +236,8 @@ const getModernTheme = (isDark: boolean, accentColor: string) => {
         },
         title: {
             fontSize: 28,
-            fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            fontFamily: 'Dank Mono Bold',
+            includeFontPadding: false,
             color: isDark ? '#ffffff' : '#1a1a1a',
             marginBottom: 8,
         },
@@ -229,7 +256,7 @@ includeFontPadding:false,
             borderRadius: 16,
             paddingHorizontal: 16,
             height: 56,
-            marginBottom: 20, 
+            marginBottom: 20,
             borderWidth: 1.5,
             borderColor: 'transparent',
         },
@@ -246,9 +273,8 @@ includeFontPadding:false,
             color: isDark ? '#fff' : '#000',
             fontSize: 16,
         },
-
         loginButton: {
-            backgroundColor: "#391b78ff",
+            backgroundColor: '#391b78ff',
             borderRadius: 10,
             paddingVertical: 15,
             alignItems: 'center',
@@ -259,12 +285,10 @@ includeFontPadding:false,
         loginButtonText: {
             color: '#ffffff',
             fontSize: 16,
-            fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            fontFamily: 'Dank Mono Bold',
+            includeFontPadding: false,
             letterSpacing: 0.5,
         },
-
-        // Divider
         dividerContainer: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -279,11 +303,9 @@ includeFontPadding:false,
             paddingHorizontal: 16,
             color: isDark ? '#666' : '#999',
             fontSize: 12,
-            fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            fontFamily: 'Dank Mono Bold',
+            includeFontPadding: false,
         },
-
-        // Footer
         footerContainer: {
             flexDirection: 'row',
             justifyContent: 'center',
@@ -295,8 +317,8 @@ includeFontPadding:false,
         },
         registerLink: {
             color: accentColor,
-            fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            fontFamily: 'Dank Mono Bold',
+            includeFontPadding: false,
             marginLeft: 6,
             fontSize: 14,
         },
