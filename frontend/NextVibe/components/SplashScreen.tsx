@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
         color: C.text,
         letterSpacing: 10,
         textTransform: "uppercase",
-        marginBottom: 10,
+    marginBottom: 10,
     },
     slogan: {
         fontSize: 11,

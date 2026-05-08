@@ -81,7 +81,7 @@ export default function ButtonWalletSignIn({
                     identity: {
                         name: 'NextVibe',
                         uri: 'https://nextvibe.io',
-                        icon: 'favicon.ico',
+                        icon: 'https://nextvibe.io/logo.png',
                     },
                 });
 
