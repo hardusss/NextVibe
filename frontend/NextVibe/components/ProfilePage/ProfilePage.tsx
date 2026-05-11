@@ -14,6 +14,7 @@ import {
     useColorScheme,
     StyleSheet,
     Dimensions,
+    InteractionManager
 } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -143,6 +144,7 @@ const ProfileView = () => {
     const [visible, setVisible] = useState<boolean>(false);
     const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
     const [id, setId] = useState<number>();
+    const [isReady, setIsReady] = useState(false);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const hasFetched = useRef(false);
@@ -196,6 +198,12 @@ const ProfileView = () => {
             setTimeout(() => { setIsVisibleContainer(false) }, 200);
         };
     }, [visible]);
+
+    useEffect(() => {
+        InteractionManager.runAfterInteractions(() => {
+            setIsReady(true);
+        });
+    }, []);
 
     const fetchUserData = async () => {
         try {
@@ -300,11 +308,14 @@ const ProfileView = () => {
                                     style={st.headerImage}
                                     resizeMode={FastImage.resizeMode.cover}
                                 />
-                                <BlurView
-                                    blurType={isDark ? "dark" : "light"}
-                                    blurAmount={25}
-                                    style={StyleSheet.absoluteFill}
-                                />
+                                {/* Render BlurView ONLY after interactions are complete */}
+                                {isReady && (
+                                    <BlurView
+                                        blurType={isDark ? "dark" : "light"}
+                                        blurAmount={25}
+                                        style={StyleSheet.absoluteFill}
+                                    />
+                                )}
                             </>
                         )}
                         {/* Bottom fade */}

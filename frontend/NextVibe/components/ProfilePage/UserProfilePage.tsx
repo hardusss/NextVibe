@@ -14,6 +14,7 @@ import {
     useColorScheme,
     StyleSheet,
     Dimensions,
+    InteractionManager
 } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -160,6 +161,7 @@ const UserProfileView = () => {
     const [activeTab, setActiveTab] = useState<Tab>("Posts");
     const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(new Set(["Posts"]));
     const [showRepTip, setShowRepTip] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const colorScheme = useColorScheme();
@@ -251,6 +253,12 @@ const UserProfileView = () => {
         };
     }, [visible]);
 
+    useEffect(() => {
+        InteractionManager.runAfterInteractions(() => {
+            setIsReady(true);
+        });
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
             fetchUserData();
@@ -312,11 +320,14 @@ const UserProfileView = () => {
                                     style={st.headerImage}
                                     resizeMode={FastImage.resizeMode.cover}
                                 />
-                                <BlurView
-                                    blurType={isDark ? "dark" : "light"}
-                                    blurAmount={25}
-                                    style={StyleSheet.absoluteFill}
-                                />
+                                {/* Render BlurView ONLY after interactions are complete */}
+                                {isReady && (
+                                    <BlurView
+                                        blurType={isDark ? "dark" : "light"}
+                                        blurAmount={25}
+                                        style={StyleSheet.absoluteFill}
+                                    />
+                                )}
                             </>
                         )}
                         <LinearGradient colors={['transparent', bg]} locations={[0.2, 1]} style={st.headerFadeBottom} />
