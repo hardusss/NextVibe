@@ -4,7 +4,7 @@ export default {
     expo: {
         name: "NextVibe",
         slug: "NextVibe",
-        version: "1.0.2",
+        version: "1.0.3",
         orientation: "portrait",
         icon: "./assets/new_icon.png",
         scheme: "nextvibe",
@@ -25,7 +25,7 @@ export default {
             }
         },
         android: {
-            versionCode: 2,
+            versionCode: 3,
             jsEngine: "hermes",
             softwareKeyboardLayoutMode: "resize",
             adaptiveIcon: {
