@@ -1,5 +1,5 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
-import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet } from "react-native";
+import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet, Linking, Platform } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
@@ -9,13 +9,13 @@ import axios from "axios";
 import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
 import ErrorBoundary from 'react-native-error-boundary';
 import ErrorFallback from "@/components/ErrorFallback";
-import { BlurView } from "@react-native-community/blur";
 import { LazorKitProvider } from '@lazorkit/wallet-mobile-adapter';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { House, Search, BadgePlus, UserRound, Radar, Icon } from "lucide-react-native";
+import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
+import { BlurView } from "@react-native-community/blur";
 import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
 import { clusterApiUrl } from '@solana/web3.js';
 import * as Device from 'expo-device';
@@ -24,7 +24,6 @@ import Constants from 'expo-constants';
 import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapboxGL from '@rnmapbox/maps';
-
 import { vexo, identifyDevice } from 'vexo-analytics';
 
 const chain = 'solana:devnet';
@@ -40,13 +39,22 @@ if (!__DEV__ && process.env.EXPO_PUBLIC_VEXO_API_KEY) {
 }
 
 SplashScreen.preventAutoHideAsync();
-console.log("MAPBOX TOKEN IS:", process.env.EXPO_PUBLIC_MAPBOX_TOKEN);
 
 if (process.env.EXPO_PUBLIC_MAPBOX_TOKEN) {
     MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN);
 } else {
     console.warn("Mapbox token is missing in .env!");
 }
+
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+    }),
+});
 
 const defaultFontFamily = 'Dank Mono';
 const boldFontFamily = 'Dank Mono Bold';
@@ -94,6 +102,19 @@ if (__DEV__ && typeof global !== 'undefined') {
 }
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
+const PUSH_TOKEN_KEY = 'expo_push_token';
+
+function resolveNotificationUrl(data: Record<string, any>): { internal?: string; external?: string } {
+    if (!data?.deeplink) return {};
+
+    const link: string = data.deeplink;
+
+    if (link.startsWith('http://') || link.startsWith('https://')) {
+        return { external: link };
+    }
+
+    return { internal: link };
+}
 
 export default function Layout() {
     const [fontsLoaded, fontError] = useFonts({
@@ -106,6 +127,7 @@ export default function Layout() {
     const segments = useSegments();
     const currentPage = segments[segments.length - 1];
     const cachedAvatarRef = useRef<{ userId: number; url: string } | null>(null);
+    const pushRegisteredRef = useRef(false);
     const [imageProfile, setImageProfile] = useState<string | null>(null);
     const [userID, setUserID] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -138,47 +160,88 @@ export default function Layout() {
         { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
     ];
 
-    const PUSH_TOKEN_KEY = 'expo_push_token';
-
     function handleRegistrationError(errorMessage: string) {
         setToastMessage(errorMessage);
         setVisible(true);
-        throw new Error(errorMessage);
     }
 
     async function registerForPushNotifications() {
+        if (pushRegisteredRef.current) return;
+
         if (!Device.isDevice) {
             handleRegistrationError('Must use physical device for push notifications');
             return;
         }
+
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
+
         if (existingStatus !== 'granted') {
             const { status } = await Notifications.requestPermissionsAsync();
             finalStatus = status;
         }
-        if (finalStatus !== 'granted') {
-            handleRegistrationError('Permission not granted to get push token for push notification!');
-            return;
-        }
+
+        if (finalStatus !== 'granted') return;
+
         const projectId =
             Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+
         if (!projectId) {
             handleRegistrationError('Project ID not found');
             return;
         }
+
         try {
             const pushTokenString = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
             const savedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+
             if (savedToken !== pushTokenString) {
                 await savePushToken(pushTokenString);
                 await AsyncStorage.setItem(PUSH_TOKEN_KEY, pushTokenString);
             }
+
+            pushRegisteredRef.current = true;
             return pushTokenString;
         } catch (e: unknown) {
             handleRegistrationError(`${e}`);
         }
     }
+
+    // Deep link handler
+    const handleNotificationNavigation = (data: Record<string, any>) => {
+        const { internal, external } = resolveNotificationUrl(data);
+
+        if (external) {
+            Linking.openURL(external).catch(() => {});
+            return;
+        }
+
+        if (internal) {
+            // Small delay to ensure router is ready
+            setTimeout(() => {
+                router.push(internal as RelativePathString);
+            }, 300);
+        }
+    };
+
+    // Handle tap on notification when app is foregrounded or backgrounded
+    useEffect(() => {
+        const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+            const data = response.notification.request.content.data ?? {};
+            handleNotificationNavigation(data);
+        });
+
+        return () => subscription.remove();
+    }, []);
+
+    // Handle tap on notification when app was fully closed (cold start)
+    useEffect(() => {
+        Notifications.getLastNotificationResponseAsync().then((response) => {
+            if (!response) return;
+            const data = response.notification.request.content.data ?? {};
+            handleNotificationNavigation(data);
+        });
+    }, []);
 
     useEffect(() => {
         if (segments[1] === "profile") {
@@ -206,7 +269,7 @@ export default function Layout() {
                 const id = await storage.getItem('id');
                 if (id) setUserID(Number(id));
                 else setUserID(null);
-            } catch (e) { }
+            } catch (e) {}
         };
         loadUser();
     }, [segments]);
@@ -221,9 +284,9 @@ export default function Layout() {
 
     useEffect(() => {
         if (!userID) return;
-        
+
         let isMounted = true;
-        
+
         const fetchAvatar = async () => {
             try {
                 if (!imageProfile) {
@@ -237,9 +300,8 @@ export default function Layout() {
                 }
 
                 const newUrl = userData.avatar || DEFAULT_AVATAR;
-
                 const cached = cachedAvatarRef.current;
-                
+
                 if (isMounted && (cached?.userId !== userID || cached?.url !== newUrl)) {
                     FastImage.preload([{ uri: newUrl, priority: FastImage.priority.high }]);
                     cachedAvatarRef.current = { userId: userID, url: newUrl };
@@ -251,7 +313,7 @@ export default function Layout() {
                 }
             }
         };
-        
+
         fetchAvatar();
         return () => { isMounted = false; };
     }, [userID]);
@@ -284,7 +346,7 @@ export default function Layout() {
                                     <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { backgroundColor: 'transparent' } }}>
                                         <Stack.Screen name="home" />
                                         <Stack.Screen name="search" />
-                                        <Stack.Screen name="vibe-map" options={{ headerShown: false,animation: "none" }}  />
+                                        <Stack.Screen name="vibe-map" options={{ headerShown: false, animation: "none" }} />
                                         <Stack.Screen name="camera" />
                                         <Stack.Screen name="profile" />
                                         {stackScreens.map((item) => (
@@ -328,10 +390,10 @@ export default function Layout() {
                                                                             priority: FastImage.priority.high,
                                                                         }}
                                                                         style={[
-                                                                            styles.avatar, 
-                                                                            { 
+                                                                            styles.avatar,
+                                                                            {
                                                                                 borderWidth: isActive ? 1 : 0,
-                                                                                backgroundColor: theme === "dark" ? "#2a2a2a" : "#e0e0e0" 
+                                                                                backgroundColor: theme === "dark" ? "#2a2a2a" : "#e0e0e0"
                                                                             }
                                                                         ]}
                                                                     />
@@ -378,7 +440,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 20,
         elevation: 10,
-        overflow: 'hidden'
+        overflow: 'hidden',
     },
     tabsWrapper: {
         flexDirection: "row",
@@ -386,7 +448,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 30,
         alignItems: "center",
         width: "100%",
-        height: "100%"
+        height: "100%",
     },
     iconContainer: {
         width: 44,
@@ -394,7 +456,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: "center",
         alignItems: "center",
-        borderWidth: 1
+        borderWidth: 1,
     },
     iconContainerProfile: {
         width: 44,
@@ -406,6 +468,6 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        borderColor: "#a18ed5"
-    }
+        borderColor: "#a18ed5",
+    },
 });
