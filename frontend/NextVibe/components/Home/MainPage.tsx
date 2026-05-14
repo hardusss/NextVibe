@@ -12,7 +12,6 @@ import {
     ActivityIndicator,
     Pressable,
     Linking,
-    Image
 } from "react-native";
 import Header from "./Header";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
@@ -23,7 +22,6 @@ import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { requestToAttend } from "@/src/api/event.requests";
-import { Alert } from 'react-native';
 import likePost from "@/src/api/like.post";
 import FastImage from 'react-native-fast-image';
 import timeAgo from "@/src/utils/formatTime";
@@ -81,8 +79,8 @@ const getStyles = (theme: typeof darkTheme) => {
         postContainer: { borderRadius: 12, padding: 14, position: "relative" },
         postHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
         avatar: { width: 40, height: 40, borderRadius: 20 },
-        userInfo: { flex: 1, marginLeft: 12  },
-        usernameContainer: { flexDirection: "row", alignItems: "center"},
+        userInfo: { flex: 1, marginLeft: 12 },
+        usernameContainer: { flexDirection: "row", alignItems: "center" },
         usernameRow: { flexDirection: "row", alignItems: "center" },
         badgeWrapper: { marginLeft: 1, justifyContent: 'center', alignItems: 'center' },
         username: {
@@ -485,7 +483,7 @@ const PostItem = memo(({
 
             {/* ── Header: avatar | username | dots ── */}
             <View style={styles.postHeader}>
-               <AvatarWithFrame
+                <AvatarWithFrame
                     avatarUrl={item.owner__avatar}
                     size={40}
                     isOg={item.owner__is_og}
@@ -547,7 +545,7 @@ const PostItem = memo(({
             {/* ── Media ── */}
             {hasMedia && (
                 <View style={[
-                    styles.mediaPlaceholder, 
+                    styles.mediaPlaceholder,
                     eventImageHeight ? { height: eventImageHeight } : {},
                     item.is_luma_event ? { borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 } : {}
                 ]}>
@@ -671,7 +669,7 @@ const PostItem = memo(({
                             );
                         })()}
                     </View>
-                    
+
                     {(() => {
                         const dateToCheck = item.luma_event_end_time || item.luma_event_start_time;
                         const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
@@ -704,8 +702,8 @@ const PostItem = memo(({
                         const btnLabel = canViewLuma
                             ? "View Event on Luma"
                             : isPending ? "Requested"
-                            : isRejected ? "Request Denied"
-                            : "Request to Attend";
+                                : isRejected ? "Request Denied"
+                                    : "Request to Attend";
                         const labelColor = isRejected ? "#ef4444" : "#d8b4fe";
 
                         return (
@@ -842,6 +840,7 @@ export default function MainPage() {
 
         try {
             const response = await getRecomendatePosts(shouldReset);
+            if (!response) return;
             const newPosts = response.results || [];
 
             if (newPosts.length === 0) {
@@ -883,7 +882,7 @@ export default function MainPage() {
             setToastMessage("Your request to attend has been sent!");
             setToastSuccess(true);
             setIsToastVisible(true);
-            setPosts(prev => prev.map(post => 
+            setPosts(prev => prev.map(post =>
                 post.id === postId ? { ...post, event_request_status: "pending" } : post
             ));
         } catch (e: any) {
