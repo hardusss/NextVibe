@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from "react";
 import {
     View,
     StyleSheet,
-    Dimensions,
     StatusBar,
     Animated,
     Easing,
@@ -11,7 +10,6 @@ import { useRouter } from "expo-router";
 import { storage } from "@/src/utils/storage";
 import getStatusProfile from "@/src/api/check.status";
 
-const { width } = Dimensions.get("window");
 
 const C = {
     bg: "#0A0410",
@@ -37,12 +35,16 @@ export default function SplashScreen() {
     const sloganOp = useRef(new Animated.Value(0)).current;
 
     const redirectTo = async () => {
-        const token = await storage.getItem("access");
-        if (token) {
-            const status = await getStatusProfile();
-            if (status.ban) { router.replace("/user-banned"); return; }
-            router.replace("/home");
-        } else {
+        try {
+            const token = await storage.getItem("access");
+            if (token) {
+                const status = await getStatusProfile();
+                if (status?.ban) { router.replace("/user-banned"); return; }
+                router.replace("/home");
+            } else {
+                router.replace("/register");
+            }
+        } catch (e) {
             router.replace("/register");
         }
     };
@@ -193,7 +195,7 @@ const styles = StyleSheet.create({
         color: C.text,
         letterSpacing: 10,
         textTransform: "uppercase",
-    marginBottom: 10,
+        marginBottom: 10,
     },
     slogan: {
         fontSize: 11,
