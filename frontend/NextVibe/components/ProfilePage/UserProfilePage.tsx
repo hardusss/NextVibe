@@ -14,14 +14,12 @@ import {
     useColorScheme,
     StyleSheet,
     Dimensions,
-    InteractionManager
 } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import FastImage from 'react-native-fast-image';
 import Hyperlink from "react-native-hyperlink";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "@react-native-community/blur";
 import { Star } from "lucide-react-native";
 
 // API & Utils
@@ -161,7 +159,6 @@ const UserProfileView = () => {
     const [activeTab, setActiveTab] = useState<Tab>("Posts");
     const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(new Set(["Posts"]));
     const [showRepTip, setShowRepTip] = useState(false);
-    const [isReady, setIsReady] = useState(false);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const colorScheme = useColorScheme();
@@ -253,12 +250,6 @@ const UserProfileView = () => {
         };
     }, [visible]);
 
-    useEffect(() => {
-        InteractionManager.runAfterInteractions(() => {
-            setIsReady(true);
-        });
-    }, []);
-
     useFocusEffect(
         useCallback(() => {
             fetchUserData();
@@ -317,17 +308,14 @@ const UserProfileView = () => {
                             <>
                                 <FastImage
                                     source={{ uri: userData.avatar_url }}
-                                    style={st.headerImage}
+                                    style={[st.headerImage, { opacity: 0.38 }]}
                                     resizeMode={FastImage.resizeMode.cover}
                                 />
-                                {/* Render BlurView ONLY after interactions are complete */}
-                                {isReady && (
-                                    <BlurView
-                                        blurType={isDark ? "dark" : "light"}
-                                        blurAmount={25}
-                                        style={StyleSheet.absoluteFill}
-                                    />
-                                )}
+                                <View style={[StyleSheet.absoluteFill, {
+                                    backgroundColor: isDark
+                                        ? 'rgba(6, 3, 16, 0.72)'
+                                        : 'rgba(245, 240, 255, 0.72)'
+                                }]} />
                             </>
                         )}
                         <LinearGradient colors={['transparent', bg]} locations={[0.2, 1]} style={st.headerFadeBottom} />
