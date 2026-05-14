@@ -14,7 +14,6 @@ import {
     useColorScheme,
     StyleSheet,
     Dimensions,
-    InteractionManager
 } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -22,7 +21,6 @@ import { AvatarWithFrame } from "./AvatarWithFrame";
 import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
 import FastImage from "react-native-fast-image";
-import { BlurView } from "@react-native-community/blur";
 import { Star } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import { storage } from '@/src/utils/storage';
@@ -144,7 +142,6 @@ const ProfileView = () => {
     const [visible, setVisible] = useState<boolean>(false);
     const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
     const [id, setId] = useState<number>();
-    const [isReady, setIsReady] = useState(false);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const hasFetched = useRef(false);
@@ -198,12 +195,6 @@ const ProfileView = () => {
             setTimeout(() => { setIsVisibleContainer(false) }, 200);
         };
     }, [visible]);
-
-    useEffect(() => {
-        InteractionManager.runAfterInteractions(() => {
-            setIsReady(true);
-        });
-    }, []);
 
     const fetchUserData = async () => {
         try {
@@ -305,17 +296,14 @@ const ProfileView = () => {
                             <>
                                 <FastImage
                                     source={{ uri: userData.avatar_url }}
-                                    style={st.headerImage}
+                                    style={[st.headerImage, { opacity: 0.38 }]}
                                     resizeMode={FastImage.resizeMode.cover}
                                 />
-                                {/* Render BlurView ONLY after interactions are complete */}
-                                {isReady && (
-                                    <BlurView
-                                        blurType={isDark ? "dark" : "light"}
-                                        blurAmount={25}
-                                        style={StyleSheet.absoluteFill}
-                                    />
-                                )}
+                                <View style={[StyleSheet.absoluteFill, {
+                                    backgroundColor: isDark
+                                        ? 'rgba(6, 3, 16, 0.72)'
+                                        : 'rgba(245, 240, 255, 0.72)'
+                                }]} />
                             </>
                         )}
                         {/* Bottom fade */}
