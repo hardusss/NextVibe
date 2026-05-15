@@ -5,18 +5,17 @@ import GetApiUrl from "../utils/url_api";
 
 export default async function savePushToken(token: string) {
     const TOKEN = await storage.getItem("access");
+    if (!TOKEN) return; 
 
     const url = `${GetApiUrl()}/users/save-push-token/`;
-
-    const config = {
-        headers: {
-            "Authorization": `Bearer ${TOKEN}`
-        },
+    try {
+        const response = await axios.post(url, 
+            { pushToken: token },
+            { headers: { "Authorization": `Bearer ${TOKEN}` } }
+        );
+        return response.data;
+    } catch (e) {
+        throw e;
     }
-
-    const response = await axios.post(url, {
-        pushToken: token
-    }, config)
-    return response.data
 }
 
