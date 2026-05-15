@@ -212,7 +212,7 @@ export default function Layout() {
         const { internal, external } = resolveNotificationUrl(data);
 
         if (external) {
-            Linking.openURL(external).catch(() => {});
+            Linking.openURL(external).catch(() => { });
             return;
         }
 
@@ -244,10 +244,15 @@ export default function Layout() {
     }, []);
 
     useEffect(() => {
-        if (segments[1] === "profile") {
-            registerForPushNotifications();
+        if (!userID) {
+            setImageProfile(null);
+            cachedAvatarRef.current = null;
+            pushRegisteredRef.current = false;          
+            FastImage.clearMemoryCache();
+            AsyncStorage.removeItem(PUSH_TOKEN_KEY);   
         }
-    }, [segments]);
+    }, [userID]);
+
 
     useEffect(() => {
         const interceptor = axios.interceptors.response.use(
@@ -269,7 +274,7 @@ export default function Layout() {
                 const id = await storage.getItem('id');
                 if (id) setUserID(Number(id));
                 else setUserID(null);
-            } catch (e) {}
+            } catch (e) { }
         };
         loadUser();
     }, [segments]);
