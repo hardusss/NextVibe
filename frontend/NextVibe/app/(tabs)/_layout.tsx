@@ -105,15 +105,22 @@ const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 const PUSH_TOKEN_KEY = 'expo_push_token';
 
 function resolveNotificationUrl(data: Record<string, any>): { internal?: string; external?: string } {
-    if (!data?.deeplink) return {};
+    if (data?.external_url) return { external: data.external_url };
+    if (data?.url) return { internal: data.url };
 
-    const link: string = data.deeplink;
-
-    if (link.startsWith('http://') || link.startsWith('https://')) {
-        return { external: link };
+    if (data?.type === 'new_follower' && data?.user_id) {
+        return { internal: `/user-profile?id=${data.user_id}` };
     }
-
-    return { internal: link };
+    if (data?.type === 'new_like' && data?.post_id) {
+        return { internal: `/posts?id=${data.post_id}` };
+    }
+    if (data?.type === 'new_comment' && data?.post_id) {
+        return { internal: `/posts?id=${data.post_id}` };
+    }
+    if (data?.type === 'new_message' && data?.chat_id && data?.user_id) {
+        return { internal: `/chat-room?id=${data.chat_id}&userId=${data.user_id}` };
+    }
+    return {};
 }
 
 export default function Layout() {
@@ -212,7 +219,7 @@ export default function Layout() {
         const { internal, external } = resolveNotificationUrl(data);
 
         if (external) {
-            Linking.openURL(external).catch(() => { });
+            Linking.openURL(external).catch(() => {});
             return;
         }
 
@@ -244,15 +251,10 @@ export default function Layout() {
     }, []);
 
     useEffect(() => {
-        if (!userID) {
-            setImageProfile(null);
-            cachedAvatarRef.current = null;
-            pushRegisteredRef.current = false;          
-            FastImage.clearMemoryCache();
-            AsyncStorage.removeItem(PUSH_TOKEN_KEY);   
+        if (segments[1] === "profile" && userID) {
+            registerForPushNotifications();
         }
-    }, [userID]);
-
+    }, [segments, userID]);
 
     useEffect(() => {
         const interceptor = axios.interceptors.response.use(
@@ -274,7 +276,7 @@ export default function Layout() {
                 const id = await storage.getItem('id');
                 if (id) setUserID(Number(id));
                 else setUserID(null);
-            } catch (e) { }
+            } catch (e) {}
         };
         loadUser();
     }, [segments]);
@@ -283,7 +285,9 @@ export default function Layout() {
         if (!userID) {
             setImageProfile(null);
             cachedAvatarRef.current = null;
+            pushRegisteredRef.current = false;
             FastImage.clearMemoryCache();
+            AsyncStorage.removeItem(PUSH_TOKEN_KEY);
         }
     }, [userID]);
 
