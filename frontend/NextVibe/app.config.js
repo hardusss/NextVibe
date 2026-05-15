@@ -32,6 +32,11 @@ export default {
                 foregroundImage: "./assets/new_icon.png",
                 backgroundColor: "#0A0410"
             },
+            notification: {
+                icon: "./assets/push-icon.png",  
+                color: "#A855F7",                        
+                androidMode: "default",
+            },
             package: "com.nextvibe.app",
             launchMode: "singleTask",
             googleServicesFile: "./google-services.json",
