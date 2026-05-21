@@ -21,6 +21,7 @@
     "@gorhom/bottom-sheet": "^5.2.8",
     "@lazorkit/wallet": "^2.0.1",
     "@lazorkit/wallet-mobile-adapter": "^1.5.1",
+    "@likashefqet/react-native-image-zoom": "^4.3.0",
     "@noble/ed25519": "^3.1.0",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-native-clipboard/clipboard": "^1.16.2",

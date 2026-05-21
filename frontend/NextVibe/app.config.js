@@ -34,7 +34,7 @@ export default {
             },
             notification: {
                 icon: "./assets/push-icon.png",  
-                color: "#A855F7",                        
+                color: "#A855F7",                                   
                 androidMode: "default",
             },
             package: "com.nextvibe.app",
