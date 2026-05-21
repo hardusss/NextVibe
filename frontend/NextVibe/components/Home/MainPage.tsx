@@ -479,7 +479,7 @@ const PostItem = memo(({
     const supplyLabel = `${item.minted_count ?? 0}/${item.total_supply ?? 50}`;
 
     return (
-        <View style={styles.postContainer}>
+    <TouchableOpacity style={styles.postContainer} onPress={() => {router.push("/post-details")}}>
 
             {/* ── Header: avatar | username | dots ── */}
             <View style={styles.postHeader}>
@@ -735,7 +735,7 @@ const PostItem = memo(({
                 </TouchableOpacity>
                 <View style={{ flex: 1 }} />
             </View>
-        </View>
+        </TouchableOpacity>
     );
 }, (prev, next) => {
     if (prev.item.id !== next.item.id) return false;
