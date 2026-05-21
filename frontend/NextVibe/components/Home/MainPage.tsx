@@ -479,23 +479,29 @@ const PostItem = memo(({
     const supplyLabel = `${item.minted_count ?? 0}/${item.total_supply ?? 50}`;
 
     return (
-    <TouchableOpacity style={styles.postContainer} onPress={() => {router.push("/post-details")}}>
+        <TouchableOpacity style={styles.postContainer} onPress={() => {
+            router.push({ pathname: "/post-details", params: { 
+                id: item.id,
+                postContent: item.text, 
+                postImageUrl: item.image
+             } });
+        }} activeOpacity={0.8}>
 
             {/* ── Header: avatar | username | dots ── */}
             <View style={styles.postHeader}>
-                <AvatarWithFrame
-                    avatarUrl={item.owner__avatar}
-                    size={40}
-                    isOg={item.owner__is_og}
-                    ogEdition={item.owner__edition}
-                    invitedCount={item.owner__invited_count}
-                />
                 <TouchableOpacity
                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                    style={styles.userInfo}
                     onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
                 >
-                    <View style={styles.usernameRow}>
+                    <AvatarWithFrame
+                        avatarUrl={item.owner__avatar}
+                        size={40}
+                        isOg={item.owner__is_og}
+                        ogEdition={item.owner__edition}
+                        invitedCount={item.owner__invited_count}
+                    />
+                </TouchableOpacity>
+                    <View style={styles.userInfo}>
                         <Text style={styles.username}>{item.owner__username}</Text>
                         {item.owner__official && (
                             <View style={styles.badgeWrapper}>
@@ -503,7 +509,6 @@ const PostItem = memo(({
                             </View>
                         )}
                     </View>
-                </TouchableOpacity>
 
                 <View style={{ position: "relative", flexDirection: "row" }}>
                     {collectState !== null && !item?.is_luma_event && (
