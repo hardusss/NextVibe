@@ -49,7 +49,7 @@ export default function ButtonWalletSignIn({
     const [connectedUser, setConnectedUser] = useState<string | null>(null);
     
     // We keep disconnect from the context for error cleanup if needed.
-    const { disconnect } = useMobileWallet(); 
+    const { connect, disconnect } = useMobileWallet();
     const isMounted = useRef<boolean>(true);
 
     useEffect(() => {
@@ -133,6 +133,9 @@ export default function ButtonWalletSignIn({
 
             if (!isMounted.current) return;
             
+            // 7. Update state and notify parent component of success
+            await connect();
+
             setConnectedUser(resolvedUsername);
             setIsLoading(false);
             onSuccess(backendResponse);
