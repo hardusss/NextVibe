@@ -93,7 +93,9 @@ export default {
                 "expo-build-properties",
                 {
                     android: {
-                        usesCleartextTraffic: true
+                        usesCleartextTraffic: true,
+                        enableProguardInReleaseBuilds: true,
+                        enableShrinkResourcesInReleaseBuilds: true,
                     }
                 }
             ],
