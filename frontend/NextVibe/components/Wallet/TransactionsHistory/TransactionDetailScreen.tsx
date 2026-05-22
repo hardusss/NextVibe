@@ -3,7 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useRef, useCallback, useState } from 'react';
 import FastImage from 'react-native-fast-image';
-import Clipboard from '@react-native-clipboard/clipboard';
+import * as Clipboard from 'expo-clipboard';
 import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -84,7 +84,7 @@ export default function TransactionDetailScreen() {
      * @param label - User-friendly label for toast message
      */
     const handleCopy = (value: string, label: string) => {
-        Clipboard.setString(value);
+        Clipboard.setStringAsync(value);
         showToast(`${label} copied!`);
     };
 
