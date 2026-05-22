@@ -132,7 +132,6 @@ export default {
                 }
             ],
             "expo-font",
-            "expo-audio",
             "expo-secure-store",
             "react-native-compressor",
             "expo-notifications",
