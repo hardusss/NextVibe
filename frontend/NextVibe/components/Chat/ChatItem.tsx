@@ -10,7 +10,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback 
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import timeAgo from '@/src/utils/formatTime';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
@@ -153,7 +153,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
               {isDeleting ? (
                 <Text style={styles.deletingText}>Deleting...</Text>
               ) : (
-                <MaterialIcons name="delete" size={24} color="#fff" />
+                <Trash2 size={24} color="#fff" />
               )}
             </TouchableOpacity>
           )}

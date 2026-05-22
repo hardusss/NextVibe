@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Modal, TouchableOpacity, Text, StyleSheet, useColorScheme, TouchableWithoutFeedback } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Camera, Images } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 
 interface MediaPickerModalProps {
@@ -56,8 +56,7 @@ export default function MediaPickerModal({
                     style={styles.option} 
                     onPress={onCameraPress}
                 >
-                    <MaterialIcons 
-                    name="camera-alt" 
+                    <Camera 
                     size={24} 
                     color={isDark ? '#fff' : '#000'} 
                     />
@@ -71,8 +70,7 @@ export default function MediaPickerModal({
                     style={[styles.option, { borderBottomWidth: 0 }]} 
                     onPress={onGalleryPress}
                 >
-                    <MaterialIcons 
-                    name="photo-library" 
+                    <Images 
                     size={24} 
                     color={isDark ? '#fff' : '#000'} 
                     />

@@ -14,7 +14,7 @@ import {
   ScrollView,
   StatusBar
 } from 'react-native';
-import { MaterialIcons, AntDesign, Ionicons } from '@expo/vector-icons';
+import { ArrowLeft, X, Camera, Send } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import ChatBubble from './ChatBubble';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -301,7 +301,7 @@ export default function ChatScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <AntDesign name="arrowleft" size={24} color={isDark ? '#fff' : '#000'} />
+            <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -370,7 +370,7 @@ export default function ChatScreen() {
                         prev.filter((_, i) => i !== index)
                       )}
                     >
-                      <MaterialIcons name="close" size={16} color="#ffffff" />
+                      <X size={16} color="#ffffff" />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -389,8 +389,7 @@ export default function ChatScreen() {
               onPress={pickMedia} 
               style={styles.mediaButton}
             >
-              <MaterialIcons 
-                name="camera-alt" 
+              <Camera 
                 size={24} 
                 color={isDark ? '#A09CB8' : '#333'} 
               />
@@ -415,7 +414,7 @@ export default function ChatScreen() {
                 colors={['#A78BFA', '#5856D6']}
                 style={styles.sendButtonGradient}
               />
-              <MaterialIcons name="send" size={22} color="#fff" />
+              <Send size={22} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>

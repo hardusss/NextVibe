@@ -11,7 +11,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { storage } from '@/src/utils/storage';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Search } from 'lucide-react-native';
 import OnlineUsers from './OnlineUsers';
 import ChatItem from './ChatItem';
 import { getChats, getOnlineUsers } from '@/src/api/chat';
@@ -33,7 +33,7 @@ const SearchBar = React.memo(({ placeholder, value, onChangeText, isDark }: any)
         tint={isDark ? 'dark' : 'light'}
         style={styles.blurViewAbsolute}
       />
-      <MaterialIcons name="search" size={24} color={isDark ? '#666' : '#605f5fff'} />
+      <Search size={24} color={isDark ? '#666' : '#605f5fff'} />
       <TextInput
         placeholder={placeholder}
         placeholderTextColor={isDark ? '#666' : '#605f5fff'}
