@@ -5,7 +5,7 @@ import {
     StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import Clipboard from '@react-native-clipboard/clipboard';
+import * as Clipboard from 'expo-clipboard';
 import { useRef, useEffect } from 'react';
 import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -93,7 +93,7 @@ export default function DepositScreen() {
      */
     const handleCopy = () => {
         if (address) {
-            Clipboard.setString(address);
+            Clipboard.setStringAsync(address);
         }
     };
 

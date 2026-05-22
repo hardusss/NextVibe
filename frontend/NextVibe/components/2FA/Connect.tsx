@@ -16,7 +16,7 @@ import {
   BottomSheetBackdrop,
   BottomSheetBackdropProps
 } from '@gorhom/bottom-sheet';
-import Clipboard from "@react-native-clipboard/clipboard";
+import * as Clipboard from 'expo-clipboard';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { connect2FA, auth } from "@/src/api/2fa";
@@ -116,7 +116,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
 
   const handleCopy = () => {
     if (qrValue) {
-      Clipboard.setString(qrValue);
+      Clipboard.setStringAsync(qrValue);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

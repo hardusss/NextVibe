@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useColorScheme, TouchableOpacity } from 'react-native';
 import { storage } from '@/src/utils/storage';
 import MediaGrid from './MediaGrid';
-import Clipboard from '@react-native-clipboard/clipboard';
+import * as Clipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
 
 
@@ -54,7 +54,7 @@ const ChatBubble: React.FC<Props> = ({ message }) => {
 
   const handleLongPress = () => {
     if (message.content) {
-      Clipboard.setString(message.content);
+      Clipboard.setStringAsync(message.content);
     }
   };
 
