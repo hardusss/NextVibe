@@ -18,6 +18,7 @@ import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2, Calendar
 import { useColorScheme } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import setAvatar from "@/src/api/set.avatar";
+import CollectiblesModal, { CollectionItemData } from "./CollectiblesModal";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
@@ -31,13 +32,25 @@ interface PostMedia {
 interface CollectionItem {
     user_id: number;
     post_id: number;
-    media: PostMedia[] | null;
-    is_nft: boolean;
+    about: string;
+    count_likes: number;
+    media: (PostMedia & { id: number })[] | null;
+    create_at: string;
+    is_ai_generated: boolean;
+    location: string | null;
     moderation_status: string;
+    is_comments_enabled: boolean;
+    is_nft: boolean;
     edition: number;
     price: string;
     asset_id: string;
+    signature: string | null;
     minted_at: string;
+    total_supply: number;
+    minted_count: number;
+    creator_username: string;
+    creator_avatar: string | null;
+    creator_official: boolean;
     is_luma_event?: boolean;
 }
 
@@ -217,6 +230,8 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [index, setIndex] = useState(0);
+    const [selectedItem, setSelectedItem] = useState<CollectionItem | null>(null);
+    const [modalVisible, setModalVisible] = useState(false);
 
     const POSTS_PER_PAGE = 9;
 
@@ -321,7 +336,11 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                         return (
                             <TouchableOpacity
                                 style={styles.postContainer}
-                                activeOpacity={1}
+                                activeOpacity={0.8}
+                                onPress={() => {
+                                    setSelectedItem(item);
+                                    setModalVisible(true);
+                                }}
                             >
                                 {hasMedia ? (
                                     isMediaVideo ? (
@@ -396,6 +415,14 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                     }
                 />
             )}
+            <CollectiblesModal
+                visible={modalVisible}
+                item={selectedItem as CollectionItemData | null}
+                onClose={() => {
+                    setModalVisible(false);
+                    setSelectedItem(null);
+                }}
+            />
         </View>
     );
 };
