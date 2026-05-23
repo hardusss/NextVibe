@@ -169,9 +169,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
 
     useEffect(() => {
         if (visible) {
-            setModalVisible(true);
-            requestAnimationFrame(() => requestAnimationFrame(runOpenAnimation));
-
             if (postId !== null) {
                 let cancelled = false;
                 setLoading(true);
@@ -187,6 +184,10 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             setLikeCount(response.data.count_likes);
                             setLiked(response.data.liked_posts?.includes(response.data.post_id) ?? false);
                             setEventImageHeight(null);
+                            
+                            // Show modal and animate only after data is ready
+                            setModalVisible(true);
+                            requestAnimationFrame(() => requestAnimationFrame(runOpenAnimation));
                         }
                     })
                     .catch((err) => console.error("fetchPost error:", err))
@@ -198,7 +199,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
             setDropdownVisible(false);
             runCloseAnimation(() => setModalVisible(false));
         }
-    }, [visible]);
+    }, [visible, postId]);
 
     useEffect(() => {
         return () => { if (tapTimer.current) clearTimeout(tapTimer.current); };
