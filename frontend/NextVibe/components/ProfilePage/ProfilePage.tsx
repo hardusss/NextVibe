@@ -444,7 +444,7 @@ const ProfileView = () => {
                     <View style={[st.tabBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
                         {TABS.map((tab) => {
                             const isActive = activeTab === tab;
-                            const tabLabel = tab === "Posts" ? `Posts (${userData.post_count})` : `cNFTs (${userData.cnft_count})`;
+                            const tabLabel = tab === "Posts" ? `Posts (${userData.post_count})` : `Collectibles (${userData.cnft_count})`;
                             return (
                                 <TouchableOpacity
                                     key={tab} onPress={() => handleTabPress(tab)}
