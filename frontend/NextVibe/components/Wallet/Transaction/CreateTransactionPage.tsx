@@ -155,7 +155,7 @@ export default function CreateTransactionScreen() {
                             to: recipientRef.current,
                             amount: amountRef.current,
                             symbol: symbolRef.current,
-                            tx_url: `https://solscan.io/tx/${txSig}?cluster=devnet`,
+                            tx_url: `https://solscan.io/tx/${txSig}?cluster=mainnet`,
                         },
                     });
                 }, 1000);
