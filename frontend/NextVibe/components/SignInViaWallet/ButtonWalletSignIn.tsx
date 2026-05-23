@@ -3,7 +3,6 @@ import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextS
 import { Connection } from '@solana/web3.js';
 import { Wallet } from 'lucide-react-native';
 import { useMobileWallet } from "@wallet-ui/react-native-web3js";
-import { generateUsername } from "@/src/utils/solana/getWalletDomainName";
 import walletSignIn from "@/src/api/wallet.sign.in";
 import { storage } from "@/src/utils/storage";
 
@@ -78,20 +77,11 @@ export default function ButtonWalletSignIn({
                 throw new Error("Message signing was rejected.");
             }
 
-            let resolvedUsername = nativeLabel;
-
-            if (!resolvedUsername) {
-                console.log('⚠️ Wallet did not provide a label. Falling back to on-chain lookup...');
-                resolvedUsername = await generateUsername(pubkeyString, domainConnection);
-            } else {
-                console.log('✅ Resolved username directly from wallet label:', resolvedUsername);
-            }
-
             const backendResponse = await walletSignIn({
                 pubkey: pubkeyString,
                 signature: signature,
                 message: messageToSign,
-                username: resolvedUsername,
+                username: nativeLabel,
             });
 
             if (backendResponse?.token) {
