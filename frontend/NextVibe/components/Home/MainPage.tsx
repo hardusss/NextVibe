@@ -501,7 +501,8 @@ const PostItem = memo(({
                         invitedCount={item.owner__invited_count}
                     />
                 </TouchableOpacity>
-                    <View style={styles.userInfo}>
+                <View style={styles.userInfo}>
+                    <View style={styles.usernameRow}>
                         <Text style={styles.username}>{item.owner__username}</Text>
                         {item.owner__official && (
                             <View style={styles.badgeWrapper}>
@@ -509,6 +510,8 @@ const PostItem = memo(({
                             </View>
                         )}
                     </View>
+                </View>
+                    
 
                 <View style={{ position: "relative", flexDirection: "row" }}>
                     {collectState !== null && !item?.is_luma_event && (
