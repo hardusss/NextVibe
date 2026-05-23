@@ -53,7 +53,7 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                 from_address: item.from,
                 blockchain: item.token,
                 usdValue: usdValue,
-                tx_url: `https://solscan.io/tx/${item.signature}?cluster=devnet`
+                tx_url: `https://solscan.io/tx/${item.signature}?cluster=mainnet`
             }
         });
     };
