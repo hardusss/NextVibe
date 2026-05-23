@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { Connection } from '@solana/web3.js';
 import { Wallet } from 'lucide-react-native';
 import { useMobileWallet } from "@wallet-ui/react-native-web3js";
 import walletSignIn from "@/src/api/wallet.sign.in";
@@ -37,14 +36,6 @@ export default function ButtonWalletSignIn({
     const isMounted = useRef(true);
 
     const { connect, signMessage } = useMobileWallet();
-
-    const domainConnection = useMemo(
-        () => new Connection(
-            `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`,
-            'confirmed'
-        ),
-        []
-    );
 
     useEffect(() => {
         isMounted.current = true;
