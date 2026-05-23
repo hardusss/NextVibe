@@ -26,6 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
 
+
 const chain = 'solana:devnet';
 const endpoint = clusterApiUrl('devnet');
 const identity = {
