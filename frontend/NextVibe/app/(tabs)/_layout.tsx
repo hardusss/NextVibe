@@ -1,5 +1,5 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
-import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet, Linking, Platform } from "react-native";
+import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet, Linking } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
@@ -17,7 +17,6 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
 import { BlurView } from "@react-native-community/blur";
 import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
-import { clusterApiUrl } from '@solana/web3.js';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -27,8 +26,8 @@ import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
 
 
-const chain = 'solana:devnet';
-const endpoint = clusterApiUrl('devnet');
+const chain = 'solana:mainnet';
+const endpoint =  `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`;
 const identity = {
     name: 'NextVibe',
     uri: 'https://nextvibe.io',
@@ -339,7 +338,7 @@ export default function Layout() {
             <BottomSheetModalProvider>
                 <MobileWalletProvider chain={chain} endpoint={endpoint} identity={identity}>
                     <LazorKitProvider
-                        rpcUrl="https://api.devnet.solana.com"
+                        rpcUrl={ `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`}
                         portalUrl="https://portal.lazor.sh"
                         configPaymaster={{ paymasterUrl: "https://kora.devnet.lazorkit.com" }}
                     >

@@ -17,7 +17,7 @@ export const TOKENS = {
       name: "USD Coin",
       logoURL: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=040",
       priceKey: 'usd-coin' as const,
-      mint: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       decimals: 6
     },
 }
