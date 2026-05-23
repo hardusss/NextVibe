@@ -42,6 +42,7 @@ import {
     Heart, MessageCircle, MapPin, Volume2, VolumeX,
     Sparkles, Clock, Calendar, Link2
 } from "lucide-react-native";
+import PhotoModal from "@/components/PostDetails/PhotoModal";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -335,11 +336,12 @@ const PostSkeleton = memo(() => {
     );
 });
 
-const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dynamicHeight, isLumaEvent, onMediaSize }: {
+const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dynamicHeight, isLumaEvent, onMediaSize, onImagePress }: {
     item: MediaItem; postId: number; onLike: (postId: number) => void;
     isLiked: boolean; isVisible: boolean; dynamicHeight?: number;
     isLumaEvent?: boolean;
     onMediaSize?: (width: number, height: number) => void;
+    onImagePress?: () => void;
 }) => {
     const { preview, hd, isVideo: isVideoMedia } = getVideoUrls(item);
     const [isMuted, setIsMuted] = useState(true);
@@ -347,12 +349,23 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
     const [isLoading, setIsLoading] = useState<boolean>(isVideoMedia as boolean);
     const [showPreview, setShowPreview] = useState<boolean>(isVideoMedia as boolean);
     const heartAnim = useRef(new Animated.Value(0)).current;
+    const dimAnim = useRef(new Animated.Value(0)).current;
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
     const videoRef = useRef<Video>(null);
     const tapCount = useRef<number>(0);
     const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const animateTapAndOpen = useCallback(() => {
+        // Brief dim flash then open modal
+        Animated.sequence([
+            Animated.timing(dimAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
+            Animated.timing(dimAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        ]).start(() => {
+            onImagePress?.();
+        });
+    }, [onImagePress, dimAnim]);
 
     const handleDoublePress = () => {
         tapCount.current += 1;
@@ -362,7 +375,12 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
             if (!isLiked) onLike(postId);
             tapCount.current = 0;
         } else {
-            tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 300);
+            tapTimer.current = setTimeout(() => {
+                if (tapCount.current === 1 && !isVideoMedia && onImagePress) {
+                    animateTapAndOpen();
+                }
+                tapCount.current = 0;
+            }, 300);
         }
     };
 
@@ -439,6 +457,18 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
                     }}
                 />
             )}
+            {/* Dim overlay on image tap */}
+            {!isVideoMedia && (
+                <Animated.View
+                    pointerEvents="none"
+                    style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        borderRadius: 8,
+                        backgroundColor: 'rgba(0, 0, 0, 0.35)',
+                        opacity: dimAnim,
+                    }}
+                />
+            )}
             {showHeart && (
                 <Animated.View
                     style={[styles.heartOverlay, { transform: [{ scale: heartAnim }], opacity: heartAnim }]}
@@ -461,6 +491,7 @@ const PostItem = memo(({
     setToastMessage, setToastSuccess, setIsToastVisible,
     onOpenMint,
     handleRequestToAttend,
+    onOpenPhotoModal,
 }: any) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -568,6 +599,7 @@ const PostItem = memo(({
                                         dynamicHeight={eventImageHeight || undefined}
                                         isLumaEvent={item.is_luma_event}
                                         onMediaSize={handleMediaSize}
+                                        onImagePress={() => onOpenPhotoModal(item.media, mediaIndex)}
                                     />
                                 )}
                                 keyExtractor={mediaItem => mediaItem.id.toString()}
@@ -589,6 +621,7 @@ const PostItem = memo(({
                             dynamicHeight={eventImageHeight || undefined}
                             isLumaEvent={item.is_luma_event}
                             onMediaSize={handleMediaSize}
+                            onImagePress={() => onOpenPhotoModal(item.media, 0)}
                         />
                     )}
 
@@ -791,6 +824,12 @@ export default function MainPage() {
     const [mintIsOwner, setMintIsOwner] = useState(false);
     const [mintDefaultPrice, setMintDefaultPrice] = useState<string | null>(null);
     const [mintOwnerWallet, setMintOwnerWallet] = useState<string | null>(null);
+
+    // Photo Modal
+    const [photoModalVisible, setPhotoModalVisible] = useState(false);
+    const [photoModalIndex, setPhotoModalIndex] = useState(0);
+    const [photoModalMedia, setPhotoModalMedia] = useState<MediaItem[]>([]);
+
     const { address } = useWalletAddress();
     const { sendInstructions } = useTransaction();
 
@@ -924,6 +963,12 @@ export default function MainPage() {
         setShowPopup(true);
     }, []);
 
+    const handleOpenPhotoModal = useCallback((media: MediaItem[], index: number) => {
+        setPhotoModalMedia(media);
+        setPhotoModalIndex(index);
+        setPhotoModalVisible(true);
+    }, []);
+
     const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 70, minimumViewTime: 100 }).current;
 
     const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: any[] }) => {
@@ -975,6 +1020,7 @@ export default function MainPage() {
                 setIsToastVisible={setIsToastVisible}
                 onOpenMint={handleOpenMint}
                 handleRequestToAttend={handleRequestToAttend}
+                onOpenPhotoModal={handleOpenPhotoModal}
             />
         );
     }, [loading, likedPosts, visiblePostId, userID, theme, styles, activeDropdownId, handleOpenMint, handleRequestToAttend]);
@@ -989,7 +1035,12 @@ export default function MainPage() {
                 isSuccess={toastSuccess}
             />
             <Header />
-
+            <PhotoModal
+                visible={photoModalVisible}
+                images={photoModalMedia}
+                initialIndex={photoModalIndex}
+                onClose={() => setPhotoModalVisible(false)}
+            />
             {showPopup && (
                 <PopupModal
                     post_id={popupPostId as number}
