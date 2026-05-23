@@ -1,18 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
-import { useMobileWallet } from '@wallet-ui/react-native-web3js';
+import { Connection } from '@solana/web3.js';
 import { Wallet } from 'lucide-react-native';
-import { PublicKey } from '@solana/web3.js';
-import { Buffer } from 'buffer';
-
+import { useMobileWallet } from "@wallet-ui/react-native-web3js";
 import { generateUsername } from "@/src/utils/solana/getWalletDomainName";
 import walletSignIn from "@/src/api/wallet.sign.in";
 import { storage } from "@/src/utils/storage";
 
-/**
- * Payload structure required by the backend for wallet authentication.
- */
 export interface SignInPayload {
     pubkey: string;
     signature: Uint8Array;
@@ -20,9 +14,6 @@ export interface SignInPayload {
     username: string;
 }
 
-/**
- * Props for the ButtonWalletSignIn component.
- */
 interface ButtonWalletSignInProps {
     onSuccess: (backendResponse?: any) => void;
     onError?: (error: any) => void;
@@ -32,11 +23,9 @@ interface ButtonWalletSignInProps {
 }
 
 /**
- * A button component that handles the entire Solana Mobile Wallet Adapter (MWA) 
- * authentication flow: Authorization -> Message Signing -> Domain Resolution -> Backend Auth.
- * 
- * @param {ButtonWalletSignInProps} props - Component properties.
- * @returns {React.ReactElement} The rendered button component.
+ * A button component that triggers the Solana Mobile Wallet Adapter flow via global provider.
+ * Authenticates the user, extracts the wallet's native domain label, signs a payload, 
+ * and handles backend authorization while keeping global state in sync.
  */
 export default function ButtonWalletSignIn({
     onSuccess,
@@ -45,105 +34,78 @@ export default function ButtonWalletSignIn({
     textStyle,
     title = "Sign in Via Wallet"
 }: ButtonWalletSignInProps) {
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [connectedUser, setConnectedUser] = useState<string | null>(null);
-    
-    // We keep disconnect from the context for error cleanup if needed.
-    const { connect, disconnect } = useMobileWallet();
-    const isMounted = useRef<boolean>(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const isMounted = useRef(true);
+
+    const { connect, signMessage } = useMobileWallet();
+
+    const domainConnection = useMemo(
+        () => new Connection(
+            `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`,
+            'confirmed'
+        ),
+        []
+    );
 
     useEffect(() => {
         isMounted.current = true;
         return () => { isMounted.current = false; };
     }, []);
 
-    /**
-     * Decodes a Base64URL string returned by MWA into a standard Base58 Solana public key.
-     * 
-     * @param {string} b64Address - The Base64URL encoded address.
-     * @returns {string} The Base58 encoded Solana public key.
-     */
-    const getBase58Pubkey = (b64Address: string): string => {
-        const base64String = b64Address.replace(/-/g, '+').replace(/_/g, '/');
-        const pubkeyBytes = Buffer.from(base64String, 'base64');
-        return new PublicKey(pubkeyBytes).toBase58();
-    };
-
-    /**
-     * Initiates the MWA transaction, signs the authentication message, 
-     * resolves the user's domain, and authenticates with the backend.
-     */
     const handleConnectAndSign = async () => {
         if (isLoading) return;
         setIsLoading(true);
 
         try {
-            // Execute the entire flow within a single MWA session to avoid multiple wallet prompts
-            const authData = await transact(async (wallet) => {
-                // 1. Authorize the application
-                const authorizationResult = await wallet.authorize({
-                    cluster: 'devnet',
-                    identity: {
-                        name: 'NextVibe',
-                        uri: 'https://nextvibe.io',
-                        icon: 'favicon.ico',
-                    },
-                });
+            const connectedAccount = await connect();
 
-                const account = authorizationResult.accounts[0];
-                const pubkeyString = getBase58Pubkey(account.address.toString());
+            if (!connectedAccount) {
+                throw new Error("Wallet connection failed or was cancelled.");
+            }
 
-                // 2. Prepare the authentication message
-                const nonce = Date.now().toString();
-                const messageToSign = `Sign in to NextVibe.\nNonce: ${nonce}`;
-                const messageBytes = new TextEncoder().encode(messageToSign);
+            const pubkeyString = connectedAccount.publicKey.toBase58();
+            const nativeLabel = connectedAccount.label || `vibe_${pubkeyString.slice(0, 6)}.skr`;
 
-                // 3. Request the wallet to sign the message
-                const signedMessages = await wallet.signMessages({
-                    addresses: [account.address],
-                    payloads: [messageBytes],
-                });
+            const nonce = Date.now().toString();
+            const messageToSign = `Sign in to NextVibe.\nNonce: ${nonce}`;
+            const messageBytes = new TextEncoder().encode(messageToSign);
 
-                return {
-                    pubkey: pubkeyString,
-                    signature: signedMessages[0],
-                    message: messageToSign,
-                };
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const signature = await signMessage(messageBytes);
+
+            if (!signature) {
+                throw new Error("Message signing was rejected.");
+            }
+
+            let resolvedUsername = nativeLabel;
+
+            if (!resolvedUsername) {
+                console.log('⚠️ Wallet did not provide a label. Falling back to on-chain lookup...');
+                resolvedUsername = await generateUsername(pubkeyString, domainConnection);
+            } else {
+                console.log('✅ Resolved username directly from wallet label:', resolvedUsername);
+            }
+
+            const backendResponse = await walletSignIn({
+                pubkey: pubkeyString,
+                signature: signature,
+                message: messageToSign,
+                username: resolvedUsername,
             });
 
-            // 4. Resolve the domain name (Seeker / Bonfida / AllDomains)
-            const resolvedUsername = await generateUsername(authData.pubkey);
-
-            const payload: SignInPayload = {
-                pubkey: authData.pubkey,
-                signature: authData.signature,
-                message: authData.message,
-                username: resolvedUsername,
-            };
-
-            // 5. Send payload to backend
-            const backendResponse = await walletSignIn(payload);
-
-            // 6. Persist session tokens securely
             if (backendResponse?.token) {
-                storage.setItem("id", `${backendResponse.user_id}`);
+                await storage.setItem("id", `${backendResponse.user_id}`);
                 await storage.setItem("access", backendResponse.token.access);
                 await storage.setItem("refresh", backendResponse.token.refresh);
             }
 
             if (!isMounted.current) return;
-            
-            // 7. Update state and notify parent component of success
-            await connect();
-
-            setConnectedUser(resolvedUsername);
             setIsLoading(false);
             onSuccess(backendResponse);
 
-        } catch (error) {
+        } catch (error: any) {
             if (!isMounted.current) return;
-            
-            await disconnect().catch(() => {});
             setIsLoading(false);
             console.error("Wallet Sign-In Error:", error);
             onError?.(error);
@@ -163,13 +125,13 @@ export default function ButtonWalletSignIn({
                 <>
                     <Wallet size={20} color="#FFFFFF" style={styles.icon} />
                     <Text style={[styles.buttonText, textStyle]}>
-                        {connectedUser ? `Connected: ${connectedUser}` : title}
+                        {title}
                     </Text>
                 </>
             )}
         </TouchableOpacity>
     );
-}
+};
 
 const styles = StyleSheet.create({
     buttonContainer: {
