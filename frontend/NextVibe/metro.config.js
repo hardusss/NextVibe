@@ -1,5 +1,4 @@
 const { getDefaultConfig } = require('expo/metro-config');
-
 const config = getDefaultConfig(__dirname);
 
 config.resolver.extraNodeModules = {
@@ -9,10 +8,16 @@ config.resolver.extraNodeModules = {
   buffer: require.resolve('buffer'),
 };
 
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === '@solana/kit') {
+    return {
+      type: 'sourceFile',
+      filePath: require.resolve('./shims/solana-kit-stub.js'),
+    };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
-
-config.resolver.unstable_enablePackageExports = true;
-
-config.resolver.unstable_conditionNames = ['react-native', 'import', 'require', 'browser'];
 
 module.exports = config;
