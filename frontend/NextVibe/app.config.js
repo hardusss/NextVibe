@@ -96,6 +96,7 @@ export default {
                         usesCleartextTraffic: true,
                         enableProguardInReleaseBuilds: true,
                         enableShrinkResourcesInReleaseBuilds: true,
+                        extraProguardRules: "-dontwarn javazoom.jl.**\n-dontwarn java.applet.**"
                     }
                 }
             ],
