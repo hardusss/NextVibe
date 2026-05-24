@@ -14,7 +14,7 @@ config();
 const privateKey = process.env.SOLANA_PRIVATE_KEY!
 const keypair = Keypair.fromSecretKey(bs58.decode(privateKey))
 
-const umi = createUmi('https://api.devnet.solana.com')
+const umi = createUmi(process.env.HELIUS_RPC_URL!)
     .use(mplTokenMetadata())
     .use(keypairIdentity(fromWeb3JsKeypair(keypair)))
 
