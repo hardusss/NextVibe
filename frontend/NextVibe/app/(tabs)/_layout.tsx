@@ -340,7 +340,7 @@ export default function Layout() {
                     <LazorKitProvider
                         rpcUrl={ `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`}
                         portalUrl="https://portal.lazor.sh"
-                        configPaymaster={{ paymasterUrl: "https://kora.devnet.lazorkit.com" }}
+                        configPaymaster={{ paymasterUrl: "https://kora.lazorkit.com" }}
                     >
                         <ErrorBoundary FallbackComponent={ErrorFallback}>
                             <WebSocketProvider userId={userID || 0}>
