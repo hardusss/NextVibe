@@ -9,7 +9,7 @@ config()
 
 const keypair = Keypair.fromSecretKey(bs58.decode(process.env.SOLANA_PRIVATE_KEY!))
 
-const umi = createUmi('https://api.devnet.solana.com')
+const umi = createUmi(process.env.HELIUS_RPC_URL!)
   .use(mplBubblegum())
   .use(keypairIdentity(fromWeb3JsKeypair(keypair)))
 
@@ -17,8 +17,8 @@ const merkleTree = generateSigner(umi)
 
 const { signature } = await (await createTree(umi, {
   merkleTree,
-  maxDepth: 20,        
-  maxBufferSize: 256,  
+  maxDepth: 14,      
+  maxBufferSize: 64,  
   canopyDepth: 8,
 })).sendAndConfirm(umi)
 
