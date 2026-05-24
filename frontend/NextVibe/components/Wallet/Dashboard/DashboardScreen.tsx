@@ -9,7 +9,6 @@ import usePortfolio from "@/hooks/usePortfolio";
 import { useLastTransaction } from "@/hooks/useLastTransaction";
 
 import Header from "./Header";
-import DevnetBanner from "./DevnetBanner";
 import BalanceSection from "./BalanceSection";
 import QuickActions from "./QuickActions";
 import LastTransaction from "./LastTransaction";
@@ -144,9 +143,7 @@ export default function WalletDashboardScreen() {
                     onHide={() => setIsToastVisible(false)}
                     isSuccess={false}
                 />
-
-                <DevnetBanner isDarkMode={isDarkMode} />
-
+                
                 <Header
                     isDarkMode={isDarkMode}
                     isBalanceHidden={isBalanceHidden}
