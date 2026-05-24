@@ -120,3 +120,4 @@ h3
 bs4
 geopy
 pynacl
+rich
