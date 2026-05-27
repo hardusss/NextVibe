@@ -204,6 +204,7 @@ REST_FRAMEWORK = {
         "last_transaction": "60/min",
         "transaction_fee": "20/min",
         "transaction": "20/min",
+        "rpc_proxy": "300/min",
     },
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
@@ -298,3 +299,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Helius Solana RPC
+HELIUS_API_KEY = os.getenv("HELIUS_API_KEY", "")
