@@ -25,9 +25,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
 
-
 const chain = 'solana:mainnet';
-const endpoint =  `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`;
+const endpoint = 'https://api.nextvibe.io/api/v1/wallets/rpc/';
 const identity = {
     name: 'NextVibe',
     uri: 'https://nextvibe.io',
@@ -88,18 +87,7 @@ TextInput.render = function (...args) {
     });
 };
 
-if (__DEV__ && typeof global !== 'undefined') {
-    const originalError = console.error;
-    const originalWarn = console.warn;
-    console.error = (...args) => {
-        if (typeof args[0] === 'string' && (args[0].includes('getDevServer') || args[0].includes('getDevServer is not a function'))) return;
-        originalError(...args);
-    };
-    console.warn = (...args) => {
-        if (typeof args[0] === 'string' && args[0].includes('getDevServer')) return;
-        originalWarn(...args);
-    };
-}
+
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 const PUSH_TOKEN_KEY = 'expo_push_token';
@@ -338,9 +326,10 @@ export default function Layout() {
             <BottomSheetModalProvider>
                 <MobileWalletProvider chain={chain} endpoint={endpoint} identity={identity}>
                     <LazorKitProvider
-                        rpcUrl={ `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`}
+                        rpcUrl={endpoint}
                         portalUrl="https://portal.lazor.sh"
                         configPaymaster={{ paymasterUrl: "https://kora.lazorkit.com" }}
+                        isDebug={__DEV__}
                     >
                         <ErrorBoundary FallbackComponent={ErrorFallback}>
                             <WebSocketProvider userId={userID || 0}>
