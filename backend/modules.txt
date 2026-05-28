@@ -121,3 +121,6 @@ bs4
 geopy
 pynacl
 rich
+pandas
+xlsxwriter
+matplotlib
