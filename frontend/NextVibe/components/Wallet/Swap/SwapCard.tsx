@@ -3,10 +3,11 @@ import {
     View,
     Text,
     TextInput,
-    StyleSheet,
     TouchableOpacity,
     Vibration,
     Platform,
+    ActivityIndicator,
+    StyleSheet,
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { ChevronDown } from 'lucide-react-native';
@@ -23,9 +24,9 @@ interface SwapCardProps {
     onAmountChange?: (v: string) => void;
     onFocus?: () => void;
     onBlur?: () => void;
-    onTokenPress: () => void;
     showPercentButtons?: boolean;
     onPercentPress?: (pct: number) => void;
+    isLoading?: boolean;
 }
 
 const PERCENT_OPTIONS = [
@@ -51,6 +52,7 @@ export default function SwapCard({
     onTokenPress,
     showPercentButtons = false,
     onPercentPress,
+    isLoading = false,
 }: SwapCardProps) {
     const usdEquiv = token?.price && Number(amount) > 0
         ? `$${(Number(amount) * token.price).toFixed(2)}`
@@ -148,18 +150,24 @@ export default function SwapCard({
                 </View>
 
                 <View style={styles.midRow}>
-                    <TextInput
-                        style={[styles.amountInput, { color: colors.text }]}
-                        value={amount}
-                        onChangeText={onAmountChange}
-                        placeholder="0"
-                        placeholderTextColor={colors.muted}
-                        keyboardType="decimal-pad"
-                        onFocus={onFocus}
-                        onBlur={onBlur}
-                        numberOfLines={1}
-                        editable={!!onAmountChange}
-                    />
+                    {isLoading ? (
+                        <View style={{ flex: 1, paddingVertical: 10, alignItems: 'flex-start' }}>
+                            <ActivityIndicator size="small" color={colors.accent} />
+                        </View>
+                    ) : (
+                        <TextInput
+                            style={[styles.amountInput, { color: colors.text }]}
+                            value={amount}
+                            onChangeText={onAmountChange}
+                            placeholder="0"
+                            placeholderTextColor={colors.muted}
+                            keyboardType="decimal-pad"
+                            onFocus={onFocus}
+                            onBlur={onBlur}
+                            numberOfLines={1}
+                            editable={!!onAmountChange}
+                        />
+                    )}
                     <Text style={[styles.balance, { color: colors.muted }]}>
                         {balanceStr}
                     </Text>

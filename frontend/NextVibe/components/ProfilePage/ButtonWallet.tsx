@@ -61,8 +61,11 @@ const ButtonWallet = ( {
         }
     };
 
-    const formattedBalance = data?.totalUsdBalance 
-        ? `${data.totalUsdBalance.toFixed(2)} USD` 
+    const isConnected = !!address;
+    const formattedBalance = isConnected
+        ? (data?.totalUsdBalance
+            ? `${data.totalUsdBalance.toFixed(2)} USD`
+            : "Wallet")
         : "Connect";
 
     return (
@@ -108,11 +111,11 @@ const ButtonWallet = ( {
                     </View>
 
                     {/* Balance */}
-                    {isLoading ? (
+                    {isConnected && isLoading ? (
                         <View style={[styles.skeleton, isFullWidth && styles.skeletonFullWidth]} />
                     ) : (
                         <Text style={[styles.balanceText, isFullWidth && styles.balanceTextFullWidth]}>
-                            {data ? formattedBalance : "Connect"}
+                            {formattedBalance}
                         </Text>
                     )}
 

@@ -20,8 +20,10 @@ const BalanceSection: React.FC<BalanceSectionProps> = ({
     const borderColor = isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
     const skBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
 
+    // For very small balances (e.g. $0.17 from 0.001 SOL), ensure we don't show $0.00
+    const decimals = totalBalance > 0 && totalBalance < 0.01 ? 4 : 2;
     const intPart = Math.floor(totalBalance).toLocaleString("en-US");
-    const decPart = (totalBalance % 1).toFixed(2).slice(1);
+    const decPart = (totalBalance % 1).toFixed(decimals).slice(1);
 
     return (
         <View style={styles.container}>

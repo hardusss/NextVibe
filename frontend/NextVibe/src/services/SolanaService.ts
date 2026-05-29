@@ -40,24 +40,27 @@ export default class SolanaService {
     }
 
     /**
-     * Fetches USDC balance by filtering token accounts.
-     * @returns UI Amount (already adjusted for decimals). Returns `0` if not found.
+     * Fetches all SPL token balances for a wallet.
+     * @returns A map of mint addresses to their UI amounts.
      */
-    static async getUsdcBalance(connection: Connection, walletAddress: string): Promise<number> {
+    static async getAllSplBalances(connection: Connection, walletAddress: string): Promise<Record<string, number>> {
         try {
             const pubkey = new PublicKey(walletAddress);
             const tokenAccounts = await connection.getParsedTokenAccountsByOwner(pubkey, {
                 programId: TOKEN_PROGRAM_ID,
             });
- 
-            const usdcAccount = tokenAccounts.value.find((item) => 
-                item.account.data.parsed.info.mint === TOKEN_MINT_CONSTANTS.USDC_MINT
-            );
 
-            return usdcAccount?.account.data.parsed.info.tokenAmount.uiAmount || 0;
+            const balances: Record<string, number> = {};
+            tokenAccounts.value.forEach((item) => {
+                const mint = item.account.data.parsed.info.mint;
+                const uiAmount = item.account.data.parsed.info.tokenAmount.uiAmount || 0;
+                balances[mint] = uiAmount;
+            });
+
+            return balances;
         } catch (error) {
-            console.warn('[SolanaService] Error fetching USDC:', error);
-            return 0;
+            console.warn('[SolanaService] Error fetching SPL balances:', error);
+            return {};
         }
     }
 
