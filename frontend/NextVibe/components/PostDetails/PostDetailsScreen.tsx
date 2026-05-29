@@ -17,7 +17,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import { Calendar, Clock, Heart, Link2, MapPin, Sparkles } from "lucide-react-native";
+import { Calendar, Clock, Heart, Link2, MapPin, Sparkles, ArrowLeft } from "lucide-react-native";
 import Hyperlink from "react-native-hyperlink";
 
 import getPost from "@/src/api/get.post";
@@ -36,7 +36,7 @@ import useWalletAddress from "@/hooks/useWalletAddress";
 import useTransaction from "@/hooks/useTransaction";
 import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
 
-import Header from "../Wallet/Deposit/Header";
+
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
@@ -83,6 +83,15 @@ const formatEventDate = (iso: string) =>
     new Date(iso).toLocaleDateString("en-US", {
         month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
     });
+
+const PostHeader = ({ title, isDark, insets, onBack }: { title: string, isDark: boolean, insets: any, onBack: () => void }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: insets.top + 10, paddingBottom: 10 }}>
+        <TouchableOpacity onPress={onBack} style={{ padding: 8, marginRight: 12 }}>
+            <ArrowLeft size={24} color={isDark ? "#fff" : "#000"} />
+        </TouchableOpacity>
+        <Text style={{ fontSize: 18, fontFamily: "Dank Mono Bold", color: isDark ? "#fff" : "#000" }}>{title}</Text>
+    </View>
+);
 
 
 export default function PostDetailsScreen() {
@@ -276,7 +285,7 @@ export default function PostDetailsScreen() {
     if (loading) {
         return (
             <View style={[s.container, { backgroundColor: theme.background }]}>
-                <Header title="Post" isDark={isDark} insets={insets} onBack={() => router.back()} />
+                <PostHeader title="Post" isDark={isDark} insets={insets} onBack={() => router.back()} />
                 <View style={s.loadingContainer}>
                     <CustomActivityIndicator size="large" color={theme.accentColor} />
                 </View>
@@ -300,7 +309,7 @@ export default function PostDetailsScreen() {
         <View style={[s.container, { backgroundColor: theme.background }]}>
             <StatusBar backgroundColor={theme.background} barStyle={isDark ? "light-content" : "dark-content"} />
             <View style={{ paddingLeft: 12 }}>
-                <Header title="Post" isDark={isDark} insets={insets} onBack={() => router.back()} />
+                <PostHeader title="Post" isDark={isDark} insets={insets} onBack={() => router.back()} />
             </View>
 
             <Web3Toast
