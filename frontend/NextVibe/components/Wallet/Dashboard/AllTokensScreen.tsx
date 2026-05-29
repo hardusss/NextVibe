@@ -3,7 +3,7 @@ import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
+    FlatList,
     TouchableOpacity,
     useColorScheme,
     StatusBar,
@@ -204,156 +204,162 @@ export default function AllTokensScreen() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView
+            <FlatList
+                data={filteredTokens}
+                keyExtractor={(token) => token.symbol}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={localStyles.scrollContent}
-            >
-                {/* ── Summary Card ── */}
-                <Animated.View style={[
-                    localStyles.summaryCard,
-                    { backgroundColor: summaryCardBg, borderColor: summaryCardBorder },
-                    {
-                        opacity: summaryFade,
-                        transform: [{ scale: summaryScale }],
-                    },
-                ]}>
-                    <View style={localStyles.summaryTop}>
-                        <View style={[localStyles.summaryIconWrap, { backgroundColor: accentBg }]}>
-                            <BriefcaseBusiness size={18} color={accentColor} strokeWidth={1.5} />
-                        </View>
-                        <View style={localStyles.summaryTitleArea}>
-                            <Text style={[localStyles.summaryLabel, { color: subtitleColor }]}>
-                                Total Value
-                            </Text>
-                            <Text style={[localStyles.summaryValue, { color: titleColor }]}>
-                                {isBalanceHidden ? "••••••" : `$${totalValue.toFixed(2)}`}
-                            </Text>
-                        </View>
-                    </View>
+                initialNumToRender={15}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews={true}
+                ListHeaderComponent={
+                    <>
+                        {/* ── Summary Card ── */}
+                        <Animated.View style={[
+                            localStyles.summaryCard,
+                            { backgroundColor: summaryCardBg, borderColor: summaryCardBorder },
+                            {
+                                opacity: summaryFade,
+                                transform: [{ scale: summaryScale }],
+                            },
+                        ]}>
+                            <View style={localStyles.summaryTop}>
+                                <View style={[localStyles.summaryIconWrap, { backgroundColor: accentBg }]}>
+                                    <BriefcaseBusiness size={18} color={accentColor} strokeWidth={1.5} />
+                                </View>
+                                <View style={localStyles.summaryTitleArea}>
+                                    <Text style={[localStyles.summaryLabel, { color: subtitleColor }]}>
+                                        Total Value
+                                    </Text>
+                                    <Text style={[localStyles.summaryValue, { color: titleColor }]}>
+                                        {isBalanceHidden ? "••••••" : `$${totalValue.toFixed(2)}`}
+                                    </Text>
+                                </View>
+                            </View>
 
-                    {/* Stats row */}
-                    <View style={[localStyles.statsRow, { borderTopColor: divider }]}>
-                        <View style={localStyles.statItem}>
-                            <View style={[localStyles.statDot, {
-                                backgroundColor: isDarkMode ? "rgba(167,139,250,0.6)" : "rgba(88,86,214,0.5)",
-                            }]} />
-                            <Text style={[localStyles.statLabel, { color: subtitleColor }]}>Tokens</Text>
-                            <Text style={[localStyles.statValue, { color: titleColor }]}>
-                                {tokenCount ?? "—"}
-                            </Text>
-                        </View>
+                            {/* Stats row */}
+                            <View style={[localStyles.statsRow, { borderTopColor: divider }]}>
+                                <View style={localStyles.statItem}>
+                                    <View style={[localStyles.statDot, {
+                                        backgroundColor: isDarkMode ? "rgba(167,139,250,0.6)" : "rgba(88,86,214,0.5)",
+                                    }]} />
+                                    <Text style={[localStyles.statLabel, { color: subtitleColor }]}>Tokens</Text>
+                                    <Text style={[localStyles.statValue, { color: titleColor }]}>
+                                        {tokenCount ?? "—"}
+                                    </Text>
+                                </View>
 
-                        <View style={[localStyles.statDivider, { backgroundColor: divider }]} />
+                                <View style={[localStyles.statDivider, { backgroundColor: divider }]} />
 
-                        <View style={localStyles.statItem}>
-                            <TrendingUp size={11} color={isDarkMode ? "#6ee7b7" : "#059669"} strokeWidth={2} />
-                            <Text style={[localStyles.statLabel, { color: subtitleColor }]}>Gainers</Text>
-                            <Text style={[localStyles.statValue, { color: isDarkMode ? "#6ee7b7" : "#059669" }]}>
-                                {gainersCount}
-                            </Text>
-                        </View>
+                                <View style={localStyles.statItem}>
+                                    <TrendingUp size={11} color={isDarkMode ? "#6ee7b7" : "#059669"} strokeWidth={2} />
+                                    <Text style={[localStyles.statLabel, { color: subtitleColor }]}>Gainers</Text>
+                                    <Text style={[localStyles.statValue, { color: isDarkMode ? "#6ee7b7" : "#059669" }]}>
+                                        {gainersCount}
+                                    </Text>
+                                </View>
 
-                        <View style={[localStyles.statDivider, { backgroundColor: divider }]} />
+                                <View style={[localStyles.statDivider, { backgroundColor: divider }]} />
 
-                        <View style={localStyles.statItem}>
-                            <TrendingDown size={11} color={isDarkMode ? "#fca5a5" : "#dc2626"} strokeWidth={2} />
-                            <Text style={[localStyles.statLabel, { color: subtitleColor }]}>Losers</Text>
-                            <Text style={[localStyles.statValue, { color: isDarkMode ? "#fca5a5" : "#dc2626" }]}>
-                                {losersCount}
-                            </Text>
-                        </View>
-                    </View>
-                </Animated.View>
+                                <View style={localStyles.statItem}>
+                                    <TrendingDown size={11} color={isDarkMode ? "#fca5a5" : "#dc2626"} strokeWidth={2} />
+                                    <Text style={[localStyles.statLabel, { color: subtitleColor }]}>Losers</Text>
+                                    <Text style={[localStyles.statValue, { color: isDarkMode ? "#fca5a5" : "#dc2626" }]}>
+                                        {losersCount}
+                                    </Text>
+                                </View>
+                            </View>
+                        </Animated.View>
 
-                {/* ── Search & Sort Bar ── */}
-                <Animated.View style={[
-                    localStyles.controlsRow,
-                    { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-                ]}>
-                    {/* Search input */}
-                    <View style={[localStyles.searchBar, {
-                        backgroundColor: searchBg,
-                        borderColor: searchBorder,
-                    }]}>
-                        <Search size={14} color={searchPlaceholder} strokeWidth={1.8} />
-                        <TextInput
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            placeholder="Search tokens..."
-                            placeholderTextColor={searchPlaceholder}
-                            style={[localStyles.searchInput, { color: searchText }]}
-                            autoCorrect={false}
-                            autoCapitalize="none"
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.6}>
-                                <X size={14} color={searchPlaceholder} strokeWidth={2} />
+                        {/* ── Search & Sort Bar ── */}
+                        <Animated.View style={[
+                            localStyles.controlsRow,
+                            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+                        ]}>
+                            {/* Search input */}
+                            <View style={[localStyles.searchBar, {
+                                backgroundColor: searchBg,
+                                borderColor: searchBorder,
+                            }]}>
+                                <Search size={14} color={searchPlaceholder} strokeWidth={1.8} />
+                                <TextInput
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                    placeholder="Search tokens..."
+                                    placeholderTextColor={searchPlaceholder}
+                                    style={[localStyles.searchInput, { color: searchText }]}
+                                    autoCorrect={false}
+                                    autoCapitalize="none"
+                                />
+                                {searchQuery.length > 0 && (
+                                    <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.6}>
+                                        <X size={14} color={searchPlaceholder} strokeWidth={2} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {/* Sort button */}
+                            <TouchableOpacity
+                                onPress={cycleSortMode}
+                                style={[localStyles.sortButton, {
+                                    backgroundColor: chipActiveBg,
+                                    borderColor: isDarkMode ? "rgba(167,139,250,0.15)" : "rgba(88,86,214,0.12)",
+                                }]}
+                                activeOpacity={0.65}
+                            >
+                                <ArrowUpDown size={12} color={chipActiveColor} strokeWidth={2} />
+                                <Text style={[localStyles.sortLabel, { color: chipActiveColor }]}>
+                                    {sortLabel}
+                                </Text>
                             </TouchableOpacity>
-                        )}
-                    </View>
+                        </Animated.View>
 
-                    {/* Sort button */}
-                    <TouchableOpacity
-                        onPress={cycleSortMode}
-                        style={[localStyles.sortButton, {
-                            backgroundColor: chipActiveBg,
-                            borderColor: isDarkMode ? "rgba(167,139,250,0.15)" : "rgba(88,86,214,0.12)",
-                        }]}
-                        activeOpacity={0.65}
-                    >
-                        <ArrowUpDown size={12} color={chipActiveColor} strokeWidth={2} />
-                        <Text style={[localStyles.sortLabel, { color: chipActiveColor }]}>
-                            {sortLabel}
+                        {/* List header */}
+                        <Animated.View style={[
+                            localStyles.listHeader,
+                            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                        ]}>
+                            <View style={localStyles.listHeaderLeft}>
+                                <View style={[localStyles.listAccentBar, { backgroundColor: accentColor }]} />
+                                <Coins size={13} color={accentColor} strokeWidth={1.6} />
+                                <Text style={[localStyles.listTitle, { color: subtitleColor }]}>
+                                    {searchQuery.trim()
+                                        ? `Results (${filteredTokens.length})`
+                                        : `All Assets`
+                                    }
+                                </Text>
+                            </View>
+                        </Animated.View>
+                    </>
+                }
+                renderItem={({ item: token, index }) => (
+                    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+                        <TokenItem
+                            token={token}
+                            isDarkMode={isDarkMode}
+                            isBalanceHidden={isBalanceHidden}
+                            isLast={index === filteredTokens.length - 1}
+                            index={index}
+                        />
+                    </Animated.View>
+                )}
+                ListEmptyComponent={
+                    <Animated.View style={[
+                        localStyles.emptyState,
+                        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                    ]}>
+                        <Search size={28} color={subtitleColor} strokeWidth={1.2} />
+                        <Text style={[localStyles.emptyTitle, { color: subtitleColor }]}>
+                            No tokens found
                         </Text>
-                    </TouchableOpacity>
-                </Animated.View>
-
-                {/* ── Token List ── */}
-                <Animated.View
-                    style={[
-                        localStyles.tokenListContainer,
-                        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-                    ]}
-                >
-                    {/* List header */}
-                    <View style={localStyles.listHeader}>
-                        <View style={localStyles.listHeaderLeft}>
-                            <View style={[localStyles.listAccentBar, { backgroundColor: accentColor }]} />
-                            <Coins size={13} color={accentColor} strokeWidth={1.6} />
-                            <Text style={[localStyles.listTitle, { color: subtitleColor }]}>
-                                {searchQuery.trim()
-                                    ? `Results (${filteredTokens.length})`
-                                    : `All Assets`
-                                }
-                            </Text>
-                        </View>
-                    </View>
-
-                    {/* Token items */}
-                    {filteredTokens.length > 0 ? (
-                        filteredTokens.map((token, i) => (
-                            <TokenItem
-                                key={token.symbol}
-                                token={token}
-                                isDarkMode={isDarkMode}
-                                isBalanceHidden={isBalanceHidden}
-                                isLast={i === filteredTokens.length - 1}
-                                index={i}
-                            />
-                        ))
-                    ) : (
-                        <View style={localStyles.emptyState}>
-                            <Search size={28} color={subtitleColor} strokeWidth={1.2} />
-                            <Text style={[localStyles.emptyTitle, { color: subtitleColor }]}>
-                                No tokens found
-                            </Text>
-                            <Text style={[localStyles.emptySubtitle, { color: chipColor }]}>
-                                Try a different search term
-                            </Text>
-                        </View>
-                    )}
-                </Animated.View>
-            </ScrollView>
+                        <Text style={[localStyles.emptySubtitle, { color: chipColor }]}>
+                            Try a different search term
+                        </Text>
+                    </Animated.View>
+                }
+                ListFooterComponent={<View style={{ height: 12 }} />}
+            />
         </LinearGradient>
     );
 }
