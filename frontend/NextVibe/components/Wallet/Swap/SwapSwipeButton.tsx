@@ -178,16 +178,14 @@ export default function SwapSwipeButton({
                 </Animated.Text>
             )}
 
-            {isIdle && (
-                <Animated.View
-                    style={[styles.thumb, { transform: [{ translateX: pan.x }] }]}
-                    {...panResponder.panHandlers}
-                >
-                    <View style={[styles.thumbInner, { backgroundColor: '#A855F7' }]}>
-                        <ChevronsRight size={22} color="#fff" strokeWidth={2} />
-                    </View>
-                </Animated.View>
-            )}
+            <Animated.View
+                style={[styles.thumb, { transform: [{ translateX: pan.x }] }]}
+                {...panResponder.panHandlers}
+            >
+                <View style={[styles.thumbInner, { backgroundColor: '#A855F7' }]}>
+                    <ChevronsRight size={22} color="#fff" strokeWidth={2} />
+                </View>
+            </Animated.View>
 
             {(isSuccess || isLoading || isFailed) && (
                 <View
