@@ -17,6 +17,8 @@ export interface TokenAsset {
     direction: "up" | "down" | "flat";
     valueUsd: number;
     logoURI?: string;
+    mint: string | null;
+    decimals: number;
 }
 
 /**
@@ -149,11 +151,11 @@ export default function usePortfolio(): UsePortfolioReturn {
             /**
              * Parallel balance fetching for better performance
              * - getSolBalance: Native SOL balance from wallet
-             * - getUsdcBalance: USDC token balance (SPL token account)
+             * - getAllSplBalances: All SPL token balances from wallet
              */
-            const [solAmount, usdcAmount] = await Promise.all([
+            const [solAmount, splBalances] = await Promise.all([
                 SolanaService.getSolBalance(connection, addressString),
-                SolanaService.getUsdcBalance(connection, addressString)
+                SolanaService.getAllSplBalances(connection, addressString)
             ]);
 
             /**
@@ -165,7 +167,8 @@ export default function usePortfolio(): UsePortfolioReturn {
              * - Jupiter Price API: Native Solana prices, fast updates
              * - Pyth Network: Real-time oracle prices on-chain
              */
-            const prices = await getTokensPrice(["solana", "usd-coin"]);
+            const priceKeys = Object.values(TOKENS).map(t => t.priceKey);
+            const prices = await getTokensPrice(priceKeys);
 
             // Array to accumulate non-zero token holdings
             const assets: TokenAsset[] = [];
@@ -173,18 +176,16 @@ export default function usePortfolio(): UsePortfolioReturn {
             // Running total of portfolio value in USD
             let total = 0;
 
-            /**
-             * Creating array with data on balances, which we get
-             */
-            const balances = [
-                { amount: solAmount, info: TOKENS.SOL, priceKey: "solana" },
-                { amount: usdcAmount, info: TOKENS.USDC, priceKey: 'usd-coin' },
-            ];
-
-
             // In forEach we get price and value and add this to asset with info about token
-            balances.forEach(({ amount, info, priceKey }) => {
-                const tokenPrice = prices?.prices?.[priceKey];
+            Object.values(TOKENS).forEach((info) => {
+                let amount = 0;
+                if (info.symbol === "SOL") {
+                    amount = solAmount;
+                } else if (info.mint) {
+                    amount = splBalances[info.mint] || 0;
+                }
+
+                const tokenPrice = prices?.prices?.[info.priceKey];
                 const price = tokenPrice?.price ?? 0;
                 const change24h = tokenPrice?.change_24h ?? 0;
                 const direction = tokenPrice?.direction ?? "flat";
@@ -200,7 +201,9 @@ export default function usePortfolio(): UsePortfolioReturn {
                     change24h: change24h,
                     direction: direction,
                     valueUsd: val,
-                    logoURI: info.logoURL
+                    logoURI: info.logoURL,
+                    mint: info.mint,
+                    decimals: info.decimals
                 });
             });
 

@@ -44,6 +44,7 @@ export interface WalletOptionCardProps {
   config: WalletCardConfig;
   isExpanded: boolean;
   isDimmed: boolean;
+  isDisabled?: boolean;
   onCardPress: (id: WalletType) => void;
   onCtaPress: (id: WalletType) => void;
 }
@@ -56,7 +57,7 @@ const COLORS = {
 const SPRING = { damping: 22, stiffness: 200, mass: 0.8 };
 const SOFT_SPRING = { damping: 26, stiffness: 160, mass: 1 };
 const CARD_COLLAPSED_HEIGHT = 130;
-const CARD_EXPANDED_HEIGHT = 288;
+const CARD_EXPANDED_HEIGHT = 310;
 
 function hexToRgb(hex: string): string {
   'worklet';
@@ -69,6 +70,7 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
   config,
   isExpanded,
   isDimmed,
+  isDisabled = false,
   onCardPress,
   onCtaPress,
 }) => {
@@ -132,7 +134,9 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
   }));
 
   const handleCardPress = useCallback(() => onCardPress(config.id), [config.id, onCardPress]);
-  const handleCtaPress = useCallback(() => onCtaPress(config.id), [config.id, onCtaPress]);
+  const handleCtaPress = useCallback(() => {
+    if (!isDisabled) onCtaPress(config.id);
+  }, [config.id, onCtaPress, isDisabled]);
 
   const iconBadgeBg = isDark
     ? `${config.accent.primary}18`
@@ -201,17 +205,31 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
             ))}
           </View>
 
-          <TouchableOpacity style={styles.ctaButtonWrapper} onPress={handleCtaPress} activeOpacity={0.82}>
-            <LinearGradient
-              colors={[config.accent.primary, config.accent.secondary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaButton}
+          {isDisabled && (
+            <View style={styles.pauseBanner}>
+              <MaterialCommunityIcons name="clock-outline" size={13} color="#f59e0b" />
+              <Text style={styles.pauseText}>Temporarily unavailable — back soon</Text>
+            </View>
+          )}
+
+          <View style={{ opacity: isDisabled ? 0.45 : 1 }} pointerEvents={isDisabled ? 'none' : 'auto'}>
+            <TouchableOpacity
+              style={styles.ctaButtonWrapper}
+              onPress={handleCtaPress}
+              activeOpacity={0.82}
+              disabled={isDisabled}
             >
-              <Text style={styles.ctaLabel}>{config.ctaLabel}</Text>
-              <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.9)" />
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={[config.accent.primary, config.accent.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.ctaButton}
+              >
+                <Text style={styles.ctaLabel}>{config.ctaLabel}</Text>
+                <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.9)" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </Animated.View>
     </Animated.View>
@@ -364,6 +382,25 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
+  },
+  pauseBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.35)',
+    backgroundColor: 'rgba(245,158,11,0.10)',
+  },
+  pauseText: {
+    fontSize: 11,
+    fontFamily: 'Dank Mono Bold',
+    includeFontPadding: false,
+    letterSpacing: 0.4,
+    color: '#f59e0b',
   },
   ctaButtonWrapper: {
     borderRadius: 14,

@@ -27,6 +27,12 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
     const getTokenInfo = (token: string) => {
         if (token === 'SOL') return TOKENS.SOL;
         if (token === 'USDC') return TOKENS.USDC;
+        if (token === 'cNFT') return {
+            symbol: 'cNFT',
+            name: 'Compressed NFT',
+            priceKey: 'cnft' as const,
+            logoURL: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+        };
         
         return {
             symbol: token.substring(0, 4) + '...',
@@ -93,7 +99,9 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                 {/* Info Section */}
                 <View style={styles.transactionInfo}>
                     <Text style={styles.transactionType}>
-                        {isIncoming ? 'Received' : 'Sent'}
+                        {item.token === 'cNFT'
+                            ? (isIncoming ? 'cNFT Claimed' : 'cNFT Sent')
+                            : (isIncoming ? 'Received' : 'Sent')}
                     </Text>
                     <Text style={styles.transactionAddress} numberOfLines={1} ellipsizeMode="middle">
                         {isIncoming ? `From: ${item.from}` : `To: ${item.to}`}
@@ -106,11 +114,15 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                         color: isIncoming ? '#2ECC71' : isDark ? '#FF6B6B' : '#E74C3C'
                     }]}>
                         {isIncoming ? '+' : '-'}
-                        {item.amount.toFixed(item.token === 'SOL' ? 4 : 2)} {tokenInfo.symbol}
+                        {item.token === 'cNFT'
+                            ? `${item.amount} cNFT`
+                            : `${item.amount.toFixed(item.token === 'SOL' ? 4 : 2)} ${tokenInfo.symbol}`}
                     </Text>
-                    <Text style={styles.transactionUsdAmount}>
-                        $ {usdValue}
-                    </Text>
+                    {item.token !== 'cNFT' && (
+                        <Text style={styles.transactionUsdAmount}>
+                            $ {usdValue}
+                        </Text>
+                    )}
                 </View>
             </View>
         </TouchableOpacity>

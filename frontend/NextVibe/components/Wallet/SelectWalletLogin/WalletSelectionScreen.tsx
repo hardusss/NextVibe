@@ -122,7 +122,7 @@ const WalletSelectionScreen = () => {
   }, [account, connect, disconnect]);
 
   const handleLazorKitConnect = useCallback((_id: WalletType) => {
-    router.push(`/wallet-init?page=${page}`);
+    router.push(`/wallet-init?page=${page ? page : 'wallet-dash'}`);
   }, [page]);
 
   const handleCtaPress = useCallback(
@@ -178,6 +178,7 @@ const WalletSelectionScreen = () => {
                   isDimmed={selectedWallet !== null && selectedWallet !== cardConfig.id}
                   onCardPress={handleCardPress}
                   onCtaPress={handleCtaPress}
+                  isDisabled={cardConfig.id === "lazorkit"}
                 />
               ))}
             </Animated.View>

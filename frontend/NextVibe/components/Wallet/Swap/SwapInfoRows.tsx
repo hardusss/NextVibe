@@ -3,13 +3,12 @@ import { View, Text, StyleSheet } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
 import type { SwapColors } from '@/src/types/swap';
 
+import type { JupiterQuoteResponse } from '@/src/types/jupiter';
+
 interface SwapInfoRowsProps {
     fromSymbol: string | null;
     toSymbol: string | null;
-    price: string | null;
-    fees: string;
-    slippage: string;
-    priceImpact: string;
+    quote: JupiterQuoteResponse | null;
     colors: SwapColors;
 }
 
@@ -44,15 +43,22 @@ function InfoRow({ label, value, colors, withIcon = false }: InfoRowProps) {
 export default function SwapInfoRows({
     fromSymbol,
     toSymbol,
-    price,
-    fees,
-    slippage,
-    priceImpact,
+    quote,
     colors,
 }: SwapInfoRowsProps) {
-    const priceLabel = fromSymbol && toSymbol
-        ? `1 ${fromSymbol} ≈ ${price ?? '—'} ${toSymbol}`
-        : '—';
+    if (!quote) return null;
+
+    // Build the route string (e.g., "Raydium CLMM > Meteora")
+    const routeNames = quote.routePlan.map(step => step.swapInfo.label);
+    const uniqueRouteNames = Array.from(new Set(routeNames));
+    const providerStr = uniqueRouteNames.length > 0 ? uniqueRouteNames.join(' > ') : 'Jupiter V6';
+
+    const inDecimals = 1000000000; // Assuming SOL/USDC defaults for display simplicity, this could be improved
+    
+    // We get a simple price display out of the raw amounts if possible, but the UI might just show impact and fees
+    const slippageStr = `${(quote.slippageBps / 100).toFixed(1)}%`;
+    const impactStr = `${quote.priceImpactPct}%`;
+    const feeStr = quote.platformFee ? `${(Number(quote.platformFee.amount) / inDecimals).toFixed(6)}` : '0';
 
     return (
         <View style={[
@@ -62,15 +68,13 @@ export default function SwapInfoRows({
                 backgroundColor: colors.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.3)'
             }
         ]}>
-            <InfoRow label="Provider" value="Jupiter V6" colors={colors} withIcon />
+            <InfoRow label="Provider" value={providerStr} colors={colors} withIcon />
             <View style={[styles.divider, { backgroundColor: colors.chipBorder }]} />
-            <InfoRow label="Price" value={priceLabel} colors={colors} />
+            <InfoRow label="Slippage" value={slippageStr} colors={colors} />
             <View style={[styles.divider, { backgroundColor: colors.chipBorder }]} />
-            <InfoRow label="Fees" value={fees} colors={colors} />
+            <InfoRow label="Fees" value={feeStr} colors={colors} />
             <View style={[styles.divider, { backgroundColor: colors.chipBorder }]} />
-            <InfoRow label="Slippage" value={slippage} colors={colors} />
-            <View style={[styles.divider, { backgroundColor: colors.chipBorder }]} />
-            <InfoRow label="Price Impact" value={priceImpact} colors={colors} />
+            <InfoRow label="Price Impact" value={impactStr} colors={colors} />
         </View>
     );
 }
