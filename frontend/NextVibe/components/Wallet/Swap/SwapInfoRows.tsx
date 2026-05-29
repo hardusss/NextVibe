@@ -57,7 +57,13 @@ export default function SwapInfoRows({
     
     // We get a simple price display out of the raw amounts if possible, but the UI might just show impact and fees
     const slippageStr = `${(quote.slippageBps / 100).toFixed(1)}%`;
-    const impactStr = `${quote.priceImpactPct}%`;
+    
+    const impactNum = Number(quote.priceImpactPct);
+    const impactStr = isNaN(impactNum) 
+        ? '0.00%' 
+        : (impactNum < 0.01 && impactNum > 0) 
+            ? '<0.01%' 
+            : `${impactNum.toFixed(2)}%`;
     const feeStr = quote.platformFee ? `${(Number(quote.platformFee.amount) / inDecimals).toFixed(6)}` : '0';
 
     return (

@@ -113,7 +113,10 @@ export default function useJupiterSwap() {
             return { signature };
         } catch (err: any) {
             console.error('[useJupiterSwap] Swap error:', err);
-            const errMsg = err.message || 'Swap failed';
+            let errMsg = err.message || 'Swap failed';
+            if (errMsg.includes('CancellationException') || errMsg.includes('User rejected')) {
+                errMsg = 'Transaction cancelled by user.';
+            }
             setSwapError(errMsg);
             return { error: errMsg };
         } finally {
