@@ -10,7 +10,7 @@ export const TOKENS = {
     SOL: {
       symbol: "SOL",
       name: "Solana",
-      logoURL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+      logoURL: "https://assets.coingecko.com/coins/images/4128/standard/solana.png",
       priceKey: 'solana' as const,
       mint: null,
       decimals: 9
@@ -18,7 +18,7 @@ export const TOKENS = {
     USDC: {
       symbol: "USDC",
       name: "USD Coin",
-      logoURL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
+      logoURL: "https://assets.coingecko.com/coins/images/6319/standard/usdc.png",
       priceKey: 'usd-coin' as const,
       mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       decimals: 6
@@ -34,7 +34,7 @@ export const TOKENS = {
     USDG: {
       symbol: "USDG",
       name: "Global Dollar",
-      logoURL: "https://assets.coingecko.com/coins/images/51281/standard/GDN_USDG_Token_200x200.png?1730484111",
+      logoURL: "https://assets.coingecko.com/coins/images/51281/standard/GDN_USDG_Token_200x200.png",
       priceKey: 'global-dollar' as const,
       mint: "C6FQWMidLdyVBpfRot59ZEamkiafXSwyHTS3ZpGpcVGX",
       decimals: 6
@@ -42,7 +42,7 @@ export const TOKENS = {
     JUP: {
       symbol: "JUP",
       name: "Jupiter",
-      logoURL: "https://assets.coingecko.com/coins/images/34188/standard/jup.png?1704266489",
+      logoURL: "https://assets.coingecko.com/coins/images/34188/standard/jup.png",
       priceKey: 'jupiter-exchange-solana' as const,
       mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
       decimals: 6
@@ -54,7 +54,7 @@ export const TOKENS = {
     USDT: {
       symbol: "USDT",
       name: "Tether",
-      logoURL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.svg",
+      logoURL: "https://assets.coingecko.com/coins/images/325/standard/Tether.png",
       priceKey: 'tether' as const,
       mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
       decimals: 6
@@ -62,7 +62,7 @@ export const TOKENS = {
     PYUSD: {
       symbol: "PYUSD",
       name: "PayPal USD",
-      logoURL: "https://assets.coingecko.com/coins/images/31212/standard/PYUSD_Logo_%282%29.png",
+      logoURL: "https://assets.coingecko.com/coins/images/31212/standard/PYUSD_Logo_(2).png",
       priceKey: 'paypal-usd' as const,
       mint: "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZzHmZzG88mB",
       decimals: 6
@@ -74,7 +74,7 @@ export const TOKENS = {
     JitoSOL: {
       symbol: "JitoSOL",
       name: "Jito Staked SOL",
-      logoURL: "https://assets.coingecko.com/coins/images/28046/standard/JitoSOL-256.png",
+      logoURL: "https://assets.coingecko.com/coins/images/28046/standard/JitoSOL_Token_Logo_Green.png?1779807693",
       priceKey: 'jito-staked-sol' as const,
       mint: "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
       decimals: 9
@@ -82,7 +82,7 @@ export const TOKENS = {
     mSOL: {
       symbol: "mSOL",
       name: "Marinade SOL",
-      logoURL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png",
+      logoURL: "https://assets.coingecko.com/coins/images/17752/standard/mSOL.png?1696517278",
       priceKey: 'marinade-staked-sol' as const,
       mint: "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
       decimals: 9
@@ -90,7 +90,7 @@ export const TOKENS = {
     bSOL: {
       symbol: "bSOL",
       name: "BlazeStake SOL",
-      logoURL: "https://assets.coingecko.com/coins/images/26636/standard/blazeStakedSol.png",
+      logoURL: "https://assets.coingecko.com/coins/images/26636/standard/blazesolana.png?1696525709",
       priceKey: 'blazestake-staked-sol' as const,
       mint: "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piD1",
       decimals: 9
@@ -98,7 +98,7 @@ export const TOKENS = {
     INF: {
       symbol: "INF",
       name: "Sanctum Infinity",
-      logoURL: "https://assets.coingecko.com/coins/images/36987/standard/inf.png",
+      logoURL: "https://assets.coingecko.com/coins/images/18468/standard/infSOL.png?1710325032",
       priceKey: 'sanctum-infinity' as const,
       mint: "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxzbPNpVfHjC4vTGU",
       decimals: 9
@@ -110,7 +110,7 @@ export const TOKENS = {
     RAY: {
       symbol: "RAY",
       name: "Raydium",
-      logoURL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R/logo.png",
+      logoURL: "https://assets.coingecko.com/coins/images/13928/standard/PSigc4ie_400x400.jpg?1696513668",
       priceKey: 'raydium' as const,
       mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
       decimals: 6
@@ -118,7 +118,7 @@ export const TOKENS = {
     ORCA: {
       symbol: "ORCA",
       name: "Orca",
-      logoURL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/orcaEKTdK7LKz57vaAYr9QeNsjigcvaQYjM1b2gNAkZ/logo.png",
+      logoURL: "https://assets.coingecko.com/coins/images/17547/standard/Orca_Logo.png",
       priceKey: 'orca' as const,
       mint: "orcaEKTdK7LKz57vaAYr9QeNsjigcvaQYjM1b2gNAkZ",
       decimals: 6
@@ -142,7 +142,7 @@ export const TOKENS = {
     KMNO: {
       symbol: "KMNO",
       name: "Kamino",
-      logoURL: "https://assets.coingecko.com/coins/images/36422/standard/kamino.png",
+      logoURL: "https://assets.coingecko.com/coins/images/35801/standard/Kamino_200x200.png?1767944671",
       priceKey: 'kamino' as const,
       mint: "KMNo3nJsBXUcpJtCQANY3GqEAMyY1F4k4yUvq3G2xW6",
       decimals: 6
@@ -150,7 +150,7 @@ export const TOKENS = {
     DRIFT: {
       symbol: "DRIFT",
       name: "Drift Protocol",
-      logoURL: "https://assets.coingecko.com/coins/images/36572/standard/drift.png",
+      logoURL: "https://assets.coingecko.com/coins/images/37509/standard/DRIFT.png?1715842607",
       priceKey: 'drift-protocol' as const,
       mint: "DriFtXqqWn8K7y7n2fXhK25f7HofN1BwL5GzU4z4d4B",
       decimals: 6
@@ -158,7 +158,7 @@ export const TOKENS = {
     TNSR: {
       symbol: "TNSR",
       name: "Tensor",
-      logoURL: "https://assets.coingecko.com/coins/images/36185/standard/tensor.png",
+      logoURL: "https://assets.coingecko.com/coins/images/35972/standard/tnsr.png?1712687367",
       priceKey: 'tensor' as const,
       mint: "TNSRxcUxoT9xBG3de7PiJyTDYu7kskLqcpddZ3eVzY",
       decimals: 9
@@ -178,7 +178,7 @@ export const TOKENS = {
     MOBILE: {
       symbol: "MOBILE",
       name: "Helium Mobile",
-      logoURL: "https://assets.coingecko.com/coins/images/29087/standard/mobile.png",
+      logoURL: "https://assets.coingecko.com/coins/images/29879/standard/Mobile_Icon.png?1696528804",
       priceKey: 'helium-mobile' as const,
       mint: "mb1eu7TzEc71KxDpsmsKoucZTyrMEK3y6D4T8V2GgXm",
       decimals: 6
@@ -194,7 +194,7 @@ export const TOKENS = {
     W: {
       symbol: "W",
       name: "Wormhole",
-      logoURL: "https://assets.coingecko.com/coins/images/35087/standard/wormhole_logo.png",
+      logoURL: "https://assets.coingecko.com/coins/images/35087/standard/W_Token_%283%29.png?1758122686",
       priceKey: 'wormhole' as const,
       mint: "85VBFQYC9TZkfaptCWsjyq8WwJ3x4rM4pA7bJ4A5YmZ5",
       decimals: 6
@@ -202,7 +202,7 @@ export const TOKENS = {
     NOS: {
       symbol: "NOS",
       name: "Nosana",
-      logoURL: "https://assets.coingecko.com/coins/images/22092/standard/nosana.png",
+      logoURL: "https://assets.coingecko.com/coins/images/22553/standard/POfb_I4u_400x400.jpg?1696521873",
       priceKey: 'nosana' as const,
       mint: "nosXBqwBxWEQupiZA2a4rE5E7Y9Uoz7ZrtzZ9Z1N2Zp",
       decimals: 6
@@ -227,36 +227,12 @@ export const TOKENS = {
       mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYtM22BBG6b",
       decimals: 6
     },
-    BOME: {
-      symbol: "BOME",
-      name: "BOOK OF MEME",
-      logoURL: "https://assets.coingecko.com/coins/images/36071/standard/bome.jpg",
-      priceKey: 'book-of-meme' as const,
-      mint: "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82",
-      decimals: 6
-    },
     POPCAT: {
       symbol: "POPCAT",
       name: "Popcat",
-      logoURL: "https://assets.coingecko.com/coins/images/35734/standard/popcat.jpg",
+      logoURL: "https://assets.coingecko.com/coins/images/33760/standard/image.jpg?1702964227",
       priceKey: 'popcat' as const,
       mint: "7GCihgDB8fe6KNjn2gGZzGqA1T9B9m37Z1s2N2wK1B4N",
       decimals: 4
-    },
-    MEW: {
-      symbol: "MEW",
-      name: "cat in a dogs world",
-      logoURL: "https://assets.coingecko.com/coins/images/36440/standard/mew.png",
-      priceKey: 'cat-in-a-dogs-world' as const,
-      mint: "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5",
-      decimals: 5
-    },
-    WEN: {
-      symbol: "WEN",
-      name: "Wen",
-      logoURL: "https://assets.coingecko.com/coins/images/34856/standard/wen.png",
-      priceKey: 'wen-4' as const,
-      mint: "WENWENvqqNya429ubB5GzWwQj7C1qA32fA16Ltz1d4X",
-      decimals: 5
     },
 }
