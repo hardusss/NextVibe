@@ -205,7 +205,7 @@ export default function SwapSwipeButton({
                     style={[
                         StyleSheet.absoluteFill,
                         styles.statusOverlay,
-                        { backgroundColor: statusBg, borderRadius: TRACK_H / 2, zIndex: 10, elevation: 10 },
+                        { backgroundColor: statusBg, borderRadius: TRACK_H / 2, zIndex: 100, elevation: 20 },
                     ]}
                 >
                     {isLoading && (
@@ -282,7 +282,11 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     statusOverlay: {
+        position: 'absolute',
+        width: TRACK_W,
+        height: TRACK_H,
         justifyContent: 'center',
         alignItems: 'center',
+        zIndex: 9999
     },
 });
