@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme } from 'react-native';
+import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme, TouchableOpacity } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,13 +13,21 @@ import getTokensPrice from '@/src/api/get.tokens.price';
 import { FormattedTransaction } from '@/src/types/solana';
 
 // Components
-import Header from '@/components/Wallet/Deposit/Header'; 
 import TransactionItem from './TransactionItem';
 
 // Utils & Styles
 import { groupTransactionsByDate } from '@/src/utils/solana/transactionUtils';
 import createTransactionsStyles from '@/styles/transactions.styles';
 import useWalletAddress from '@/hooks/useWalletAddress';
+
+const ScreenHeader = ({ title, isDark, insets, onBack }: { title: string, isDark: boolean, insets: any, onBack: () => void }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: insets.top + 10, paddingBottom: 20, paddingHorizontal: 20 }}>
+        <TouchableOpacity onPress={onBack} style={{ padding: 8, marginRight: 12 }}>
+            <ArrowLeft size={24} color={isDark ? "#fff" : "#000"} />
+        </TouchableOpacity>
+        <Text style={{ fontSize: 18, fontFamily: "Dank Mono Bold", color: isDark ? "#fff" : "#000" }}>{title}</Text>
+    </View>
+);
 
 /**
  * Main Transactions History Screen
@@ -71,7 +80,11 @@ export default function TransactionsHistoryScreen() {
             if (reset) {
                 setTransactions(data);
             } else {
-                setTransactions(prev => [...prev, ...data]);
+                setTransactions(prev => {
+                    const existingSigs = new Set(prev.map(tx => tx.signature));
+                    const newTxs = data.filter(tx => !existingSigs.has(tx.signature));
+                    return [...prev, ...newTxs];
+                });
             }
 
             if (data.length > 0) {
@@ -90,11 +103,12 @@ export default function TransactionsHistoryScreen() {
 
     const fetchPrices = async () => {
         try {
-            const response = await getTokensPrice(["solana", "usd-coin"]);
+            const response = await getTokensPrice(["solana", "usd-coin", "seeker"]);
             if (response?.prices) {
                 setPrices({
                     solana: response.prices["solana"] ?? prices.solana,
                     "usd-coin": response.prices["usd-coin"] ?? prices["usd-coin"],
+                    "seeker": response.prices["seeker"] ?? prices["seeker"],
                 });
             }
         } catch (error) {
@@ -169,16 +183,15 @@ export default function TransactionsHistoryScreen() {
             <View style={styles.container}>
 
                  {/* Reusable Header Component */}
-                <Header
+                <ScreenHeader
                     title="Transaction History"
                     isDark={isDark}
                     insets={insets}
                     onBack={() => router.back()}
-                    animated={true}
                 />
                 <SectionList
                     sections={groupedTransactions}
-                    keyExtractor={(item, index) => item.signature + index}
+                    keyExtractor={(item) => item.signature}
                     renderItem={({ item }) => (
                         <TransactionItem 
                             item={item} 
