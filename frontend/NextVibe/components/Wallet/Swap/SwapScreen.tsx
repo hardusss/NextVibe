@@ -253,13 +253,13 @@ export default function SwapScreen() {
      */
     const handleSwipe = async () => {
         if (!fromToken) {
-            setToastMessage('Помилка: не обрано токен для відправки.');
+            setToastMessage('Error: No token selected to send.');
             setIsToastSuccess(false);
             setIsToastVisible(true);
             return;
         }
         if (!toToken) {
-            setToastMessage('Помилка: не обрано токен для отримання.');
+            setToastMessage('Error: No token selected to receive.');
             setIsToastSuccess(false);
             setIsToastVisible(true);
             return;
@@ -267,14 +267,14 @@ export default function SwapScreen() {
 
         const num = parseFloat(fromAmount);
         if (!fromAmount || isNaN(num) || num <= 0) {
-            setToastMessage(`Стейт суми пустий або некоректний: "${fromAmount}"`);
+            setToastMessage(`Amount is empty or invalid: "${fromAmount}"`);
             setIsToastSuccess(false);
             setIsToastVisible(true);
             return;
         }
 
         if (isQuoteLoading) {
-            setToastMessage('Запит до Jupiter ще виконується, секунду...');
+            setToastMessage('Fetching Jupiter quote, please wait...');
             setIsToastSuccess(false);
             setIsToastVisible(true);
             return;
@@ -288,7 +288,7 @@ export default function SwapScreen() {
         }
 
         if (!quote) {
-            setToastMessage('Маршрут не знайдено (можливо, замала сума або немає ліквідності).');
+            setToastMessage('Route not found (amount may be too small or insufficient liquidity).');
             setIsToastSuccess(false);
             setIsToastVisible(true);
             return;
@@ -297,14 +297,14 @@ export default function SwapScreen() {
         const { signature, error } = await executeSwap();
 
         if (signature) {
-            setToastMessage(`Успішно! tx: ${signature.slice(0, 8)}...`);
+            setToastMessage(`Success! tx: ${signature.slice(0, 8)}...`);
             setIsToastSuccess(true);
             setIsToastVisible(true);
             setFromAmount('');
             setToAmount('');
             clearQuote();
         } else {
-            setToastMessage(error || 'Помилка виконання транзакції.');
+            setToastMessage(error || 'Transaction execution failed.');
             setIsToastSuccess(false);
             setIsToastVisible(true);
         }
