@@ -41,7 +41,6 @@ export default function SwapSwipeButton({
         onSwipeSuccessRef.current = onSwipeSuccess;
     }, [onSwipeSuccess]);
 
-    // Блокуємо свайп, якщо вже йде завантаження або відображається статус
     const isInteractive = useRef(!isLoading && !isSuccess && !isFailed);
 
     useEffect(() => {
@@ -99,12 +98,9 @@ export default function SwapSwipeButton({
 
     const panResponder = useRef(
         PanResponder.create({
-            // 1. Обов'язково кажемо, що хочемо реагувати на дотик відразу
             onStartShouldSetPanResponder: () => isInteractive.current,
-            // 2. Дозволяємо перехопити подію, якщо це горизонтальний рух
             onMoveShouldSetPanResponder: (_, g) => isInteractive.current && Math.abs(g.dx) > 2,
             
-            // 3. Відбираємо жест у ScrollView жорстко через фазу Capture
             onStartShouldSetPanResponderCapture: () => false,
             onMoveShouldSetPanResponderCapture: (_, g) => {
                 return isInteractive.current && Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 2;
@@ -144,7 +140,6 @@ export default function SwapSwipeButton({
                         useNativeDriver: true
                     }).start();
                     
-                    // ВИКЛИКАЄМО АКТУАЛЬНУ ФУНКЦІЮ ОСЬ ТУТ:
                     onSwipeSuccessRef.current(); 
                 } else {
                     Vibration.vibrate(15);
@@ -155,7 +150,6 @@ export default function SwapSwipeButton({
                 }
             },
 
-            // 4. Запобіжник: якщо OS або ScrollView все ж таки відберуть жест посеред свайпу
             onPanResponderTerminate: () => {
                 pan.flattenOffset();
                 Animated.parallel([
@@ -274,7 +268,7 @@ const styles = StyleSheet.create({
         height: THUMB_SIZE,
         borderRadius: THUMB_SIZE / 2,
         overflow: 'hidden',
-        zIndex: 20, // Додано для пріоритету над track
+        zIndex: 20,
     },
     thumbInner: {
         flex: 1,
