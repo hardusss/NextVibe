@@ -24,6 +24,7 @@ interface SwapCardProps {
     onAmountChange?: (v: string) => void;
     onFocus?: () => void;
     onBlur?: () => void;
+    onTokenPress: () => void;
     showPercentButtons?: boolean;
     onPercentPress?: (pct: number) => void;
     isLoading?: boolean;
