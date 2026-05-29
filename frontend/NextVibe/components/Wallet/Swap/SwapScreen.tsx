@@ -78,7 +78,6 @@ export default function SwapScreen() {
     const tokens: TokenAsset[] = data?.tokens ?? [];
 
 
-    // 2. Ініціалізуємо стейт цими токенами замість null
     const [fromToken, setFromToken] = useState<TokenAsset | null>(tokens[0]);
     const [toToken, setToToken] = useState<TokenAsset | null>(tokens[1]);
     const [fromAmount, setFromAmount] = useState('');
@@ -142,7 +141,6 @@ export default function SwapScreen() {
      */
     useEffect(() => {
         if (tokens.length > 0) {
-            // Якщо у юзера є реальний SOL з балансом, підтягуємо його
             const userSol = tokens.find(t => t.symbol === 'SOL');
             if (userSol && fromToken?.amount === 0) {
                 setFromToken(userSol);
@@ -254,7 +252,6 @@ export default function SwapScreen() {
      * Swaps are currently restricted to Mainnet only.
      */
     const handleSwipe = async () => {
-        // 1. Перевіряємо, чи взагалі обрані токени
         if (!fromToken) {
             setToastMessage('Помилка: не обрано токен для відправки.');
             setIsToastSuccess(false);
@@ -268,7 +265,6 @@ export default function SwapScreen() {
             return;
         }
 
-        // 2. Перевіряємо, чи дійшов стейт суми до головного компонента
         const num = parseFloat(fromAmount);
         if (!fromAmount || isNaN(num) || num <= 0) {
             setToastMessage(`Стейт суми пустий або некоректний: "${fromAmount}"`);
@@ -277,7 +273,6 @@ export default function SwapScreen() {
             return;
         }
 
-        // 3. Перевіряємо, чи не висить ще лоадер запиту до Jupiter
         if (isQuoteLoading) {
             setToastMessage('Запит до Jupiter ще виконується, секунду...');
             setIsToastSuccess(false);
@@ -285,7 +280,6 @@ export default function SwapScreen() {
             return;
         }
 
-        // 4. Перевіряємо наявність тихої помилки від API (наприклад, однакові токени)
         if (quoteError) {
             setToastMessage(`Jupiter API: ${quoteError}`);
             setIsToastSuccess(false);
@@ -293,7 +287,6 @@ export default function SwapScreen() {
             return;
         }
 
-        // 5. Якщо токени і сума є, але котирування так і не повернулось
         if (!quote) {
             setToastMessage('Маршрут не знайдено (можливо, замала сума або немає ліквідності).');
             setIsToastSuccess(false);
@@ -301,7 +294,6 @@ export default function SwapScreen() {
             return;
         }
 
-        // Якщо всі перевірки пройдені — запускаємо транзакцію
         const { signature, error } = await executeSwap();
 
         if (signature) {

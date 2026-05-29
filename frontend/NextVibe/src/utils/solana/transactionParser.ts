@@ -341,12 +341,18 @@ export const formatTransactions = (
             // Determine Token Symbol
             const tokenSymbol = post.mint === TOKEN_MINT_CONSTANTS.USDC_MINT ? "USDC" : post.mint;
 
+            const isSwap = tx.meta?.logMessages?.some(l => 
+                l.includes("JUP6LkbZbjS1jKKwapdHNy74zcZ3tPZgKk9e9KjK3M9") || 
+                l.includes("Instruction: Route") || 
+                l.includes("Instruction: Swap")
+            );
+
             seenSignatures.add(signature);
             hasTokenTransfer = true;
 
             result.push({
                 signature,
-                type: diff > 0 ? "received" : "sent",
+                type: isSwap ? "swap" : (diff > 0 ? "received" : "sent"),
                 token: tokenSymbol,
                 amount: Math.abs(diff),
                 from: addresses?.from || (diff > 0 ? "external" : accountAddress),
@@ -375,10 +381,17 @@ export const formatTransactions = (
                 if (addresses?.from === addresses?.to) {
                     continue; 
                 }
+                
+                const isSwap = tx.meta?.logMessages?.some(l => 
+                    l.includes("JUP6LkbZbjS1jKKwapdHNy74zcZ3tPZgKk9e9KjK3M9") || 
+                    l.includes("Instruction: Route") || 
+                    l.includes("Instruction: Swap")
+                );
+
                 seenSignatures.add(signature);
                 result.push({
                     signature,
-                    type: diffSOL > 0 ? "received" : "sent",
+                    type: isSwap ? "swap" : (diffSOL > 0 ? "received" : "sent"),
                     token: "SOL",
                     amount: Math.abs(diffSOL),
                     from: addresses?.from || (diffSOL > 0 ? "external" : accountAddress),

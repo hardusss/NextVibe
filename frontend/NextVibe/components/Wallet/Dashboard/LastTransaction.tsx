@@ -32,6 +32,12 @@ function getTxMeta(type: string, isDarkMode: boolean) {
                 accent: isDarkMode ? "rgba(244,114,182,0.85)" : "rgba(219,39,119,0.85)",
                 accentBg: isDarkMode ? "rgba(244,114,182,0.1)" : "rgba(219,39,119,0.08)",
             };
+        case "swap":
+            return {
+                Icon: MoveHorizontal,
+                accent: isDarkMode ? "rgba(59,130,246,0.85)" : "rgba(37,99,235,0.85)",
+                accentBg: isDarkMode ? "rgba(59,130,246,0.1)" : "rgba(37,99,235,0.08)",
+            };
         default:
             return {
                 Icon: MoveHorizontal,
