@@ -67,7 +67,7 @@ export default function DepositScreen() {
 
     // Wallet integration
     const { address } = useWalletAddress();
-    const supportedTokens: Token[] = [TOKENS.SOL, TOKENS.USDC];
+    const supportedTokens: Token[] = Object.values(TOKENS);
 
     // Entrance animation on mount
     useEffect(() => {

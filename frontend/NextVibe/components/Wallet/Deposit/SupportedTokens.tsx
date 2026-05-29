@@ -1,4 +1,4 @@
-import { View, Image, Text } from "react-native";
+import { View, Image, Text, ScrollView } from "react-native";
 import { TOKENS } from "@/constants/Tokens";
 import { EdgeInsets } from "react-native-safe-area-context";
 import createDepositStyles from "@/styles/deposit.styles";
@@ -47,18 +47,24 @@ export default function SupportedTokens({
     const styles = createDepositStyles(isDark, insets);
 
     return (
-        <View style={styles.tokensRow}>
-            {tokens.map((token) => (
-                <View key={token.symbol} style={styles.tokenItemShadow}>
-                    <View style={styles.tokenItem}>
-                        <Image
-                            source={{ uri: token.logoURL }}
-                            style={styles.tokenIcon}
-                        />
-                        <Text style={styles.tokenSymbol}>{token.symbol}</Text>
+        <View style={{ marginBottom: 24 }}>
+            <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}
+            >
+                {tokens.map((token) => (
+                    <View key={token.symbol} style={styles.tokenItemShadow}>
+                        <View style={styles.tokenItem}>
+                            <Image
+                                source={{ uri: token.logoURL }}
+                                style={styles.tokenIcon}
+                            />
+                            <Text style={styles.tokenSymbol}>{token.symbol}</Text>
+                        </View>
                     </View>
-                </View>
-            ))}
+                ))}
+            </ScrollView>
         </View>
     );
 }
