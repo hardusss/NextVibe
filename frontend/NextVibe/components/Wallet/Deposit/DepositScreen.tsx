@@ -1,75 +1,32 @@
+import React, { useRef, useEffect, useState } from 'react';
 import {
-    View,
-    useColorScheme,
-    Animated,
-    StatusBar,
+    View, Text, StyleSheet, TouchableOpacity,
+    Animated, StatusBar, useColorScheme, Share, Dimensions, ScrollView, Image
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { useRef, useEffect } from 'react';
-import React from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
+import QRCode from 'react-native-qrcode-svg';
 import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft, Copy, Share2, Check, AlertCircle } from 'lucide-react-native';
 
-import { useWallet } from '@lazorkit/wallet-mobile-adapter';
+import useWalletAddress from '@/hooks/useWalletAddress';
 import { TOKENS } from '@/constants/Tokens';
 
-import QRCodeDisplay from './QRCodeDisplay';
-import AddressBox from './AddressBox';
-import Header from './Header';
-import SupportedTokens from './SupportedTokens';
-import WarningBanner from './WarningBanner';
-import ShareButton from './ShareButton';
+const { width } = Dimensions.get('window');
 
-import createDepositStyles from '@/styles/deposit.styles';
-import useWalletAddress from '@/hooks/useWalletAddress';
-
-/**
- * Token type derived from the TOKENS constant
- */
-type Token = typeof TOKENS[keyof typeof TOKENS];
-
-/**
- * Main deposit/receive screen
- * 
- * Provides a complete interface for receiving crypto assets, featuring:
- * - QR code generation for the user's wallet address
- * - Copyable wallet address with one-tap functionality
- * - List of supported tokens (SOL, USDC)
- * - Network warning to prevent incorrect deposits
- * - Native share functionality for address distribution
- * - Smooth entrance animations (fade-in and slide-up)
- * - Adaptive theming based on device color scheme
- * 
- * The screen uses a gradient background with blur effects for a modern,
- * polished appearance. All interactive elements are themed consistently
- * and optimized for both light and dark modes.
- * 
- * @returns Rendered deposit screen with all receive functionality
- * 
- * @example
- * ```tsx
- * // Typically accessed via navigation
- * router.push('/deposit');
- * ```
- */
 export default function DepositScreen() {
-    const insets = useSafeAreaInsets();
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
-
-    const styles = createDepositStyles(isDark, insets);
-
-    // Animation references
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(30)).current;
-
-    // Wallet integration
     const { address } = useWalletAddress();
-    const supportedTokens: Token[] = Object.values(TOKENS);
+    const safeAddress = address?.toString() || 'Loading...';
 
-    // Entrance animation on mount
+    // Animations
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(40)).current;
+    const qrScale = useRef(new Animated.Value(0.9)).current;
+    const [copied, setCopied] = useState(false);
+
     useEffect(() => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
@@ -77,103 +34,353 @@ export default function DepositScreen() {
                 duration: 600,
                 useNativeDriver: true,
             }),
-            Animated.timing(slideAnim, {
+            Animated.spring(slideAnim, {
                 toValue: 0,
-                duration: 600,
+                tension: 50,
+                friction: 8,
                 useNativeDriver: true,
             }),
+            Animated.spring(qrScale, {
+                toValue: 1,
+                tension: 40,
+                friction: 7,
+                useNativeDriver: true,
+                delay: 100
+            })
         ]).start();
     }, []);
 
-    /**
-     * Copies the wallet address to clipboard
-     * 
-     * Triggered when user taps the address box. Provides silent
-     * copy functionality without visual feedback (toast could be added).
-     */
-    const handleCopy = () => {
-        if (address) {
-            Clipboard.setStringAsync(address);
+    const handleCopy = async () => {
+        if (!address) return;
+        await Clipboard.setStringAsync(safeAddress);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleShare = async () => {
+        if (!address) return;
+        try {
+            await Share.share({
+                message: safeAddress,
+                title: 'My Solana Address'
+            });
+        } catch (error) {
+            console.error(error);
         }
     };
 
+    const supportedTokens = Object.values(TOKENS);
+
+    const mainBg = isDark ? ['#0A0410', '#1a0a2e', '#0d0618', '#0A0410'] : ['#FFFFFF', '#ede9fe', '#dbd4fb', '#d7cdf2'];
+    const cardBg = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)';
+    const cardBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.5)';
+    const textColor = isDark ? '#FFFFFF' : '#1A1A1A';
+    const mutedText = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+    const accent = isDark ? '#A78BFA' : '#7C3AED';
+    const accentBg = isDark ? 'rgba(167,139,250,0.15)' : 'rgba(124,58,237,0.1)';
+
     return (
         <LinearGradient
-            colors={
-                isDark
-                    ? ['#0A0410', '#1a0a2e', '#0A0410']
-                    : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']
-            }
-            style={{ flex: 1 }}
+            colors={mainBg}
+            locations={[0, 0.3, 0.65, 1]}
+            style={styles.container}
         >
-            <StatusBar
-                backgroundColor={isDark ? "#0A0410" : "#fff"}
-                barStyle={isDark ? 'light-content' : 'dark-content'}
-            />
-
-            <View style={styles.container}>
-                {/* Header with back navigation */}
-                <Header
-                    title="Receive Assets"
-                    isDark={isDark}
-                    insets={insets}
-                    onBack={() => router.back()}
-                />
-
-                {/* Main content area */}
-                <View style={styles.content}>
-                    <Animated.View
-                        style={[
-                            styles.mainCardShadow,
-                            {
-                                opacity: fadeAnim,
-                                transform: [{ translateY: slideAnim }],
-                            },
-                        ]}
-                    >
-                        <View style={styles.contentCard}>
-                            <BlurView
-                                intensity={isDark ? 20 : 60}
-                                tint={isDark ? 'dark' : 'light'}
-                                style={styles.blurViewAbsolute}
-                            />
-
-                            {/* QR code for address scanning */}
-                            <QRCodeDisplay address={address as string} isDark={isDark} />
-
-                            {/* Token support indicators */}
-                            <SupportedTokens
-                                tokens={supportedTokens}
-                                isDark={isDark}
-                                insets={insets}
-                            />
-
-                            {/* Network safety warning */}
-                            <WarningBanner
-                                label="SOL/SPL"
-                                network="Devnet"
-                                isDark={isDark}
-                                insets={insets}
-                            />
-
-                            {/* Copyable address display */}
-                            <AddressBox
-                                address={address as string}
-                                isDark={isDark}
-                                insets={insets}
-                                onCopy={handleCopy}
-                            />
-                        </View>
-                    </Animated.View>
-                </View>
-
-                {/* Share address button */}
-                <ShareButton
-                    address={address as string}
-                    isDark={isDark}
-                    insets={insets}
-                />
+            <StatusBar backgroundColor="transparent" translucent barStyle={isDark ? "light-content" : "dark-content"} />
+            
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={[styles.backBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }]}
+                    activeOpacity={0.7}
+                >
+                    <ArrowLeft size={20} color={textColor} strokeWidth={2} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: textColor }]}>Receive Assets</Text>
+                <View style={{ width: 44 }} />
             </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                <Animated.View style={[
+                    styles.cardWrapper,
+                    { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                ]}>
+                    {/* Glass Card */}
+                    <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                        <BlurView intensity={isDark ? 20 : 50} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+                        
+                        <Animated.View style={[styles.qrWrapper, { transform: [{ scale: qrScale }] }]}>
+                            {/* QR Glow */}
+                            <View style={[styles.qrGlow, { shadowColor: accent }]} />
+                            
+                            <View style={styles.qrInner}>
+                                <QRCode
+                                    value={safeAddress}
+                                    size={width * 0.55}
+                                    color="#000000"
+                                    backgroundColor="#FFFFFF"
+                                    logo={require('@/assets/images/icon.png')}
+                                    logoSize={40}
+                                    logoBackgroundColor="#fff"
+                                    logoBorderRadius={10}
+                                    logoMargin={2}
+                                />
+                            </View>
+                        </Animated.View>
+
+                        <View style={[styles.warningBadge, { backgroundColor: accentBg, borderColor: isDark ? 'rgba(167,139,250,0.3)' : 'rgba(124,58,237,0.2)' }]}>
+                            <AlertCircle size={14} color={accent} strokeWidth={2} />
+                            <Text style={[styles.warningText, { color: accent }]}>Send only Solana & SPL tokens</Text>
+                        </View>
+
+                        <Text style={[styles.addressLabel, { color: mutedText }]}>Wallet Address</Text>
+                        
+                        <TouchableOpacity
+                            onPress={handleCopy}
+                            activeOpacity={0.7}
+                            style={[styles.addressBox, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.6)', borderColor: cardBorder }]}
+                        >
+                            <Text style={[styles.addressText, { color: textColor }]} numberOfLines={1} ellipsizeMode="middle">
+                                {safeAddress}
+                            </Text>
+                            <View style={[styles.copyBtn, { backgroundColor: copied ? '#10B981' : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') }]}>
+                                {copied ? (
+                                    <Check size={16} color="#FFF" strokeWidth={2.5} />
+                                ) : (
+                                    <Copy size={16} color={textColor} strokeWidth={2} />
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </Animated.View>
+
+                {/* Supported Tokens */}
+                <Animated.View style={[styles.tokensSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                    <Text style={[styles.sectionTitle, { color: mutedText }]}>Supported Assets</Text>
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.tokensScroll}
+                    >
+                        {supportedTokens.map((token) => (
+                            <View key={token.symbol} style={[styles.tokenChip, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                                <Image source={{ uri: token.logoURL }} style={styles.tokenIcon} />
+                                <Text style={[styles.tokenSymbol, { color: textColor }]}>{token.symbol}</Text>
+                            </View>
+                        ))}
+                    </ScrollView>
+                </Animated.View>
+            </ScrollView>
+
+            {/* Bottom Actions */}
+            <Animated.View style={[styles.bottomBar, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                <TouchableOpacity
+                    onPress={handleShare}
+                    activeOpacity={0.8}
+                    style={styles.shareBtnWrapper}
+                >
+                    <LinearGradient
+                        colors={['#8B5CF6', '#6D28D9']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.shareBtn}
+                    >
+                        <Share2 size={20} color="#FFF" strokeWidth={2.5} />
+                        <Text style={styles.shareBtnText}>Share Address</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
+            </Animated.View>
         </LinearGradient>
     );
-};
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 20,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitle: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 18,
+        letterSpacing: 0.5,
+    },
+    scrollContent: {
+        paddingHorizontal: 20,
+        paddingBottom: 140,
+        alignItems: 'center',
+    },
+    cardWrapper: {
+        width: '100%',
+        maxWidth: 400,
+        marginBottom: 30,
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 25,
+        elevation: 10,
+    },
+    card: {
+        width: '100%',
+        borderRadius: 32,
+        padding: 24,
+        borderWidth: 1,
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    qrWrapper: {
+        position: 'relative',
+        marginBottom: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    qrGlow: {
+        position: 'absolute',
+        width: width * 0.5,
+        height: width * 0.5,
+        borderRadius: width * 0.25,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 30,
+        elevation: 10,
+    },
+    qrInner: {
+        backgroundColor: '#FFF',
+        padding: 16,
+        borderRadius: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
+    },
+    warningBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginBottom: 24,
+        gap: 8,
+    },
+    warningText: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 12,
+        includeFontPadding: false,
+    },
+    addressLabel: {
+        fontFamily: 'Dank Mono',
+        fontSize: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 8,
+        alignSelf: 'flex-start',
+        marginLeft: 8,
+        includeFontPadding: false,
+    },
+    addressBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        padding: 8,
+        paddingLeft: 20,
+        borderRadius: 20,
+        borderWidth: 1,
+        gap: 12,
+    },
+    addressText: {
+        flex: 1,
+        fontFamily: 'Dank Mono',
+        fontSize: 15,
+        opacity: 0.9,
+        includeFontPadding: false,
+    },
+    copyBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    tokensSection: {
+        width: '100%',
+        marginBottom: 20,
+    },
+    sectionTitle: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 14,
+        marginBottom: 12,
+        marginLeft: 8,
+        includeFontPadding: false,
+    },
+    tokensScroll: {
+        paddingHorizontal: 4,
+        gap: 10,
+    },
+    tokenChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 16,
+        borderWidth: 1,
+        gap: 8,
+    },
+    tokenIcon: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+    },
+    tokenSymbol: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 13,
+        includeFontPadding: false,
+    },
+    bottomBar: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 24,
+        paddingTop: 16,
+        paddingBottom: 36,
+    },
+    shareBtnWrapper: {
+        width: '100%',
+        borderRadius: 24,
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    shareBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 18,
+        borderRadius: 24,
+        gap: 10,
+    },
+    shareBtnText: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 16,
+        color: '#FFF',
+        letterSpacing: 0.5,
+        includeFontPadding: false,
+    }
+});
