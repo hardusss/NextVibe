@@ -64,14 +64,14 @@ export default function useJupiterSwap() {
         setQuoteError(null);
     }, []);
 
-    const executeSwap = useCallback(async (): Promise<string | null> => {
+    const executeSwap = useCallback(async (): Promise<{signature?: string, error?: string}> => {
         if (!quote) {
             setSwapError('No quote available to swap.');
-            return null;
+            return { error: 'No quote available to swap.' };
         }
         if (wallet.walletType === 'none' || !wallet.address || !wallet.connection) {
             setSwapError('Wallet not connected.');
-            return null;
+            return { error: 'Wallet not connected.' };
         }
 
         setIsSwapLoading(true);
@@ -110,11 +110,12 @@ export default function useJupiterSwap() {
                 throw new Error("Unsupported wallet type.");
             }
 
-            return signature;
+            return { signature };
         } catch (err: any) {
             console.error('[useJupiterSwap] Swap error:', err);
-            setSwapError(err.message || 'Swap failed');
-            return null;
+            const errMsg = err.message || 'Swap failed';
+            setSwapError(errMsg);
+            return { error: errMsg };
         } finally {
             setIsSwapLoading(false);
         }

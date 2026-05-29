@@ -252,7 +252,7 @@ export default function SwapScreen() {
      */
     const handleSwipe = async () => {
         if (!quote) return;
-        const signature = await executeSwap();
+        const { signature, error } = await executeSwap();
         
         if (signature) {
             setToastMessage(`Swap successful! tx: ${signature.slice(0, 8)}...`);
@@ -262,7 +262,7 @@ export default function SwapScreen() {
             setToAmount('');
             clearQuote();
         } else {
-            setToastMessage(swapError || 'Swap failed to execute.');
+            setToastMessage(error || 'Swap failed to execute.');
             setIsToastSuccess(false);
             setIsToastVisible(true);
         }
@@ -451,7 +451,7 @@ export default function SwapScreen() {
                         onSwipeSuccess={handleSwipe}
                         isLoading={isSwapLoading}
                         isSuccess={isToastSuccess && isToastVisible}
-                        isFailed={!isToastSuccess && isToastVisible && !!swapError}
+                        isFailed={!isToastSuccess && isToastVisible}
                         colors={colors}
                     />
                 </View>
