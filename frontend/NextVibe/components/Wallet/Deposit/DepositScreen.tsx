@@ -85,7 +85,7 @@ export default function DepositScreen() {
             locations={[0, 0.3, 0.65, 1]}
             style={styles.container}
         >
-            <StatusBar backgroundColor="transparent" translucent barStyle={isDark ? "light-content" : "dark-content"} />
+            <StatusBar backgroundColor={mainBg[0]} barStyle={isDark ? "light-content" : "dark-content"} />
             
             {/* Header */}
             <View style={styles.header}>
