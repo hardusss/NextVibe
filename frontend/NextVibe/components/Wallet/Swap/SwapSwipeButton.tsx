@@ -153,10 +153,12 @@ export default function SwapSwipeButton({
     });
 
     const statusBg = isSuccess
-        ? 'rgba(52,211,153,0.85)'
+        ? 'rgba(52,211,153,0.95)'
         : isFailed
-            ? 'rgba(239,68,68,0.85)'
-            : 'transparent';
+            ? 'rgba(239,68,68,0.95)'
+            : isLoading
+                ? (colors.isDark ? 'rgba(168,85,247,0.95)' : 'rgba(124,58,237,0.95)')
+                : 'transparent';
 
     const isIdle = !isSuccess && !isLoading && !isFailed;
 
@@ -192,12 +194,12 @@ export default function SwapSwipeButton({
                     style={[
                         StyleSheet.absoluteFill,
                         styles.statusOverlay,
-                        { backgroundColor: statusBg, borderRadius: TRACK_H / 2 },
+                        { backgroundColor: statusBg, borderRadius: TRACK_H / 2, zIndex: 10, elevation: 10 },
                     ]}
                 >
                     {isLoading && (
                         <Animated.View style={{ transform: [{ rotate: spinDeg }] }}>
-                            <Loader size={26} color="rgba(255,255,255,0.85)" strokeWidth={1.8} />
+                            <Loader size={26} color="#fff" strokeWidth={2} />
                         </Animated.View>
                     )}
                     {isSuccess && (

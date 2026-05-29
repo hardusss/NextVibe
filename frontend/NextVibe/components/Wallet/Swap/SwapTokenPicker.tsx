@@ -1,9 +1,10 @@
 import React from 'react';
 import { BlurView } from '@react-native-community/blur';
 import {
-    Modal, View, Text, TouchableOpacity,
-    ScrollView, StyleSheet, Vibration, Platform
+    Modal, View, Text, TouchableOpacity, TextInput,
+    ScrollView, StyleSheet, Vibration, Platform, Image
 } from 'react-native';
+import { Search } from 'lucide-react-native';
 import type { TokenAsset } from '@/hooks/usePortfolio';
 import type { SwapColors } from '@/src/types/swap';
 
@@ -28,6 +29,22 @@ export default function SwapTokenPicker({
     onSelect,
     onClose,
 }: SwapTokenPickerProps) {
+    const [search, setSearch] = React.useState('');
+
+    const filteredTokens = React.useMemo(() => {
+        if (!search) return tokens;
+        const lower = search.toLowerCase();
+        return tokens.filter(t => 
+            t.symbol.toLowerCase().includes(lower) || 
+            t.name.toLowerCase().includes(lower)
+        );
+    }, [tokens, search]);
+
+    // Reset search when modal opens
+    React.useEffect(() => {
+        if (visible) setSearch('');
+    }, [visible]);
+
     return (
         <Modal
             visible={visible}
@@ -70,8 +87,19 @@ export default function SwapTokenPicker({
                         </TouchableOpacity>
                     </View>
 
+                    <View style={[styles.searchContainer, { backgroundColor: colors.isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.6)', borderColor: colors.cardBorder }]}>
+                        <Search size={18} color={colors.muted} />
+                        <TextInput
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholder="Search by name or symbol"
+                            placeholderTextColor={colors.muted}
+                            value={search}
+                            onChangeText={setSearch}
+                        />
+                    </View>
+
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                        {tokens.map((t) => {
+                        {filteredTokens.map((t) => {
                             const isSelected = t.symbol === selectedSymbol;
                             return (
                                 <TouchableOpacity
@@ -90,8 +118,17 @@ export default function SwapTokenPicker({
                                     ]}
                                 >
                                     <View style={styles.rowLeft}>
-                                        <Text style={[styles.symbol, { color: colors.text }]}>{t.symbol}</Text>
-                                        <Text style={[styles.name, { color: colors.muted }]}>{t.name}</Text>
+                                        {t.logoURI ? (
+                                            <Image source={{ uri: t.logoURI }} style={styles.tokenLogo} />
+                                        ) : (
+                                            <View style={[styles.tokenLogo, { backgroundColor: colors.muted, justifyContent: 'center', alignItems: 'center' }]}>
+                                                <Text style={{ color: '#fff', fontSize: 10 }}>{t.symbol.slice(0,1)}</Text>
+                                            </View>
+                                        )}
+                                        <View>
+                                            <Text style={[styles.symbol, { color: colors.text }]}>{t.symbol}</Text>
+                                            <Text style={[styles.name, { color: colors.muted }]}>{t.name}</Text>
+                                        </View>
                                     </View>
                                     <View style={styles.rowRight}>
                                         <Text style={[styles.balance, { color: colors.text }]}>
@@ -126,7 +163,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderBottomWidth: 0,
         paddingTop: 12,
-        maxHeight: '65%',
+        height: Platform.OS === 'ios' ? '85%' : '90%',
         overflow: 'hidden',
     },
     glassHighlight: {
@@ -160,6 +197,23 @@ const styles = StyleSheet.create({
         fontSize: 14,
         includeFontPadding: false,
     },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: 24,
+        marginBottom: 16,
+        paddingHorizontal: 12,
+        height: 44,
+        borderRadius: 12,
+        borderWidth: 1,
+        gap: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontFamily: 'Dank Mono',
+        fontSize: 15,
+        height: '100%',
+    },
     scrollContent: {
         paddingHorizontal: 24,
         paddingBottom: 40,
@@ -175,7 +229,16 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
         marginBottom: 4,
     },
-    rowLeft: { gap: 3 },
+    rowLeft: { 
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12 
+    },
+    tokenLogo: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+    },
     rowRight: { alignItems: 'flex-end', gap: 3 },
     symbol: {
         fontFamily: 'Dank Mono Bold',
