@@ -34,10 +34,13 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
             logoURL: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
         };
         
+        const found = Object.values(TOKENS).find(t => t.mint === token || t.symbol === token);
+        if (found) return found;
+
         return {
-            symbol: token.substring(0, 4) + '...',
+            symbol: token.length > 8 ? token.substring(0, 4) + '...' : token,
             name: 'Unknown Token',
-            priceKey: 'solana',
+            priceKey: 'unknown' as any,
             logoURL: 'https://via.placeholder.com/44'
         };
     };
@@ -85,7 +88,7 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                         resizeMode={FastImage.resizeMode.cover}
                     />
                     <View style={[styles.directionIndicator, { 
-                        backgroundColor: item.type === 'swap' ? '#3498db' : isIncoming ? '#2ECC71' : '#E74C3C',
+                        backgroundColor: item.type === 'swap' ? '#3b82f6' : isIncoming ? '#2ECC71' : '#E74C3C',
                         borderColor: isDark ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)',
                     }]}>
                         <MaterialCommunityIcons 

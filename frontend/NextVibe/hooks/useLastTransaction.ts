@@ -85,8 +85,10 @@ export function useLastTransaction(
       let price = 0;
 
       // Retrieve token information and price
-      const tokenKey = transaction.token as keyof typeof TOKENS;
-      const tokenInfo = TOKENS[tokenKey];
+      let tokenInfo = TOKENS[transaction.token as keyof typeof TOKENS];
+      if (!tokenInfo) {
+          tokenInfo = Object.values(TOKENS).find(t => t.mint === transaction.token) as any;
+      }
 
       if (tokenInfo) {
         // Map token name to API identifier
