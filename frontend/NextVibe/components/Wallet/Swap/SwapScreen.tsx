@@ -24,6 +24,7 @@ import SwapTokenPicker from './SwapTokenPicker';
 import SwapInfoRows from './SwapInfoRows';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 import type { SwapColors } from '@/src/types/swap';
+import useJupiterSwap from '@/hooks/useJupiterSwap';
 
 /**
  * Sanitizes user input to ensure a valid floating-point number string.
@@ -84,14 +85,11 @@ export default function SwapScreen() {
     const [lastEditedField, setLastEditedField] = useState<'from' | 'to'>('from');
     const [focused, setFocused] = useState<'from' | 'to' | null>(null);
     const [pickerSide, setPickerSide] = useState<'from' | 'to' | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [isFailed, setIsFailed] = useState(false);
-
-    /**
-     * Controls visibility of the mainnet-only Web3Toast notification.
-     * Triggered when the user attempts to confirm a swap on devnet.
-     */
+    const { quote, isQuoteLoading, quoteError, fetchQuote, clearQuote, executeSwap, isSwapLoading, swapError } = useJupiterSwap();
+    
+    // Instead of a fake success toast, we'll use it for swap status
+    const [toastMessage, setToastMessage] = useState('');
+    const [isToastSuccess, setIsToastSuccess] = useState(false);
     const [isToastVisible, setIsToastVisible] = useState(false);
 
     const floatAnim1 = useRef(new Animated.Value(0)).current;
@@ -164,36 +162,36 @@ export default function SwapScreen() {
         isDark,
     }), [isDark]);
 
-    /**
-     * Bidirectional amount calculator.
-     * Recalculates the opposite field whenever the user edits either amount
-     * or the token pair changes. Tracks which field was last edited to avoid
-     * circular updates.
-     */
     useEffect(() => {
         if (!fromToken || !toToken) return;
 
-        const fromPrice = fromToken.price;
-        const toPrice = toToken.price;
-
-        if (fromPrice <= 0 || toPrice <= 0) return;
-
-        if (lastEditedField === 'from') {
-            const num = parseFloat(fromAmount);
-            if (isNaN(num) || num <= 0) {
-                setToAmount('');
-                return;
-            }
-            setToAmount((num * fromPrice / toPrice).toFixed(6));
-        } else if (lastEditedField === 'to') {
-            const num = parseFloat(toAmount);
-            if (isNaN(num) || num <= 0) {
-                setFromAmount('');
-                return;
-            }
-            setFromAmount((num * toPrice / fromPrice).toFixed(6));
+        const num = parseFloat(fromAmount);
+        if (isNaN(num) || num <= 0) {
+            setToAmount('');
+            clearQuote();
+            return;
         }
-    }, [fromAmount, toAmount, fromToken, toToken, lastEditedField]);
+
+        const decimals = fromToken.decimals ?? 9;
+        const amountRaw = num * Math.pow(10, decimals);
+        
+        const delay = setTimeout(() => {
+            fetchQuote(fromToken.mint, toToken.mint, amountRaw);
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(delay);
+    }, [fromAmount, fromToken, toToken, fetchQuote, clearQuote]);
+
+    // Update toAmount when quote changes
+    useEffect(() => {
+        if (quote && toToken) {
+            const outDecimals = toToken.decimals ?? 9;
+            const formattedOut = (Number(quote.outAmount) / Math.pow(10, outDecimals)).toFixed(6);
+            setToAmount(formattedOut);
+        } else if (!isQuoteLoading) {
+            setToAmount('');
+        }
+    }, [quote, toToken, isQuoteLoading]);
 
     /**
      * Handles text input changes for the "from" amount field.
@@ -205,14 +203,10 @@ export default function SwapScreen() {
         setFromAmount(sanitize(text));
     };
 
-    /**
-     * Handles text input changes for the "to" amount field.
-     *
-     * @param text - Raw input from the TextInput
-     */
     const handleToAmountChange = (text: string) => {
-        setLastEditedField('to');
-        setToAmount(sanitize(text));
+        // We only support EXACT_IN for now via Jupiter Service to keep UI simple
+        // So we disable editing the "to" field or ignore it
+        // If we want exactOut we'd implement it here
     };
 
     /**
@@ -234,9 +228,9 @@ export default function SwapScreen() {
         setFromToken(toToken);
         setToToken(fromToken);
         setFromAmount(toAmount);
-        setToAmount(fromAmount);
-        setLastEditedField(prev => prev === 'from' ? 'to' : 'from');
-    }, [fromToken, toToken, fromAmount, toAmount]);
+        setToAmount('');
+        clearQuote();
+    }, [fromToken, toToken, toAmount, clearQuote]);
 
     /**
      * Handles token selection from the picker modal.
@@ -257,7 +251,21 @@ export default function SwapScreen() {
      * Swaps are currently restricted to Mainnet only.
      */
     const handleSwipe = async () => {
-        setIsToastVisible(true);
+        if (!quote) return;
+        const signature = await executeSwap();
+        
+        if (signature) {
+            setToastMessage(`Swap successful! tx: ${signature.slice(0, 8)}...`);
+            setIsToastSuccess(true);
+            setIsToastVisible(true);
+            setFromAmount('');
+            setToAmount('');
+            clearQuote();
+        } else {
+            setToastMessage(swapError || 'Swap failed to execute.');
+            setIsToastSuccess(false);
+            setIsToastVisible(true);
+        }
     };
 
     /**
@@ -271,12 +279,7 @@ export default function SwapScreen() {
         return tokens.filter(t => t.symbol !== other);
     }, [tokens, fromToken, toToken]);
 
-    /**
-     * Computes the display exchange rate between the selected token pair.
-     */
-    const displayRate = fromToken?.price && toToken?.price && toToken.price > 0
-        ? (fromToken.price / toToken.price).toFixed(6)
-        : null;
+    // Omit display rate since SwapInfoRows will handle it
 
     const blob1Transform = [
         { translateX: floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, 80] }) },
@@ -363,10 +366,10 @@ export default function SwapScreen() {
             )}
 
             <Web3Toast
-                message="Swaps are available on Mainnet only"
+                message={toastMessage}
                 visible={isToastVisible}
                 onHide={() => setIsToastVisible(false)}
-                isSuccess={false}
+                isSuccess={isToastSuccess}
             />
 
             <ScrollView
@@ -429,28 +432,26 @@ export default function SwapScreen() {
                     amount={toAmount}
                     isFocused={focused === 'to'}
                     colors={colors}
-                    onAmountChange={handleToAmountChange}
+                    onAmountChange={undefined} // Disabled for EXACT_IN mode
                     onFocus={() => setFocused('to')}
                     onBlur={() => setFocused(null)}
                     onTokenPress={() => setPickerSide('to')}
+                    isLoading={isQuoteLoading}
                 />
 
                 <SwapInfoRows
                     fromSymbol={fromToken?.symbol ?? null}
                     toSymbol={toToken?.symbol ?? null}
-                    price={displayRate}
-                    fees="~0.5%"
-                    slippage="0.5%"
-                    priceImpact="< 0.01%"
+                    quote={quote}
                     colors={colors}
                 />
 
                 <View style={styles.swipeWrap}>
                     <SwapSwipeButton
                         onSwipeSuccess={handleSwipe}
-                        isLoading={isLoading}
-                        isSuccess={isSuccess}
-                        isFailed={isFailed}
+                        isLoading={isSwapLoading}
+                        isSuccess={isToastSuccess && isToastVisible}
+                        isFailed={!isToastSuccess && isToastVisible && !!swapError}
                         colors={colors}
                     />
                 </View>
