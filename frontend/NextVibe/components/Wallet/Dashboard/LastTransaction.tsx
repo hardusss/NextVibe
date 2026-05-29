@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
-import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, MoveHorizontal } from "lucide-react-native";
+import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft } from "lucide-react-native";
 import { FormattedTransaction } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
 import timeAgo from "@/src/utils/formatTime";
@@ -34,13 +34,13 @@ function getTxMeta(type: string, isDarkMode: boolean) {
             };
         case "swap":
             return {
-                Icon: MoveHorizontal,
-                accent: isDarkMode ? "rgba(59,130,246,0.85)" : "rgba(37,99,235,0.85)",
-                accentBg: isDarkMode ? "rgba(59,130,246,0.1)" : "rgba(37,99,235,0.08)",
+                Icon: ArrowRightLeft,
+                accent: isDarkMode ? "#60A5FA" : "#3B82F6",
+                accentBg: isDarkMode ? "rgba(96,165,250,0.15)" : "rgba(59,130,246,0.1)",
             };
         default:
             return {
-                Icon: MoveHorizontal,
+                Icon: ArrowRightLeft,
                 accent: isDarkMode ? "rgba(196,167,255,0.85)" : "rgba(109,40,217,0.85)",
                 accentBg: isDarkMode ? "rgba(196,167,255,0.1)" : "rgba(109,40,217,0.08)",
             };
