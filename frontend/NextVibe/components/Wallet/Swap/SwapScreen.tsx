@@ -77,8 +77,10 @@ export default function SwapScreen() {
 
     const tokens: TokenAsset[] = data?.tokens ?? [];
 
-    const [fromToken, setFromToken] = useState<TokenAsset | null>(null);
-    const [toToken, setToToken] = useState<TokenAsset | null>(null);
+
+    // 2. Ініціалізуємо стейт цими токенами замість null
+    const [fromToken, setFromToken] = useState<TokenAsset | null>(tokens[0]);
+    const [toToken, setToToken] = useState<TokenAsset | null>(tokens[1]);
     const [fromAmount, setFromAmount] = useState('');
     const [toAmount, setToAmount] = useState('');
 
@@ -86,7 +88,7 @@ export default function SwapScreen() {
     const [focused, setFocused] = useState<'from' | 'to' | null>(null);
     const [pickerSide, setPickerSide] = useState<'from' | 'to' | null>(null);
     const { quote, isQuoteLoading, quoteError, fetchQuote, clearQuote, executeSwap, isSwapLoading, swapError } = useJupiterSwap();
-    
+
     // Instead of a fake success toast, we'll use it for swap status
     const [toastMessage, setToastMessage] = useState('');
     const [isToastSuccess, setIsToastSuccess] = useState(false);
@@ -139,11 +141,12 @@ export default function SwapScreen() {
      * once the portfolio data has loaded.
      */
     useEffect(() => {
-        if (tokens.length > 0 && !fromToken) {
-            setFromToken(tokens[0]);
-        }
-        if (tokens.length > 1 && !toToken) {
-            setToToken(tokens[1]);
+        if (tokens.length > 0) {
+            // Якщо у юзера є реальний SOL з балансом, підтягуємо його
+            const userSol = tokens.find(t => t.symbol === 'SOL');
+            if (userSol && fromToken?.amount === 0) {
+                setFromToken(userSol);
+            }
         }
     }, [tokens]);
 
@@ -174,7 +177,7 @@ export default function SwapScreen() {
 
         const decimals = fromToken.decimals ?? 9;
         const amountRaw = num * Math.pow(10, decimals);
-        
+
         const delay = setTimeout(() => {
             fetchQuote(fromToken.mint, toToken.mint, amountRaw);
         }, 500); // 500ms debounce
@@ -251,18 +254,65 @@ export default function SwapScreen() {
      * Swaps are currently restricted to Mainnet only.
      */
     const handleSwipe = async () => {
-        if (!quote) return;
+        // 1. Перевіряємо, чи взагалі обрані токени
+        if (!fromToken) {
+            setToastMessage('Помилка: не обрано токен для відправки.');
+            setIsToastSuccess(false);
+            setIsToastVisible(true);
+            return;
+        }
+        if (!toToken) {
+            setToastMessage('Помилка: не обрано токен для отримання.');
+            setIsToastSuccess(false);
+            setIsToastVisible(true);
+            return;
+        }
+
+        // 2. Перевіряємо, чи дійшов стейт суми до головного компонента
+        const num = parseFloat(fromAmount);
+        if (!fromAmount || isNaN(num) || num <= 0) {
+            setToastMessage(`Стейт суми пустий або некоректний: "${fromAmount}"`);
+            setIsToastSuccess(false);
+            setIsToastVisible(true);
+            return;
+        }
+
+        // 3. Перевіряємо, чи не висить ще лоадер запиту до Jupiter
+        if (isQuoteLoading) {
+            setToastMessage('Запит до Jupiter ще виконується, секунду...');
+            setIsToastSuccess(false);
+            setIsToastVisible(true);
+            return;
+        }
+
+        // 4. Перевіряємо наявність тихої помилки від API (наприклад, однакові токени)
+        if (quoteError) {
+            setToastMessage(`Jupiter API: ${quoteError}`);
+            setIsToastSuccess(false);
+            setIsToastVisible(true);
+            return;
+        }
+
+        // 5. Якщо токени і сума є, але котирування так і не повернулось
+        if (!quote) {
+            setToastMessage('Маршрут не знайдено (можливо, замала сума або немає ліквідності).');
+            setIsToastSuccess(false);
+            setIsToastVisible(true);
+            return;
+        }
+
+        // Якщо всі перевірки пройдені — запускаємо транзакцію
         const { signature, error } = await executeSwap();
-        
+
         if (signature) {
-            setToastMessage(`Swap successful! tx: ${signature.slice(0, 8)}...`);
+            setToastMessage(`Успішно! tx: ${signature.slice(0, 8)}...`);
             setIsToastSuccess(true);
             setIsToastVisible(true);
             setFromAmount('');
             setToAmount('');
             clearQuote();
         } else {
-            setToastMessage(error || 'Swap failed to execute.');
+            setToastMessage(error || 'Помилка виконання транзакції.');
             setIsToastSuccess(false);
             setIsToastVisible(true);
         }
