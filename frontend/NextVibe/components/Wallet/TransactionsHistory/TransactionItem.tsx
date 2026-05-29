@@ -85,11 +85,11 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                         resizeMode={FastImage.resizeMode.cover}
                     />
                     <View style={[styles.directionIndicator, { 
-                        backgroundColor: isIncoming ? '#2ECC71' : '#E74C3C',
+                        backgroundColor: item.type === 'swap' ? '#3498db' : isIncoming ? '#2ECC71' : '#E74C3C',
                         borderColor: isDark ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)',
                     }]}>
                         <MaterialCommunityIcons 
-                            name={isIncoming ? 'arrow-bottom-left' : 'arrow-top-right'} 
+                            name={item.type === 'swap' ? 'swap-horizontal' : isIncoming ? 'arrow-bottom-left' : 'arrow-top-right'} 
                             size={14} 
                             color="#fff" 
                         />
@@ -101,7 +101,7 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                     <Text style={styles.transactionType}>
                         {item.token === 'cNFT'
                             ? (isIncoming ? 'cNFT Claimed' : 'cNFT Sent')
-                            : (isIncoming ? 'Received' : 'Sent')}
+                            : item.type === 'swap' ? 'Swap' : (isIncoming ? 'Received' : 'Sent')}
                     </Text>
                     <Text style={styles.transactionAddress} numberOfLines={1} ellipsizeMode="middle">
                         {isIncoming ? `From: ${item.from}` : `To: ${item.to}`}
@@ -111,9 +111,9 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                 {/* Amount Section */}
                 <View style={styles.transactionDetails}>
                     <Text style={[styles.transactionAmount, { 
-                        color: isIncoming ? '#2ECC71' : isDark ? '#FF6B6B' : '#E74C3C'
+                        color: item.type === 'swap' ? (isDark ? '#74b9ff' : '#0984e3') : isIncoming ? '#2ECC71' : isDark ? '#FF6B6B' : '#E74C3C'
                     }]}>
-                        {isIncoming ? '+' : '-'}
+                        {item.type === 'swap' ? '' : (isIncoming ? '+' : '-')}
                         {item.token === 'cNFT'
                             ? `${item.amount} cNFT`
                             : `${item.amount.toFixed(item.token === 'SOL' ? 4 : 2)} ${tokenInfo.symbol}`}
