@@ -20,18 +20,6 @@ const THUMB_SIZE = 54;
 const TRACK_H = 62;
 const THRESHOLD = TRACK_W * 0.75;
 
-/**
- * SwapSwipeButton is the primary CTA for executing a swap.
- *
- * The user drags the thumb rightward past 75% of the track to confirm.
- * Vibration pulses as the thumb approaches the threshold.
- *
- * States:
- * - idle    — swipeable thumb with breathing label
- * - loading — spinning loader overlay
- * - success — green check overlay with spring scale
- * - failed  — red X overlay, auto-resets after 2 s
- */
 export default function SwapSwipeButton({
     onSwipeSuccess,
     isLoading,
@@ -47,6 +35,18 @@ export default function SwapSwipeButton({
     const panXVal = useRef(0);
     const prevDx = useRef(0);
     const lastVibe = useRef(0);
+    const onSwipeSuccessRef = useRef(onSwipeSuccess);
+
+    useEffect(() => {
+        onSwipeSuccessRef.current = onSwipeSuccess;
+    }, [onSwipeSuccess]);
+
+    // Блокуємо свайп, якщо вже йде завантаження або відображається статус
+    const isInteractive = useRef(!isLoading && !isSuccess && !isFailed);
+
+    useEffect(() => {
+        isInteractive.current = !isLoading && !isSuccess && !isFailed;
+    }, [isLoading, isSuccess, isFailed]);
 
     useEffect(() => {
         const loop = Animated.loop(
@@ -83,11 +83,6 @@ export default function SwapSwipeButton({
         return () => pan.x.removeListener(id);
     }, []);
 
-    /**
-     * Springs the thumb back to the start and restores label opacity.
-     * Wrapped in useCallback so it has a stable reference for use inside
-     * both the PanResponder closure and the isFailed useEffect.
-     */
     const resetSwipe = useCallback(() => {
         Animated.parallel([
             Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }),
@@ -104,7 +99,16 @@ export default function SwapSwipeButton({
 
     const panResponder = useRef(
         PanResponder.create({
-            onMoveShouldSetPanResponder: () => true,
+            // 1. Обов'язково кажемо, що хочемо реагувати на дотик відразу
+            onStartShouldSetPanResponder: () => isInteractive.current,
+            // 2. Дозволяємо перехопити подію, якщо це горизонтальний рух
+            onMoveShouldSetPanResponder: (_, g) => isInteractive.current && Math.abs(g.dx) > 2,
+            
+            // 3. Відбираємо жест у ScrollView жорстко через фазу Capture
+            onStartShouldSetPanResponderCapture: () => false,
+            onMoveShouldSetPanResponderCapture: (_, g) => {
+                return isInteractive.current && Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 2;
+            },
 
             onPanResponderGrant: () => {
                 prevDx.current = 0;
@@ -131,11 +135,17 @@ export default function SwapSwipeButton({
                 prevDx.current = g.dx;
             },
 
-            onPanResponderRelease: (_, g) => {
+           onPanResponderRelease: (_, g) => {
                 pan.flattenOffset();
                 if (g.dx > THRESHOLD) {
                     Vibration.vibrate(60);
-                    onSwipeSuccess();
+                    Animated.spring(pan, {
+                        toValue: { x: TRACK_W - THUMB_SIZE, y: 0 },
+                        useNativeDriver: true
+                    }).start();
+                    
+                    // ВИКЛИКАЄМО АКТУАЛЬНУ ФУНКЦІЮ ОСЬ ТУТ:
+                    onSwipeSuccessRef.current(); 
                 } else {
                     Vibration.vibrate(15);
                     Animated.parallel([
@@ -144,6 +154,15 @@ export default function SwapSwipeButton({
                     ]).start();
                 }
             },
+
+            // 4. Запобіжник: якщо OS або ScrollView все ж таки відберуть жест посеред свайпу
+            onPanResponderTerminate: () => {
+                pan.flattenOffset();
+                Animated.parallel([
+                    Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }),
+                    Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+                ]).start();
+            }
         })
     ).current;
 
@@ -214,9 +233,6 @@ export default function SwapSwipeButton({
     );
 }
 
-/**
- * Renders a subtle purple fill inside the track to give it visual depth.
- */
 function LinearTrack({ colors }: { colors: SwapColors }) {
     return (
         <View
@@ -258,6 +274,7 @@ const styles = StyleSheet.create({
         height: THUMB_SIZE,
         borderRadius: THUMB_SIZE / 2,
         overflow: 'hidden',
+        zIndex: 20, // Додано для пріоритету над track
     },
     thumbInner: {
         flex: 1,

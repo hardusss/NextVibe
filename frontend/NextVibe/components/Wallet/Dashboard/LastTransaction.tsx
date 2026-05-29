@@ -49,8 +49,10 @@ const TransactionContent: React.FC<{
     transaction: FormattedTransaction;
     tokenPrice: number;
 }> = ({ isDarkMode, isBalanceHidden, transaction, tokenPrice }) => {
-    const tokenKey = transaction.token as keyof typeof TOKENS;
-    const tokenInfo = TOKENS[tokenKey];
+    let tokenInfo = TOKENS[transaction.token as keyof typeof TOKENS];
+    if (!tokenInfo) {
+        tokenInfo = Object.values(TOKENS).find(t => t.mint === transaction.token) as any;
+    }
     const amount = Number(transaction.amount.toFixed(8));
     const usdValue = Number((amount * tokenPrice).toFixed(2));
     const { Icon, accent, accentBg } = getTxMeta(transaction.type, isDarkMode);
@@ -58,12 +60,22 @@ const TransactionContent: React.FC<{
     const mutedText = isDarkMode ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.38)";
     const titleColor = isDarkMode ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.82)";
     const subColor = isDarkMode ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
+    
+    const displaySymbol = tokenInfo?.symbol || (transaction.token.length > 8 ? `${transaction.token.slice(0, 4)}...` : transaction.token);
 
     return (
         <>
             {/* Token image + type icon badge */}
             <View style={styles.avatarWrap}>
-                <Image source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
+                {tokenInfo?.logoURL ? (
+                    <Image source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
+                ) : (
+                    <View style={[styles.tokenImage, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
+                        <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 10, fontFamily: "Dank Mono" }}>
+                            {displaySymbol.slice(0, 3)}
+                        </Text>
+                    </View>
+                )}
                 <View style={[styles.typeBadge, { backgroundColor: accentBg, borderColor: accent + "40" }]}>
                     <Icon size={10} color={accent} strokeWidth={2} />
                 </View>
@@ -72,7 +84,7 @@ const TransactionContent: React.FC<{
             {/* Text */}
             <View style={styles.textBlock}>
                 <Text style={[styles.title, { color: titleColor }]} numberOfLines={1}>
-                    {isBalanceHidden ? "Recent transaction" : `${transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)} ${amount} ${transaction.token}`}
+                    {isBalanceHidden ? "Recent transaction" : `${transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)} ${amount} ${displaySymbol}`}
                 </Text>
                 <Text style={[styles.sub, { color: subColor }]}>
                     {isBalanceHidden ? "••••" : `≈ $${usdValue} USD`}
