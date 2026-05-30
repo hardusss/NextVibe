@@ -1,19 +1,44 @@
-import React from "react";
-import { View, ActivityIndicator, ActivityIndicatorProps } from "react-native";
-import LottieView from "lottie-react-native";
+import React from 'react';
+import { View, ActivityIndicator, ActivityIndicatorProps, StyleProp, ViewStyle } from 'react-native';
+import LottieView from 'lottie-react-native';
 
-const CustomActivityIndicator = (props: ActivityIndicatorProps) => {
+type LoaderSize = 'small' | 'large';
+
+type CustomActivityIndicatorProps = ActivityIndicatorProps & {
+    size?: LoaderSize;
+};
+
+const SIZES: Record<LoaderSize, number> = {
+    small: 36,
+    large: 100,
+};
+
+const CustomActivityIndicator = ({
+    size = 'large',
+    style,
+    ...props
+}: CustomActivityIndicatorProps) => {
+    const dimension = SIZES[size];
+
+    if (size === 'small') {
+        return (
+            <View style={[{ justifyContent: 'center', alignItems: 'center' }, style as StyleProp<ViewStyle>]}>
+                <ActivityIndicator {...props} />
+            </View>
+        );
+    }
+
     return (
-        <View style={[{ justifyContent: "center", alignItems: "center" }, props.style]}>
+        <View style={[{ justifyContent: 'center', alignItems: 'center' }, style]}>
             <LottieView
-                source={require("../assets/lottie/loader.json")} 
+                source={require('../assets/lottie/loader.json')}
                 autoPlay
                 loop
-                style={{ width: 100, height: 100 }}
+                style={{ width: dimension, height: dimension }}
             />
         </View>
     );
 };
 
-
 export { CustomActivityIndicator as ActivityIndicator };
+export default CustomActivityIndicator;
