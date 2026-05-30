@@ -425,11 +425,15 @@ export default function SwapScreen() {
             <StatusBar
                 style={isDark ? 'light' : 'dark'}
                 translucent={false}
-                backgroundColor={isDark ? '#120820' : '#F7F3FF'}
+                backgroundColor={isDark ? '#0A0410' : '#FFFFFF'}
             />
 
             <LinearGradient
-                colors={isDark ? ['#120820', '#1A0A3E', '#0A0410'] : ['#F7F3FF', '#EBE3FE', '#F7F3FF']}
+                colors={
+                    isDark
+                        ? ["#0A0410", "#1a0a2e", "#0A0410"]
+                        : ["#FFFFFF", "#dbd4fbff", "#d7cdf2ff"]
+                }
                 locations={[0, 0.5, 1]}
                 style={StyleSheet.absoluteFill}
             />
@@ -475,7 +479,7 @@ export default function SwapScreen() {
                         style={StyleSheet.absoluteFill}
                         blurType={isDark ? 'dark' : 'light'}
                         blurAmount={90}
-                        reducedTransparencyFallbackColor={isDark ? '#120820' : '#F7F3FF'}
+                        reducedTransparencyFallbackColor={isDark ? '#0A0410' : '#FFFFFF'}
                     />
                 </View>
             )}
