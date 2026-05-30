@@ -10,26 +10,37 @@ import { BlurView } from 'expo-blur';
 
 /**
  * TransactionDetail Screen
- * Displays comprehensive information about a single Solana transaction
- * Features animated entrance, copy-to-clipboard functionality, and blockchain explorer integration
+ *
+ * Displays comprehensive information about a single Solana transaction.
+ * Features animated entrance, copy-to-clipboard functionality, blockchain
+ * explorer integration, and a rich swap visualisation when the transaction
+ * is a token swap (dual-icon header with colour-coded amounts).
  */
 export default function TransactionDetailScreen() {
     const { 
-        tx_id,           // Transaction signature
-        amount,          // Token amount transferred
-        direction,       // "sent" | "received"
-        icon,            // Token logo URL
-        timestamp,       // Unix timestamp in milliseconds
-        to_address,      // Recipient address or "external"
-        from_address,    // Sender address or "external"
-        blockchain,      // Token symbol (SOL, USDC, etc.)
-        usdValue,        // USD equivalent value
-        tx_url           // Solscan explorer URL
+        tx_id,               // Transaction signature
+        amount,              // Token amount transferred
+        direction,           // "sent" | "received" | "swap"
+        icon,                // Token logo URL
+        timestamp,           // Unix timestamp in milliseconds
+        to_address,          // Recipient address or "external"
+        from_address,        // Sender address or "external"
+        blockchain,          // Token symbol (SOL, USDC, etc.)
+        usdValue,            // USD equivalent value
+        tx_url,              // Solscan explorer URL
+        // Swap-specific params
+        swap_input_token,    // Symbol of the sold token
+        swap_input_amount,   // Amount of the sold token
+        swap_input_logo,     // Logo URL of the sold token
+        swap_output_token,   // Symbol of the received token
+        swap_output_amount,  // Amount of the received token
+        swap_output_logo,    // Logo URL of the received token
     } = useLocalSearchParams();
     
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
     const isIncoming = direction === 'received';
+    const isSwap = direction === 'swap';
     
     // Animation references for smooth entrance effects
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -38,8 +49,8 @@ export default function TransactionDetailScreen() {
     const [toastMessage, setToastMessage] = useState('');
 
     /**
-     * Initialize entrance animations on screen focus
-     * Combines fade-in and slide-up effects for polished UX
+     * Initialize entrance animations on screen focus.
+     * Combines fade-in and slide-up effects for polished UX.
      */
     useFocusEffect(
         useCallback(() => {
@@ -62,9 +73,9 @@ export default function TransactionDetailScreen() {
     );
 
     /**
-     * Displays temporary toast notification with fade in/out animation
-     * Used for copy confirmation feedback
-     * 
+     * Displays a temporary toast notification with fade in/out animation.
+     * Used for copy confirmation feedback.
+     *
      * @param message - Text to display in toast
      */
     const showToast = (message: string) => {
@@ -77,9 +88,8 @@ export default function TransactionDetailScreen() {
     };
 
     /**
-     * Copies text to clipboard and shows confirmation toast
-     * Provides user feedback for successful copy operation
-     * 
+     * Copies text to clipboard and shows confirmation toast.
+     *
      * @param value - Text to copy to clipboard
      * @param label - User-friendly label for toast message
      */
@@ -89,9 +99,9 @@ export default function TransactionDetailScreen() {
     };
 
     /**
-     * Formats Unix timestamp to human-readable date string
-     * Handles both second and millisecond precision timestamps
-     * 
+     * Formats Unix timestamp to human-readable date string.
+     * Handles both second and millisecond precision timestamps.
+     *
      * @param ts - Unix timestamp (seconds or milliseconds)
      * @returns Formatted date string or 'N/A' if invalid
      */
@@ -107,9 +117,8 @@ export default function TransactionDetailScreen() {
     };
 
     /**
-     * Opens blockchain explorer URL in external browser
-     * Validates URL compatibility before attempting to open
-     * 
+     * Opens blockchain explorer URL in external browser.
+     *
      * @param url - Solscan or other explorer URL
      */
     const handleOpenURL = async (url: string | string[] | undefined) => {
@@ -123,17 +132,15 @@ export default function TransactionDetailScreen() {
     };
 
     /**
-     * Formats address for display
-     * Returns truncated version for "external" addresses or full address
-     * 
+     * Formats address for display.
+     * Returns truncated version for long addresses.
+     *
      * @param address - Wallet address or "external"
      * @returns Formatted display string
      */
     const formatAddress = (address: string | string[] | undefined) => {
         if (!address || address === 'external') return 'External Wallet';
         if (typeof address !== 'string') return 'N/A';
-        
-        // Show first 4 and last 4 characters for long addresses
         if (address.length > 20) {
             return `${address.slice(0, 4)}...${address.slice(-4)}`;
         }
@@ -141,14 +148,29 @@ export default function TransactionDetailScreen() {
     };
 
     /**
-     * Determines if address should be copyable
-     * "external" placeholder addresses should not be copied
-     * 
+     * Determines if address should be copyable.
+     * "external" placeholder addresses should not be copied.
+     *
      * @param address - Address to check
      * @returns True if address is a valid copyable string
      */
     const isCopyableAddress = (address: string | string[] | undefined): boolean => {
         return typeof address === 'string' && address !== 'external';
+    };
+
+    /**
+     * Formats a numeric token amount for display, limiting decimal places
+     * based on the magnitude of the number.
+     *
+     * @param raw - Raw amount (string or number)
+     * @returns Formatted amount string
+     */
+    const formatAmount = (raw: string | string[] | undefined): string => {
+        const num = Number(raw);
+        if (isNaN(num)) return '0';
+        if (num >= 1000) return num.toFixed(0);
+        if (num >= 1) return num.toFixed(2);
+        return num.toFixed(num < 0.001 ? 6 : 4);
     };
 
     const styles = StyleSheet.create({
@@ -184,7 +206,9 @@ export default function TransactionDetailScreen() {
             borderRadius: 32,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: isIncoming ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.15)',
+            backgroundColor: isSwap
+                ? 'rgba(59, 130, 246, 0.15)'
+                : isIncoming ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.15)',
             marginBottom: 16,
         },
         amount: {
@@ -237,7 +261,7 @@ export default function TransactionDetailScreen() {
             color: isDark ? '#FFFFFF' : '#000',
             fontSize: 14,
             fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            includeFontPadding: false,
             textAlign: 'right',
             marginLeft: 8,
         },
@@ -245,7 +269,7 @@ includeFontPadding:false,
             color: isDark ? '#A78BFA' : '#5856D6',
             fontSize: 14,
             fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            includeFontPadding: false,
         },
         toast: {
             position: 'absolute',
@@ -263,10 +287,154 @@ includeFontPadding:false,
             color: '#fff',
             fontSize: 14,
             fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+            includeFontPadding: false,
             marginLeft: 8,
         },
+        // ─── Swap-specific styles ────────────────────────
+        swapHeaderContainer: {
+            alignItems: 'center',
+            marginBottom: 24,
+        },
+        swapIconsRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 20,
+        },
+        swapTokenIcon: {
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            borderWidth: 3,
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+        },
+        swapArrowContainer: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: isDark ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.12)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginHorizontal: 12,
+        },
+        swapAmountsContainer: {
+            alignItems: 'center',
+            gap: 6,
+        },
+        swapAmountRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+        },
+        swapAmountIcon: {
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+        },
+        swapSentText: {
+            fontSize: 22,
+            fontWeight: 'bold',
+            color: isDark ? '#F472B6' : '#DB2777',
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
+        },
+        swapReceivedText: {
+            fontSize: 22,
+            fontWeight: 'bold',
+            color: isDark ? '#34D399' : '#059669',
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
+        },
+        swapDivider: {
+            width: 40,
+            height: 1,
+            backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+            marginVertical: 4,
+        },
     });
+
+    /**
+     * Renders the swap-specific header with dual token icons,
+     * a directional arrow, and colour-coded input/output amounts.
+     */
+    const renderSwapHeader = () => {
+        if (!isSwap || !swap_input_token) return null;
+
+        return (
+            <Animated.View style={[
+                styles.swapHeaderContainer,
+                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+            ]}>
+                {/* Dual token icons with arrow */}
+                <View style={styles.swapIconsRow}>
+                    <FastImage
+                        source={{ uri: (swap_input_logo as string) || 'https://via.placeholder.com/56' }}
+                        style={styles.swapTokenIcon}
+                    />
+                    <View style={styles.swapArrowContainer}>
+                        <MaterialCommunityIcons
+                            name="swap-horizontal"
+                            size={20}
+                            color={isDark ? '#60A5FA' : '#3B82F6'}
+                        />
+                    </View>
+                    <FastImage
+                        source={{ uri: (swap_output_logo as string) || 'https://via.placeholder.com/56' }}
+                        style={styles.swapTokenIcon}
+                    />
+                </View>
+
+                {/* Colour-coded amounts */}
+                <View style={styles.swapAmountsContainer}>
+                    <View style={styles.swapAmountRow}>
+                        <FastImage
+                            source={{ uri: (swap_input_logo as string) || 'https://via.placeholder.com/22' }}
+                            style={styles.swapAmountIcon}
+                        />
+                        <Text style={styles.swapSentText}>
+                            -{formatAmount(swap_input_amount)} {swap_input_token}
+                        </Text>
+                    </View>
+                    <View style={styles.swapDivider} />
+                    <View style={styles.swapAmountRow}>
+                        <FastImage
+                            source={{ uri: (swap_output_logo as string) || 'https://via.placeholder.com/22' }}
+                            style={styles.swapAmountIcon}
+                        />
+                        <Text style={styles.swapReceivedText}>
+                            +{formatAmount(swap_output_amount)} {swap_output_token}
+                        </Text>
+                    </View>
+                </View>
+            </Animated.View>
+        );
+    };
+
+    /**
+     * Renders the standard (non-swap) transaction header
+     * with single token icon, amount, and USD value.
+     */
+    const renderStandardHeader = () => {
+        if (isSwap) return null;
+
+        return (
+            <Animated.View style={[
+                styles.statusCard,
+                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+            ]}>
+                <View style={styles.statusIconContainer}>
+                    <FastImage 
+                        source={{ uri: icon as string }} 
+                        style={{width: 44, height: 44, borderRadius: 22}} 
+                    />
+                </View>
+                <Text style={styles.amount}>
+                    {isIncoming ? '+' : '-'}{parseFloat(Number(amount).toFixed(6)).toString()} {blockchain?.toString().toUpperCase()}
+                </Text>
+                {usdValue && <Text style={styles.usdValue}>${usdValue}</Text>}
+            </Animated.View>
+        );
+    };
 
     return (
         <LinearGradient
@@ -293,26 +461,15 @@ includeFontPadding:false,
                             color={isDark ? '#FFFFFF' : '#000'} 
                         />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Transaction Details</Text>
+                    <Text style={styles.title}>
+                        {isSwap ? 'Swap Details' : 'Transaction Details'}
+                    </Text>
                 </View>
                 
                 <ScrollView contentContainerStyle={styles.scrollContainer}>
-                    {/* Transaction amount card with animated entrance */}
-                    <Animated.View style={[
-                        styles.statusCard, 
-                        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-                    ]}>
-                        <View style={styles.statusIconContainer}>
-                            <FastImage 
-                                source={{ uri: icon as string }} 
-                                style={{width: 44, height: 44, borderRadius: 22}} 
-                            />
-                        </View>
-                        <Text style={styles.amount}>
-                            {isIncoming ? '+' : '-'}{parseFloat(Number(amount).toFixed(6)).toString()} {blockchain?.toString().toUpperCase()}
-                        </Text>
-                        {usdValue && <Text style={styles.usdValue}>${usdValue}</Text>}
-                    </Animated.View>
+                    {/* Conditional header: swap vs standard */}
+                    {renderSwapHeader()}
+                    {renderStandardHeader()}
 
                     {/* Transaction details card with glassmorphism effect */}
                     <Animated.View style={[
@@ -340,6 +497,33 @@ includeFontPadding:false,
                                     </Text>
                                 </View>
                             </View>
+
+                            {/* Transaction type for swaps */}
+                            {isSwap && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.label}>Type</Text>
+                                    <View style={styles.valueContainer}>
+                                        <MaterialCommunityIcons
+                                            name="swap-horizontal"
+                                            size={16}
+                                            color={isDark ? '#60A5FA' : '#3B82F6'}
+                                        />
+                                        <Text style={[styles.value, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>
+                                            Token Swap
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Swap pair info */}
+                            {isSwap && swap_input_token && swap_output_token && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.label}>Pair</Text>
+                                    <Text style={styles.value}>
+                                        {swap_input_token} → {swap_output_token}
+                                    </Text>
+                                </View>
+                            )}
 
                             {/* Transaction timestamp */}
                             <View style={styles.infoRow}>
@@ -377,8 +561,8 @@ includeFontPadding:false,
                                 )
                             )}
                             
-                            {/* To address - always shown */}
-                            {to_address && (
+                            {/* To address - shown for non-swap transactions */}
+                            {!isSwap && to_address && (
                                 isCopyableAddress(to_address) ? (
                                     <TouchableOpacity 
                                         hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 

@@ -1,6 +1,6 @@
 import { LAMPORTS_PER_SOL, ParsedTransactionWithMeta } from "@solana/web3.js";
-import { TOKEN_MINT_CONSTANTS } from "@/constants/Tokens";
-import { FormattedTransaction } from "@/src/types/solana";
+import { TOKEN_MINT_CONSTANTS, TOKENS } from "@/constants/Tokens";
+import { FormattedTransaction, SwapDetails } from "@/src/types/solana";
 
 /**
  * Minimum amount of Lamports change to consider a transaction valid.
@@ -15,6 +15,122 @@ const MIN_SOL_CHANGE = 5000;
 const BUBBLEGUM_PROGRAM_ID = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752kRSfkm";
 const SPL_NOOP_PROGRAM_ID = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV";
 const SPL_ACCOUNT_COMPRESSION_ID = "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK";
+
+/**
+ * Resolves a token mint address to its symbol and logo URL
+ * from the known TOKENS constant. Falls back to a truncated
+ * mint address when the token is not in the registry.
+ *
+ * @param mint - The SPL token mint address or "SOL"
+ * @returns Object with resolved symbol and logoURL
+ */
+const resolveTokenInfo = (mint: string): { symbol: string; logoURL: string | null } => {
+    if (mint === "SOL" || mint === TOKEN_MINT_CONSTANTS.SOL_MINT_ADDRESS) {
+        return { symbol: "SOL", logoURL: TOKENS.SOL.logoURL };
+    }
+
+    // Direct key lookup
+    const directMatch = TOKENS[mint as keyof typeof TOKENS];
+    if (directMatch) {
+        return { symbol: directMatch.symbol, logoURL: directMatch.logoURL };
+    }
+
+    // Lookup by mint address
+    const byMint = Object.values(TOKENS).find(t => t.mint === mint);
+    if (byMint) {
+        return { symbol: byMint.symbol, logoURL: byMint.logoURL };
+    }
+
+    // Lookup by USDC devnet mint
+    if (mint === TOKEN_MINT_CONSTANTS.USDC_MINT) {
+        return { symbol: "USDC", logoURL: TOKENS.USDC.logoURL };
+    }
+
+    return {
+        symbol: mint.length > 8 ? `${mint.slice(0, 4)}...` : mint,
+        logoURL: null,
+    };
+};
+
+/**
+ * Checks whether a transaction contains Jupiter swap program invocations.
+ *
+ * @param logMessages - Array of log messages from the transaction metadata
+ * @returns True if the transaction is a Jupiter swap
+ */
+const isJupiterSwap = (logMessages: string[] | null | undefined): boolean => {
+    if (!logMessages) return false;
+    return logMessages.some(l =>
+        l.includes("JUP6LkbZbjS1jKKwapdHNy74zcZ3tPZgKk9e9KjK3M9") ||
+        l.includes("JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN") ||
+        l.includes("Instruction: Route") ||
+        l.includes("Instruction: Swap")
+    );
+};
+
+/**
+ * Extracts detailed swap information (input/output token, amounts, logos)
+ * from a parsed Solana transaction by comparing pre/post token balances
+ * and SOL balance changes for the given wallet.
+ *
+ * @param tx - The fully parsed Solana transaction
+ * @param accountAddress - The wallet address to analyse diffs for
+ * @returns SwapDetails if both sides of the swap are found, null otherwise
+ */
+const extractSwapDetails = (
+    tx: ParsedTransactionWithMeta,
+    accountAddress: string
+): SwapDetails | null => {
+    const preTokens = tx.meta?.preTokenBalances ?? [];
+    const postTokens = tx.meta?.postTokenBalances ?? [];
+    const accountKeys = tx.transaction.message.accountKeys.map(k => k.pubkey.toBase58());
+
+    /** Token diffs owned by the current wallet */
+    const diffs: { mint: string; diff: number }[] = [];
+
+    for (const post of postTokens) {
+        if (post.owner !== accountAddress) continue;
+        const pre = preTokens.find(p => p.accountIndex === post.accountIndex);
+        const diff = (post.uiTokenAmount.uiAmount || 0) - (pre?.uiTokenAmount.uiAmount || 0);
+        if (Math.abs(diff) > 0) {
+            diffs.push({ mint: post.mint, diff });
+        }
+    }
+
+    // Also check SOL balance change
+    const myIndex = accountKeys.indexOf(accountAddress);
+    if (myIndex !== -1) {
+        const preSol = tx.meta?.preBalances?.[myIndex] ?? 0;
+        const postSol = tx.meta?.postBalances?.[myIndex] ?? 0;
+        const solDiff = (postSol - preSol) / LAMPORTS_PER_SOL;
+        // Only consider significant SOL changes (not just fees)
+        if (Math.abs(solDiff) > 0.0001) {
+            diffs.push({ mint: "SOL", diff: solDiff });
+        }
+    }
+
+    // A swap must have at least one negative diff (sold) and one positive diff (bought)
+    const sold = diffs.filter(d => d.diff < 0);
+    const bought = diffs.filter(d => d.diff > 0);
+
+    if (sold.length === 0 || bought.length === 0) return null;
+
+    // Use the largest absolute change on each side as the primary pair
+    const primarySold = sold.reduce((a, b) => (Math.abs(a.diff) > Math.abs(b.diff) ? a : b));
+    const primaryBought = bought.reduce((a, b) => (Math.abs(a.diff) > Math.abs(b.diff) ? a : b));
+
+    const inputInfo = resolveTokenInfo(primarySold.mint);
+    const outputInfo = resolveTokenInfo(primaryBought.mint);
+
+    return {
+        inputToken: inputInfo.symbol,
+        inputAmount: Math.abs(primarySold.diff),
+        inputLogoURL: inputInfo.logoURL,
+        outputToken: outputInfo.symbol,
+        outputAmount: Math.abs(primaryBought.diff),
+        outputLogoURL: outputInfo.logoURL,
+    };
+};
 
 /**
  * Helper to resolve the counterparty address for native SOL transfers.
@@ -285,6 +401,10 @@ const detectCNftTransaction = (
  * Main parser function.
  * Converts raw RPC transactions into a clean UI format.
  * 
+ * For swap transactions detected via Jupiter program logs, enriches
+ * the result with {@link SwapDetails} containing both input and output
+ * token symbols, amounts, and logo URLs.
+ * 
  * Deduplication: Uses a Set to track signatures that have already been
  * added, preventing the same transaction from appearing twice (e.g. when
  * a tx has both a SOL fee change AND an SPL transfer).
@@ -317,6 +437,35 @@ export const formatTransactions = (
             continue; // Skip SOL/SPL parsing for this tx
         }
 
+        // --- Pre-check: Is this a Jupiter swap? ---
+        const isSwap = isJupiterSwap(tx.meta?.logMessages);
+        let swapDetails: SwapDetails | undefined;
+
+        if (isSwap) {
+            const details = extractSwapDetails(tx, accountAddress);
+            if (details) {
+                swapDetails = details;
+
+                // Skip if already seen
+                if (seenSignatures.has(signature)) continue;
+                seenSignatures.add(signature);
+
+                result.push({
+                    signature,
+                    type: "swap",
+                    // Primary token is the output (what the user received)
+                    token: details.outputToken,
+                    amount: details.outputAmount,
+                    from: accountAddress,
+                    to: accountAddress,
+                    time,
+                    swapDetails,
+                });
+
+                continue; // Swap handled — skip normal token/SOL flow
+            }
+        }
+
         // --- 1. Token Transfers (check first, more specific) ---
         const preTokens = tx.meta.preTokenBalances ?? [];
         const postTokens = tx.meta.postTokenBalances ?? [];
@@ -341,18 +490,12 @@ export const formatTransactions = (
             // Determine Token Symbol
             const tokenSymbol = post.mint === TOKEN_MINT_CONSTANTS.USDC_MINT ? "USDC" : post.mint;
 
-            const isSwap = tx.meta?.logMessages?.some(l => 
-                l.includes("JUP6LkbZbjS1jKKwapdHNy74zcZ3tPZgKk9e9KjK3M9") || 
-                l.includes("Instruction: Route") || 
-                l.includes("Instruction: Swap")
-            );
-
             seenSignatures.add(signature);
             hasTokenTransfer = true;
 
             result.push({
                 signature,
-                type: isSwap ? "swap" : (diff > 0 ? "received" : "sent"),
+                type: diff > 0 ? "received" : "sent",
                 token: tokenSymbol,
                 amount: Math.abs(diff),
                 from: addresses?.from || (diff > 0 ? "external" : accountAddress),
@@ -381,17 +524,11 @@ export const formatTransactions = (
                 if (addresses?.from === addresses?.to) {
                     continue; 
                 }
-                
-                const isSwap = tx.meta?.logMessages?.some(l => 
-                    l.includes("JUP6LkbZbjS1jKKwapdHNy74zcZ3tPZgKk9e9KjK3M9") || 
-                    l.includes("Instruction: Route") || 
-                    l.includes("Instruction: Swap")
-                );
 
                 seenSignatures.add(signature);
                 result.push({
                     signature,
-                    type: isSwap ? "swap" : (diffSOL > 0 ? "received" : "sent"),
+                    type: diffSOL > 0 ? "received" : "sent",
                     token: "SOL",
                     amount: Math.abs(diffSOL),
                     from: addresses?.from || (diffSOL > 0 ? "external" : accountAddress),
