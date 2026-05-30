@@ -39,9 +39,23 @@ export const createWalletStyles = (isDarkMode: boolean) =>
       flex: 1,
     },
 
-    /** ScrollView content wrapper with bottom padding */
+    /** ScrollView content wrapper — fills screen so portfolio can sit at the bottom */
     scrollContent: {
-      paddingBottom: 30,
+      flexGrow: 1,
+    },
+
+    /** Dashboard column: top sections + portfolio pinned to bottom */
+    dashboardBody: {
+      flex: 1,
+      justifyContent: "space-between",
+    },
+
+    dashboardTop: {
+      flexShrink: 0,
+    },
+
+    portfolioBottom: {
+      flexShrink: 0,
     },
 
     // ========================================
