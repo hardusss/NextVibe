@@ -14,7 +14,6 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    ArrowLeft,
     BriefcaseBusiness,
     Search,
     X,
@@ -25,6 +24,7 @@ import {
     EyeOff,
     Coins,
 } from "lucide-react-native";
+import WalletHeader from "@/components/Wallet/Shared/WalletHeader";
 import usePortfolio from "@/hooks/usePortfolio";
 import TokenItem from "./TokenItem";
 import { createWalletStyles } from "@/styles/wallet.styles";
@@ -47,26 +47,11 @@ export default function AllTokensScreen() {
     // Entrance animations
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
-    const headerFade = useRef(new Animated.Value(0)).current;
-    const headerSlide = useRef(new Animated.Value(-20)).current;
     const summaryScale = useRef(new Animated.Value(0.9)).current;
     const summaryFade = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.stagger(120, [
-            Animated.parallel([
-                Animated.timing(headerFade, {
-                    toValue: 1,
-                    duration: 350,
-                    useNativeDriver: true,
-                }),
-                Animated.spring(headerSlide, {
-                    toValue: 0,
-                    tension: 80,
-                    friction: 12,
-                    useNativeDriver: true,
-                }),
-            ]),
             Animated.parallel([
                 Animated.timing(summaryFade, {
                     toValue: 1,
@@ -173,36 +158,22 @@ export default function AllTokensScreen() {
         >
             <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"} />
 
-            {/* ── Top Navigation ── */}
-            <View style={localStyles.header}>
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={[localStyles.backButton, { backgroundColor: backBg }]}
-                    activeOpacity={0.65}
-                >
-                    <ArrowLeft size={18} color={backColor} strokeWidth={1.8} />
-                </TouchableOpacity>
-
-                <Animated.View style={{
-                    opacity: headerFade,
-                    transform: [{ translateY: headerSlide }],
-                }}>
-                    <Text style={[localStyles.headerTitle, { color: titleColor }]}>
-                        Portfolio
-                    </Text>
-                </Animated.View>
-
-                <TouchableOpacity
-                    onPress={() => setIsBalanceHidden(v => !v)}
-                    style={[localStyles.backButton, { backgroundColor: backBg }]}
-                    activeOpacity={0.65}
-                >
-                    {isBalanceHidden
-                        ? <EyeOff size={16} color={backColor} strokeWidth={1.8} />
-                        : <Eye size={16} color={backColor} strokeWidth={1.8} />
-                    }
-                </TouchableOpacity>
-            </View>
+            <WalletHeader
+                title="Portfolio"
+                isDark={isDarkMode}
+                rightAction={
+                    <TouchableOpacity
+                        onPress={() => setIsBalanceHidden(v => !v)}
+                        style={[localStyles.headerAction, { backgroundColor: backBg }]}
+                        activeOpacity={0.65}
+                    >
+                        {isBalanceHidden
+                            ? <EyeOff size={16} color={backColor} strokeWidth={1.8} />
+                            : <Eye size={16} color={backColor} strokeWidth={1.8} />
+                        }
+                    </TouchableOpacity>
+                }
+            />
 
             <FlatList
                 data={filteredTokens}
@@ -365,27 +336,12 @@ export default function AllTokensScreen() {
 }
 
 const localStyles = StyleSheet.create({
-    // ── Navigation header ──
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 20,
-        paddingTop: 60,
-        paddingBottom: 12,
-    },
-    backButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
+    headerAction: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
         alignItems: "center",
         justifyContent: "center",
-    },
-    headerTitle: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 17,
-        letterSpacing: 0.3,
-        includeFontPadding: false,
     },
 
     // ── Scroll ──

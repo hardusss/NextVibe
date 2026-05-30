@@ -6,7 +6,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from 'react-native';
-import { ArrowLeft, Search, X } from 'lucide-react-native';
+import { Search, X } from 'lucide-react-native';
+import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
 import { TOKENS } from '@/constants/Tokens';
 import { TokenRow, TokenSkeleton } from '@/components/Wallet/SelectToken/TokenRow';
 
@@ -28,7 +29,6 @@ export default function SelectTokenScreen() {
     const mutedColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.32)';
     const inputBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
     const inputBorder = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
-    const iconColor = isDark ? 'rgba(196,167,255,0.9)' : 'rgba(109,40,217,0.85)';
     const placeholderColor = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.22)';
 
     const getTokens = useCallback(async () => {
@@ -69,25 +69,13 @@ export default function SelectTokenScreen() {
                 barStyle={isDark ? 'light-content' : 'dark-content'}
             />
 
+            <WalletHeader title="Select Token" isDark={isDark} />
+
             <ScrollView
                 contentContainerStyle={styles.scroll}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        onPress={() => router.back()}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        style={[styles.backBtn, { borderColor: inputBorder, backgroundColor: inputBg }]}
-                    >
-                        <ArrowLeft size={18} color={mainColor} strokeWidth={1.8} />
-                    </TouchableOpacity>
-                    <Text style={[styles.title, { color: mainColor }]}>Select Token</Text>
-                    {/* Spacer for alignment */}
-                    <View style={{ width: 40 }} />
-                </View>
-
                 {/* Search */}
                 <View style={[styles.searchWrap, { backgroundColor: inputBg, borderColor: inputBorder }]}>
                     <Search size={16} color={placeholderColor} strokeWidth={1.5} />
@@ -147,26 +135,7 @@ export default function SelectTokenScreen() {
 
 const styles = StyleSheet.create({
     root: { flex: 1 },
-    scroll: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 40 },
-
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 24,
-    },
-    backBtn: {
-        width: 40, height: 40,
-        borderRadius: 14,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    title: {
-        fontFamily: 'Dank Mono Bold',
-        fontSize: 18,
-        includeFontPadding: false,
-    },
+    scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
 
     searchWrap: {
         flexDirection: 'row',
