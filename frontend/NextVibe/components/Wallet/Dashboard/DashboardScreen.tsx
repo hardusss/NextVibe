@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ScrollView, RefreshControl, StatusBar } from "react-native";
+import { View, ScrollView, RefreshControl, StatusBar } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "react-native";
@@ -113,6 +114,7 @@ export default function WalletDashboardScreen() {
     };
 
     const styles = createWalletStyles(isDarkMode);
+    const insets = useSafeAreaInsets();
 
     return (
         <LinearGradient
@@ -126,7 +128,7 @@ export default function WalletDashboardScreen() {
             <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"} />
 
             <ScrollView
-                scrollEnabled={false}
+                style={styles.container}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
                     <RefreshControl
@@ -136,63 +138,70 @@ export default function WalletDashboardScreen() {
                     />
                 }
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
             >
-                <Web3Toast
-                    message="In next update..."
-                    visible={isToastVisible}
-                    onHide={() => setIsToastVisible(false)}
-                    isSuccess={false}
-                />
-                
-                <Header
-                    isDarkMode={isDarkMode}
-                    isBalanceHidden={isBalanceHidden}
-                    onToggleBalance={toggleBalanceVisibility}
-                    onNavigateBack={() => { 
-                        router.push("/profile")
-                    }}
-                    onNavigateToTransactions={navigateToTransactions}
-                />
+                <View style={styles.dashboardBody}>
+                    <View style={styles.dashboardTop}>
+                        <Web3Toast
+                            message="In next update..."
+                            visible={isToastVisible}
+                            onHide={() => setIsToastVisible(false)}
+                            isSuccess={false}
+                        />
 
-                <BalanceSection
-                    isDarkMode={isDarkMode}
-                    isBalanceHidden={isBalanceHidden}
-                    totalBalance={data.totalUsdBalance}
-                    isLoading={isLoading && !refreshing}
-                />
+                        <Header
+                            isDarkMode={isDarkMode}
+                            isBalanceHidden={isBalanceHidden}
+                            onToggleBalance={toggleBalanceVisibility}
+                            onNavigateBack={() => {
+                                router.push("/profile");
+                            }}
+                            onNavigateToTransactions={navigateToTransactions}
+                        />
 
-                <QuickActions
-                    isDarkMode={isDarkMode}
-                    onReceive={navigateToDeposit}
-                    onSend={navigateToSend}
-                    onSwap={() => router.push("/swap")}
-                    onNfcDeposit={() => depositSheetRef.current?.present()}
-                />
+                        <BalanceSection
+                            isDarkMode={isDarkMode}
+                            isBalanceHidden={isBalanceHidden}
+                            totalBalance={data.totalUsdBalance}
+                            isLoading={isLoading && !refreshing}
+                        />
 
-                <LastTransaction
-                    isDarkMode={isDarkMode}
-                    isBalanceHidden={isBalanceHidden}
-                    transaction={lastTransaction}
-                    tokenPrice={lastTransactionTokenPrice}
-                    isLoading={isLoadTransaction}
-                    error={activityError}
-                    onPress={() => {
-                        if (activityError) {
-                            handleRefresh();
-                        } else if (lastTransaction) {
-                            navigateToTransactions();
-                        }
-                    }}
-                />
+                        <QuickActions
+                            isDarkMode={isDarkMode}
+                            onReceive={navigateToDeposit}
+                            onSend={navigateToSend}
+                            onSwap={() => router.push("/swap")}
+                            onNfcDeposit={() => depositSheetRef.current?.present()}
+                        />
 
-                <PortfolioList
-                    isDarkMode={isDarkMode}
-                    isBalanceHidden={isBalanceHidden}
-                    tokens={data.tokens}
-                    isLoading={isLoading && !refreshing}
-                />
-                <DepositBottomSheet ref={depositSheetRef} />
+                        <LastTransaction
+                            isDarkMode={isDarkMode}
+                            isBalanceHidden={isBalanceHidden}
+                            transaction={lastTransaction}
+                            tokenPrice={lastTransactionTokenPrice}
+                            isLoading={isLoadTransaction}
+                            error={activityError}
+                            onPress={() => {
+                                if (activityError) {
+                                    handleRefresh();
+                                } else if (lastTransaction) {
+                                    navigateToTransactions();
+                                }
+                            }}
+                        />
+                    </View>
+
+                    <View style={[styles.portfolioBottom, { paddingBottom: insets.bottom }]}>
+                        <PortfolioList
+                            isDarkMode={isDarkMode}
+                            isBalanceHidden={isBalanceHidden}
+                            tokens={data.tokens}
+                            isLoading={isLoading && !refreshing}
+                        />
+                    </View>
+                </View>
             </ScrollView>
+            <DepositBottomSheet ref={depositSheetRef} />
         </LinearGradient>
     );
 }
