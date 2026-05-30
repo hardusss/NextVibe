@@ -157,7 +157,13 @@ export default function SwapCard({
                         </View>
                     ) : (
                         <TextInput
-                            style={[styles.amountInput, { color: colors.text }]}
+                            style={[
+                                styles.amountInput, 
+                                { 
+                                    color: colors.text,
+                                    fontSize: amount.length > 8 ? Math.max(22, 42 - (amount.length - 8) * 3) : 42
+                                }
+                            ]}
                             value={amount}
                             onChangeText={onAmountChange}
                             placeholder="0"
