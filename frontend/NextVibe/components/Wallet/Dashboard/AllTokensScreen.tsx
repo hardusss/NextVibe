@@ -180,10 +180,10 @@ export default function AllTokensScreen() {
                 keyExtractor={(token) => token.symbol}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={localStyles.scrollContent}
-                initialNumToRender={15}
-                maxToRenderPerBatch={10}
-                windowSize={5}
-                removeClippedSubviews={true}
+                initialNumToRender={12}
+                maxToRenderPerBatch={12}
+                windowSize={7}
+                removeClippedSubviews
                 ListHeaderComponent={
                     <>
                         {/* ── Summary Card ── */}
@@ -305,15 +305,14 @@ export default function AllTokensScreen() {
                     </>
                 }
                 renderItem={({ item: token, index }) => (
-                    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-                        <TokenItem
-                            token={token}
-                            isDarkMode={isDarkMode}
-                            isBalanceHidden={isBalanceHidden}
-                            isLast={index === filteredTokens.length - 1}
-                            index={index}
-                        />
-                    </Animated.View>
+                    <TokenItem
+                        token={token}
+                        isDarkMode={isDarkMode}
+                        isBalanceHidden={isBalanceHidden}
+                        isLast={index === filteredTokens.length - 1}
+                        index={index}
+                        animateEntrance={false}
+                    />
                 )}
                 ListEmptyComponent={
                     <Animated.View style={[
