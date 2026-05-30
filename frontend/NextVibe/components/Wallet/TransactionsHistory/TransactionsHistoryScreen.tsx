@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme, TouchableOpacity } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme } from 'react-native';
+import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useWallet } from '@lazorkit/wallet-mobile-adapter';
@@ -20,15 +20,6 @@ import { groupTransactionsByDate } from '@/src/utils/solana/transactionUtils';
 import createTransactionsStyles from '@/styles/transactions.styles';
 import useWalletAddress from '@/hooks/useWalletAddress';
 
-const ScreenHeader = ({ title, isDark, insets, onBack }: { title: string, isDark: boolean, insets: any, onBack: () => void }) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: insets.top + 10, paddingBottom: 20, paddingHorizontal: 20 }}>
-        <TouchableOpacity onPress={onBack} style={{ padding: 8, marginRight: 12 }}>
-            <ArrowLeft size={24} color={isDark ? "#fff" : "#000"} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontFamily: "Dank Mono Bold", color: isDark ? "#fff" : "#000" }}>{title}</Text>
-    </View>
-);
-
 /**
  * Main Transactions History Screen
  * * Displays a grouped list of wallet transactions with infinite scrolling,
@@ -37,8 +28,6 @@ const ScreenHeader = ({ title, isDark, insets, onBack }: { title: string, isDark
 export default function TransactionsHistoryScreen() {
     const isDark = useColorScheme() === 'dark';
     const insets = useSafeAreaInsets();
-    const router = useRouter();
-    
     // Generate styles based on theme and safe area
     const styles = useMemo(() => createTransactionsStyles(isDark, insets), [isDark, insets]);
 
@@ -182,13 +171,7 @@ export default function TransactionsHistoryScreen() {
             />
             <View style={styles.container}>
 
-                 {/* Reusable Header Component */}
-                <ScreenHeader
-                    title="Transaction History"
-                    isDark={isDark}
-                    insets={insets}
-                    onBack={() => router.back()}
-                />
+                <WalletHeader title="Transaction History" isDark={isDark} />
                 <SectionList
                     sections={groupedTransactions}
                     keyExtractor={(item) => item.signature}

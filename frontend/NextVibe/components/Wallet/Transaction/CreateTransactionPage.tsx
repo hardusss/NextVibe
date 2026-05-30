@@ -7,7 +7,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useColorScheme } from 'react-native';
-import { ArrowLeft, AlertCircle, ArrowDown, ChevronDown } from 'lucide-react-native';
+import { AlertCircle, ArrowDown, ChevronDown } from 'lucide-react-native';
+import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
 
 import useTransaction from '@/hooks/useTransaction';
 import usePortfolio from '@/hooks/usePortfolio';
@@ -235,21 +236,9 @@ export default function CreateTransactionScreen() {
                 </View>
             </Modal>
 
-            <ScrollView
-                contentContainerStyle={styles.scroll}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? "#fff" : "#000"} />}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        onPress={() => router.back()}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        style={[styles.iconBtn, { backgroundColor: pillBg, borderColor: pillBorder }]}
-                    >
-                        <ArrowLeft size={20} color={mainColor} strokeWidth={1.5} />
-                    </TouchableOpacity>
-
+            <WalletHeader
+                isDark={isDark}
+                centerContent={
                     <TouchableOpacity
                         onPress={() => setTokenPickerVisible(true)}
                         style={[styles.tokenPill, { backgroundColor: pillBg, borderColor: pillBorder }]}
@@ -257,10 +246,15 @@ export default function CreateTransactionScreen() {
                         <Text style={[styles.tokenPillText, { color: mainColor }]}>{tokenSymbolStr}</Text>
                         <ChevronDown size={14} color={mutedColor} style={{ marginLeft: 6 }} />
                     </TouchableOpacity>
+                }
+            />
 
-                    <View style={styles.iconBtn} />
-                </View>
-
+            <ScrollView
+                contentContainerStyle={styles.scroll}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? "#fff" : "#000"} />}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
                 <View style={styles.amountContainer}>
                     <TextInput
                         style={[styles.massiveInput, { color: mainColor }]}
@@ -356,7 +350,7 @@ export default function CreateTransactionScreen() {
 
 const styles = StyleSheet.create({
     root: { flex: 1 },
-    scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 44, paddingBottom: 140 },
+    scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 140 },
     errorToast: {
         position: 'absolute',
         top: Platform.OS === 'ios' ? 56 : 44,
@@ -381,17 +375,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         includeFontPadding: false,
         flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 20,
-    },
-    iconBtn: {
-        width: 44, height: 44,
-        borderRadius: 22, borderWidth: 1,
-        justifyContent: 'center', alignItems: 'center',
     },
     tokenPill: {
         flexDirection: 'row',

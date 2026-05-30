@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, useColorScheme, TouchableOpacity, Animated, StatusBar, Linking, ScrollView } from 'react-native';
+import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useRef, useCallback, useState } from 'react';
@@ -180,21 +181,6 @@ export default function TransactionDetailScreen() {
         },
         scrollContainer: {
             padding: 20,
-        },
-        header: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingBottom: 20,
-            paddingHorizontal: 20, 
-            paddingTop: 20
-        },
-        backButton: {
-            marginRight: 15,
-        },
-        title: {
-            fontSize: 22,
-            fontWeight: 'bold',
-            color: isDark ? '#FFFFFF' : '#000',
         },
         statusCard: {
             alignItems: 'center',
@@ -448,24 +434,11 @@ export default function TransactionDetailScreen() {
             <View style={styles.container}>
                 <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/> 
 
-                {/* Header with back navigation */}
-                <View style={styles.header}>
-                    <TouchableOpacity 
-                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                        style={styles.backButton} 
-                        onPress={() => router.back()}
-                    >
-                        <MaterialCommunityIcons 
-                            name="arrow-left" 
-                            size={28} 
-                            color={isDark ? '#FFFFFF' : '#000'} 
-                        />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>
-                        {isSwap ? 'Swap Details' : 'Transaction Details'}
-                    </Text>
-                </View>
-                
+                <WalletHeader
+                    title={isSwap ? 'Swap Details' : 'Transaction Details'}
+                    isDark={isDark}
+                />
+
                 <ScrollView contentContainerStyle={styles.scrollContainer}>
                     {/* Conditional header: swap vs standard */}
                     {renderSwapHeader()}

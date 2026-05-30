@@ -4,11 +4,11 @@ import {
     Animated, StatusBar, useColorScheme, Share, Dimensions, ScrollView, Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import { BlurView } from 'expo-blur';
-import { ArrowLeft, Copy, Share2, Check, AlertCircle } from 'lucide-react-native';
+import { Copy, Share2, Check, AlertCircle } from 'lucide-react-native';
+import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
 
 import useWalletAddress from '@/hooks/useWalletAddress';
 import { TOKENS } from '@/constants/Tokens';
@@ -17,7 +17,6 @@ const { width } = Dimensions.get('window');
 
 export default function DepositScreen() {
     const isDark = useColorScheme() === 'dark';
-    const router = useRouter();
     const { address } = useWalletAddress();
     const safeAddress = address?.toString() || 'Loading...';
 
@@ -86,19 +85,8 @@ export default function DepositScreen() {
             style={styles.container}
         >
             <StatusBar backgroundColor={mainBg[0]} barStyle={isDark ? "light-content" : "dark-content"} />
-            
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={[styles.backBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }]}
-                    activeOpacity={0.7}
-                >
-                    <ArrowLeft size={20} color={textColor} strokeWidth={2} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: textColor }]}>Receive Assets</Text>
-                <View style={{ width: 44 }} />
-            </View>
+
+            <WalletHeader title="Receive Assets" isDark={isDark} />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 <Animated.View style={[
@@ -197,26 +185,6 @@ export default function DepositScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 60,
-        paddingBottom: 20,
-    },
-    backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerTitle: {
-        fontFamily: 'Dank Mono Bold',
-        fontSize: 18,
-        letterSpacing: 0.5,
     },
     scrollContent: {
         paddingHorizontal: 20,
