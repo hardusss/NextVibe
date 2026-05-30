@@ -17,6 +17,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import usePortfolio, { TokenAsset } from '@/hooks/usePortfolio';
+import useWalletAddress from '@/hooks/useWalletAddress';
 import SwapCard from './SwapCard';
 import SwapFlipButton from './SwapFlipButton';
 import SwapSwipeButton from './SwapSwipeButton';
@@ -48,6 +49,51 @@ const sanitize = (text: string): string => {
     return v;
 };
 
+const DEFAULT_FROM_SYMBOL = 'SOL';
+const DEFAULT_TO_SYMBOL = 'USDC';
+const RECEIVE_PREFERENCE = ['USDC', 'USDT', 'USDG', 'PYUSD', 'SOL'] as const;
+
+const findToken = (tokens: TokenAsset[], symbol: string) =>
+    tokens.find(t => t.symbol === symbol);
+
+const pickCounterToken = (tokens: TokenAsset[], from: TokenAsset): TokenAsset => {
+    if (from.symbol !== DEFAULT_TO_SYMBOL) {
+        const usdc = findToken(tokens, DEFAULT_TO_SYMBOL);
+        if (usdc) return usdc;
+    }
+    if (from.symbol !== DEFAULT_FROM_SYMBOL) {
+        const sol = findToken(tokens, DEFAULT_FROM_SYMBOL);
+        if (sol) return sol;
+    }
+    for (const symbol of RECEIVE_PREFERENCE) {
+        const candidate = findToken(tokens, symbol);
+        if (candidate && candidate.symbol !== from.symbol) return candidate;
+    }
+    return tokens.find(t => t.symbol !== from.symbol) ?? tokens[0];
+};
+
+/** Picks PAY/RECEIVE defaults from live portfolio (correct mint, balance, price). */
+const pickDefaultSwapPair = (tokens: TokenAsset[]): { from: TokenAsset; to: TokenAsset } | null => {
+    if (tokens.length === 0) return null;
+    if (tokens.length === 1) return { from: tokens[0], to: tokens[0] };
+
+    const withBalance = tokens.filter(t => t.amount > 0);
+    const from = withBalance.length > 0
+        ? [...withBalance].sort((a, b) => b.valueUsd - a.valueUsd)[0]
+        : (findToken(tokens, DEFAULT_FROM_SYMBOL) ?? tokens[0]);
+
+    const to = pickCounterToken(tokens, from);
+    return { from, to };
+};
+
+const syncTokenFromPortfolio = (
+    tokens: TokenAsset[],
+    current: TokenAsset | null,
+): TokenAsset | null => {
+    if (!current) return null;
+    return tokens.find(t => t.symbol === current.symbol) ?? current;
+};
+
 /**
  * SwapScreen Component
  *
@@ -72,14 +118,16 @@ export default function SwapScreen() {
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
     const { data } = usePortfolio();
+    const { address } = useWalletAddress();
 
     const insets = useSafeAreaInsets();
 
     const tokens: TokenAsset[] = data?.tokens ?? [];
 
-
-    const [fromToken, setFromToken] = useState<TokenAsset | null>(tokens[0]);
-    const [toToken, setToToken] = useState<TokenAsset | null>(tokens[1]);
+    const [fromToken, setFromToken] = useState<TokenAsset | null>(null);
+    const [toToken, setToToken] = useState<TokenAsset | null>(null);
+    const userPickedPair = useRef(false);
+    const defaultsApplied = useRef(false);
     const [fromAmount, setFromAmount] = useState('');
     const [toAmount, setToAmount] = useState('');
 
@@ -135,17 +183,31 @@ export default function SwapScreen() {
         ).start();
     }, []);
 
-    /**
-     * Pre-selects the first two available tokens as the default swap pair
-     * once the portfolio data has loaded.
-     */
     useEffect(() => {
-        if (tokens.length > 0) {
-            const userSol = tokens.find(t => t.symbol === 'SOL');
-            if (userSol && fromToken?.amount === 0) {
-                setFromToken(userSol);
+        userPickedPair.current = false;
+        defaultsApplied.current = false;
+        setFromToken(null);
+        setToToken(null);
+        setFromAmount('');
+        setToAmount('');
+        clearQuote();
+    }, [address?.toString(), clearQuote]);
+
+    useEffect(() => {
+        if (tokens.length === 0) return;
+
+        if (!userPickedPair.current && !defaultsApplied.current) {
+            const pair = pickDefaultSwapPair(tokens);
+            if (pair) {
+                setFromToken(pair.from);
+                setToToken(pair.to);
+                defaultsApplied.current = true;
             }
+            return;
         }
+
+        setFromToken(prev => syncTokenFromPortfolio(tokens, prev));
+        setToToken(prev => syncTokenFromPortfolio(tokens, prev));
     }, [tokens]);
 
     /**
@@ -226,6 +288,7 @@ export default function SwapScreen() {
      * Also flips the lastEditedField to keep the calculator direction consistent.
      */
     const handleFlip = useCallback(() => {
+        userPickedPair.current = true;
         setFromToken(toToken);
         setToToken(fromToken);
         setFromAmount(toAmount);
@@ -239,13 +302,23 @@ export default function SwapScreen() {
      * @param token - The TokenAsset selected by the user
      */
     const handleTokenSelect = useCallback((token: TokenAsset) => {
+        userPickedPair.current = true;
         if (pickerSide === 'from') {
             setFromToken(token);
+            if (toToken?.symbol === token.symbol) {
+                setToToken(fromToken);
+            }
         } else {
             setToToken(token);
+            if (fromToken?.symbol === token.symbol) {
+                setFromToken(toToken);
+            }
         }
         setPickerSide(null);
-    }, [pickerSide]);
+        clearQuote();
+        setFromAmount('');
+        setToAmount('');
+    }, [pickerSide, fromToken, toToken, clearQuote]);
 
     /**
      * Handles the swipe-to-confirm gesture.
@@ -415,7 +488,7 @@ export default function SwapScreen() {
             />
 
             <ScrollView
-                contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 20 }]}
+                contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 20, flex: 1 }]}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
@@ -586,6 +659,9 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
     },
     swipeWrap: {
-        marginTop: 20,
+        position: 'absolute',
+        bottom: 20,
+        left: 0,
+        right: 0,
     },
 });

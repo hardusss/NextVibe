@@ -1,6 +1,7 @@
 import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { ArrowLeft, Eye, EyeOff, ScrollText } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface HeaderProps {
     isDarkMode: boolean;
@@ -17,12 +18,13 @@ const Header: React.FC<HeaderProps> = ({
     onNavigateBack,
     onNavigateToTransactions,
 }) => {
+    const insets = useSafeAreaInsets();
     const iconColor = isDarkMode ? "rgba(196,167,255,0.9)" : "rgba(109,40,217,0.85)";
     const bg = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
     const border = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
             {/* Back Button — wider pill */}
             <TouchableOpacity
                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
@@ -66,7 +68,6 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: 20,
-        paddingTop: 20,
         marginBottom: 30,
     },
     rightGroup: {
