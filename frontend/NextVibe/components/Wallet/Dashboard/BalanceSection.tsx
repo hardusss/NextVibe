@@ -1,5 +1,6 @@
-import React from "react";
+import React, { memo } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { ShimmerSkeleton, AnimatedBalance } from "@/components/Shared/motion";
 
 interface BalanceSectionProps {
     isDarkMode: boolean;
@@ -18,9 +19,7 @@ const BalanceSection: React.FC<BalanceSectionProps> = ({
     const mainColor = isDarkMode ? "#FFFFFF" : "#000000";
     const dimColor = isDarkMode ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.28)";
     const borderColor = isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
-    const skBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
 
-    // For very small balances (e.g. $0.17 from 0.001 SOL), ensure we don't show $0.00
     const decimals = totalBalance > 0 && totalBalance < 0.01 ? 4 : 2;
     const intPart = Math.floor(totalBalance).toLocaleString("en-US");
     const decPart = (totalBalance % 1).toFixed(decimals).slice(1);
@@ -30,18 +29,24 @@ const BalanceSection: React.FC<BalanceSectionProps> = ({
             <Text style={[styles.label, { color: labelColor }]}>BALANCE</Text>
             <View style={[styles.divider, { backgroundColor: borderColor }]} />
 
-            {/* Fixed height wrapper — prevents layout shift on toggle */}
             <View style={styles.valueWrapper}>
                 {isLoading ? (
-                    <View style={[styles.skeleton, { backgroundColor: skBg }]} />
-                ) : isBalanceHidden ? (
-                    <Text style={[styles.hidden, { color: mainColor }]}>● ● ● ●</Text>
+                    <ShimmerSkeleton width={200} height={48} borderRadius={12} isDark={isDarkMode} />
                 ) : (
-                    <View style={styles.amountRow}>
-                        <Text style={[styles.currencySign, { color: dimColor }]}>$</Text>
-                        <Text style={[styles.intPart, { color: mainColor }]}>{intPart}</Text>
-                        <Text style={[styles.decPart, { color: dimColor }]}>{decPart}</Text>
-                    </View>
+                    <AnimatedBalance
+                        isHidden={isBalanceHidden}
+                        style={styles.valueWrapper}
+                        hiddenContent={
+                            <Text style={[styles.hidden, { color: mainColor }]}>● ● ● ●</Text>
+                        }
+                        visibleContent={
+                            <View style={styles.amountRow}>
+                                <Text style={[styles.currencySign, { color: dimColor }]}>$</Text>
+                                <Text style={[styles.intPart, { color: mainColor }]}>{intPart}</Text>
+                                <Text style={[styles.decPart, { color: dimColor }]}>{decPart}</Text>
+                            </View>
+                        }
+                    />
                 )}
             </View>
 
@@ -72,12 +77,17 @@ const styles = StyleSheet.create({
         borderRadius: 1,
         marginBottom: 16,
     },
-    // Fixed height = intPart lineHeight (62) — same for all states
     valueWrapper: {
         height: 62,
         justifyContent: "center",
         alignItems: "center",
         marginBottom: 16,
+    },
+    hidden: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: 36,
+        letterSpacing: 6,
+        includeFontPadding: false,
     },
     amountRow: {
         flexDirection: "row",
@@ -85,51 +95,39 @@ const styles = StyleSheet.create({
     },
     currencySign: {
         fontFamily: "Dank Mono",
-        fontSize: 28,
+        fontSize: 22,
+        marginRight: 4,
+        marginBottom: 6,
         includeFontPadding: false,
-        lineHeight: 52,
-        marginRight: 2,
     },
     intPart: {
-        fontFamily: "Dank Mono",
-        fontSize: 58,
-        includeFontPadding: false,
-        letterSpacing: -3,
+        fontFamily: "Dank Mono Bold",
+        fontSize: 52,
         lineHeight: 62,
+        includeFontPadding: false,
     },
     decPart: {
         fontFamily: "Dank Mono",
-        fontSize: 24,
-        includeFontPadding: false,
-        lineHeight: 40,
+        fontSize: 22,
         marginBottom: 6,
-        letterSpacing: -1,
-    },
-    hidden: {
-        fontFamily: "Dank Mono",
-        fontSize: 32,
-        letterSpacing: 8,
-    },
-    skeleton: {
-        width: 220,
-        height: 48,
-        borderRadius: 12,
+        includeFontPadding: false,
     },
     bottomRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
+        gap: 12,
+        width: "60%",
     },
     bottomLine: {
         flex: 1,
-        height: 1,
-        borderRadius: 1,
+        height: StyleSheet.hairlineWidth,
     },
     usdLabel: {
         fontFamily: "Dank Mono",
-        fontSize: 11,
-        letterSpacing: 3,
+        fontSize: 10,
+        letterSpacing: 2,
+        includeFontPadding: false,
     },
 });
 
-export default BalanceSection;
+export default memo(BalanceSection);

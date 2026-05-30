@@ -39,7 +39,13 @@ export default function TransactionsHistoryScreen() {
     const [error, setError] = useState<string | null>(null);
     const [lastSignature, setLastSignature] = useState<string | undefined>(undefined);
     const [hasMore, setHasMore] = useState<boolean>(true);
-    const [prices, setPrices] = useState<{ [key: string]: number }>({ solana: 170, "usd-coin": 1 });
+    const [prices, setPrices] = useState<
+        Record<string, { price: number; change_24h: number; direction: 'up' | 'down' | 'flat' }>
+    >({
+        solana: { price: 170, change_24h: 0, direction: 'flat' },
+        'usd-coin': { price: 1, change_24h: 0, direction: 'flat' },
+        seeker: { price: 0, change_24h: 0, direction: 'flat' },
+    });
 
     const { connection, address } = useWalletAddress();
     const walletAddress = address?.toString();
@@ -94,11 +100,11 @@ export default function TransactionsHistoryScreen() {
         try {
             const response = await getTokensPrice(["solana", "usd-coin", "seeker"]);
             if (response?.prices) {
-                setPrices({
-                    solana: response.prices["solana"] ?? prices.solana,
-                    "usd-coin": response.prices["usd-coin"] ?? prices["usd-coin"],
-                    "seeker": response.prices["seeker"] ?? prices["seeker"],
-                });
+                setPrices(prev => ({
+                    solana: response.prices.solana ?? prev.solana,
+                    'usd-coin': response.prices['usd-coin'] ?? prev['usd-coin'],
+                    seeker: response.prices.seeker ?? prev.seeker,
+                }));
             }
         } catch (error) {
             console.error('Price fetch error:', error);
@@ -126,6 +132,20 @@ export default function TransactionsHistoryScreen() {
     };
 
     const groupedTransactions = useMemo(() => groupTransactionsByDate(transactions), [transactions]);
+
+    const renderItem = useCallback(
+        ({ item }: { item: FormattedTransaction }) => (
+            <TransactionItem item={item} prices={prices} isDark={isDark} styles={styles} />
+        ),
+        [prices, isDark, styles],
+    );
+
+    const renderSectionHeader = useCallback(
+        ({ section: { title } }: { section: { title: string } }) => (
+            <Text style={styles.sectionHeader}>{title}</Text>
+        ),
+        [styles],
+    );
 
     // --- Render Helpers ---
 
@@ -175,27 +195,22 @@ export default function TransactionsHistoryScreen() {
                 <SectionList
                     sections={groupedTransactions}
                     keyExtractor={(item) => item.signature}
-                    renderItem={({ item }) => (
-                        <TransactionItem 
-                            item={item} 
-                            prices={prices} 
-                            isDark={isDark} 
-                            styles={styles} 
-                        />
-                    )}
-                    renderSectionHeader={({ section: { title } }) => (
-                        <Text style={styles.sectionHeader}>{title}</Text>
-                    )}
+                    renderItem={renderItem}
+                    renderSectionHeader={renderSectionHeader}
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={renderEmptyState}
                     ListFooterComponent={renderFooter}
                     onEndReached={loadMore}
                     onEndReachedThreshold={0.5}
+                    removeClippedSubviews
+                    maxToRenderPerBatch={8}
+                    windowSize={7}
+                    initialNumToRender={10}
                     refreshControl={
-                        <RefreshControl 
-                            refreshing={refreshing} 
-                            onRefresh={onRefresh} 
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
                             tintColor={isDark ? '#FFFFFF' : '#000'}
                         />
                     }

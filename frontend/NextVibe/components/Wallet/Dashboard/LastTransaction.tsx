@@ -1,5 +1,7 @@
-import React from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import React, { memo } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import FastImage from "react-native-fast-image";
+import { ShimmerSkeleton } from "@/components/Shared/motion";
 import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft } from "lucide-react-native";
 import { FormattedTransaction } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
@@ -105,7 +107,7 @@ const SwapContent: React.FC<{
             {/* Dual token icons with overlap */}
             <View style={styles.swapAvatarWrap}>
                 {swap.inputLogoURL ? (
-                    <Image source={{ uri: swap.inputLogoURL }} style={styles.swapTokenLeft} />
+                    <FastImage source={{ uri: swap.inputLogoURL }} style={styles.swapTokenLeft} />
                 ) : (
                     <View style={[styles.swapTokenLeft, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 8, fontFamily: "Dank Mono" }}>
@@ -114,7 +116,7 @@ const SwapContent: React.FC<{
                     </View>
                 )}
                 {swap.outputLogoURL ? (
-                    <Image source={{ uri: swap.outputLogoURL }} style={styles.swapTokenRight} />
+                    <FastImage source={{ uri: swap.outputLogoURL }} style={styles.swapTokenRight} />
                 ) : (
                     <View style={[styles.swapTokenRight, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 8, fontFamily: "Dank Mono" }}>
@@ -196,7 +198,7 @@ const TransactionContent: React.FC<{
             {/* Token image + type icon badge */}
             <View style={styles.avatarWrap}>
                 {tokenInfo?.logoURL ? (
-                    <Image source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
+                    <FastImage source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
                 ) : (
                     <View style={[styles.tokenImage, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 10, fontFamily: "Dank Mono" }}>
@@ -231,19 +233,16 @@ const TransactionContent: React.FC<{
  *
  * @param props.isDarkMode - Current theme mode
  */
-const LoadingSkeleton: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
-    const skBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
-    return (
-        <>
-            <View style={[styles.skeletonCircle, { backgroundColor: skBg }]} />
-            <View style={styles.textBlock}>
-                <View style={[styles.skeletonLine, { width: 130, height: 14, backgroundColor: skBg }]} />
-                <View style={[styles.skeletonLine, { width: 80, height: 11, backgroundColor: skBg, marginTop: 8 }]} />
-            </View>
-            <View style={[styles.skeletonLine, { width: 38, height: 11, backgroundColor: skBg }]} />
-        </>
-    );
-};
+const LoadingSkeleton: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => (
+    <>
+        <ShimmerSkeleton width={40} height={40} borderRadius={20} isDark={isDarkMode} />
+        <View style={styles.textBlock}>
+            <ShimmerSkeleton width={130} height={14} borderRadius={6} isDark={isDarkMode} />
+            <ShimmerSkeleton width={80} height={11} borderRadius={6} isDark={isDarkMode} style={{ marginTop: 8 }} />
+        </View>
+        <ShimmerSkeleton width={38} height={11} borderRadius={6} isDark={isDarkMode} />
+    </>
+);
 
 /**
  * Error state shown when the transaction fetch fails.
@@ -490,4 +489,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default LastTransaction;
+export default memo(LastTransaction);

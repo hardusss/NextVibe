@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { View, ScrollView, RefreshControl, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +17,8 @@ import PortfolioList from "./PortfolioList";
 import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
 
 import { createWalletStyles } from "@/styles/wallet.styles";
+import { FadeIn } from "@/components/Shared/motion";
+import { MOTION } from "@/constants/motion";
 
 import { useRef } from 'react';
 import { DepositBottomSheet, DepositSheetRef } from '@/components/Wallet/NfcDeposit/DepositBottomSheet';
@@ -51,7 +53,7 @@ export default function WalletDashboardScreen() {
     const isDarkMode = colorScheme === "dark";
 
     const { connection, address, disconnect } = useWalletAddress();
-    const { data, isLoading, refresh } = usePortfolio();
+    const { data, isLoading, isRefreshing, refresh } = usePortfolio();
     const {
         lastTransaction,
         lastTransactionTokenPrice,
@@ -72,11 +74,11 @@ export default function WalletDashboardScreen() {
      * Handles pull-to-refresh gesture
      * Refreshes both portfolio data and recent activity
      */
-    const handleRefresh = async () => {
+    const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         await Promise.all([refresh(), refetchActivity()]);
         setRefreshing(false);
-    };
+    }, [refresh, refetchActivity]);
 
     /**
      * Toggles balance visibility across all components
@@ -113,8 +115,9 @@ export default function WalletDashboardScreen() {
         router.push("/select-token");
     };
 
-    const styles = createWalletStyles(isDarkMode);
+    const styles = useMemo(() => createWalletStyles(isDarkMode), [isDarkMode]);
     const insets = useSafeAreaInsets();
+    const showPortfolioSkeleton = isLoading && data.tokens.length === 0;
 
     return (
         <LinearGradient
@@ -132,7 +135,7 @@ export default function WalletDashboardScreen() {
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
                     <RefreshControl
-                        refreshing={refreshing}
+                        refreshing={refreshing || isRefreshing}
                         onRefresh={handleRefresh}
                         tintColor={isDarkMode ? "#fff" : "#000"}
                     />
@@ -149,55 +152,65 @@ export default function WalletDashboardScreen() {
                             isSuccess={false}
                         />
 
-                        <Header
-                            isDarkMode={isDarkMode}
-                            isBalanceHidden={isBalanceHidden}
-                            onToggleBalance={toggleBalanceVisibility}
-                            onNavigateBack={() => {
-                                router.push("/profile");
-                            }}
-                            onNavigateToTransactions={navigateToTransactions}
-                        />
+                        <FadeIn delay={0}>
+                            <Header
+                                isDarkMode={isDarkMode}
+                                isBalanceHidden={isBalanceHidden}
+                                onToggleBalance={toggleBalanceVisibility}
+                                onNavigateBack={() => {
+                                    router.push("/profile");
+                                }}
+                                onNavigateToTransactions={navigateToTransactions}
+                            />
+                        </FadeIn>
 
-                        <BalanceSection
-                            isDarkMode={isDarkMode}
-                            isBalanceHidden={isBalanceHidden}
-                            totalBalance={data.totalUsdBalance}
-                            isLoading={isLoading && !refreshing}
-                        />
+                        <FadeIn delay={MOTION.stagger.step}>
+                            <BalanceSection
+                                isDarkMode={isDarkMode}
+                                isBalanceHidden={isBalanceHidden}
+                                totalBalance={data.totalUsdBalance}
+                                isLoading={showPortfolioSkeleton}
+                            />
+                        </FadeIn>
 
-                        <QuickActions
-                            isDarkMode={isDarkMode}
-                            onReceive={navigateToDeposit}
-                            onSend={navigateToSend}
-                            onSwap={() => router.push("/swap")}
-                            onNfcDeposit={() => depositSheetRef.current?.present()}
-                        />
+                        <FadeIn delay={MOTION.stagger.step * 2}>
+                            <QuickActions
+                                isDarkMode={isDarkMode}
+                                onReceive={navigateToDeposit}
+                                onSend={navigateToSend}
+                                onSwap={() => router.push("/swap")}
+                                onNfcDeposit={() => depositSheetRef.current?.present()}
+                            />
+                        </FadeIn>
 
-                        <LastTransaction
-                            isDarkMode={isDarkMode}
-                            isBalanceHidden={isBalanceHidden}
-                            transaction={lastTransaction}
-                            tokenPrice={lastTransactionTokenPrice}
-                            isLoading={isLoadTransaction}
-                            error={activityError}
-                            onPress={() => {
-                                if (activityError) {
-                                    handleRefresh();
-                                } else if (lastTransaction) {
-                                    navigateToTransactions();
-                                }
-                            }}
-                        />
+                        <FadeIn delay={MOTION.stagger.step * 3}>
+                            <LastTransaction
+                                isDarkMode={isDarkMode}
+                                isBalanceHidden={isBalanceHidden}
+                                transaction={lastTransaction}
+                                tokenPrice={lastTransactionTokenPrice}
+                                isLoading={isLoadTransaction}
+                                error={activityError}
+                                onPress={() => {
+                                    if (activityError) {
+                                        handleRefresh();
+                                    } else if (lastTransaction) {
+                                        navigateToTransactions();
+                                    }
+                                }}
+                            />
+                        </FadeIn>
                     </View>
 
                     <View style={[styles.portfolioBottom, { paddingBottom: insets.bottom }]}>
-                        <PortfolioList
-                            isDarkMode={isDarkMode}
-                            isBalanceHidden={isBalanceHidden}
-                            tokens={data.tokens}
-                            isLoading={isLoading && !refreshing}
-                        />
+                        <FadeIn delay={MOTION.stagger.step * 4} from="bottom">
+                            <PortfolioList
+                                isDarkMode={isDarkMode}
+                                isBalanceHidden={isBalanceHidden}
+                                tokens={data.tokens}
+                                isLoading={showPortfolioSkeleton}
+                            />
+                        </FadeIn>
                     </View>
                 </View>
             </ScrollView>
