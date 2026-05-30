@@ -349,6 +349,10 @@ export default function ChatScreen() {
             style={styles.messagesList}
             contentContainerStyle={{ flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
+            removeClippedSubviews
+            maxToRenderPerBatch={12}
+            windowSize={9}
+            initialNumToRender={16}
           />
         )}
 

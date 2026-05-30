@@ -278,7 +278,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
             ) : (
                 <FlatList
                     data={posts}
-                    keyExtractor={(item) => item.post_id?.toString() || Math.random().toString()}
+                    keyExtractor={(item, index) => item.post_id?.toString() ?? `post-${index}`}
                     numColumns={3}
                     nestedScrollEnabled={true}
                     scrollEnabled={false}
