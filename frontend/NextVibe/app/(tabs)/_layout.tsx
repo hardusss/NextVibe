@@ -111,6 +111,50 @@ function resolveNotificationUrl(data: Record<string, any>): { internal?: string;
     return {};
 }
 
+const blacklist = [
+    "register", "login", "postslist",
+    "splash", "index", "create-post",
+    "settings", "select-token", "deposit",
+    "transaction", "user-profile", "result-transaction",
+    "transactions", "transaction-detail", "chat-room",
+    "chats", "follows-screen", "notifications",
+    "user-banned", "wallet-init", "wallet-dash",
+    "wallet-select", "send", "swap", "event-checkin",
+    "post-details", "all-tokens"
+];
+
+const stackScreens = blacklist.filter(item => item !== "send");
+
+const tabRoots = new Set(["home", "search", "vibe-map", "camera", "profile"]);
+const modalScreens = new Set([
+    "swap", "deposit", "select-token", "transaction-detail",
+    "result-transaction", "post-details", "event-checkin",
+]);
+
+const TAB_OPTIONS = { animation: "none" as const };
+const MODAL_OPTIONS = { presentation: "modal" as const, animation: "slide_from_bottom" as const };
+const STACK_OPTIONS = { animation: "slide_from_right" as const };
+
+const getStackScreenOptions = (name: string) => {
+    if (tabRoots.has(name)) return TAB_OPTIONS;
+    if (modalScreens.has(name)) return MODAL_OPTIONS;
+    return STACK_OPTIONS;
+};
+
+const GLOBAL_SCREEN_OPTIONS: any = {
+    headerShown: false,
+    animation: "slide_from_right",
+    contentStyle: { backgroundColor: 'transparent' },
+};
+
+const APP_TABS = [
+    { name: "home", IconOutline: House, IconFilled: House },
+    { name: "search", IconOutline: Search, IconFilled: Search },
+    { name: "vibe-map", IconOutline: Radar, IconFilled: Radar },
+    { name: "camera", IconOutline: BadgePlus, IconFilled: BadgePlus },
+    { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
+];
+
 export default function Layout() {
     const [fontsLoaded, fontError] = useFonts({
         'Dank Mono': require('@/assets/fonts/PlusJakartaSans-VariableFont_wght.ttf'),
@@ -133,47 +177,6 @@ export default function Layout() {
             SplashScreen.hideAsync();
         }
     }, [fontsLoaded, fontError]);
-
-    const blacklist = [
-        "register", "login", "postslist",
-        "splash", "index", "create-post",
-        "settings", "select-token", "deposit",
-        "transaction", "user-profile", "result-transaction",
-        "transactions", "transaction-detail", "chat-room",
-        "chats", "follows-screen", "notifications",
-        "user-banned", "wallet-init", "wallet-dash",
-        "wallet-select", "send", "swap", "event-checkin",
-        "post-details", "all-tokens"
-    ];
-
-    const stackScreens = blacklist.filter(item => item !== "send");
-
-    const tabRoots = new Set(["home", "search", "vibe-map", "camera", "profile"]);
-    const modalScreens = new Set([
-        "swap", "deposit", "select-token", "transaction-detail",
-        "result-transaction", "post-details", "event-checkin",
-    ]);
-
-    const getStackScreenOptions = (name: string) => {
-        if (tabRoots.has(name)) {
-            return { animation: "none" as const };
-        }
-        if (modalScreens.has(name)) {
-            return {
-                presentation: "modal" as const,
-                animation: "slide_from_bottom" as const,
-            };
-        }
-        return { animation: "slide_from_right" as const };
-    };
-
-    const tabs = [
-        { name: "home", IconOutline: House, IconFilled: House },
-        { name: "search", IconOutline: Search, IconFilled: Search },
-        { name: "vibe-map", IconOutline: Radar, IconFilled: Radar },
-        { name: "camera", IconOutline: BadgePlus, IconFilled: BadgePlus },
-        { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
-    ];
 
     function handleRegistrationError(errorMessage: string) {
         setToastMessage(errorMessage);
@@ -361,11 +364,7 @@ export default function Layout() {
                                     />
                                 )}
                                 <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
-                                    <Stack screenOptions={{
-                                        headerShown: false,
-                                        animation: "slide_from_right",
-                                        contentStyle: { backgroundColor: 'transparent' },
-                                    }}>
+                                    <Stack screenOptions={GLOBAL_SCREEN_OPTIONS}>
                                         <Stack.Screen name="home" options={getStackScreenOptions("home")} />
                                         <Stack.Screen name="search" options={getStackScreenOptions("search")} />
                                         <Stack.Screen name="vibe-map" options={getStackScreenOptions("vibe-map")} />
@@ -392,7 +391,7 @@ export default function Layout() {
                                                 { backgroundColor: theme === "dark" ? "rgba(20, 8, 41, 0.4)" : "rgba(255, 255, 255, 0.4)" }
                                             ]} />
                                             <View style={styles.tabsWrapper}>
-                                                {tabs.map((tab) => {
+                                                {APP_TABS.map((tab) => {
                                                     const isActive = currentPage === tab.name;
                                                     const activeBgColor = theme === "dark"
                                                         ? "rgba(154, 109, 191, 0.15)"
