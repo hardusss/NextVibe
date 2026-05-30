@@ -5,17 +5,36 @@ import { FormattedTransaction } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
 import timeAgo from "@/src/utils/formatTime";
 
+/**
+ * Props for the LastTransaction dashboard widget.
+ *
+ * @interface LastTransactionProps
+ */
 interface LastTransactionProps {
+    /** Whether the app is currently in dark mode */
     isDarkMode: boolean;
+    /** Whether the user has toggled balance visibility off */
     isBalanceHidden: boolean;
+    /** Most recent transaction, or null when history is empty */
     transaction: FormattedTransaction | null;
+    /** Current USD price of the transaction's primary token */
     tokenPrice: number;
+    /** True while the transaction is being fetched */
     isLoading: boolean;
+    /** Error message if the fetch failed */
     error: string | null;
+    /** Callback when the card is pressed (navigates to history) */
     onPress: () => void;
 }
 
-/** Pick icon + accent color by transaction type */
+/**
+ * Resolves the visual metadata (icon, accent colour, background) for a
+ * given transaction type so every variant gets a unique colour treatment.
+ *
+ * @param type  - Transaction type string
+ * @param isDarkMode - Current theme mode
+ * @returns Object containing the Lucide Icon component and colour tokens
+ */
 function getTxMeta(type: string, isDarkMode: boolean) {
     switch (type?.toLowerCase()) {
         case "received":
@@ -49,6 +68,109 @@ function getTxMeta(type: string, isDarkMode: boolean) {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
+/**
+ * Renders the content of a swap transaction inside the LastTransaction card.
+ * Displays a dual-token layout with icons showing the sold and bought tokens,
+ * their amounts, and a decorative arrow between them.
+ *
+ * @param props.isDarkMode       - Current theme mode
+ * @param props.isBalanceHidden  - Whether amounts should be masked
+ * @param props.transaction      - The swap transaction to render
+ */
+const SwapContent: React.FC<{
+    isDarkMode: boolean;
+    isBalanceHidden: boolean;
+    transaction: FormattedTransaction;
+}> = ({ isDarkMode, isBalanceHidden, transaction }) => {
+    const { accent, accentBg } = getTxMeta("swap", isDarkMode);
+    const swap = transaction.swapDetails;
+
+    const mutedText = isDarkMode ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.38)";
+    const titleColor = isDarkMode ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.82)";
+
+    if (!swap) return null;
+
+    /**
+     * Formats a token amount for display, limiting decimal places
+     * based on the magnitude of the number.
+     */
+    const formatAmount = (amount: number): string => {
+        if (amount >= 1000) return amount.toFixed(0);
+        if (amount >= 1) return amount.toFixed(2);
+        return amount.toFixed(4);
+    };
+
+    return (
+        <>
+            {/* Dual token icons with overlap */}
+            <View style={styles.swapAvatarWrap}>
+                {swap.inputLogoURL ? (
+                    <Image source={{ uri: swap.inputLogoURL }} style={styles.swapTokenLeft} />
+                ) : (
+                    <View style={[styles.swapTokenLeft, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
+                        <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 8, fontFamily: "Dank Mono" }}>
+                            {swap.inputToken.slice(0, 3)}
+                        </Text>
+                    </View>
+                )}
+                {swap.outputLogoURL ? (
+                    <Image source={{ uri: swap.outputLogoURL }} style={styles.swapTokenRight} />
+                ) : (
+                    <View style={[styles.swapTokenRight, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
+                        <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 8, fontFamily: "Dank Mono" }}>
+                            {swap.outputToken.slice(0, 3)}
+                        </Text>
+                    </View>
+                )}
+                {/* Swap badge — rendered on top of both coin icons */}
+                <View style={[styles.typeBadge, { backgroundColor: "#3B82F6", borderColor: isDarkMode ? "#1a1a2e" : "#ffffff" }]}>
+                    <ArrowRightLeft size={10} color="#fff" strokeWidth={2} />
+                </View>
+            </View>
+
+            {/* Swap details text */}
+            <View style={styles.textBlock}>
+                {isBalanceHidden ? (
+                    <>
+                        <Text style={[styles.title, { color: titleColor }]} numberOfLines={1}>
+                            Token Swap
+                        </Text>
+                        <Text style={[styles.sub, { color: mutedText }]}>••••</Text>
+                    </>
+                ) : (
+                    <>
+                        <Text style={[styles.title, { color: titleColor }]} numberOfLines={1}>
+                            Swap
+                        </Text>
+                        <View style={styles.swapAmountsRow}>
+                            <Text style={[styles.swapAmountSent, { color: isDarkMode ? "#F472B6" : "#DB2777" }]}>
+                                -{formatAmount(swap.inputAmount)} {swap.inputToken}
+                            </Text>
+                            <Text style={[styles.swapArrow, { color: mutedText }]}>→</Text>
+                            <Text style={[styles.swapAmountReceived, { color: isDarkMode ? "#34D399" : "#059669" }]}>
+                                +{formatAmount(swap.outputAmount)} {swap.outputToken}
+                            </Text>
+                        </View>
+                    </>
+                )}
+            </View>
+
+            <Text style={[styles.time, { color: mutedText }]}>
+                {transaction.time ? timeAgo(new Date(transaction.time).toISOString()) : ""}
+            </Text>
+        </>
+    );
+};
+
+/**
+ * Renders the content of a regular (non-swap) transaction inside the
+ * LastTransaction card — showing token icon, amount, USD value and time.
+ *
+ * @param props.isDarkMode       - Current theme mode
+ * @param props.isBalanceHidden  - Whether amounts should be masked
+ * @param props.transaction      - The transaction data to display
+ * @param props.tokenPrice       - Current USD price of the token
+ */
 const TransactionContent: React.FC<{
     isDarkMode: boolean;
     isBalanceHidden: boolean;
@@ -104,6 +226,11 @@ const TransactionContent: React.FC<{
     );
 };
 
+/**
+ * Skeleton placeholder shown while the last transaction is loading.
+ *
+ * @param props.isDarkMode - Current theme mode
+ */
 const LoadingSkeleton: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
     const skBg = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
     return (
@@ -118,6 +245,11 @@ const LoadingSkeleton: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
     );
 };
 
+/**
+ * Error state shown when the transaction fetch fails.
+ *
+ * @param props.isDarkMode - Current theme mode
+ */
 const ErrorState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => (
     <View style={styles.stateRow}>
         <AlertCircle size={18} color={isDarkMode ? "#F87171" : "#EF4444"} strokeWidth={1.5} />
@@ -127,6 +259,11 @@ const ErrorState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => (
     </View>
 );
 
+/**
+ * Empty state shown when no transactions exist yet.
+ *
+ * @param props.isDarkMode - Current theme mode
+ */
 const EmptyState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
     const color = isDarkMode ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
     return (
@@ -141,6 +278,16 @@ const EmptyState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+/**
+ * LastTransaction Component
+ *
+ * Dashboard widget that shows the most recent wallet transaction in a
+ * compact card. Supports three content states (loading / error / data)
+ * and renders swaps with a special dual-icon layout showing both the
+ * sold and received tokens with colour-coded amounts.
+ *
+ * @param props - {@link LastTransactionProps}
+ */
 const LastTransaction: React.FC<LastTransactionProps> = ({
     isDarkMode,
     isBalanceHidden,
@@ -160,6 +307,9 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
 
     const isDisabled = isLoading || (!error && !transaction);
 
+    /** Determine whether this transaction should use the swap layout */
+    const isSwapTransaction = transaction?.type === "swap" && transaction.swapDetails;
+
     return (
         <View style={styles.container}>
             <TouchableOpacity
@@ -176,7 +326,14 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
                     {isLoading && <LoadingSkeleton isDarkMode={isDarkMode} />}
                     {!isLoading && error && <ErrorState isDarkMode={isDarkMode} />}
                     {!isLoading && !error && !transaction && <EmptyState isDarkMode={isDarkMode} />}
-                    {!isLoading && !error && transaction && (
+                    {!isLoading && !error && transaction && isSwapTransaction && (
+                        <SwapContent
+                            isDarkMode={isDarkMode}
+                            isBalanceHidden={isBalanceHidden}
+                            transaction={transaction}
+                        />
+                    )}
+                    {!isLoading && !error && transaction && !isSwapTransaction && (
                         <TransactionContent
                             isDarkMode={isDarkMode}
                             isBalanceHidden={isBalanceHidden}
@@ -236,7 +393,8 @@ const styles = StyleSheet.create({
         borderRadius: 9,
         justifyContent: "center",
         alignItems: "center",
-        borderWidth: 1,
+        borderWidth: 2,
+        zIndex: 3,
     },
     textBlock: {
         flex: 1,
@@ -279,6 +437,56 @@ const styles = StyleSheet.create({
     },
     skeletonLine: {
         borderRadius: 6,
+    },
+    // ─── Swap-specific styles ─────────────────────────────────────
+    swapAvatarWrap: {
+        width: 52,
+        height: 44,
+        marginRight: 14,
+    },
+    swapTokenLeft: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        position: "absolute",
+        top: 0,
+        left: 0,
+        zIndex: 2,
+        borderWidth: 2,
+        borderColor: "rgba(0,0,0,0.15)",
+    },
+    swapTokenRight: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        position: "absolute",
+        top: 8,
+        left: 18,
+        zIndex: 1,
+        borderWidth: 2,
+        borderColor: "rgba(0,0,0,0.15)",
+    },
+    swapAmountsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        flexWrap: "wrap",
+    },
+    swapAmountSent: {
+        fontFamily: "Dank Mono",
+        fontSize: 12,
+        includeFontPadding: false,
+    },
+    swapArrow: {
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        includeFontPadding: false,
+        marginHorizontal: 2,
+    },
+    swapAmountReceived: {
+        fontFamily: "Dank Mono",
+        fontSize: 12,
+        includeFontPadding: false,
     },
 });
 

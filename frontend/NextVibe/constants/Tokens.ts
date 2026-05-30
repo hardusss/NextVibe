@@ -12,7 +12,7 @@ export const TOKENS = {
     SOL: {
       symbol: "SOL",
       name: "Solana",
-      logoURL: "https://assets.coingecko.com/coins/images/4128/standard/solana.png",
+      logoURL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
       priceKey: 'solana' as const,
       mint: null,
       decimals: 9
