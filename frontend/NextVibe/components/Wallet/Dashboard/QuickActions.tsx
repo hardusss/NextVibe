@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import * as Haptics from "expo-haptics";
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
 import { ArrowDown, ArrowUp, ArrowLeftRight, Nfc } from "lucide-react-native";
 
@@ -55,7 +56,10 @@ const QuickActions: React.FC<QuickActionsProps> = ({
             {ACTIONS.map((action, i) => (
                 <View key={action.id} style={styles.wrapper}>
                     <TouchableOpacity
-                        onPress={handlers[i]}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            handlers[i]();
+                        }}
                         activeOpacity={0.6}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
@@ -125,4 +129,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default QuickActions;
+export default React.memo(QuickActions);

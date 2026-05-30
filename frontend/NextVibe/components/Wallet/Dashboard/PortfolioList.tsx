@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
 } from "react-native";
 import { Wallet, BriefcaseBusiness, ArrowRight, Sparkles } from "lucide-react-native";
-import { TokenAsset } from "@/hooks/usePortfolio";
+import { TokenAsset } from "@/hooks/usePortfolio.types";
 import { useRouter } from "expo-router";
 import TokenItem from "./TokenItem";
 
@@ -106,12 +106,12 @@ const CountBadge: React.FC<{ count: number; isDarkMode: boolean }> = ({ count, i
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-const PortfolioList: React.FC<PortfolioListProps> = ({
+function PortfolioList({
     isDarkMode,
     isBalanceHidden,
     tokens,
     isLoading,
-}) => {
+}: PortfolioListProps) {
     const router = useRouter();
 
     // Entrance animation
@@ -250,7 +250,7 @@ const PortfolioList: React.FC<PortfolioListProps> = ({
             </Animated.View>
         </View>
     );
-};
+}
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -409,4 +409,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default PortfolioList;
+export default React.memo(PortfolioList);

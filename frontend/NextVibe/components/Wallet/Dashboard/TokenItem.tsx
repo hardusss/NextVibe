@@ -1,6 +1,8 @@
 import React, { useRef, useEffect } from "react";
-import { View, Text, Image, StyleSheet, Animated } from "react-native";
-import { TokenAsset } from "@/hooks/usePortfolio";
+import { View, Text, StyleSheet, Animated, Pressable } from "react-native";
+import FastImage from "react-native-fast-image";
+import { TokenAsset } from "@/hooks/usePortfolio.types";
+import { MOTION } from "@/constants/motion";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react-native";
 
 interface TokenItemProps {
@@ -9,17 +11,19 @@ interface TokenItemProps {
     isBalanceHidden: boolean;
     isLast?: boolean;
     index?: number;
+    animateEntrance?: boolean;
 }
 
 const TokenItem: React.FC<TokenItemProps> = React.memo(
-    ({ token, isDarkMode, isBalanceHidden, isLast = false, index = 0 }) => {
-        // Staggered entrance animation
-        const fadeAnim = useRef(new Animated.Value(0)).current;
-        const slideAnim = useRef(new Animated.Value(24)).current;
-        const scaleAnim = useRef(new Animated.Value(0.95)).current;
+    ({ token, isDarkMode, isBalanceHidden, isLast = false, index = 0, animateEntrance = true }) => {
+        const fadeAnim = useRef(new Animated.Value(animateEntrance ? 0 : 1)).current;
+        const slideAnim = useRef(new Animated.Value(animateEntrance ? 24 : 0)).current;
+        const scaleAnim = useRef(new Animated.Value(animateEntrance ? 0.95 : 1)).current;
+        const pressScale = useRef(new Animated.Value(1)).current;
 
         useEffect(() => {
-            const delay = index * 80;
+            if (!animateEntrance) return;
+            const delay = index * MOTION.stagger.listStep;
             Animated.parallel([
                 Animated.timing(fadeAnim, {
                     toValue: 1,
@@ -42,7 +46,7 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                     useNativeDriver: true,
                 }),
             ]).start();
-        }, []);
+        }, [animateEntrance, index]);
 
         // Colors
         const cardBg = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.7)";
@@ -84,7 +88,23 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
 
         const ChangeIcon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
 
+        const onPressIn = () => {
+            Animated.spring(pressScale, {
+                toValue: MOTION.press.scale,
+                useNativeDriver: true,
+                ...MOTION.spring.snappy,
+            }).start();
+        };
+        const onPressOut = () => {
+            Animated.spring(pressScale, {
+                toValue: 1,
+                useNativeDriver: true,
+                ...MOTION.spring.snappy,
+            }).start();
+        };
+
         return (
+            <Pressable onPressIn={onPressIn} onPressOut={onPressOut}>
             <Animated.View
                 style={[
                     styles.container,
@@ -97,15 +117,18 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                         opacity: fadeAnim,
                         transform: [
                             { translateY: slideAnim },
-                            { scale: scaleAnim },
+                            { scale: Animated.multiply(scaleAnim, pressScale) },
                         ],
                     },
                 ]}
             >
-                {/* Logo */}
                 <View style={styles.logoContainer}>
                     {token.logoURI ? (
-                        <Image source={{ uri: token.logoURI }} style={styles.logo} />
+                        <FastImage
+                            source={{ uri: token.logoURI, priority: FastImage.priority.normal }}
+                            style={styles.logo}
+                            resizeMode={FastImage.resizeMode.cover}
+                        />
                     ) : (
                         <View style={[styles.logo, { backgroundColor: logoBg }]}>
                             <Text style={[styles.logoFallback, { color: symbolColor }]}>
@@ -151,17 +174,20 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                     </Text>
                 </View>
             </Animated.View>
+            </Pressable>
         );
     },
     (prev, next) =>
         prev.token.symbol === next.token.symbol &&
         prev.token.amount === next.token.amount &&
         prev.token.price === next.token.price &&
+        prev.token.valueUsd === next.token.valueUsd &&
         prev.isBalanceHidden === next.isBalanceHidden &&
         prev.isDarkMode === next.isDarkMode &&
         prev.token.change24h === next.token.change24h &&
         prev.token.direction === next.token.direction &&
-        prev.index === next.index
+        prev.index === next.index &&
+        prev.animateEntrance === next.animateEntrance
 );
 
 TokenItem.displayName = "TokenItem";
