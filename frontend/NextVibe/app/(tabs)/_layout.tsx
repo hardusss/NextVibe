@@ -143,10 +143,29 @@ export default function Layout() {
         "chats", "follows-screen", "notifications",
         "user-banned", "wallet-init", "wallet-dash",
         "wallet-select", "send", "swap", "event-checkin",
-        "post-details",
+        "post-details", "all-tokens"
     ];
 
     const stackScreens = blacklist.filter(item => item !== "send");
+
+    const tabRoots = new Set(["home", "search", "vibe-map", "camera", "profile"]);
+    const modalScreens = new Set([
+        "swap", "deposit", "select-token", "transaction-detail",
+        "result-transaction", "post-details", "event-checkin",
+    ]);
+
+    const getStackScreenOptions = (name: string) => {
+        if (tabRoots.has(name)) {
+            return { animation: "none" as const };
+        }
+        if (modalScreens.has(name)) {
+            return {
+                presentation: "modal" as const,
+                animation: "slide_from_bottom" as const,
+            };
+        }
+        return { animation: "slide_from_right" as const };
+    };
 
     const tabs = [
         { name: "home", IconOutline: House, IconFilled: House },
@@ -342,14 +361,22 @@ export default function Layout() {
                                     />
                                 )}
                                 <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
-                                    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { backgroundColor: 'transparent' } }}>
-                                        <Stack.Screen name="home" />
-                                        <Stack.Screen name="search" />
-                                        <Stack.Screen name="vibe-map" options={{ headerShown: false, animation: "none" }} />
-                                        <Stack.Screen name="camera" />
-                                        <Stack.Screen name="profile" />
+                                    <Stack screenOptions={{
+                                        headerShown: false,
+                                        animation: "slide_from_right",
+                                        contentStyle: { backgroundColor: 'transparent' },
+                                    }}>
+                                        <Stack.Screen name="home" options={getStackScreenOptions("home")} />
+                                        <Stack.Screen name="search" options={getStackScreenOptions("search")} />
+                                        <Stack.Screen name="vibe-map" options={getStackScreenOptions("vibe-map")} />
+                                        <Stack.Screen name="camera" options={getStackScreenOptions("camera")} />
+                                        <Stack.Screen name="profile" options={getStackScreenOptions("profile")} />
                                         {stackScreens.map((item) => (
-                                            <Stack.Screen key={item} name={item} />
+                                            <Stack.Screen
+                                                key={item}
+                                                name={item}
+                                                options={getStackScreenOptions(item)}
+                                            />
                                         ))}
                                     </Stack>
 
