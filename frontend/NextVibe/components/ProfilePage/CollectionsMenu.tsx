@@ -312,7 +312,7 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
             ) : (
                 <FlatList
                     data={items}
-                    keyExtractor={(item) => item.post_id?.toString() || Math.random().toString()}
+                    keyExtractor={(item, index) => item.post_id?.toString() ?? `collection-${index}`}
                     numColumns={3}
                     nestedScrollEnabled={true}
                     scrollEnabled={false}
