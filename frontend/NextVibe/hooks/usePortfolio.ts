@@ -1,286 +1,44 @@
-import { useState, useEffect, useCallback } from "react";
-import useWalletAddress from "./useWalletAddress";
-import SolanaService from "@/src/services/SolanaService";
-import getTokensPrice from "@/src/api/get.tokens.price";
-import { TOKENS } from "@/constants/Tokens";
+import { useEffect, useCallback, useRef } from 'react';
+import useWalletAddress from './useWalletAddress';
+import { usePortfolioStore } from '@/src/stores/portfolioStore';
+import type { PortfolioData, TokenAsset } from './usePortfolio.types';
 
-/**
- * Represents a single token asset in the user's portfolio
- * @interface TokenAsset
- */
-export interface TokenAsset {
-    symbol: string;
-    name: string;
-    amount: number;
-    price: number;
-    change24h: number;
-    direction: "up" | "down" | "flat";
-    valueUsd: number;
-    logoURI?: string;
-    mint: string | null;
-    decimals: number;
-}
+export type { TokenAsset, PortfolioData } from './usePortfolio.types';
 
-/**
- * Complete portfolio data structure
- * @interface PortfolioData
- */
-export interface PortfolioData {
-    /** Sum of all token holdings valued in USD */
-    totalUsdBalance: number;
-
-    /** Array of individual token holdings */
-    tokens: TokenAsset[];
-}
-
-/**
- * Return type for the usePortfolio hook
- * @interface UsePortfolioReturn
- */
 export interface UsePortfolioReturn {
-    /** Current portfolio data (tokens and total balance) */
     data: PortfolioData;
-
-    /** Loading state indicator for initial fetch and refreshes */
     isLoading: boolean;
-
-    /** Function to manually trigger portfolio data refresh */
+    isRefreshing: boolean;
     refresh: () => Promise<void>;
 }
 
-/**
- * usePortfolio Hook
- * 
- * Custom React hook for fetching and managing Solana wallet portfolio data.
- * Automatically loads portfolio when wallet connects and provides manual refresh capability.
- * 
- * Current Implementation:
- * - Fetches SOL and USDC balances from the connected smart wallet
- * - Uses hardcoded price data (should be replaced with live price API)
- * - Automatically refetches when wallet address changes
- * - Provides manual refresh function for pull-to-refresh scenarios
- * 
- * Data Flow:
- * 1. Hook initializes with loading state
- * 2. Waits for smartWalletPubkey from useWallet
- * 3. Fetches SOL and USDC balances in parallel
- * 4. Calculates USD values using price data
- * 5. Updates state with formatted portfolio data
- * 
- * Future Improvements:
- * - Replace hardcoded prices with live price feed (CoinGecko, Jupiter, etc.)
- * - Support additional SPL tokens beyond SOL and USDC
- * - Add caching layer to reduce unnecessary API calls
- * - Implement error state and retry logic
- * - Add support for NFT holdings
- * 
- * @example
- * ```tsx
- * function WalletScreen() {
- *   const { data, isLoading, refresh } = usePortfolio();
- * 
- *   if (isLoading) return <LoadingSpinner />;
- * 
- *   return (
- *     <ScrollView onRefresh={refresh}>
- *       <Text>Total Balance: ${data.totalUsdBalance.toFixed(2)}</Text>
- *       {data.tokens.map(token => (
- *         <TokenRow key={token.symbol} token={token} />
- *       ))}
- *     </ScrollView>
- *   );
- * }
- * ```
- * 
- * @returns {UsePortfolioReturn} Portfolio data, loading state, and refresh function
- */
 export default function usePortfolio(): UsePortfolioReturn {
-    /** 
-     * Smart wallet public key and RPC connection from LazorKit adapter
-     * smartWalletPubkey: The user's Solana wallet address
-     * connection: RPC connection instance for blockchain queries
-     */
     const { address, connection } = useWalletAddress();
+    const data = usePortfolioStore(s => s.data);
+    const isLoading = usePortfolioStore(s => s.isLoading);
+    const isRefreshing = usePortfolioStore(s => s.isRefreshing);
+    const ensurePortfolio = usePortfolioStore(s => s.ensurePortfolio);
+    const refreshStore = usePortfolioStore(s => s.refresh);
+    const reset = usePortfolioStore(s => s.reset);
 
+    const addressKey = address?.toString() ?? null;
+    const connectionRef = useRef(connection);
+    connectionRef.current = connection;
 
-    /** Loading state - true during initial fetch and manual refreshes */
-    const [isLoading, setIsLoading] = useState(true);
-
-    /** 
-     * Portfolio data state
-     * Initialized with empty portfolio (zero balance, no tokens)
-     */
-    const [data, setData] = useState<PortfolioData>({
-        totalUsdBalance: 0,
-        tokens: []
-    });
-
-    /**
-     * Core data fetching function
-     * 
-     * Fetches SOL and USDC balances, calculates USD values, and updates state.
-     * Runs in parallel for better performance using Promise.all.
-     * 
-     * Process:
-     * 1. Validates wallet address and connection exist
-     * 2. Fetches SOL and USDC balances concurrently
-     * 3. Applies price data to calculate USD values
-     * 4. Filters out zero-balance tokens
-     * 5. Calculates total portfolio value
-     * 6. Updates state with formatted data
-     * 
-     * Error Handling:
-     * - Logs errors to console but doesn't crash
-     * - Returns early if wallet/connection unavailable
-     * - Always sets loading to false in finally block
-     * 
-     * @async
-     * @private
-     */
-    const fetchData = async () => {
-        // Convert PublicKey to string, early return if not available
-        const addressString = address?.toString();
-        if (!addressString || !connection) {
-            setIsLoading(false);
-            return;
-        };
-
-        try {
-            setIsLoading(true);
-
-            /**
-             * Parallel balance fetching for better performance
-             * - getSolBalance: Native SOL balance from wallet
-             * - getAllSplBalances: All SPL token balances from wallet
-             */
-            const [solAmount, splBalances] = await Promise.all([
-                SolanaService.getSolBalance(connection, addressString),
-                SolanaService.getAllSplBalances(connection, addressString)
-            ]);
-
-            /**
-             * Price data (currently hardcoded)
-             * 
-             * TODO: Replace with live price API integration
-             * Recommended APIs:
-             * - CoinGecko: Free tier available, good for USD prices
-             * - Jupiter Price API: Native Solana prices, fast updates
-             * - Pyth Network: Real-time oracle prices on-chain
-             */
-            const priceKeys = Object.values(TOKENS).map(t => t.priceKey);
-            const prices = await getTokensPrice(priceKeys);
-
-            // Array to accumulate non-zero token holdings
-            const assets: TokenAsset[] = [];
-
-            // Running total of portfolio value in USD
-            let total = 0;
-
-            // In forEach we get price and value and add this to asset with info about token
-            Object.values(TOKENS).forEach((info) => {
-                let amount = 0;
-                if (info.symbol === "SOL") {
-                    amount = solAmount;
-                } else if (info.mint) {
-                    amount = splBalances[info.mint] || 0;
-                }
-
-                const tokenPrice = prices?.prices?.[info.priceKey];
-                const price = tokenPrice?.price ?? 0;
-                const change24h = tokenPrice?.change_24h ?? 0;
-                const direction = tokenPrice?.direction ?? "flat";
-
-                const val = amount * price;
-                total += val;
-
-                assets.push({
-                    symbol: info.symbol,
-                    name: info.name,
-                    amount: amount,
-                    price: price,
-                    change24h: change24h,
-                    direction: direction,
-                    valueUsd: val,
-                    logoURI: info.logoURL,
-                    mint: info.mint,
-                    decimals: info.decimals
-                });
-            });
-
-            /**
-             * Update state with computed portfolio data
-             * This triggers re-render in consuming components
-             */
-            setData({
-                totalUsdBalance: total,
-                tokens: assets
-            });
-
-        } catch (e) {
-            /**
-             * Error handling
-             * 
-             * Potential errors:
-             * - Network timeout (RPC connection issues)
-             * - Invalid wallet address
-             * - RPC rate limiting
-             * - Malformed response from SolanaService
-             * 
-             * TODO: Implement proper error state and user notification
-             */
-            setIsLoading(false);
-            console.error(e);
-        } finally {
-            /**
-             * Always reset loading state
-             * Ensures UI doesn't get stuck in loading state on error
-             */
-            setIsLoading(false);
-        }
-    };
-
-    /**
-     * Auto-fetch effect
-     * 
-     * Triggers portfolio fetch whenever the wallet address changes.
-     * This handles scenarios like:
-     * - Initial wallet connection
-     * - Switching between multiple wallets
-     * - Wallet reconnection after app restart
-     * 
-     * Dependency: smartWalletPubkey?.toString()
-     * - Using toString() ensures we track the actual address value
-     * - Optional chaining (?.) prevents errors when wallet disconnects
-     */
     useEffect(() => {
-        fetchData();
-    }, [address?.toString()]);
+        const conn = connectionRef.current;
+        if (!addressKey || !conn) {
+            reset();
+            return;
+        }
+        void ensurePortfolio(conn, addressKey);
+    }, [addressKey, ensurePortfolio, reset]);
 
-    /**
-     * Manual refresh function
-     * 
-     * Memoized with useCallback to prevent unnecessary re-renders in parent components.
-     * Useful for pull-to-refresh functionality in UI.
-     * 
-     * Dependencies: [smartWalletPubkey, connection]
-     * - Recreates function only when wallet/connection changes
-     * - Ensures refresh always uses latest wallet context
-     * 
-     * @async
-     * @public
-     * @example
-     * ```tsx
-     * <ScrollView
-     *   refreshControl={
-     *     <RefreshControl refreshing={isLoading} onRefresh={refresh} />
-     *   }
-     * />
-     * ```
-     */
     const refresh = useCallback(async () => {
-        await fetchData();
-    }, [address, connection]);
+        const conn = connectionRef.current;
+        if (!addressKey || !conn) return;
+        await refreshStore(conn, addressKey);
+    }, [addressKey, refreshStore]);
 
-    // Return hook interface
-    return { data, isLoading, refresh };
+    return { data, isLoading, isRefreshing, refresh };
 }
