@@ -2,8 +2,9 @@ import React from 'react';
 import { BlurView } from '@react-native-community/blur';
 import {
     Modal, View, Text, TouchableOpacity, TextInput,
-    ScrollView, StyleSheet, Vibration, Platform, Image
+    ScrollView, StyleSheet, Vibration, Platform,
 } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { Search } from 'lucide-react-native';
 import type { TokenAsset } from '@/hooks/usePortfolio';
 import type { SwapColors } from '@/src/types/swap';
@@ -119,7 +120,11 @@ export default function SwapTokenPicker({
                                 >
                                     <View style={styles.rowLeft}>
                                         {t.logoURI ? (
-                                            <Image source={{ uri: t.logoURI }} style={styles.tokenLogo} />
+                                            <FastImage
+                                                source={{ uri: t.logoURI }}
+                                                style={styles.tokenLogo}
+                                                resizeMode={FastImage.resizeMode.cover}
+                                            />
                                         ) : (
                                             <View style={[styles.tokenLogo, { backgroundColor: colors.muted, justifyContent: 'center', alignItems: 'center' }]}>
                                                 <Text style={{ color: '#fff', fontSize: 10 }}>{t.symbol.slice(0,1)}</Text>

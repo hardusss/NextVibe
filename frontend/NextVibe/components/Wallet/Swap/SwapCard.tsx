@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     Vibration,
     Platform,
-    ActivityIndicator,
     StyleSheet,
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
@@ -14,6 +13,7 @@ import { ChevronDown } from 'lucide-react-native';
 import FastImage from 'react-native-fast-image';
 import type { TokenAsset } from '@/hooks/usePortfolio';
 import type { SwapColors } from '@/src/types/swap';
+import CustomActivityIndicator from '@/components/CustomActivityIndicator';
 
 interface SwapCardProps {
     label: 'PAY' | 'RECEIVE';
@@ -153,7 +153,7 @@ export default function SwapCard({
                 <View style={styles.midRow}>
                     {isLoading ? (
                         <View style={{ flex: 1, paddingVertical: 10, alignItems: 'flex-start' }}>
-                            <ActivityIndicator size="small" color={colors.accent} />
+                            <CustomActivityIndicator size="small" color={colors.accent} />
                         </View>
                     ) : (
                         <TextInput

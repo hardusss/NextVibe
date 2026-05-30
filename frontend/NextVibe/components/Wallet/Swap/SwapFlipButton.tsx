@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { Animated, View, StyleSheet, Vibration, TouchableOpacity, Easing } from 'react-native';
+import { Animated, View, StyleSheet, TouchableOpacity, Easing } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { ArrowDownUp } from 'lucide-react-native';
 import type { SwapColors } from '@/src/types/swap';
 
@@ -16,7 +17,7 @@ export default function SwapFlipButton({ colors, onPress }: SwapFlipButtonProps)
     const rotateAnim = useRef(new Animated.Value(0)).current;
 
     const handlePress = () => {
-        Vibration.vibrate(25);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         Animated.sequence([
             Animated.timing(rotateAnim, {
                 toValue: 1,
