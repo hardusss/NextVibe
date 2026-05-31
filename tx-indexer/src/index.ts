@@ -68,7 +68,17 @@ async function bootstrap(): Promise<void> {
         uptime: process.uptime(),
       };
     })
-    .onError(({ error, set }) => {
+    .get("/", () => ({
+      service: "nextvibe-tx-indexer",
+      health: "/health",
+      docs: "/swagger",
+    }))
+    .onError(({ code, error, set }) => {
+      if (code === "NOT_FOUND") {
+        set.status = 404;
+        return { error: "Not found" };
+      }
+
       console.error("[server] unhandled error:", error);
       set.status = 500;
       return { error: "Internal server error" };
