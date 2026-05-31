@@ -1,21 +1,20 @@
 import { Elysia } from "elysia";
-import {
-  extractWalletAddress,
-  parseWebhookBody,
-  verifyWebhookSignature,
-} from "../services/helius";
+import { findMonitoredWalletForTx } from "../db/queries";
+import { parseWebhookBody, verifyWebhookAuth } from "../services/helius";
 import { enqueueWebhookTx } from "../queue";
 
 export const webhookRoutes = new Elysia({ prefix: "/webhook" }).post(
   "/helius",
   async ({ request, set }) => {
-    const rawBody = await request.text();
-    const signatureHeader = request.headers.get("helius-signature");
+    const authorization = request.headers.get("authorization");
 
-    if (!verifyWebhookSignature(rawBody, signatureHeader)) {
+    if (!verifyWebhookAuth(authorization)) {
+      console.warn("[webhook] rejected: invalid Authorization header");
       set.status = 401;
-      return { error: "Invalid webhook signature" };
+      return { error: "Unauthorized" };
     }
+
+    const rawBody = await request.text();
 
     let payload: ReturnType<typeof parseWebhookBody>;
 
@@ -28,16 +27,20 @@ export const webhookRoutes = new Elysia({ prefix: "/webhook" }).post(
       };
     }
 
+    let queued = 0;
+
     for (const tx of payload) {
-      const address = extractWalletAddress(tx);
+      const address = await findMonitoredWalletForTx(tx);
       if (!address) {
-        console.warn("[webhook] skipped tx without address:", tx.signature);
+        console.warn("[webhook] skipped tx without monitored wallet:", tx.signature);
         continue;
       }
 
       await enqueueWebhookTx(address, tx as unknown as Record<string, unknown>);
+      queued += 1;
     }
 
-    return { ok: true, queued: payload.length };
+    console.log(`[webhook] received ${payload.length} tx(s), queued ${queued}`);
+    return { ok: true, queued };
   }
 );
