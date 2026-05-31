@@ -11,28 +11,31 @@ const { width: SCREEN_W } = Dimensions.get('window');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'promo_banner_state';
-const MIN_SESSION_GAP = 3;          // show after every N-th app session
-const COOLDOWN_HOURS = 48;          // minimum hours between any promo display
+const COOLDOWN_HOURS = 48;          // hours to wait after both banners were shown
 const RATE_LINK = 'solanadappstore://details?id=com.nextvibe.app';
 const X_LINK = 'https://x.com/NextVibeWeb3';
 const AUTO_DISMISS_MS = 12_000;     // auto-hide after 12s if user ignores
 
 type PromoKind = 'rate' | 'follow_x';
 
+// cycleStep: 0 → show 'rate' next, 1 → show 'follow_x' next
 interface StoredState {
-    sessionCount: number;
-    lastShownAt: number;           // unix ms
-    lastKind: PromoKind | null;
+    cycleStep: number;              // 0 or 1
+    cycleCompletedAt: number;       // unix ms — when both banners were shown
 }
 
-const DEFAULT_STATE: StoredState = { sessionCount: 0, lastShownAt: 0, lastKind: null };
+const DEFAULT_STATE: StoredState = { cycleStep: 0, cycleCompletedAt: 0 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function loadState(): Promise<StoredState> {
     try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : DEFAULT_STATE;
+        if (!raw) return DEFAULT_STATE;
+        const parsed = JSON.parse(raw);
+        // Migrate from old format if needed
+        if ('sessionCount' in parsed) return DEFAULT_STATE;
+        return parsed;
     } catch {
         return DEFAULT_STATE;
     }
@@ -96,29 +99,40 @@ export default function PromoBanner() {
 
         (async () => {
             const state = await loadState();
-            state.sessionCount += 1;
 
-            const hoursSinceLast = (Date.now() - state.lastShownAt) / 3_600_000;
-            const shouldShow = state.sessionCount >= MIN_SESSION_GAP && hoursSinceLast >= COOLDOWN_HOURS;
+            // If the full cycle (rate + follow_x) was completed, check cooldown
+            if (state.cycleCompletedAt > 0) {
+                const hoursSince = (Date.now() - state.cycleCompletedAt) / 3_600_000;
+                if (hoursSince < COOLDOWN_HOURS) {
+                    // Still in cooldown — don't show anything
+                    return;
+                }
+                // Cooldown passed — reset for a new cycle
+                state.cycleStep = 0;
+                state.cycleCompletedAt = 0;
+            }
 
-            if (shouldShow) {
-                // Alternate between rate and follow_x
-                const next: PromoKind = state.lastKind === 'rate' ? 'follow_x' : 'rate';
-                state.lastKind = next;
-                state.lastShownAt = Date.now();
-                state.sessionCount = 0;
+            // Step 0 → rate, Step 1 → follow_x
+            const next: PromoKind = state.cycleStep === 0 ? 'rate' : 'follow_x';
 
-                setKind(next);
-
-                // Delay before showing to let the user settle in
-                timer = setTimeout(() => {
-                    show();
-                    // Auto-dismiss
-                    setTimeout(dismiss, AUTO_DISMISS_MS);
-                }, 4000);
+            // Advance cycle
+            if (state.cycleStep === 0) {
+                state.cycleStep = 1;
+            } else {
+                // Both shown — mark cycle as completed
+                state.cycleStep = 0;
+                state.cycleCompletedAt = Date.now();
             }
 
             await saveState(state);
+            setKind(next);
+
+            // Delay before showing to let the user settle in
+            timer = setTimeout(() => {
+                show();
+                // Auto-dismiss
+                setTimeout(dismiss, AUTO_DISMISS_MS);
+            }, 4000);
         })();
 
         return () => clearTimeout(timer);
