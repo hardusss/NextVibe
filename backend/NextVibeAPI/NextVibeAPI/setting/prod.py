@@ -316,3 +316,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Helius Solana RPC
 HELIUS_API_KEY = os.getenv("HELIUS_API_KEY", "")
+
+# Transaction indexer microservice
+INDEXER_URL = os.getenv("INDEXER_URL", "http://localhost:3000")
+INDEXER_INTERNAL_SECRET = os.getenv("INDEXER_INTERNAL_SECRET", "")
