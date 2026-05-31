@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
 import { BlurView } from "@react-native-community/blur";
+import PromoBanner from "@/components/Shared/PromoBanner";
 import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -440,6 +441,7 @@ export default function Layout() {
                                             </View>
                                         </View>
                                     )}
+                                    <PromoBanner />
                                 </View>
                             </WebSocketProvider>
                         </ErrorBoundary>
