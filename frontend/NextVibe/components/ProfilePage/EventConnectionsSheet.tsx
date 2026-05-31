@@ -4,7 +4,7 @@ import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@g
 import FastImage from 'react-native-fast-image';
 import { BlurView } from '@react-native-community/blur';
 import VerifyBadge from "../VerifyBadge";
-import { Star, Layers, Users, ChevronDown, ShieldCheck, Radio } from 'lucide-react-native'; // <-- Додано Radio
+import { Star, Layers, Users, ChevronDown, ShieldCheck, Radio } from 'lucide-react-native';
 import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';

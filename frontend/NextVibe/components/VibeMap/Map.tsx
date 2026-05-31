@@ -1,5 +1,9 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator, Image, Pressable, TouchableOpacity } from 'react-native';
+import {
+    StyleSheet, View, Text, ActivityIndicator, Image,
+    Pressable, TouchableOpacity,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapboxGL from '@rnmapbox/maps';
 import { useFocusEffect } from 'expo-router';
 import * as Location from 'expo-location';
@@ -9,14 +13,113 @@ import { getVibemapEvents, VibemapEventItem } from '@/src/api/get.vibemap.events
 import EventDetailSheet, { EventDetailSheetRef } from './EventDetailSheet';
 import * as Haptics from 'expo-haptics';
 import { Camera, Calendar, Moon, Map as LucideMap } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type FilterMode = 'posts' | 'events';
 type MapStyle = 'dark' | 'street';
 
+// ─── Cluster config ──────────────────────────────────────────────────────────
+
+const CLUSTER_RADIUS = 50;     // px radius to merge nearby markers
+const CLUSTER_MAX_ZOOM = 14;   // stop clustering above this zoom
+
 const EMPTY_GEOJSON = {
-    type: "FeatureCollection" as const,
+    type: 'FeatureCollection' as const,
     features: [] as any[],
 };
+
+// ─── Static NFT marker ───────────────────────────────────────────────────────
+
+function NftMarker({ item, onPress }: { item: VibemapNftItem; onPress: () => void }) {
+    return (
+        <Pressable onPress={onPress} style={styles.markerHitArea}>
+            <View style={styles.nftCard}>
+                {item.image ? (
+                    <Image source={{ uri: item.image }} style={styles.nftCardImage} resizeMode="cover" />
+                ) : (
+                    <View style={styles.nftCardFallback} />
+                )}
+                <View style={styles.nftCardBorder} />
+                <View style={styles.nftAvatarRing}>
+                    {item.owner_avatar ? (
+                        <Image source={{ uri: item.owner_avatar }} style={styles.nftAvatar} resizeMode="cover" />
+                    ) : (
+                        <View style={styles.nftAvatarFallback}>
+                            <Camera size={10} color="rgba(188,187,253,0.8)" />
+                        </View>
+                    )}
+                </View>
+            </View>
+        </Pressable>
+    );
+}
+
+// ─── Static Event marker ─────────────────────────────────────────────────────
+
+function EventMarker({ item, onPress }: { item: VibemapEventItem; onPress: () => void }) {
+    const isActive = item.is_active;
+    const glowColor = isActive ? '#05f0d8' : '#f87171';
+
+    return (
+        <Pressable onPress={onPress} style={styles.markerHitArea}>
+            <View style={[
+                styles.eventCard,
+                { borderColor: isActive ? 'rgba(5,240,216,0.65)' : 'rgba(248,113,113,0.45)' },
+            ]}>
+                {item.image ? (
+                    <Image source={{ uri: item.image }} style={styles.eventCardImage} resizeMode="cover" />
+                ) : (
+                    <View style={[styles.eventCardFallback, {
+                        backgroundColor: isActive ? 'rgba(5,240,216,0.12)' : 'rgba(248,113,113,0.12)',
+                    }]} />
+                )}
+
+                <LinearGradient
+                    colors={isActive
+                        ? ['transparent', 'rgba(5,240,216,0.3)']
+                        : ['transparent', 'rgba(248,113,113,0.3)']}
+                    style={StyleSheet.absoluteFillObject}
+                />
+
+                <View style={[styles.eventBadge, {
+                    backgroundColor: isActive ? 'rgba(5,240,216,0.9)' : 'rgba(248,113,113,0.85)',
+                }]}>
+                    <Calendar size={10} color="#000" strokeWidth={2.5} />
+                </View>
+
+                {!!isActive && (
+                    <View style={styles.eventLiveBadge}>
+                        <Text style={styles.eventLiveText}>LIVE</Text>
+                    </View>
+                )}
+
+                <View style={[styles.eventDot, { backgroundColor: glowColor }]} />
+            </View>
+        </Pressable>
+    );
+}
+
+// ─── Cluster bubble ───────────────────────────────────────────────────────────
+
+function ClusterBubble({ count, color, onPress }: { count: number; color: string; onPress: () => void }) {
+    const size = count > 20 ? 56 : count > 10 ? 48 : 40;
+    const fontSize = count > 99 ? 11 : count > 9 ? 13 : 14;
+
+    return (
+        <Pressable onPress={onPress}>
+            <View style={[styles.cluster, { width: size, height: size, borderRadius: size / 2 }]}>
+                <View style={[styles.clusterInner, { borderRadius: size / 2, borderColor: color }]}>
+                    <Text style={[styles.clusterText, { fontSize }]}>{count > 99 ? '99+' : count}</Text>
+                </View>
+            </View>
+        </Pressable>
+    );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MapScreen() {
     const [showMap, setShowMap] = useState(false);
@@ -25,99 +128,83 @@ export default function MapScreen() {
     const [events, setEvents] = useState<VibemapEventItem[]>([]);
     const [isNftsLoading, setIsNftsLoading] = useState(false);
     const [isEventsLoading, setIsEventsLoading] = useState(false);
+    const [currentZoom, setCurrentZoom] = useState(3.5);
 
     const [filterMode, setFilterMode] = useState<FilterMode>('posts');
     const [mapStyle, setMapStyle] = useState<MapStyle>('dark');
 
+    const insets = useSafeAreaInsets();
     const eventSheetRef = useRef<EventDetailSheetRef>(null);
+    const cameraRef = useRef<MapboxGL.Camera>(null);
+
+    // ── Location ─────────────────────────────────────────────────────────────
 
     const getUserLocation = async () => {
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') return;
-
-            const data = await Location.getCurrentPositionAsync({ 
-                accuracy: Location.Accuracy.Low 
-            });
-
+            const data = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
             if (data.coords) {
                 setUserCoords([data.coords.longitude, data.coords.latitude]);
             }
         } catch (error) {
-            console.error("Location error:", error);
+            console.error('Location error:', error);
         }
     };
 
-    useEffect(() => {
-        getUserLocation();
-    }, []);
+    useEffect(() => { getUserLocation(); }, []);
+
+    // ── Data loading ──────────────────────────────────────────────────────────
 
     const loadNfts = useCallback(async () => {
         setIsNftsLoading(true);
-        try {
-            const data = await getVibemapNfts();
-            setNfts(data);
-        } catch (e) {
-            console.error("get vibemap nfts error:", e);
-            setNfts([]);
-        } finally {
-            setIsNftsLoading(false);
-        }
+        try { setNfts(await getVibemapNfts()); }
+        catch { setNfts([]); }
+        finally { setIsNftsLoading(false); }
     }, []);
 
     const loadEvents = useCallback(async () => {
         setIsEventsLoading(true);
-        try {
-            const data = await getVibemapEvents();
-            setEvents(data);
-        } catch (e) {
-            console.error("get vibemap events error:", e);
-            setEvents([]);
-        } finally {
-            setIsEventsLoading(false);
-        }
+        try { setEvents(await getVibemapEvents()); }
+        catch { setEvents([]); }
+        finally { setIsEventsLoading(false); }
     }, []);
 
     useFocusEffect(
         useCallback(() => {
-            const timer = setTimeout(() => {
-                setShowMap(true);
-            }, 450);
-
+            const timer = setTimeout(() => setShowMap(true), 450);
             loadNfts();
             loadEvents();
-
-            return () => {
-                setShowMap(false);
-                clearTimeout(timer);
-            };
+            return () => { setShowMap(false); clearTimeout(timer); };
         }, [loadNfts, loadEvents])
     );
 
-    const mapNfts = useMemo(() => {
-        return nfts.filter((x) => typeof x.lat === "number" && typeof x.lng === "number");
-    }, [nfts]);
+    // ── Derived data ──────────────────────────────────────────────────────────
 
-    const mapEvents = useMemo(() => {
-        return events.filter((x) => typeof x.lat === "number" && typeof x.lng === "number");
-    }, [events]);
-
-    const showPosts = filterMode === 'posts';
+    const showPosts  = filterMode === 'posts';
     const showEvents = filterMode === 'events';
+    const isDarkMap  = mapStyle === 'dark';
+    const isLoading  = isNftsLoading || isEventsLoading;
+
+    const mapNfts = useMemo(
+        () => nfts.filter(x => typeof x.lat === 'number' && typeof x.lng === 'number'),
+        [nfts]
+    );
+    const mapEvents = useMemo(
+        () => events.filter(x => typeof x.lat === 'number' && typeof x.lng === 'number'),
+        [events]
+    );
+
+    // ── GeoJSON for halo layers ───────────────────────────────────────────────
 
     const nftsGeoJson = useMemo(() => {
         if (!showPosts) return EMPTY_GEOJSON;
         return {
-            type: "FeatureCollection" as const,
-            features: mapNfts.map((item) => ({
-                type: "Feature" as const,
-                geometry: {
-                    type: "Point" as const,
-                    coordinates: [item.lng as number, item.lat as number],
-                },
-                properties: {
-                    post_id: item.post_id,
-                },
+            type: 'FeatureCollection' as const,
+            features: mapNfts.map(item => ({
+                type: 'Feature' as const,
+                geometry: { type: 'Point' as const, coordinates: [item.lng as number, item.lat as number] },
+                properties: { post_id: item.post_id },
             })),
         };
     }, [mapNfts, showPosts]);
@@ -125,28 +212,75 @@ export default function MapScreen() {
     const eventsGeoJson = useMemo(() => {
         if (!showEvents) return EMPTY_GEOJSON;
         return {
-            type: "FeatureCollection" as const,
-            features: mapEvents.map((item) => ({
-                type: "Feature" as const,
-                geometry: {
-                    type: "Point" as const,
-                    coordinates: [item.lng, item.lat],
-                },
-                properties: {
-                    post_id: item.post_id,
-                    is_active: item.is_active,
-                },
+            type: 'FeatureCollection' as const,
+            features: mapEvents.map(item => ({
+                type: 'Feature' as const,
+                geometry: { type: 'Point' as const, coordinates: [item.lng, item.lat] },
+                properties: { post_id: item.post_id, is_active: item.is_active },
             })),
         };
     }, [mapEvents, showEvents]);
 
-    const isLoading = isNftsLoading || isEventsLoading;
+    // ── Simple client-side clustering ─────────────────────────────────────────
+    // At low zoom → group by ~5° grid; at medium zoom → ~1°; at high zoom → no cluster
 
-    const currentStyleURL = mapStyle === 'dark'
-        ? MapboxGL.StyleURL.Dark
-        : MapboxGL.StyleURL.Street;
+    const nftClusters = useMemo(() => {
+        if (!showPosts || currentZoom > CLUSTER_MAX_ZOOM) return { clusters: [], singles: mapNfts };
+        if (currentZoom > 8) return { clusters: [], singles: mapNfts };
 
-    const isDarkMap = mapStyle === 'dark';
+        const gridSize = currentZoom < 4 ? 15 : currentZoom < 6 ? 6 : 2;
+        const buckets: Record<string, VibemapNftItem[]> = {};
+
+        for (const item of mapNfts) {
+            const key = `${Math.floor((item.lat as number) / gridSize)}_${Math.floor((item.lng as number) / gridSize)}`;
+            if (!buckets[key]) buckets[key] = [];
+            buckets[key].push(item);
+        }
+
+        const clusters: { lat: number; lng: number; count: number; key: string }[] = [];
+        const singles: VibemapNftItem[] = [];
+
+        for (const [key, items] of Object.entries(buckets)) {
+            if (items.length === 1) {
+                singles.push(items[0]);
+            } else {
+                const lat = items.reduce((s, i) => s + (i.lat as number), 0) / items.length;
+                const lng = items.reduce((s, i) => s + (i.lng as number), 0) / items.length;
+                clusters.push({ lat, lng, count: items.length, key });
+            }
+        }
+        return { clusters, singles };
+    }, [mapNfts, showPosts, currentZoom]);
+
+    const eventClusters = useMemo(() => {
+        if (!showEvents || currentZoom > CLUSTER_MAX_ZOOM) return { clusters: [], singles: mapEvents };
+        if (currentZoom > 8) return { clusters: [], singles: mapEvents };
+
+        const gridSize = currentZoom < 4 ? 15 : currentZoom < 6 ? 6 : 2;
+        const buckets: Record<string, VibemapEventItem[]> = {};
+
+        for (const item of mapEvents) {
+            const key = `${Math.floor(item.lat / gridSize)}_${Math.floor(item.lng / gridSize)}`;
+            if (!buckets[key]) buckets[key] = [];
+            buckets[key].push(item);
+        }
+
+        const clusters: { lat: number; lng: number; count: number; key: string; hasActive: boolean }[] = [];
+        const singles: VibemapEventItem[] = [];
+
+        for (const [key, items] of Object.entries(buckets)) {
+            if (items.length === 1) {
+                singles.push(items[0]);
+            } else {
+                const lat = items.reduce((s, i) => s + i.lat, 0) / items.length;
+                const lng = items.reduce((s, i) => s + i.lng, 0) / items.length;
+                clusters.push({ lat, lng, count: items.length, key, hasActive: items.some(i => i.is_active) });
+            }
+        }
+        return { clusters, singles };
+    }, [mapEvents, showEvents, currentZoom]);
+
+    // ── Interaction handlers ──────────────────────────────────────────────────
 
     const handleFilterChange = (mode: FilterMode) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -158,27 +292,42 @@ export default function MapScreen() {
         setMapStyle(style);
     };
 
+    const handleClusterPress = useCallback((lat: number, lng: number) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        cameraRef.current?.flyTo([lng, lat], 1200);
+    }, []);
+
+    // Outdoors = full terrain relief, hill shading, contours, trails — perfect for navigation
+    const currentStyleURL = isDarkMap
+        ? MapboxGL.StyleURL.Dark
+        : 'mapbox://styles/mapbox/outdoors-v12';
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
     return (
         <View style={styles.container}>
-            <StatusBar translucent backgroundColor='#000000'/>
+            {/* Always black status bar */}
+            <StatusBar style="light" backgroundColor="#000000" translucent={false} />
+
             {showMap ? (
                 <>
                     <MapboxGL.MapView
                         style={styles.map}
                         styleURL={currentStyleURL}
-                        projection={isDarkMap ? "globe" : "mercator"}
+                        projection={isDarkMap ? 'globe' : 'mercator'}
                         logoEnabled={false}
                         attributionEnabled={false}
                         scaleBarEnabled={false}
+                        onCameraChanged={state => {
+                            setCurrentZoom(state.properties.zoom);
+                        }}
                     >
                         <MapboxGL.Camera
-                            defaultSettings={{
-                                centerCoordinate: [0, 0],
-                                zoomLevel: 1,
-                            }}
+                            ref={cameraRef}
+                            defaultSettings={{ centerCoordinate: [0, 0], zoomLevel: 1 }}
                             centerCoordinate={userCoords}
-                            zoomLevel={isDarkMap ? 3.5 : 16}
-                            pitch={isDarkMap ? 45 : 60}
+                            zoomLevel={isDarkMap ? 3.5 : 14}
+                            pitch={isDarkMap ? 45 : 55}
                             animationDuration={3500}
                             animationMode="flyTo"
                         />
@@ -190,103 +339,68 @@ export default function MapScreen() {
                                     highColor: '#52059f',
                                     spaceColor: '#000000',
                                     horizonBlend: 0.02,
-                                    starIntensity: 1.0
+                                    starIntensity: 1.0,
                                 }}
                             />
                         )}
 
-                        {/* NFT halo layer */}
+                        {/* ── Real 3D terrain elevation (outdoor mode only) ── */}
+                        {!isDarkMap && (
+                            <>
+                                <MapboxGL.RasterDemSource
+                                    id="mapbox-dem"
+                                    url="mapbox://mapbox.mapbox-terrain-dem-v1"
+                                    tileSize={512}
+                                    maxZoomLevel={14}
+                                />
+                                <MapboxGL.Terrain
+                                    sourceID="mapbox-dem"
+                                    exaggeration={1.5}
+                                />
+                                <MapboxGL.SkyLayer
+                                    id="sky"
+                                    style={{
+                                        skyType: 'atmosphere',
+                                        skyAtmosphereSun: [0, 90],
+                                        skyAtmosphereSunIntensity: 15,
+                                    }}
+                                />
+                            </>
+                        )}
+
+                        {/* ── NFT halo layer ── */}
                         <MapboxGL.ShapeSource id="vibemap-nfts" shape={nftsGeoJson}>
                             <MapboxGL.CircleLayer
                                 id="vibemap-nfts-halo"
                                 style={{
-                                    circleColor: "#BCBBFD",
-                                    circleOpacity: [
-                                        "interpolate",
-                                        ["linear"],
-                                        ["zoom"],
-                                        0, 0.55,
-                                        3, 0.35,
-                                        6, 0.2,
-                                        10, 0.0,
-                                    ],
-                                    circleRadius: [
-                                        "interpolate",
-                                        ["linear"],
-                                        ["zoom"],
-                                        0, 18,
-                                        2, 14,
-                                        4, 10,
-                                        6, 7,
-                                        8, 5,
-                                        10, 3,
-                                    ],
-                                    circleBlur: 1,
+                                    circleColor: '#BCBBFD',
+                                    circleOpacity: ['interpolate', ['linear'], ['zoom'], 0, 0.5, 4, 0.3, 8, 0.1, 12, 0.0],
+                                    circleRadius: ['interpolate', ['linear'], ['zoom'], 0, 20, 4, 12, 8, 6, 12, 3],
+                                    circleBlur: 1.2,
                                     circleStrokeWidth: 1,
-                                    circleStrokeColor: "rgba(82, 5, 159, 0.85)",
-                                    circleStrokeOpacity: [
-                                        "interpolate",
-                                        ["linear"],
-                                        ["zoom"],
-                                        0, 0.75,
-                                        6, 0.35,
-                                        10, 0.0,
-                                    ],
+                                    circleStrokeColor: 'rgba(82,5,159,0.85)',
+                                    circleStrokeOpacity: ['interpolate', ['linear'], ['zoom'], 0, 0.7, 8, 0.2, 12, 0.0],
                                 }}
                             />
                         </MapboxGL.ShapeSource>
 
-                        {/* Event halo layer — distinct green/cyan glow */}
+                        {/* ── Event halo layer ── */}
                         <MapboxGL.ShapeSource id="vibemap-events-halo-source" shape={eventsGeoJson}>
                             <MapboxGL.CircleLayer
                                 id="vibemap-events-halo"
                                 style={{
-                                    circleColor: [
-                                        "case",
-                                        ["==", ["get", "is_active"], true],
-                                        "#05f0d8",
-                                        "#f87171",
-                                    ],
-                                    circleOpacity: [
-                                        "interpolate",
-                                        ["linear"],
-                                        ["zoom"],
-                                        0, 0.6,
-                                        3, 0.4,
-                                        6, 0.25,
-                                        10, 0.0,
-                                    ],
-                                    circleRadius: [
-                                        "interpolate",
-                                        ["linear"],
-                                        ["zoom"],
-                                        0, 22,
-                                        2, 18,
-                                        4, 14,
-                                        6, 10,
-                                        8, 7,
-                                        10, 4,
-                                    ],
-                                    circleBlur: 1,
+                                    circleColor: ['case', ['==', ['get', 'is_active'], true], '#05f0d8', '#f87171'],
+                                    circleOpacity: ['interpolate', ['linear'], ['zoom'], 0, 0.55, 4, 0.35, 8, 0.15, 12, 0.0],
+                                    circleRadius: ['interpolate', ['linear'], ['zoom'], 0, 24, 4, 16, 8, 8, 12, 4],
+                                    circleBlur: 1.4,
                                     circleStrokeWidth: 1.5,
-                                    circleStrokeColor: [
-                                        "case",
-                                        ["==", ["get", "is_active"], true],
-                                        "rgba(5, 240, 216, 0.85)",
-                                        "rgba(248, 113, 113, 0.6)",
-                                    ],
-                                    circleStrokeOpacity: [
-                                        "interpolate",
-                                        ["linear"],
-                                        ["zoom"],
-                                        0, 0.8,
-                                        6, 0.4,
-                                        10, 0.0,
-                                    ],
+                                    circleStrokeColor: ['case', ['==', ['get', 'is_active'], true], 'rgba(5,240,216,0.8)', 'rgba(248,113,113,0.55)'],
+                                    circleStrokeOpacity: ['interpolate', ['linear'], ['zoom'], 0, 0.75, 8, 0.3, 12, 0.0],
                                 }}
                             />
                         </MapboxGL.ShapeSource>
 
+                        {/* ── Border layers (dark mode) ── */}
                         {isDarkMap && (
                             <MapboxGL.VectorSource id="vibe-borders" url="mapbox://mapbox.mapbox-streets-v8">
                                 <MapboxGL.LineLayer
@@ -300,7 +414,6 @@ export default function MapScreen() {
                                         lineBlur: 0.5,
                                     }}
                                 />
-
                                 <MapboxGL.LineLayer
                                     id="neon-sub-borders"
                                     sourceLayerID="admin"
@@ -315,191 +428,156 @@ export default function MapScreen() {
                             </MapboxGL.VectorSource>
                         )}
 
-                        {/* NFT markers */}
-                        {showPosts && mapNfts.map((item) => (
+                        {/* ── NFT clusters ── */}
+                        {showPosts && nftClusters.clusters.map(cluster => (
                             <MapboxGL.MarkerView
-                                key={String(item.post_id)}
-                                id={`vibemap-nft-${item.post_id}`}
+                                key={`nft-cluster-${cluster.key}`}
+                                coordinate={[cluster.lng, cluster.lat]}
+                                anchor={{ x: 0.5, y: 0.5 }}
+                            >
+                                <ClusterBubble
+                                    count={cluster.count}
+                                    color="rgba(168,85,247,0.8)"
+                                    onPress={() => handleClusterPress(cluster.lat, cluster.lng)}
+                                />
+                            </MapboxGL.MarkerView>
+                        ))}
+
+                        {/* ── NFT single markers ── */}
+                        {showPosts && nftClusters.singles.map(item => (
+                            <MapboxGL.MarkerView
+                                key={`nft-${item.post_id}`}
                                 coordinate={[item.lng as number, item.lat as number]}
                                 anchor={{ x: 0.5, y: 0.5 }}
-                                allowOverlap
+                                allowOverlap={false}
                             >
-                                <Pressable style={styles.markerShadowWrap}>
-                                    <View style={styles.markerContainer}>
-                                        {item.image ? (
-                                            <Image
-                                                source={{ uri: item.image }}
-                                                style={styles.markerPostImage}
-                                                resizeMode="cover"
-                                            />
-                                        ) : (
-                                            <View style={styles.markerPostFallback} />
-                                        )}
-
-                                        <View style={styles.markerAvatarRing}>
-                                            {item.owner_avatar ? (
-                                                <Image
-                                                    source={{ uri: item.owner_avatar }}
-                                                    style={styles.markerAvatar}
-                                                    resizeMode="cover"
-                                                />
-                                            ) : (
-                                                <View style={styles.markerAvatarFallback} />
-                                            )}
-                                        </View>
-                                    </View>
-                                </Pressable>
+                                <NftMarker item={item} onPress={() => {}} />
                             </MapboxGL.MarkerView>
                         ))}
 
-                        {/* Event markers — distinct look */}
-                        {showEvents && mapEvents.map((item) => (
+                        {/* ── Event clusters ── */}
+                        {showEvents && eventClusters.clusters.map(cluster => (
+                            <MapboxGL.MarkerView
+                                key={`event-cluster-${cluster.key}`}
+                                coordinate={[cluster.lng, cluster.lat]}
+                                anchor={{ x: 0.5, y: 0.5 }}
+                            >
+                                <ClusterBubble
+                                    count={cluster.count}
+                                    color={cluster.hasActive ? 'rgba(5,240,216,0.8)' : 'rgba(248,113,113,0.7)'}
+                                    onPress={() => handleClusterPress(cluster.lat, cluster.lng)}
+                                />
+                            </MapboxGL.MarkerView>
+                        ))}
+
+                        {/* ── Event single markers ── */}
+                        {showEvents && eventClusters.singles.map(item => (
                             <MapboxGL.MarkerView
                                 key={`event-${item.post_id}`}
-                                id={`vibemap-event-${item.post_id}`}
                                 coordinate={[item.lng, item.lat]}
                                 anchor={{ x: 0.5, y: 0.5 }}
-                                allowOverlap
+                                allowOverlap={false}
                             >
-                                <Pressable
-                                    style={[
-                                        styles.eventMarkerShadow,
-                                        { shadowColor: item.is_active ? "#05f0d8" : "#f87171" },
-                                    ]}
-                                    onPress={() => eventSheetRef.current?.present(item)}
-                                >
-                                    <View style={[
-                                        styles.eventMarkerContainer,
-                                        {
-                                            borderColor: item.is_active
-                                                ? "rgba(5, 240, 216, 0.6)"
-                                                : "rgba(248, 113, 113, 0.4)",
-                                        },
-                                    ]}>
-                                        {/* Event image */}
-                                        {item.image ? (
-                                            <Image
-                                                source={{ uri: item.image }}
-                                                style={styles.eventMarkerImage}
-                                                resizeMode="cover"
-                                            />
-                                        ) : (
-                                            <View style={styles.eventMarkerImageFallback} />
-                                        )}
-
-                                        {/* Calendar icon overlay */}
-                                        <View style={styles.eventIconOverlay}>
-                                            <View style={[
-                                                styles.eventIconBadge,
-                                                {
-                                                    backgroundColor: item.is_active
-                                                        ? "rgba(5, 240, 216, 0.9)"
-                                                        : "rgba(248, 113, 113, 0.85)",
-                                                },
-                                            ]}>
-                                                <Text style={styles.eventIconEmoji}>📅</Text>
-                                            </View>
-                                        </View>
-
-                                        {/* Status dot */}
-                                        <View style={[
-                                            styles.eventStatusDot,
-                                            {
-                                                backgroundColor: item.is_active ? "#05f0d8" : "#f87171",
-                                                borderColor: "#000",
-                                            },
-                                        ]} />
-                                    </View>
-                                </Pressable>
+                                <EventMarker item={item} onPress={() => eventSheetRef.current?.present(item)} />
                             </MapboxGL.MarkerView>
                         ))}
-
-                        {isLoading ? (
-                            <View style={styles.mapLoadingBadge}>
-                                <ActivityIndicator size="small" color="#BCBBFD" />
-                                <Text style={styles.mapLoadingText}>Loading drops…</Text>
-                            </View>
-                        ) : null}
                     </MapboxGL.MapView>
 
-                    {/* ── Floating control panel ── */}
-                    <View style={styles.controlsContainer}>
-                        {/* Filter toggle: All / Posts / Events */}
-                        <View style={styles.pillRow}>
-                            {(['posts', 'events'] as FilterMode[]).map((mode) => {
-                                const isActive = filterMode === mode;
-                                const Icon = mode === 'posts' ? Camera : Calendar;
-                                const label = mode === 'posts' ? 'Posts' : 'Events';
-                                
-                                return (
-                                    <TouchableOpacity
-                                        key={mode}
-                                        activeOpacity={0.78}
-                                        onPress={() => handleFilterChange(mode)}
-                                        style={[
-                                            styles.pillBtn,
-                                            isActive && styles.pillBtnActive,
-                                        ]}
-                                    >
-                                        <View style={styles.btnContent}>
-                                            <Icon 
-                                                size={14} 
-                                                color={isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.45)"} 
+                    {/* ── Top controls — sits below status bar, never under navbar ── */}
+                    <View
+                        style={[styles.controlsContainer, { top: insets.top + 8 }]}
+                        pointerEvents="box-none"
+                    >
+
+                        {/* Loading badge */}
+                        {isLoading && (
+                            <BlurView intensity={30} tint="dark" style={styles.loadingBadge}>
+                                <ActivityIndicator size="small" color="#BCBBFD" />
+                                <Text style={styles.loadingText}>Syncing vibes…</Text>
+                            </BlurView>
+                        )}
+
+                        <View style={styles.pillsRow}>
+                            {/* Filter pills */}
+                            <BlurView intensity={40} tint="dark" style={styles.pillGroup}>
+                                {(['posts', 'events'] as FilterMode[]).map(mode => {
+                                    const isActive = filterMode === mode;
+                                    const Icon = mode === 'posts' ? Camera : Calendar;
+                                    const label = mode === 'posts' ? 'Posts' : 'Events';
+                                    return (
+                                        <TouchableOpacity
+                                            key={mode}
+                                            activeOpacity={0.75}
+                                            onPress={() => handleFilterChange(mode)}
+                                            style={[styles.pill, isActive && styles.pillActive]}
+                                        >
+                                            {isActive && (
+                                                <LinearGradient
+                                                    colors={mode === 'posts'
+                                                        ? ['rgba(168,85,247,0.5)', 'rgba(100,30,180,0.4)']
+                                                        : ['rgba(5,240,216,0.4)', 'rgba(0,160,140,0.35)']
+                                                    }
+                                                    style={StyleSheet.absoluteFillObject}
+                                                    start={{ x: 0, y: 0 }}
+                                                    end={{ x: 1, y: 1 }}
+                                                />
+                                            )}
+                                            <Icon
+                                                size={13}
+                                                color={isActive ? '#fff' : 'rgba(255,255,255,0.4)'}
                                                 strokeWidth={2.5}
                                             />
-                                            <Text style={[
-                                                styles.pillText,
-                                                isActive && styles.pillTextActive,
-                                            ]}>
+                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
                                                 {label}
                                             </Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </BlurView>
 
-                        {/* Map style toggle: Dark / Street */}
-                        <View style={styles.pillRow}>
-                            {(['dark', 'street'] as MapStyle[]).map((style) => {
-                                const isActive = mapStyle === style;
-                                const Icon = style === 'dark' ? Moon : LucideMap;
-                                const label = style === 'dark' ? 'Vibe' : '3D Street';
-
-                                return (
-                                    <TouchableOpacity
-                                        key={style}
-                                        activeOpacity={0.78}
-                                        onPress={() => handleMapStyleChange(style)}
-                                        style={[
-                                            styles.pillBtn,
-                                            styles.pillBtnSmall,
-                                            isActive && styles.pillBtnActive,
-                                        ]}
-                                    >
-                                        <View style={styles.btnContent}>
-                                            <Icon 
-                                                size={14} 
-                                                color={isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.45)"} 
+                            {/* Map style pills */}
+                            <BlurView intensity={40} tint="dark" style={styles.pillGroup}>
+                                {(['dark', 'street'] as MapStyle[]).map(style => {
+                                    const isActive = mapStyle === style;
+                                    const Icon = style === 'dark' ? Moon : LucideMap;
+                                    const label = style === 'dark' ? 'Vibe' : '3D';
+                                    return (
+                                        <TouchableOpacity
+                                            key={style}
+                                            activeOpacity={0.75}
+                                            onPress={() => handleMapStyleChange(style)}
+                                            style={[styles.pill, isActive && styles.pillActive]}
+                                        >
+                                            {isActive && (
+                                                <LinearGradient
+                                                    colors={['rgba(168,85,247,0.5)', 'rgba(100,30,180,0.4)']}
+                                                    style={StyleSheet.absoluteFillObject}
+                                                    start={{ x: 0, y: 0 }}
+                                                    end={{ x: 1, y: 1 }}
+                                                />
+                                            )}
+                                            <Icon
+                                                size={13}
+                                                color={isActive ? '#fff' : 'rgba(255,255,255,0.4)'}
                                                 strokeWidth={2.5}
                                             />
-                                            <Text style={[
-                                                styles.pillText,
-                                                isActive && styles.pillTextActive,
-                                            ]}>
+                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
                                                 {label}
                                             </Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            })}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </BlurView>
                         </View>
                     </View>
                 </>
             ) : (
+                /* ── Loading screen ── */
                 <View style={styles.loader}>
+                    <View style={styles.loaderGlow} />
                     <ActivityIndicator size="large" color="#BCBBFD" />
-                    <Text style={styles.loaderText}>Mapping the VibeWorld...</Text>
+                    <Text style={styles.loaderTitle}>VibeMap</Text>
+                    <Text style={styles.loaderSub}>Mapping the world's energy…</Text>
                 </View>
             )}
 
@@ -508,208 +586,264 @@ export default function MapScreen() {
     );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-    container: { 
-        flex: 1, 
-        backgroundColor: '#000000' 
-    },
-    loader: { 
-        flex: 1, 
-        backgroundColor: '#000000', 
-        justifyContent: 'center', 
-        alignItems: 'center' 
-    },
-    loaderText: { 
-        color: '#BCBBFD', 
-        fontSize: 12, 
-        marginTop: 15, 
-        letterSpacing: 3, 
-        textTransform: 'uppercase' 
-    },
+    container: { flex: 1, backgroundColor: '#000' },
     map: { flex: 1 },
 
-    mapLoadingBadge: {
-        position: "absolute",
-        top: 58,
-        alignSelf: "center",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 999,
-        backgroundColor: "rgba(10, 4, 16, 0.75)",
-        borderWidth: 1,
-        borderColor: "rgba(188, 187, 253, 0.25)",
+    // ── Loading screen ─────────────────────────────────────────────────────
+    loader: {
+        flex: 1,
+        backgroundColor: '#0A0410',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 16,
     },
-    mapLoadingText: {
-        color: "#BCBBFD",
+    loaderGlow: {
+        position: 'absolute',
+        width: 240,
+        height: 240,
+        borderRadius: 120,
+        backgroundColor: 'rgba(168,85,247,0.12)',
+    },
+    loaderTitle: {
+        color: '#BCBBFD',
+        fontSize: 28,
+        fontFamily: 'Dank Mono Bold',
+        letterSpacing: 6,
+        textTransform: 'uppercase',
+        marginTop: 8,
+    },
+    loaderSub: {
+        color: 'rgba(188,187,253,0.45)',
         fontSize: 12,
-        letterSpacing: 0.2,
+        fontFamily: 'Dank Mono',
+        letterSpacing: 1.5,
     },
 
-    // ── Floating controls ────────────────────────
+    // ── Controls ───────────────────────────────────────────────────────────
     controlsContainer: {
-        position: "absolute",
-        top: 54,
+        position: 'absolute',
+        // top is set inline via insets.top + 8
         left: 0,
         right: 0,
-        alignItems: "center",
+        alignItems: 'center',
         gap: 8,
-    },
-    pillRow: {
-        flexDirection: "row",
-        backgroundColor: "rgba(10, 4, 16, 0.78)",
-        borderRadius: 14,
-        padding: 3,
-        borderWidth: 1,
-        borderColor: "rgba(168, 85, 247, 0.2)",
-    },
-    pillBtn: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 11,
-    },
-    pillBtnSmall: {
         paddingHorizontal: 16,
     },
-    btnContent: {
-        flexDirection: "row",
-        alignItems: "center",
+    loadingBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 999,
+        overflow: 'hidden',
+        borderWidth: 0.5,
+        borderColor: 'rgba(188,187,253,0.2)',
+        marginBottom: 4,
+    },
+    loadingText: {
+        color: '#BCBBFD',
+        fontSize: 12,
+        fontFamily: 'Dank Mono',
+        letterSpacing: 0.5,
+    },
+
+    pillsRow: {
+        flexDirection: 'row',
         gap: 8,
     },
-    pillBtnActive: {
-        backgroundColor: "rgba(168, 85, 247, 0.28)",
+    pillGroup: {
+        flexDirection: 'row',
+        borderRadius: 14,
+        overflow: 'hidden',
+        padding: 3,
+        borderWidth: 0.5,
+        borderColor: 'rgba(168,85,247,0.25)',
+    },
+    pill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 11,
+        overflow: 'hidden',
+    },
+    pillActive: {
+        // gradient applied via LinearGradient child
     },
     pillText: {
-        color: "rgba(255, 255, 255, 0.45)",
-        fontFamily: "Dank Mono Bold",
+        color: 'rgba(255,255,255,0.4)',
+        fontFamily: 'Dank Mono Bold',
         fontSize: 12,
         includeFontPadding: false,
     },
     pillTextActive: {
-        color: "#FFFFFF",
+        color: '#FFFFFF',
     },
 
-    // ── NFT markers ──────────────────────────────
-    markerContainer: {
-        width: 54,
-        height: 76,
+    // ── Legend ─────────────────────────────────────────────────────────────
+    legend: {
+        position: 'absolute',
+        // bottom is set inline via insets.bottom + 16
+        right: 16,
+    },
+    legendInner: {
         borderRadius: 12,
-        overflow: "hidden",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "rgba(82, 5, 159, 0.18)",
-        borderWidth: 1,
-        borderColor: "rgba(188, 187, 253, 0.18)",
+        overflow: 'hidden',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        gap: 6,
+        borderWidth: 0.5,
+        borderColor: 'rgba(168,85,247,0.2)',
     },
-    markerShadowWrap: {
-        borderRadius: 12,
-        shadowColor: "#A855F7",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.35,
-        shadowRadius: 18,
-        elevation: 10,
+    legendRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
-    markerPostImage: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderRadius: 12,
+    legendDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
     },
-    markerPostFallback: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(82, 5, 159, 0.22)",
-    },
-    markerAvatarRing: {
-        width: 34,
-        height: 34,
-        borderRadius: 999,
-        backgroundColor: "rgba(0,0,0,0.6)",
-        borderWidth: 2,
-        borderColor: "#A855F7",
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: "#A855F7",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-        elevation: 8,
-    },
-    markerAvatar: {
-        width: 30,
-        height: 30,
-        borderRadius: 999,
-        backgroundColor: "#111",
-    },
-    markerAvatarFallback: {
-        width: 30,
-        height: 30,
-        borderRadius: 999,
-        backgroundColor: "rgba(188, 187, 253, 0.22)",
+    legendLabel: {
+        color: 'rgba(255,255,255,0.55)',
+        fontSize: 11,
+        fontFamily: 'Dank Mono',
     },
 
-    // ── Event markers ──────────────────────────────
-    eventMarkerShadow: {
-        borderRadius: 16,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.5,
-        shadowRadius: 16,
-        elevation: 12,
+    // ── Cluster ────────────────────────────────────────────────────────────
+    cluster: {
+        backgroundColor: 'rgba(10,4,22,0.88)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    eventMarkerContainer: {
-        width: 62,
-        height: 62,
-        borderRadius: 16,
-        overflow: "hidden",
-        borderWidth: 2,
-        backgroundColor: "rgba(5, 240, 216, 0.08)",
+    clusterInner: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        borderRadius: 999,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    eventMarkerImage: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderRadius: 14,
-    },
-    eventMarkerImageFallback: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(5, 240, 216, 0.12)",
-    },
-    eventIconOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    eventIconBadge: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    eventIconEmoji: {
-        fontSize: 14,
+    clusterText: {
+        color: '#FFFFFF',
+        fontFamily: 'Dank Mono Bold',
         includeFontPadding: false,
     },
-    eventStatusDot: {
-        position: "absolute",
+
+    // ── Shared marker ──────────────────────────────────────────────────────
+    markerHitArea: {
+        padding: 4,
+    },
+    nftCard: {
+        width: 52,
+        height: 72,
+        borderRadius: 13,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(82,5,159,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    nftCardImage: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        borderRadius: 13,
+    },
+    nftCardFallback: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(82,5,159,0.25)',
+    },
+    nftCardBorder: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        borderRadius: 13,
+        borderWidth: 1.5,
+        borderColor: 'rgba(188,187,253,0.35)',
+    },
+    nftAvatarRing: {
+        position: 'absolute',
+        bottom: -8,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        borderWidth: 2,
+        borderColor: '#A855F7',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    nftAvatar: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+    },
+    nftAvatarFallback: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: 'rgba(188,187,253,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // ── Event marker ───────────────────────────────────────────────────────
+    eventCard: {
+        width: 58,
+        height: 58,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 2,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+    },
+    eventCardImage: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        borderRadius: 14,
+    },
+    eventCardFallback: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+    },
+    eventBadge: {
+        position: 'absolute',
+        bottom: 4,
+        right: 4,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    eventLiveBadge: {
+        position: 'absolute',
+        top: 4,
+        left: 4,
+        backgroundColor: 'rgba(5,240,216,0.95)',
+        borderRadius: 4,
+        paddingHorizontal: 4,
+        paddingVertical: 1.5,
+    },
+    eventLiveText: {
+        color: '#000',
+        fontSize: 7,
+        fontFamily: 'Dank Mono Bold',
+        letterSpacing: 0.5,
+        includeFontPadding: false,
+    },
+    eventDot: {
+        position: 'absolute',
         top: -3,
         right: -3,
-        width: 12,
-        height: 12,
+        width: 11,
+        height: 11,
         borderRadius: 6,
         borderWidth: 2,
+        borderColor: '#000',
     },
 });

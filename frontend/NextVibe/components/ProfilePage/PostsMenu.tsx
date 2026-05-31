@@ -337,7 +337,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                         <View style={styles.placeholderInner}>
                                             <ImageIcon size={26} color="rgba(167,139,250,0.8)" strokeWidth={1.2} />
                                         </View>
-                                        <Text style={styles.placeholderText}>Немає медіа</Text>
+                                        <Text style={styles.placeholderText}>No media</Text>
                                     </View>
                                 )}
 
