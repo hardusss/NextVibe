@@ -1,0 +1,15 @@
+[Unit]
+Description=NextVibe Transaction Indexer
+After=network.target redis.service mysql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/NextVibe/tx-indexer
+ExecStart=/home/ubuntu/.bun/bin/bun run src/index.ts
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/home/ubuntu/NextVibe/tx-indexer/.env
+
+[Install]
+WantedBy=multi-user.target
