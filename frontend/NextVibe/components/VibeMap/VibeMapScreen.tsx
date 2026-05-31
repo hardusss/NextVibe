@@ -64,13 +64,11 @@ export default function VibeMapScreen() {
     const scheme = useColorScheme();
     const t = scheme === "dark" ? DARK : LIGHT;
 
-    // --- Reanimated Значення ---
     const scale = useSharedValue(1);
     const opacity = useSharedValue(0);
     const translateY = useSharedValue(30);
 
     useEffect(() => {
-        // 1. Анімація пульсації гексагона (безкінечна)
         scale.value = withRepeat(
             withSequence(
                 withTiming(1.1, {
