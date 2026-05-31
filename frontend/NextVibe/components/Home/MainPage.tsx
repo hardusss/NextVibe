@@ -49,6 +49,11 @@ const { width: screenWidth } = Dimensions.get("window");
 
 let isSessionActive = false;
 
+// ── Module-level cache to survive tab-switch remounts ──
+let cachedPosts: Post[] | null = null;
+let cachedLikedPosts: LikedPosts | null = null;
+let cachedScrollOffset: number = 0;
+
 const darkTheme = {
     background: "#0A0410",
     cardBackground: "#0A0410",
@@ -796,11 +801,12 @@ const PostItem = memo(({
 
 export default function MainPage() {
     const router = useRouter();
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
+    const hasCached = cachedPosts !== null && cachedPosts.length > 0;
+    const [posts, setPosts] = useState<Post[]>(cachedPosts ?? []);
+    const [loading, setLoading] = useState(!hasCached);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    const [likedPosts, setLikedPosts] = useState<LikedPosts>({});
+    const [likedPosts, setLikedPosts] = useState<LikedPosts>(cachedLikedPosts ?? {});
     const [showPopup, setShowPopup] = useState(false);
     const [popupPostId, setPopupPostId] = useState<number | null>(null);
     const [popupCommentsEnabled, setPopupCommentsEnabled] = useState<boolean>(true);
@@ -815,6 +821,15 @@ export default function MainPage() {
     const [userID, setUserID] = useState<number>(0);
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     const isFetchingRef = useRef(false);
+    const flatListRef = useRef<FlatList>(null);
+
+    useEffect(() => {
+        if (hasCached && cachedScrollOffset > 0) {
+            setTimeout(() => {
+                flatListRef.current?.scrollToOffset({ offset: cachedScrollOffset, animated: false });
+            }, 50);
+        }
+    }, [hasCached]);
 
     // Mint 
     const mintSheetRef = useRef<MintBottomSheetRef>(null);
@@ -871,6 +886,7 @@ export default function MainPage() {
         if (isFetchingRef.current) return;
         setRefreshing(true);
         setHasMore(true);
+        cachedScrollOffset = 0;
         fetchPosts(false, true, true).then(() => setRefreshing(false));
     }, []);
 
@@ -893,13 +909,25 @@ export default function MainPage() {
             if (newPosts.length === 0) {
                 setHasMore(false);
             } else {
-                if (loadMore && !reset) setPosts(prev => [...prev, ...newPosts]);
-                else setPosts(newPosts);
+                if (loadMore && !reset) {
+                    setPosts(prev => {
+                        const updated = [...prev, ...newPosts];
+                        cachedPosts = updated;
+                        return updated;
+                    });
+                } else {
+                    setPosts(newPosts);
+                    cachedPosts = newPosts;
+                }
 
                 if (response.liked_posts) {
                     const newLikes: LikedPosts = {};
                     response.liked_posts.forEach((likedId: number) => { newLikes[likedId] = true; });
-                    setLikedPosts(prev => ({ ...prev, ...newLikes }));
+                    setLikedPosts(prev => {
+                        const updated = { ...prev, ...newLikes };
+                        cachedLikedPosts = updated;
+                        return updated;
+                    });
                 }
             }
         } catch (error) {
@@ -914,7 +942,10 @@ export default function MainPage() {
     useEffect(() => {
         if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.(true);
         getUserID();
-        fetchPosts(false, true);
+        // Skip fetch if we already have cached data (tab-switch remount)
+        if (!hasCached) {
+            fetchPosts(false, true);
+        }
     }, []);
 
     useFocusEffect(
@@ -929,9 +960,13 @@ export default function MainPage() {
             setToastMessage("Your request to attend has been sent!");
             setToastSuccess(true);
             setIsToastVisible(true);
-            setPosts(prev => prev.map(post =>
-                post.id === postId ? { ...post, event_request_status: "pending" } : post
-            ));
+            setPosts(prev => {
+                const updated = prev.map(post =>
+                    post.id === postId ? { ...post, event_request_status: "pending" as const } : post
+                );
+                cachedPosts = updated;
+                return updated;
+            });
         } catch (e: any) {
             setToastMessage(e.response?.data?.error || "Failed to send request");
             setToastSuccess(false);
@@ -941,19 +976,31 @@ export default function MainPage() {
 
     const toggleLike = useCallback((postId: number) => {
         likePost(postId);
-        setLikedPosts(prev => ({ ...prev, [postId]: !prev[postId] }));
-        setPosts(prev => prev.map(post =>
-            post.id === postId
-                ? { ...post, count_likes: post.count_likes + (likedPosts[postId] ? -1 : 1) }
-                : post
-        ));
+        setLikedPosts(prev => {
+            const updated = { ...prev, [postId]: !prev[postId] };
+            cachedLikedPosts = updated;
+            return updated;
+        });
+        setPosts(prev => {
+            const updated = prev.map(post =>
+                post.id === postId
+                    ? { ...post, count_likes: post.count_likes + (likedPosts[postId] ? -1 : 1) }
+                    : post
+            );
+            cachedPosts = updated;
+            return updated;
+        });
     }, [likedPosts]);
 
     const handlePostDeleted = useCallback((postId: number) => {
         setToastMessage("Post successfully deleted");
         setToastSuccess(true);
         setIsToastVisible(true);
-        setPosts(prev => prev.filter(p => p.id !== postId));
+        setPosts(prev => {
+            const updated = prev.filter(p => p.id !== postId);
+            cachedPosts = updated;
+            return updated;
+        });
         setActiveDropdownId(null);
     }, []);
 
@@ -1062,7 +1109,12 @@ export default function MainPage() {
             />
 
             <FlatList
+                ref={flatListRef}
                 data={dataToRender}
+                onScroll={(e) => {
+                    cachedScrollOffset = Math.max(0, e.nativeEvent.contentOffset.y);
+                }}
+                scrollEventThrottle={16}
                 onScrollBeginDrag={() => setActiveDropdownId(null)}
                 keyExtractor={item => item.id.toString()}
                 renderItem={renderItem}
