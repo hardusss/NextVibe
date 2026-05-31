@@ -1,6 +1,9 @@
 import { env } from "../config/env";
 
 const HELIUS_API_BASE = "https://api.helius.xyz";
+const HELIUS_WEBHOOK_ADDRESS_LIMIT = Number(
+  Bun.env.HELIUS_WEBHOOK_ADDRESS_LIMIT ?? "100"
+);
 
 type HeliusWebhook = {
   webhookID: string;
@@ -34,7 +37,42 @@ async function heliusWebhookRequest<T>(
 }
 
 export async function getWebhook(): Promise<HeliusWebhook> {
-  return heliusWebhookRequest<HeliusWebhook>(`/v0/webhooks/${env.HELIUS_WEBHOOK_ID}`);
+  return heliusWebhookRequest<HeliusWebhook>(
+    `/v0/webhooks/${env.HELIUS_WEBHOOK_ID}`
+  );
+}
+
+export async function syncWebhookAddresses(addresses: string[]): Promise<{
+  synced: number;
+  truncated: boolean;
+}> {
+  const unique = [...new Set(addresses.map((a) => a.trim()).filter(Boolean))];
+
+  if (unique.length === 0) {
+    return { synced: 0, truncated: false };
+  }
+
+  const truncated = unique.length > HELIUS_WEBHOOK_ADDRESS_LIMIT;
+  const accountAddresses = unique.slice(0, HELIUS_WEBHOOK_ADDRESS_LIMIT);
+
+  if (truncated) {
+    console.warn(
+      `[webhook-manager] ${unique.length} wallets exceed Helius limit (${HELIUS_WEBHOOK_ADDRESS_LIMIT}); syncing first ${HELIUS_WEBHOOK_ADDRESS_LIMIT}`
+    );
+  }
+
+  await heliusWebhookRequest(`/v0/webhooks/${env.HELIUS_WEBHOOK_ID}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      webhookURL: env.HELIUS_WEBHOOK_URL,
+      accountAddresses,
+      transactionTypes: ["Any"],
+      webhookType: "enhanced",
+      authHeader: `Bearer ${env.HELIUS_WEBHOOK_SECRET}`,
+    }),
+  });
+
+  return { synced: accountAddresses.length, truncated };
 }
 
 export async function addAddressToWebhook(address: string): Promise<void> {
@@ -45,16 +83,7 @@ export async function addAddressToWebhook(address: string): Promise<void> {
     return;
   }
 
-  await heliusWebhookRequest(`/v0/webhooks/${env.HELIUS_WEBHOOK_ID}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      webhookURL: env.HELIUS_WEBHOOK_URL,
-      accountAddresses: [...currentAddresses, address],
-      transactionTypes: ["Any"],
-      webhookType: "enhanced",
-      authHeader: `Bearer ${env.HELIUS_WEBHOOK_SECRET}`,
-    }),
-  });
+  await syncWebhookAddresses([...currentAddresses, address]);
 }
 
 export async function ensureWebhookConfigured(): Promise<void> {

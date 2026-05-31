@@ -68,6 +68,14 @@ export async function countTransactionsByAddress(address: string): Promise<numbe
   return Number(rows[0]?.count ?? 0);
 }
 
+export async function countAllTransactions(): Promise<number> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT COUNT(*) AS count FROM transactions"
+  );
+
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function insertTransaction(row: InsertTxRow): Promise<boolean> {
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT IGNORE INTO transactions

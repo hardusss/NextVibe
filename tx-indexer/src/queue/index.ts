@@ -19,11 +19,11 @@ export async function enqueueFetchInitial(
   address: string,
   limit?: number
 ): Promise<void> {
-  await txQueue.add(
-    "fetch-initial" as const,
-    { type: "fetch-initial", address, limit },
-    { jobId: `fetch-initial:${address}` }
-  );
+  await txQueue.add("fetch-initial" as const, {
+    type: "fetch-initial",
+    address,
+    limit,
+  });
 }
 
 export async function enqueueFetchMore(
