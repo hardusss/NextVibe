@@ -68,6 +68,60 @@ export async function countTransactionsByAddress(address: string): Promise<numbe
   return Number(rows[0]?.count ?? 0);
 }
 
+export async function findMonitoredWalletForTx(
+  tx: EnhancedTransaction
+): Promise<string | null> {
+  const candidates = collectTxAddresses(tx);
+  if (candidates.length === 0) return null;
+
+  const placeholders = candidates.map(() => "?").join(",");
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT wallet_address
+     FROM ${env.USERS_TABLE}
+     WHERE wallet_address IN (${placeholders})`,
+    candidates
+  );
+
+  if (rows.length === 0) return null;
+
+  const monitored = new Set(rows.map((row) => String(row.wallet_address)));
+
+  for (const account of tx.accountData ?? []) {
+    if (monitored.has(account.account) && account.nativeBalanceChange !== 0) {
+      return account.account;
+    }
+  }
+
+  for (const account of tx.accountData ?? []) {
+    if (monitored.has(account.account)) {
+      return account.account;
+    }
+  }
+
+  if (tx.feePayer && monitored.has(tx.feePayer)) {
+    return tx.feePayer;
+  }
+
+  return String(rows[0]?.wallet_address ?? "");
+}
+
+function collectTxAddresses(tx: EnhancedTransaction): string[] {
+  const set = new Set<string>();
+
+  if (tx.feePayer?.trim()) set.add(tx.feePayer.trim());
+
+  for (const account of tx.accountData ?? []) {
+    if (account.account?.trim()) set.add(account.account.trim());
+  }
+
+  for (const transfer of tx.nativeTransfers ?? []) {
+    if (transfer.fromUserAccount?.trim()) set.add(transfer.fromUserAccount.trim());
+    if (transfer.toUserAccount?.trim()) set.add(transfer.toUserAccount.trim());
+  }
+
+  return [...set];
+}
+
 export async function countAllTransactions(): Promise<number> {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT COUNT(*) AS count FROM transactions"

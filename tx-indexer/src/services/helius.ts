@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { env } from "../config/env";
 import type { EnhancedTransaction } from "./types";
 
@@ -66,15 +66,16 @@ export function parseWebhookBody(body: unknown): EnhancedTransaction[] {
   return body as EnhancedTransaction[];
 }
 
-export function verifyWebhookSignature(
-  rawBody: string,
-  signatureHeader: string | null
-): boolean {
-  if (!signatureHeader) return false;
+export function verifyWebhookAuth(authorizationHeader: string | null): boolean {
+  if (!authorizationHeader) return false;
 
-  const digest = createHmac("sha256", env.HELIUS_WEBHOOK_SECRET)
-    .update(rawBody)
-    .digest("hex");
+  const expected = `Bearer ${env.HELIUS_WEBHOOK_SECRET}`;
+  const received = authorizationHeader.trim();
 
-  return digest === signatureHeader;
+  if (received.length !== expected.length) return false;
+
+  return timingSafeEqual(
+    Buffer.from(received),
+    Buffer.from(expected)
+  );
 }
