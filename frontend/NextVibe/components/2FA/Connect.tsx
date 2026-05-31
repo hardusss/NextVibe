@@ -31,10 +31,10 @@ interface Props {
 }
 
 const darkColors = {
-  background: "#130822", // <-- Трохи світліший за #0A0410, щоб не зливався
+  background: "#130822",
   textPrimary: "#ffffff",
   textSecondary: "#8b949e",
-  border: "#2A1846", // <-- Трохи яскравіший бордер для візуального розділення
+  border: "#2A1846",
   accent: "#05f0d8",
   link: "#a371f7",
   success: "#4ade80",
@@ -108,7 +108,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={isDarkMode ? 0.7 : 0.4} // У темній темі робимо бекдроп трохи темнішим
+        opacity={isDarkMode ? 0.7 : 0.4}
       />
     ),
     [isDarkMode]
@@ -321,7 +321,7 @@ const getStyles = (colors: any) =>
   StyleSheet.create({
     bottomSheetBackground: {
       backgroundColor: colors.background,
-      borderTopWidth: 1, // Додано тонку лінію для чіткої межі
+      borderTopWidth: 1,
       borderTopColor: colors.border,
     },
     handleIndicator: {
