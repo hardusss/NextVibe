@@ -66,7 +66,14 @@ export async function syncWebhookAddresses(addresses: string[]): Promise<{
     body: JSON.stringify({
       webhookURL: env.HELIUS_WEBHOOK_URL,
       accountAddresses,
-      transactionTypes: ["Any"],
+      transactionTypes: [
+        "TRANSFER",
+        "SWAP",
+        "NFT_MINT",
+        "NFT_SALE",
+        "COMPRESSED_NFT_MINT",
+        "COMPRESSED_NFT_TRANSFER",
+      ],
       webhookType: "enhanced",
       authHeader: `Bearer ${env.HELIUS_WEBHOOK_SECRET}`,
     }),
