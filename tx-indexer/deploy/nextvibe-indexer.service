@@ -1,0 +1,16 @@
+[Unit]
+Description=NextVibe Transaction Indexer
+After=network.target redis-server.service
+Wants=redis-server.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/NextVibe/tx-indexer
+ExecStart=/root/.bun/bin/bun run src/index.ts
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/root/NextVibe/tx-indexer/.env
+
+[Install]
+WantedBy=multi-user.target
