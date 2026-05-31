@@ -1,10 +1,24 @@
 import { countTransactionsByAddress, getWalletAddresses } from "../db/queries";
 import { enqueueFetchInitial } from "../queue";
-import { addAddressToWebhook, ensureWebhookConfigured } from "../services/webhook-manager";
+import {
+  ensureWebhookConfigured,
+  syncWebhookAddresses,
+} from "../services/webhook-manager";
 import { env } from "../config/env";
 
-export async function runInitialSync(): Promise<void> {
-  console.log("[initial-sync] starting...");
+export type InitialSyncResult = {
+  wallets: number;
+  queued: number;
+  skipped: number;
+  webhookSynced: number;
+  webhookTruncated: boolean;
+};
+
+export async function runInitialSync(
+  options: { force?: boolean } = {}
+): Promise<InitialSyncResult> {
+  const force = options.force ?? false;
+  console.log(`[initial-sync] starting... (force=${force})`);
 
   try {
     await ensureWebhookConfigured();
@@ -22,20 +36,41 @@ export async function runInitialSync(): Promise<void> {
     try {
       const count = await countTransactionsByAddress(address);
 
-      if (count > 0) {
+      if (!force && count > 0) {
         skipped += 1;
-      } else {
-        await enqueueFetchInitial(address, env.INITIAL_FETCH_LIMIT);
-        queued += 1;
+        continue;
       }
 
-      await addAddressToWebhook(address);
+      await enqueueFetchInitial(address, env.INITIAL_FETCH_LIMIT);
+      queued += 1;
     } catch (error) {
-      console.error(`[initial-sync] failed for ${address}:`, error);
+      console.error(`[initial-sync] queue failed for ${address}:`, error);
     }
+  }
+
+  let webhookSynced = 0;
+  let webhookTruncated = false;
+
+  try {
+    const webhookResult = await syncWebhookAddresses(addresses);
+    webhookSynced = webhookResult.synced;
+    webhookTruncated = webhookResult.truncated;
+    console.log(
+      `[initial-sync] webhook pool updated: ${webhookSynced} addresses`
+    );
+  } catch (error) {
+    console.error("[initial-sync] webhook sync failed:", error);
   }
 
   console.log(
     `[initial-sync] complete: queued=${queued}, skipped=${skipped}, total=${addresses.length}`
   );
+
+  return {
+    wallets: addresses.length,
+    queued,
+    skipped,
+    webhookSynced,
+    webhookTruncated,
+  };
 }
