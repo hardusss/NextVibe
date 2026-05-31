@@ -47,6 +47,11 @@ import profileLightStyles from "@/styles/light-theme/profileStyles";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const HEADER_HEIGHT = 200;
 
+// ── Module-level cache to survive tab-switch remounts ──
+let cachedUserData: UserData | null = null;
+let cachedInvitedCount: number | null = null;
+let profileHasFetched = false;
+
 type UserData = {
     username: string;
     about: string;
@@ -127,24 +132,23 @@ const EmptyState = ({
    ProfileView — Minimalist + Blur Header
    ══════════════════════════════════ */
 const ProfileView = () => {
-    const [userData, setUserData] = useState<UserData>({
+    const [userData, setUserData] = useState<UserData>(cachedUserData ?? {
         username: "", about: "", avatar_url: null,
         post_count: 0, cnft_count: 0, readers_count: 0, follows_count: 0,
         official: false, isOg: false, ogEdition: null, reputation: 0,
     });
 
-    const [loading, setLoading] = useState<boolean>(true);
+    const [loading, setLoading] = useState<boolean>(!cachedUserData);
     const [refreshing, setRefreshing] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [activeTab, setActiveTab] = useState<Tab>("Posts");
     const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(new Set(["Posts"]));
-    const [invitedCount, setInvitedCount] = useState<number>(0);
+    const [invitedCount, setInvitedCount] = useState<number>(cachedInvitedCount ?? 0);
     const [visible, setVisible] = useState<boolean>(false);
     const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
     const [id, setId] = useState<number>();
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
-    const hasFetched = useRef(false);
     const modalRef = useRef<ShareModalRef>(null);
     const inviteSheetRef = useRef<InviteSheetRef>(null);
     const eventConnectionsSheetRef = useRef<EventConnectionsSheetRef>(null);
@@ -199,7 +203,7 @@ const ProfileView = () => {
     const fetchUserData = async () => {
         try {
             const data = await getUserDetail(0);
-            setUserData({
+            const newData: UserData = {
                 username: data?.username || "",
                 about: data?.about || "",
                 avatar_url: data?.avatar ? `${data.avatar}` : null,
@@ -211,8 +215,12 @@ const ProfileView = () => {
                 isOg: data?.isOg === true,
                 ogEdition: data?.edition ?? null,
                 reputation: data?.reputation || 0,
-            });
-            setInvitedCount(data?.invited_count || 0);
+            };
+            setUserData(newData);
+            cachedUserData = newData;
+            const invited = data?.invited_count || 0;
+            setInvitedCount(invited);
+            cachedInvitedCount = invited;
         } catch (error) {
             console.error("Fetch error reboot page", error);
         } finally {
@@ -229,8 +237,9 @@ const ProfileView = () => {
         setRefreshing(true);
         setRefreshKey(prev => prev + 1);
         setMountedTabs(new Set([activeTab]));
-        hasFetched.current = false;
+        profileHasFetched = false;
         await fetchUserData();
+        profileHasFetched = true;
         setRefreshing(false);
     }, [activeTab]);
 
@@ -240,9 +249,9 @@ const ProfileView = () => {
 
     useFocusEffect(
         useCallback(() => {
-            if (!hasFetched.current) {
+            if (!profileHasFetched) {
                 fetchUserData();
-                hasFetched.current = true;
+                profileHasFetched = true;
             }
         }, [])
     );
