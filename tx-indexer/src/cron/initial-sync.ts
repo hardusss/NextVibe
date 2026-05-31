@@ -1,4 +1,4 @@
-import { countTransactionsByAddress, getWalletAddresses } from "../db/queries";
+import { countTransactionsByAddress, getWalletAddresses, getSyncCursor } from "../db/queries";
 import { enqueueFetchInitial } from "../queue";
 import {
   ensureWebhookConfigured,
@@ -34,9 +34,9 @@ export async function runInitialSync(
 
   for (const address of addresses) {
     try {
-      const count = await countTransactionsByAddress(address);
+      const cursor = await getSyncCursor(address);
 
-      if (!force && count > 0) {
+      if (!force && (cursor?.status === "done" || cursor?.status === "syncing" || cursor?.status === "idle")) {
         skipped += 1;
         continue;
       }
