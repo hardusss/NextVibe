@@ -85,38 +85,46 @@ export async function findMonitoredWalletForTx(
   if (rows.length === 0) return null;
 
   const monitored = new Set(rows.map((row) => String(row.wallet_address)));
+  const accountData = tx.accountData ?? [];
 
-  for (const account of tx.accountData ?? []) {
-    if (monitored.has(account.account) && account.nativeBalanceChange !== 0) {
-      return account.account;
+  for (const account of accountData) {
+    const wallet = account?.account?.trim();
+    if (wallet && monitored.has(wallet) && account.nativeBalanceChange !== 0) {
+      return wallet;
     }
   }
 
-  for (const account of tx.accountData ?? []) {
-    if (monitored.has(account.account)) {
-      return account.account;
+  for (const account of accountData) {
+    const wallet = account?.account?.trim();
+    if (wallet && monitored.has(wallet)) {
+      return wallet;
     }
   }
 
-  if (tx.feePayer && monitored.has(tx.feePayer)) {
-    return tx.feePayer;
+  const feePayer = tx.feePayer?.trim();
+  if (feePayer && monitored.has(feePayer)) {
+    return feePayer;
   }
 
-  return String(rows[0]?.wallet_address ?? "");
+  return String(rows[0]?.wallet_address ?? "") || null;
 }
 
 function collectTxAddresses(tx: EnhancedTransaction): string[] {
   const set = new Set<string>();
 
-  if (tx.feePayer?.trim()) set.add(tx.feePayer.trim());
+  const feePayer = tx.feePayer?.trim();
+  if (feePayer) set.add(feePayer);
 
   for (const account of tx.accountData ?? []) {
-    if (account.account?.trim()) set.add(account.account.trim());
+    const wallet = account?.account?.trim();
+    if (wallet) set.add(wallet);
   }
 
   for (const transfer of tx.nativeTransfers ?? []) {
-    if (transfer.fromUserAccount?.trim()) set.add(transfer.fromUserAccount.trim());
-    if (transfer.toUserAccount?.trim()) set.add(transfer.toUserAccount.trim());
+    const from = transfer?.fromUserAccount?.trim();
+    const to = transfer?.toUserAccount?.trim();
+    if (from) set.add(from);
+    if (to) set.add(to);
   }
 
   return [...set];
