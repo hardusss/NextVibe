@@ -52,4 +52,5 @@ export const env = {
   LOAD_MORE_DEFAULT_LIMIT: Number(Bun.env.LOAD_MORE_DEFAULT_LIMIT ?? "50"),
   USERS_TABLE: Bun.env.USERS_TABLE?.trim() ?? "user_user",
   MYSQL_SSL: Bun.env.MYSQL_SSL === "true",
+  HELIUS_WEBHOOK_ADDRESS_LIMIT: Number(Bun.env.HELIUS_WEBHOOK_ADDRESS_LIMIT ?? "500"),
 } as const;
