@@ -58,24 +58,37 @@ export function extractWalletAddress(
   return account || null;
 }
 
-export function parseWebhookBody(body: unknown): EnhancedTransaction[] {
-  if (!Array.isArray(body)) {
-    throw new Error("Webhook body must be an array");
+export function normalizeWebhookPayload(body: unknown): EnhancedTransaction[] {
+  if (Array.isArray(body)) {
+    return body as EnhancedTransaction[];
   }
 
-  return body as EnhancedTransaction[];
+  if (body && typeof body === "object") {
+    return [body as EnhancedTransaction];
+  }
+
+  throw new Error("Webhook body must be an array or object");
+}
+
+/** @deprecated use normalizeWebhookPayload */
+export function parseWebhookBody(body: unknown): EnhancedTransaction[] {
+  return normalizeWebhookPayload(body);
 }
 
 export function verifyWebhookAuth(authorizationHeader: string | null): boolean {
   if (!authorizationHeader) return false;
 
-  const expected = `Bearer ${env.HELIUS_WEBHOOK_SECRET}`;
   const received = authorizationHeader.trim();
+  const match = /^Bearer\s+(.+)$/i.exec(received);
+  if (!match?.[1]) return false;
 
-  if (received.length !== expected.length) return false;
+  const receivedToken = match[1].trim();
+  const expectedToken = env.HELIUS_WEBHOOK_SECRET.trim();
+
+  if (receivedToken.length !== expectedToken.length) return false;
 
   return timingSafeEqual(
-    Buffer.from(received),
-    Buffer.from(expected)
+    Buffer.from(receivedToken),
+    Buffer.from(expectedToken)
   );
 }

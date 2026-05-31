@@ -43,12 +43,9 @@ export async function enqueueWebhookTx(
   address: string,
   rawTx: Record<string, unknown>
 ): Promise<void> {
-  const signature =
-    typeof rawTx.signature === "string" ? rawTx.signature : crypto.randomUUID();
-
-  await txQueue.add(
-    "webhook-tx" as const,
-    { type: "webhook-tx", address, rawTx },
-    { jobId: `webhook-tx:${signature}` }
-  );
+  await txQueue.add("webhook-tx" as const, {
+    type: "webhook-tx",
+    address,
+    rawTx,
+  });
 }
