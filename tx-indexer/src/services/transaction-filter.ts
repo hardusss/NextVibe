@@ -15,10 +15,8 @@ export function shouldKeepTransaction(tx: EnhancedTransaction, walletAddress: st
     for (const transfer of tx.nativeTransfers) {
       // Check if it involves our tracked wallet
       if (transfer.fromUserAccount === walletAddress || transfer.toUserAccount === walletAddress) {
-        if (transfer.amount >= MIN_SOL_LAMPORTS) {
-          hasMeaningfulAction = true;
-          break;
-        }
+        hasMeaningfulAction = true;
+        break;
       }
     }
   }
