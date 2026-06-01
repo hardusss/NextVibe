@@ -1,5 +1,6 @@
 import { countTransactionsByAddress, getWalletAddresses, getSyncCursor } from "../db/queries";
 import { enqueueFetchInitial } from "../queue";
+import { checkAndRateLimitWallet } from "../services/bot-detector";
 import {
   ensureWebhookConfigured,
   syncWebhookAddresses,
@@ -37,6 +38,12 @@ export async function runInitialSync(
       const cursor = await getSyncCursor(address);
 
       if (!force && (cursor?.status === "done" || cursor?.status === "syncing" || cursor?.status === "idle")) {
+        skipped += 1;
+        continue;
+      }
+
+      const isBot = await checkAndRateLimitWallet(address);
+      if (isBot) {
         skipped += 1;
         continue;
       }

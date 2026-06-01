@@ -1,0 +1,30 @@
+export const ALLOWED_MINTS = new Set([
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+  "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3", // SKR
+  "C6FQWMidLdyVBpfRot59ZEamkiafXSwyHTS3ZpGpcVGX", // USDG
+  "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", // JUP
+  "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
+  "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZzHmZzG88mB", // PYUSD
+  "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn", // JitoSOL
+  "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So", // mSOL
+  "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piD1", // bSOL
+  "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxzbPNpVfHjC4vTGU", // INF
+  "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", // RAY
+  "orcaEKTdK7LKz57vaAYr9QeNsjigcvaQYjM1b2gNAkZ", // ORCA
+  "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3AkTftjAQYCJT5", // PYTH
+  "jtojtomepa8beP8AuQc6eY1e1QYVAn5YwR7y9pA2qA6", // JTO
+  "KMNo3nJsBXUcpJtCQANY3GqEAMyY1F4k4yUvq3G2xW6", // KMNO
+  "DriFtXqqWn8K7y7n2fXhK25f7HofN1BwL5GzU4z4d4B", // DRIFT
+  "TNSRxcUxoT9xBG3de7PiJyTDYu7kskLqcpddZ3eVzY", // TNSR
+  "hntyVP6YFm1Hg25TN9WGLqM12b8CQ3kS2y2Zk71bXn9", // HNT
+  "mb1eu7TzEc71KxDpsmsKoucZTyrMEK3y6D4T8V2GgXm", // MOBILE
+  "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof", // RENDER
+  "85VBFQYC9TZkfaptCWsjyq8WwJ3x4rM4pA7bJ4A5YmZ5", // W
+  "nosXBqwBxWEQupiZA2a4rE5E7Y9Uoz7ZrtzZ9Z1N2Zp", // NOS
+  "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", // BONK
+  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYtM22BBG6b", // WIF
+  "7GCihgDB8fe6KNjn2gGZzGqA1T9B9m37Z1s2N2wK1B4N", // POPCAT
+]);
+
+// Minimum lamports to keep a SOL transfer (e.g. 50,000 lamports = 0.00005 SOL)
+export const MIN_SOL_LAMPORTS = 50000;
