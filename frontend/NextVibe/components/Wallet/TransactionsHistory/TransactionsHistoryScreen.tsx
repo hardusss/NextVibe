@@ -8,9 +8,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useWallet } from '@lazorkit/wallet-mobile-adapter';
 
 // Services & API
-import SolanaService from '@/src/services/SolanaService';
+import getTransactions from '@/src/api/get.transactions';
 import getTokensPrice from '@/src/api/get.tokens.price';
 import { FormattedTransaction } from '@/src/types/solana';
+import { parseHeliusTransactions } from '@/src/utils/solana/heliusParser';
 
 // Components
 import TransactionItem from './TransactionItem';
@@ -63,14 +64,11 @@ export default function TransactionsHistoryScreen() {
             if (!connection) {
                 throw new Error("Don't have a connection...")
             }
-            const data = await SolanaService.getTransactionsHistory(
-                connection,
-                walletAddress as string,
-                false,
-                reset ? undefined : lastSignature
-            );
+            const rawData = await getTransactions(reset ? undefined : lastSignature);
 
-            if (data === null) throw new Error('Failed to fetch transactions');
+            if (rawData === null) throw new Error('Failed to fetch transactions');
+            
+            const data = parseHeliusTransactions(walletAddress as string, rawData);
 
             if (reset) {
                 setTransactions(data);
