@@ -131,22 +131,22 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                 </View>
             </View>
 
-            {loading ? (
-                <ActivityIndicator style={{ marginTop: 48 }} color={accent} />
-            ) : data.length === 0 ? (
-                <View style={styles.emptyWrap}>
-                    <Text style={[styles.emptyIcon]}>🎟️</Text>
-                    <Text style={[styles.emptyTitle, { color: main }]}>No POAPs yet</Text>
-                    <Text style={[styles.emptySub, { color: muted }]}>
-                        Attend events and claim your POAP to earn reputation.
-                    </Text>
-                </View>
-            ) : (
-                <BottomSheetScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
-                >
-                    {data.map((item) => {
+            <BottomSheetScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={loading || data.length === 0 ? { flexGrow: 1 } : { padding: 16, paddingBottom: 48 }}
+            >
+                {loading ? (
+                    <ActivityIndicator style={{ marginTop: 48 }} color={accent} />
+                ) : data.length === 0 ? (
+                        <View style={styles.emptyWrap}>
+                            <Text style={[styles.emptyIcon]}>🎟️</Text>
+                            <Text style={[styles.emptyTitle, { color: main }]}>No POAPs yet</Text>
+                            <Text style={[styles.emptySub, { color: muted }]}>
+                                Attend events and claim your POAP to earn reputation.
+                            </Text>
+                        </View>
+                    ) : (
+                        data.map((item) => {
                         const isExp = expanded[item.event_id];
                         const visible = isExp ? item.connections : item.connections.slice(0, 3);
                         const hidden = item.connections.length - 3;
@@ -295,9 +295,9 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                 )}
                             </View>
                         );
-                    })}
+                    })
+                )}
                 </BottomSheetScrollView>
-            )}
         </BottomSheetModal>
     );
 });
