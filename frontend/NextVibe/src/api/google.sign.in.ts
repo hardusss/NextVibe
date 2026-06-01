@@ -13,7 +13,7 @@ export default async function GoogleSignIn(
     inviteCode?: string,
 ): Promise<void> {
     const data: Record<string, string> = { username, email, avatar_url, idToken };
-    if (inviteCode) data.from_invite_code = inviteCode;
+    if (inviteCode !== undefined) data.from_invite_code = inviteCode;
 
     try {
         const response = await axios.post(`${GetApiUrl()}/users/google-sign-in/`, data);

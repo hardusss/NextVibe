@@ -263,6 +263,20 @@ const InviteCodeSheet = forwardRef<BottomSheetModal, InviteCodeSheetProps>(
                         </LinearGradient>
                     </TouchableOpacity>
 
+                    {/* Skip Button */}
+                    <TouchableOpacity
+                        onPress={() => {
+                            Keyboard.dismiss();
+                            onSubmit("");
+                            if (typeof ref === 'function') ref(null);
+                            else if (ref && 'current' in ref) ref.current?.dismiss();
+                        }}
+                        style={styles.skipBtn}
+                        activeOpacity={0.6}
+                    >
+                        <Text style={[styles.skipText, { color: c.sub }]}>Skip for now</Text>
+                    </TouchableOpacity>
+
                 </BottomSheetView>
             </BottomSheetModal>
         );
@@ -377,6 +391,18 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
         color: '#ffffff',
         letterSpacing: 0.2,
+    },
+    skipBtn: {
+        marginTop: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+    },
+    skipText: {
+        fontSize: 15,
+        fontFamily: 'Dank Mono',
+        includeFontPadding: false,
+        textDecorationLine: 'underline',
     },
 });
 
