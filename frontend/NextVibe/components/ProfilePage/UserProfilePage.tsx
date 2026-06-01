@@ -36,6 +36,7 @@ import RecommendedUsers from "./recommendateProfiles";
 import VerifyBadge from "../VerifyBadge";
 import { AvatarWithFrame } from "./AvatarWithFrame";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
+import { EventConnectionsSheet, EventConnectionsSheetRef } from "./EventConnectionsSheet";
 
 // Styles
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
@@ -161,6 +162,7 @@ const UserProfileView = () => {
     const [showRepTip, setShowRepTip] = useState(false);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
+    const eventConnectionsSheetRef = useRef<EventConnectionsSheetRef>(null);
     const colorScheme = useColorScheme();
     const isDark = colorScheme === "dark";
     const profileStyle = isDark ? profileDarkStyles : profileLightStyles;
@@ -365,7 +367,7 @@ const UserProfileView = () => {
                     <View style={st.repRow}>
                         <TouchableOpacity
                             activeOpacity={0.7}
-                            onPress={() => setShowRepTip(true)}
+                            onPress={() => eventConnectionsSheetRef.current?.present(userData.reputation, userData.user_id)}
                             style={[st.repBadge, {
                                 backgroundColor: isDark ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.1)',
                                 borderColor: isDark ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.25)',
@@ -485,6 +487,7 @@ const UserProfileView = () => {
                 </ScrollView>
             )}
 
+            <EventConnectionsSheet ref={eventConnectionsSheetRef} />
             <Web3Toast
                 visible={showRepTip}
                 onHide={() => setShowRepTip(false)}

@@ -16,8 +16,16 @@ class UserEventConnectionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        target_user = request.user
+        user_id_param = request.query_params.get('user_id')
+        if user_id_param:
+            try:
+                target_user = User.objects.get(user_id=user_id_param)
+            except User.DoesNotExist:
+                return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
         my_checkins = EventCheckin.objects.filter(
-            user=request.user, is_registered=True
+            user=target_user, is_registered=True
         ).select_related('post')
 
         events_data = []
@@ -27,19 +35,19 @@ class UserEventConnectionsView(APIView):
             post = checkin.post
 
             checkin_rep = Reputation.objects.filter(
-                user=request.user, event=post, is_checkin=True
+                user=target_user, event=post, is_checkin=True
             ).aggregate(total=Sum('points'))['total'] or 0
 
             peer_reps = Reputation.objects.filter(
                 event=post,
                 is_checkin=False,
             ).filter(
-                Q(user=request.user) | Q(given_by=request.user)
+                Q(user=target_user) | Q(given_by=target_user)
             ).select_related('user', 'given_by')
 
             peer_map = {}
             for rep in peer_reps:
-                if rep.user == request.user:
+                if rep.user == target_user:
                     other = rep.given_by
                     direction = "received"
                 else:
