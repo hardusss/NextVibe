@@ -11,6 +11,7 @@ import { env } from "../config/env";
 import { getEnhancedTransactions } from "../services/helius";
 import type { EnhancedTransaction } from "../services/types";
 import { TX_QUEUE_NAME, type FetchInitialJob, type FetchMoreJob, type TxJob, type WebhookTxJob } from "./types";
+import { shouldKeepTransaction } from "../services/transaction-filter";
 
 async function handleFetchInitial(data: FetchInitialJob): Promise<number> {
   const limit = data.limit ?? env.INITIAL_FETCH_LIMIT;
@@ -20,7 +21,8 @@ async function handleFetchInitial(data: FetchInitialJob): Promise<number> {
 
   try {
     const txs = await getEnhancedTransactions(address, limit);
-    const rows = txs.map((tx) => mapEnhancedTransaction(address, tx, "fetch"));
+    const filteredTxs = txs.filter(tx => shouldKeepTransaction(tx, address));
+    const rows = filteredTxs.map((tx) => mapEnhancedTransaction(address, tx, "fetch"));
     const inserted = await insertTransactions(rows);
 
     const oldestSignature =
@@ -48,7 +50,8 @@ async function handleFetchMore(data: FetchMoreJob): Promise<number> {
 
   try {
     const txs = await getEnhancedTransactions(address, limit, before);
-    const rows = txs.map((tx) => mapEnhancedTransaction(address, tx, "fetch"));
+    const filteredTxs = txs.filter(tx => shouldKeepTransaction(tx, address));
+    const rows = filteredTxs.map((tx) => mapEnhancedTransaction(address, tx, "fetch"));
     const inserted = await insertTransactions(rows);
 
     if (txs.length === 0) {
@@ -73,6 +76,9 @@ async function handleFetchMore(data: FetchMoreJob): Promise<number> {
 
 async function handleWebhookTx(data: WebhookTxJob): Promise<number> {
   const tx = data.rawTx as unknown as EnhancedTransaction;
+  if (!shouldKeepTransaction(tx, data.address)) {
+    return 0; // Skip if it's filtered out
+  }
   const row = mapEnhancedTransaction(data.address, tx, "webhook");
   const inserted = await insertTransactions([row]);
   return inserted;

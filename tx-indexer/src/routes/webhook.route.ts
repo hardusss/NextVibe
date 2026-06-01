@@ -3,6 +3,7 @@ import { findMonitoredWalletForTx } from "../db/queries";
 import { normalizeWebhookPayload, verifyWebhookAuth } from "../services/helius";
 import { enqueueWebhookTx } from "../queue";
 import type { EnhancedTransaction } from "../services/types";
+import { checkAndRateLimitWallet } from "../services/bot-detector";
 
 export const webhookRoutes = new Elysia({ prefix: "/webhook" }).post(
   "/helius",
@@ -48,6 +49,13 @@ export const webhookRoutes = new Elysia({ prefix: "/webhook" }).post(
               "[webhook] skipped tx without monitored wallet:",
               tx.signature ?? "unknown"
             );
+            continue;
+          }
+
+          const isBot = await checkAndRateLimitWallet(address);
+          if (isBot) {
+            skipped += 1;
+            console.warn(`[webhook] skipped tx for bot wallet: ${address}`);
             continue;
           }
 
