@@ -4,6 +4,7 @@ from .view import (
     GetTokensPriceView,
     SolanaRpcProxyView,
     TransactionsView,
+    LoadMoreTransactionsView,
 )
 
 
@@ -12,4 +13,5 @@ urlpatterns = [
     path("get-tokens-price/", GetTokensPriceView.as_view(), name="get_tokens_price"),
     path("rpc/", SolanaRpcProxyView.as_view(), name="solana_rpc_proxy"),
     path("transactions/", TransactionsView.as_view(), name="transactions"),
+    path("transactions/load-more/", LoadMoreTransactionsView.as_view(), name="transactions_load_more"),
 ]
