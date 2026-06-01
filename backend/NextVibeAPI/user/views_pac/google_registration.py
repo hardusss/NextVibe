@@ -29,6 +29,9 @@ class GoogleRegisterView(APIView):
             serializer = GoogleRegister(user)
             return Response(serializer.data, status=200)
 
+        if "from_invite_code" not in request.data:
+            return Response({"error": "invite_code_required"}, status=status.HTTP_400_BAD_REQUEST)
+
         username = request.data.get("username")
         avatar_url = request.data.get("avatar_url")
         if not username:
