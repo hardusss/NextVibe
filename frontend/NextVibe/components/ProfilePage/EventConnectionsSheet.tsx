@@ -73,7 +73,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
         setLoading(true);
         try {
             const token = await storage.getItem('access');
-            const url = userId 
+            const url = userId
                 ? `${GetApiUrl()}/posts/user-event-connections/?user_id=${userId}`
                 : `${GetApiUrl()}/posts/user-event-connections/`;
             const res = await axios.get(url, {
@@ -138,15 +138,15 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                 {loading ? (
                     <ActivityIndicator style={{ marginTop: 48 }} color={accent} />
                 ) : data.length === 0 ? (
-                        <View style={styles.emptyWrap}>
-                            <Text style={[styles.emptyIcon]}>🎟️</Text>
-                            <Text style={[styles.emptyTitle, { color: main }]}>No POAPs yet</Text>
-                            <Text style={[styles.emptySub, { color: muted }]}>
-                                Attend events and claim your POAP to earn reputation.
-                            </Text>
-                        </View>
-                    ) : (
-                        data.map((item) => {
+                    <View style={styles.emptyWrap}>
+                        <Text style={[styles.emptyIcon]}>🎟️</Text>
+                        <Text style={[styles.emptyTitle, { color: main }]}>No POAPs yet</Text>
+                        <Text style={[styles.emptySub, { color: muted }]}>
+                            Attend events and claim your POAP to earn reputation.
+                        </Text>
+                    </View>
+                ) : (
+                    data.map((item) => {
                         const isExp = expanded[item.event_id];
                         const visible = isExp ? item.connections : item.connections.slice(0, 3);
                         const hidden = item.connections.length - 3;
@@ -297,7 +297,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                         );
                     })
                 )}
-                </BottomSheetScrollView>
+            </BottomSheetScrollView>
         </BottomSheetModal>
     );
 });
