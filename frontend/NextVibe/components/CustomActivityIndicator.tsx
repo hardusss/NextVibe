@@ -20,16 +20,8 @@ const CustomActivityIndicator = ({
 }: CustomActivityIndicatorProps) => {
     const dimension = SIZES[size];
 
-    if (size === 'small') {
-        return (
-            <View style={[{ justifyContent: 'center', alignItems: 'center' }, style as StyleProp<ViewStyle>]}>
-                <ActivityIndicator {...props} />
-            </View>
-        );
-    }
-
     return (
-        <View style={[{ justifyContent: 'center', alignItems: 'center' }, style]}>
+        <View style={[{ justifyContent: 'center', alignItems: 'center' }, style as StyleProp<ViewStyle>]}>
             <LottieView
                 source={require('../assets/lottie/loader.json')}
                 autoPlay
