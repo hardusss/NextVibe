@@ -312,7 +312,7 @@ export default function RegisterView() {
                             <View style={inputStyle('inviteCode')}>
                                 <Ticket size={20} color={iconColor('inviteCode')} style={styles.inputIcon} />
                                 <TextInput
-                                    placeholder="Invite Code"
+                                    placeholder="Invite Code (Optional)"
                                     style={styles.input}
                                     placeholderTextColor={colors.placeholder}
                                     value={inviteCode}

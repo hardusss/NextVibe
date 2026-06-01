@@ -41,6 +41,7 @@ class GoogleRegisterView(APIView):
             "email": google_data["email"],
             "username": username,
             "avatar_url": avatar_url,
+            "from_invite_code": request.data.get("from_invite_code")
         })
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
