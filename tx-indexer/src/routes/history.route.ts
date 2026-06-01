@@ -10,6 +10,8 @@ import {
 import { env } from "../config/env";
 import { getEnhancedTransactions } from "../services/helius";
 import { isValidSolanaAddress } from "../middleware/internal-auth";
+import { checkAndRateLimitWallet } from "../services/bot-detector";
+import { shouldKeepTransaction } from "../services/transaction-filter";
 
 export const historyRoutes = new Elysia({ prefix: "/index" }).post(
   "/load-more",
@@ -19,6 +21,12 @@ export const historyRoutes = new Elysia({ prefix: "/index" }).post(
     if (!isValidSolanaAddress(address)) {
       set.status = 400;
       return { error: "Invalid wallet address" };
+    }
+
+    const isBot = await checkAndRateLimitWallet(address);
+    if (isBot) {
+      set.status = 429;
+      return { error: "Too many requests. Wallet blacklisted." };
     }
 
     const safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -52,7 +60,8 @@ export const historyRoutes = new Elysia({ prefix: "/index" }).post(
         };
       }
 
-      const rows = txs.map((tx) => mapEnhancedTransaction(address, tx, "fetch"));
+      const filteredTxs = txs.filter(tx => shouldKeepTransaction(tx, address));
+      const rows = filteredTxs.map((tx) => mapEnhancedTransaction(address, tx, "fetch"));
       const loaded = await insertTransactions(rows);
       const oldestSignature = txs[txs.length - 1]?.signature ?? null;
 
