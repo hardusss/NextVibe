@@ -5,6 +5,7 @@ from .view import (
     SolanaRpcProxyView,
     TransactionsView,
     LoadMoreTransactionsView,
+    WebhookNotifyView,
 )
 
 
@@ -14,4 +15,5 @@ urlpatterns = [
     path("rpc/", SolanaRpcProxyView.as_view(), name="solana_rpc_proxy"),
     path("transactions/", TransactionsView.as_view(), name="transactions"),
     path("transactions/load-more/", LoadMoreTransactionsView.as_view(), name="transactions_load_more"),
+    path("webhook-notify/", WebhookNotifyView.as_view(), name="webhook_notify"),
 ]

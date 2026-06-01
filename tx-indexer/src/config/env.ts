@@ -53,4 +53,5 @@ export const env = {
   USERS_TABLE: Bun.env.USERS_TABLE?.trim() ?? "user_user",
   MYSQL_SSL: Bun.env.MYSQL_SSL === "true",
   HELIUS_WEBHOOK_ADDRESS_LIMIT: Number(Bun.env.HELIUS_WEBHOOK_ADDRESS_LIMIT ?? "500"),
+  DJANGO_API_URL: Bun.env.DJANGO_API_URL?.trim() ?? "http://127.0.0.1:8000",
 } as const;
