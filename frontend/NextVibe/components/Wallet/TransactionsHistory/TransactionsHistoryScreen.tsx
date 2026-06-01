@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme } from 'react-native';
+import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme, TouchableOpacity } from 'react-native';
 import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -8,7 +8,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useWallet } from '@lazorkit/wallet-mobile-adapter';
 
 // Services & API
+import SolanaService from '@/src/services/SolanaService';
 import getTransactions from '@/src/api/get.transactions';
+import loadMoreTransactionsFromBlockchain from '@/src/api/load.more.transactions';
 import getTokensPrice from '@/src/api/get.tokens.price';
 import { FormattedTransaction } from '@/src/types/solana';
 import { parseHeliusTransactions } from '@/src/utils/solana/heliusParser';
@@ -40,6 +42,7 @@ export default function TransactionsHistoryScreen() {
     const [error, setError] = useState<string | null>(null);
     const [lastSignature, setLastSignature] = useState<string | undefined>(undefined);
     const [hasMore, setHasMore] = useState<boolean>(true);
+    const [isSyncingBlockchain, setIsSyncingBlockchain] = useState<boolean>(false);
     const [prices, setPrices] = useState<
         Record<string, { price: number; change_24h: number; direction: 'up' | 'down' | 'flat' }>
     >({
@@ -123,10 +126,25 @@ export default function TransactionsHistoryScreen() {
     };
 
     const loadMore = async () => {
-        if (loadingMore || !hasMore) return;
+        if (loadingMore || !hasMore || isSyncingBlockchain) return;
         setLoadingMore(true);
         await fetchTransactions(false);
         setLoadingMore(false);
+    };
+
+    const handleBlockchainSync = async () => {
+        if (isSyncingBlockchain) return;
+        setIsSyncingBlockchain(true);
+        try {
+            await loadMoreTransactionsFromBlockchain(50);
+            // Reset and fetch again to display the newly indexed transactions
+            await fetchTransactions(true);
+        } catch (err) {
+            console.error('Failed to sync with blockchain:', err);
+            // Optionally, show a toast or error message here
+        } finally {
+            setIsSyncingBlockchain(false);
+        }
     };
 
     const groupedTransactions = useMemo(() => groupTransactionsByDate(transactions), [transactions]);
@@ -148,12 +166,47 @@ export default function TransactionsHistoryScreen() {
     // --- Render Helpers ---
 
     const renderFooter = () => {
-        if (!loadingMore) return null;
-        return (
-            <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={isDark ? '#A78BFA' : '#5856D6'} />
-            </View>
-        );
+        if (loadingMore) {
+            return (
+                <View style={styles.footerLoader}>
+                    <ActivityIndicator size="small" color={isDark ? '#A78BFA' : '#5856D6'} />
+                </View>
+            );
+        }
+
+        if (!hasMore && transactions.length > 0) {
+            return (
+                <View style={styles.footerLoader}>
+                    <TouchableOpacity 
+                        onPress={handleBlockchainSync} 
+                        disabled={isSyncingBlockchain}
+                        style={{
+                            paddingVertical: 12,
+                            paddingHorizontal: 24,
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                            borderRadius: 20,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: 20,
+                        }}
+                    >
+                        {isSyncingBlockchain ? (
+                            <ActivityIndicator size="small" color={isDark ? '#A78BFA' : '#5856D6'} />
+                        ) : (
+                            <Text style={{
+                                color: isDark ? '#A78BFA' : '#5856D6',
+                                fontWeight: '600',
+                            }}>
+                                Load more transactions
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+
+        return null;
     };
 
     const renderEmptyState = () => (
