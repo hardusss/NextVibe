@@ -11,7 +11,7 @@ import GetApiUrl from '@/src/utils/url_api';
 import { useRouter } from 'expo-router';
 
 export interface EventConnectionsSheetRef {
-    present: (totalRep?: number) => void;
+    present: (totalRep?: number, userId?: number) => void;
     dismiss: () => void;
 }
 
@@ -69,11 +69,14 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     const divider = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
     const accent = '#A855F7';
 
-    const fetchData = async () => {
+    const fetchData = async (userId?: number) => {
         setLoading(true);
         try {
             const token = await storage.getItem('access');
-            const res = await axios.get(`${GetApiUrl()}/posts/user-event-connections/`, {
+            const url = userId 
+                ? `${GetApiUrl()}/posts/user-event-connections/?user_id=${userId}`
+                : `${GetApiUrl()}/posts/user-event-connections/`;
+            const res = await axios.get(url, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setData(res.data);
@@ -85,10 +88,10 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     };
 
     useImperativeHandle(ref, () => ({
-        present: (rep?: number) => {
+        present: (rep?: number, userId?: number) => {
             if (rep !== undefined) setTotalRep(rep);
             sheetRef.current?.present();
-            fetchData();
+            fetchData(userId);
         },
         dismiss: () => sheetRef.current?.dismiss(),
     }));
