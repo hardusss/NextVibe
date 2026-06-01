@@ -523,11 +523,13 @@ const PostItem = memo(({
 
     return (
         <TouchableOpacity style={styles.postContainer} onPress={() => {
-            router.push({ pathname: "/post-details", params: { 
-                id: item.id,
-                postContent: item.text, 
-                postImageUrl: item.image
-             } });
+            router.push({
+                pathname: "/post-details", params: {
+                    id: item.id,
+                    postContent: item.text,
+                    postImageUrl: item.image
+                }
+            });
         }} activeOpacity={0.8}>
 
             {/* ── Header: avatar | username | dots ── */}
@@ -554,7 +556,7 @@ const PostItem = memo(({
                         )}
                     </View>
                 </View>
-                    
+
 
                 <View style={{ position: "relative", flexDirection: "row" }}>
                     {collectState !== null && !item?.is_luma_event && (
