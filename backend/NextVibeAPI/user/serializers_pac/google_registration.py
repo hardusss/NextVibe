@@ -13,10 +13,16 @@ User = get_user_model()
 class GoogleRegister(serializers.ModelSerializer):
     token = serializers.SerializerMethodField()
     avatar_url = serializers.URLField(write_only=True, required=False)
+    from_invite_code = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        write_only=True
+    )
 
     class Meta:
         model = User
-        fields = ("user_id", "email", "username", "token", "avatar", "avatar_url")
+        fields = ("user_id", "email", "username", "token", "avatar", "avatar_url", "from_invite_code")
 
     def get_token(self, obj):
         refresh = RefreshToken.for_user(obj)
@@ -27,12 +33,28 @@ class GoogleRegister(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        from user.models import InviteUser
+        
         avatar_url = validated_data.pop("avatar_url", None)
+        invite_code = validated_data.pop("from_invite_code", None)
+        
+        invite_obj = None
+        if invite_code:
+            invite_obj = InviteUser.objects.filter(invite_code=invite_code).first()
 
         user, created = User.objects.get_or_create(
             email=validated_data["email"],
-            defaults={"username": validated_data["username"]},
+            defaults={
+                "username": validated_data["username"],
+                "from_invite_code": invite_obj,
+                "auth_provider": "google",
+            },
         )
+
+        if created and invite_obj:
+            from django.db.models import F
+            invite_obj.invited_count = F('invited_count') + 1
+            invite_obj.save(update_fields=['invited_count'])
 
         if created and avatar_url:
             try:

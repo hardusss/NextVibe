@@ -44,9 +44,13 @@ class WalletSignInView(APIView):
                 'username': user.username
             })
         else:
+            if "from_invite_code" not in request.data:
+                return Response({"error": "invite_code_required"}, status=status.HTTP_400_BAD_REQUEST)
+
             serializer = UserWalletSignInSerializer(data={
                 "wallet_address": wallet_address,
-                "username": username
+                "username": username,
+                "from_invite_code": request.data.get("from_invite_code")
             })
             if serializer.is_valid():
                 user = serializer.save()
