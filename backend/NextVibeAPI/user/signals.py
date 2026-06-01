@@ -51,7 +51,8 @@ def trigger_push_and_cache(sender, instance, created, **kwargs):
             send(
                 token=token,
                 title=instance.text_preview, 
-                body=body_text
+                body=body_text,
+                link="nextvibe://transactions" if instance.notification_type == 'revived_transaction' else "nextvibe://notifications"
             )
 
 
