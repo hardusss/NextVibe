@@ -81,6 +81,29 @@ async function handleWebhookTx(data: WebhookTxJob): Promise<number> {
   }
   const row = mapEnhancedTransaction(data.address, tx, "webhook");
   const inserted = await insertTransactions([row]);
+  
+  // Notify Django backend about the new transaction
+  if (inserted > 0) {
+    try {
+      const title = tx.description || "New transaction received";
+      const notifyUrl = `${env.DJANGO_API_URL.replace(/\/$/, '')}/api/v1/wallets/webhook-notify/`;
+      
+      await fetch(notifyUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": env.INTERNAL_SECRET,
+        },
+        body: JSON.stringify({
+          address: data.address,
+          title,
+        }),
+      });
+    } catch (err) {
+      console.error(`[worker] Failed to notify Django for tx ${tx.signature}:`, err);
+    }
+  }
+  
   return inserted;
 }
 
