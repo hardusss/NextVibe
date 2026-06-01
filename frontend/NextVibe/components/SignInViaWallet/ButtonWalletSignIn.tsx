@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle, View } from 'react-native';
 import { Wallet } from 'lucide-react-native';
 import { useMobileWallet } from "@wallet-ui/react-native-web3js";
 import walletSignIn from "@/src/api/wallet.sign.in";
 import { storage } from "@/src/utils/storage";
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import InviteCodeSheet from '../oauth-components/InviteCodeSheet';
 
 export interface SignInPayload {
     pubkey: string;
@@ -34,6 +36,9 @@ export default function ButtonWalletSignIn({
 }: ButtonWalletSignInProps) {
     const [isLoading, setIsLoading] = useState(false);
     const isMounted = useRef(true);
+
+    const sheetRef = useRef<BottomSheetModal>(null);
+    const pendingRef = useRef<SignInPayload | null>(null);
 
     const { connect, signMessage } = useMobileWallet();
 
@@ -88,29 +93,72 @@ export default function ButtonWalletSignIn({
         } catch (error: any) {
             if (!isMounted.current) return;
             setIsLoading(false);
+
+            if (error?.response?.data?.error === 'invite_code_required') {
+                const pubkeyString = JSON.parse(error.config.data).wallet_address;
+                const messageToSign = JSON.parse(error.config.data).message;
+                const signature = new Uint8Array(JSON.parse(error.config.data).signature);
+                const username = JSON.parse(error.config.data).username;
+                
+                pendingRef.current = {
+                    pubkey: pubkeyString,
+                    signature: signature,
+                    message: messageToSign,
+                    username: username,
+                };
+                sheetRef.current?.present();
+                return;
+            }
+
             console.error("Wallet Sign-In Error:", error);
             onError?.(error);
         }
     };
 
+    const handleInviteSubmit = async (inviteCode: string) => {
+        const pending = pendingRef.current;
+        if (!pending) return;
+
+        try {
+            const backendResponse = await walletSignIn(pending, inviteCode);
+
+            if (backendResponse?.token) {
+                await storage.setItem("id", `${backendResponse.user_id}`);
+                await storage.setItem("access", backendResponse.token.access);
+                await storage.setItem("refresh", backendResponse.token.refresh);
+            }
+
+            pendingRef.current = null;
+            sheetRef.current?.dismiss();
+            onSuccess(backendResponse);
+        } catch (error: any) {
+            console.error("Wallet Sign-In Error (Invite Code):", error);
+            throw error; // Let the InviteCodeSheet handle the display
+        }
+    };
+
     return (
-        <TouchableOpacity
-            style={[styles.buttonContainer, buttonStyle]}
-            onPress={handleConnectAndSign}
-            disabled={isLoading}
-            activeOpacity={0.8}
-        >
-            {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-                <>
-                    <Wallet size={20} color="#FFFFFF" style={styles.icon} />
-                    <Text style={[styles.buttonText, textStyle]}>
-                        {title}
-                    </Text>
-                </>
-            )}
-        </TouchableOpacity>
+        <View>
+            <TouchableOpacity
+                style={[styles.buttonContainer, buttonStyle]}
+                onPress={handleConnectAndSign}
+                disabled={isLoading}
+                activeOpacity={0.8}
+            >
+                {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                    <>
+                        <Wallet size={20} color="#FFFFFF" style={styles.icon} />
+                        <Text style={[styles.buttonText, textStyle]}>
+                            {title}
+                        </Text>
+                    </>
+                )}
+            </TouchableOpacity>
+
+            <InviteCodeSheet ref={sheetRef} onSubmit={handleInviteSubmit} />
+        </View>
     );
 };
 
