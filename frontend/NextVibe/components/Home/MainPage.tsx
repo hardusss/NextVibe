@@ -54,6 +54,13 @@ let cachedPosts: Post[] | null = null;
 let cachedLikedPosts: LikedPosts | null = null;
 let cachedScrollOffset: number = 0;
 
+export const clearFeedCache = () => {
+    cachedPosts = null;
+    cachedLikedPosts = null;
+    cachedScrollOffset = 0;
+    isSessionActive = false;
+};
+
 const darkTheme = {
     background: "#0A0410",
     cardBackground: "#0A0410",

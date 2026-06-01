@@ -21,6 +21,8 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import ConfirmDialog from "../Shared/Toasts/ConfirmDialog";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import validationUsername from "@/src/validation/username-update-validator";
+import { clearFeedCache } from "../Home/MainPage";
+import { clearProfileCache } from "../ProfilePage/ProfilePage";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
 
@@ -97,6 +99,8 @@ function PageSettingsContent() {
         AsyncStorage.clear();
         GoogleSignin.signOut();
         setIsVisibleLogoutConfirmation(false); 
+        clearFeedCache();
+        clearProfileCache();
         if (address) {
             await disconnect();
         }

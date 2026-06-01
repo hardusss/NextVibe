@@ -52,6 +52,12 @@ let cachedUserData: UserData | null = null;
 let cachedInvitedCount: number | null = null;
 let profileHasFetched = false;
 
+export const clearProfileCache = () => {
+    cachedUserData = null;
+    cachedInvitedCount = null;
+    profileHasFetched = false;
+};
+
 type UserData = {
     username: string;
     about: string;

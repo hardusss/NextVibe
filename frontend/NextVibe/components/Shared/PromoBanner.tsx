@@ -6,6 +6,7 @@ import {
 import { X, Star, Twitter } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/src/utils/storage';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -98,6 +99,9 @@ export default function PromoBanner() {
         let timer: ReturnType<typeof setTimeout>;
 
         (async () => {
+            const userId = await storage.getItem("id");
+            if (!userId) return; // Don't show if not logged in
+
             const state = await loadState();
 
             // If the full cycle (rate + follow_x) was completed, check cooldown
