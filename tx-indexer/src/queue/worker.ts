@@ -12,6 +12,7 @@ import { getEnhancedTransactions } from "../services/helius";
 import type { EnhancedTransaction } from "../services/types";
 import { TX_QUEUE_NAME, type FetchInitialJob, type FetchMoreJob, type TxJob, type WebhookTxJob } from "./types";
 import { shouldKeepTransaction } from "../services/transaction-filter";
+import { formatNotificationMessage } from "../services/notification-formatter";
 
 async function handleFetchInitial(data: FetchInitialJob): Promise<number> {
   const limit = data.limit ?? env.INITIAL_FETCH_LIMIT;
@@ -85,7 +86,7 @@ async function handleWebhookTx(data: WebhookTxJob): Promise<number> {
   // Notify Django backend about the new transaction
   if (inserted > 0) {
     try {
-      const title = tx.description || "New transaction received";
+      const title = formatNotificationMessage(tx, data.address);
       const notifyUrl = `${env.DJANGO_API_URL.replace(/\/$/, '')}/api/v1/wallets/webhook-notify/`;
       
       await fetch(notifyUrl, {
