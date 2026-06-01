@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Connection, PublicKey } from "@solana/web3.js";
-import SolanaService from "@/src/services/SolanaService";
+import getTransactions from "@/src/api/get.transactions";
+import { parseHeliusTransactions } from "@/src/utils/solana/heliusParser";
 import { FormattedTransaction } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
 import getTokensPrice from "@/src/api/get.tokens.price";
@@ -67,12 +68,9 @@ export function useLastTransaction(
     setError(null);
 
     try {
-      // Fetch transaction history (limited to 1 for performance)
-      const transactions = await SolanaService.getTransactionsHistory(
-        connection,
-        walletPubkey.toString(),
-        true // includeMetadata
-      );
+      // Fetch transaction history from the backend
+      const rawTransactions = await getTransactions();
+      const transactions = parseHeliusTransactions(walletPubkey.toString(), rawTransactions);
 
       // Handle empty transaction history
       if (!transactions || transactions.length === 0) {
