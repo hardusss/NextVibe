@@ -121,7 +121,7 @@ const blacklist = [
     "chats", "follows-screen", "notifications",
     "user-banned", "wallet-init", "wallet-dash",
     "wallet-select", "send", "swap", "event-checkin",
-    "post-details", "all-tokens"
+    "post-details", "all-tokens", "eas-update"
 ];
 
 const stackScreens = blacklist.filter(item => item !== "send");
