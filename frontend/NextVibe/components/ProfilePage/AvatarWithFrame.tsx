@@ -39,6 +39,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
                         source={require('@/assets/lottie/MythicFrame.json')}
                         autoPlay
                         loop
+                        cacheComposition={true}
                         style={{ width: '100%', height: '100%' }}
                     />
                 </View>
@@ -58,6 +59,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
                         source={require('@/assets/lottie/frame.json')}
                         autoPlay
                         loop
+                        cacheComposition={true}
                         style={{ width: '100%', height: '100%' }}
                     />
                 </View>

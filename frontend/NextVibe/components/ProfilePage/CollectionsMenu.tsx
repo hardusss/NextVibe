@@ -10,8 +10,7 @@ import {
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getCollectionsMenu from "@/src/api/get.collections.menu";
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import FastImage from 'react-native-fast-image';
 import { BlurView } from "@react-native-community/blur";
 import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2, Calendar } from "lucide-react-native";
@@ -72,6 +71,17 @@ interface CollectionsGalleryProps {
     /** Pass false when rendering another user's profile to hide the "Set as Avatar" button */
     isOwnProfile?: boolean;
 }
+
+// ── Module-level cache to survive tab-switch remounts ──
+let cachedItems: CollectionItem[] | null = null;
+let cachedOgAvatar: OgAvatar | null | undefined = undefined; // undefined = not yet fetched
+let collectionsHasFetched = false;
+
+export const clearCollectionsCache = () => {
+    cachedItems = null;
+    cachedOgAvatar = undefined;
+    collectionsHasFetched = false;
+};
 
 interface OgAvatarCardProps {
     og: OgAvatar;
@@ -224,12 +234,12 @@ function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatarCardPro
 const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProps) => {
     const isDark = useColorScheme() === "dark";
 
-    const [items, setItems] = useState<CollectionItem[]>([]);
-    const [ogAvatar, setOgAvatar] = useState<OgAvatar | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [items, setItems] = useState<CollectionItem[]>(cachedItems ?? []);
+    const [ogAvatar, setOgAvatar] = useState<OgAvatar | null>(cachedOgAvatar !== undefined ? cachedOgAvatar : null);
+    const [loading, setLoading] = useState(!cachedItems);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    const [index, setIndex] = useState(0);
+    const [index, setIndex] = useState(cachedItems ? cachedItems.length : 0);
     const [selectedItem, setSelectedItem] = useState<CollectionItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
 
@@ -249,16 +259,22 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
             // OG avatar is only present on the first page — avoid overwriting with null on subsequent pages
             if (!shouldLoadMore && response.og_avatar) {
                 setOgAvatar(response.og_avatar);
+                cachedOgAvatar = response.og_avatar;
             }
 
             setItems((prev) => {
+                let result: CollectionItem[];
                 if (shouldLoadMore) {
                     const unique = new Map(prev.map(item => [item.post_id, item]));
                     newItems.forEach((item: any) => unique.set(item.post_id, item));
-                    return Array.from(unique.values());
+                    result = Array.from(unique.values());
                 } else {
-                    return newItems;
+                    result = newItems;
                 }
+
+                // Update module-level cache
+                cachedItems = result;
+                return result;
             });
 
             setIndex((prev) => shouldLoadMore ? prev + POSTS_PER_PAGE : POSTS_PER_PAGE);
@@ -268,15 +284,13 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
         setLoadingMore(false);
     };
 
-    useFocusEffect(
-        useCallback(() => {
-            setItems([]);
-            setOgAvatar(null);
-            setIndex(0);
-            setHasMore(true);
-            fetchItems(false);
-        }, [])
-    );
+    // Load once on mount — don't re-fetch on every tab focus
+    useEffect(() => {
+        if (collectionsHasFetched && cachedItems) return;
+        collectionsHasFetched = true;
+        setHasMore(true);
+        fetchItems(false);
+    }, []);
 
     const handleSetOgAvatar = async () => {
         if (!ogAvatar) throw new Error("No OG avatar data");

@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getMenuPosts from "@/src/api/menu.posts";
-import { useFocusEffect } from 'expo-router';
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
 import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-native";
@@ -53,6 +52,17 @@ interface PostGalleryProps {
     previous: string;
 }
 
+// ── Module-level cache to survive tab-switch remounts ──
+let cachedPosts: Post[] | null = null;
+let cachedUserID: number | null = null;
+let postsHasFetched = false;
+
+export const clearPostsCache = () => {
+    cachedPosts = null;
+    cachedUserID = null;
+    postsHasFetched = false;
+};
+
 function ModerationDot({ delay }: { delay: number }) {
     const opacity = useRef(new Animated.Value(0.25)).current;
     useEffect(() => {
@@ -93,11 +103,11 @@ function ModerationDot({ delay }: { delay: number }) {
 }
 
 const PostGallery = ({ id, previous }: PostGalleryProps) => {
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [posts, setPosts] = useState<Post[]>(cachedPosts ?? []);
+    const [loading, setLoading] = useState(!cachedPosts);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    const indexRef = useRef(0);
+    const indexRef = useRef(cachedPosts ? cachedPosts.length : 0);
     const [userID, setUserID] = useState<number | null>(null);
 
     const [popupVisible, setPopupVisible] = useState(false);
@@ -145,13 +155,18 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                         (p.moderation_status === "pending" && p.user_id === actualUserID)
                 );
 
+                let result: Post[];
                 if (shouldLoadMore) {
                     const uniquePosts = new Map(prevPosts.map(post => [post.post_id, post]));
                     filteredNewPosts.forEach((post: any) => uniquePosts.set(post.post_id, post));
-                    return Array.from(uniquePosts.values());
+                    result = Array.from(uniquePosts.values());
                 } else {
-                    return filteredNewPosts;
+                    result = filteredNewPosts;
                 }
+
+                // Update module-level cache
+                cachedPosts = result;
+                return result;
             });
 
             indexRef.current = shouldLoadMore
@@ -163,15 +178,18 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         setLoadingMore(false);
     };
 
-    useFocusEffect(
-        useCallback(() => {
-            setPosts([]);
-            indexRef.current = 0;
-            getId().then((fetchedUserID) => {
-                fetchPosts(false, fetchedUserID);
-            });
-        }, [])
-    );
+    // Load once on mount — don't re-fetch on every tab focus
+    useEffect(() => {
+        if (postsHasFetched && cachedPosts) return;
+        postsHasFetched = true;
+        indexRef.current = 0;
+        getId().then((fetchedUserID) => {
+            cachedUserID = fetchedUserID;
+            fetchPosts(false, fetchedUserID);
+        }).catch(() => {
+            postsHasFetched = false;
+        });
+    }, []);
 
     const isVideo = (url: string): MediaCheck => {
         if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
