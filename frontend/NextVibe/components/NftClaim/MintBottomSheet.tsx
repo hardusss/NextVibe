@@ -94,6 +94,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
     const successOpacity = useRef(new Animated.Value(0)).current;
     const shakeX = useRef(new Animated.Value(0)).current;
     const arrowAnim = useRef(new Animated.Value(0)).current;
+    const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const swipeX = useSharedValue(0);
     const swipeTriggered = useSharedValue(false);
@@ -107,6 +108,12 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         );
         loop.start();
         return () => loop.stop();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (successTimerRef.current) clearTimeout(successTimerRef.current);
+        };
     }, []);
 
     const startPulse = () => {
@@ -240,7 +247,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
             stopPulse();
             setStatus('success');
             playSuccess();
-            setTimeout(() => {
+            successTimerRef.current = setTimeout(() => {
                 closeSheet(() => {
                     setStatus('idle');
                     setErrorMsg('');

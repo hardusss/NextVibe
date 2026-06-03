@@ -160,6 +160,7 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
     const scale = useRef(new Animated.Value(OPEN_SCALE_FROM)).current;
     const cardOpacity = useRef(new Animated.Value(0)).current;
     const backdropOpacity = useRef(new Animated.Value(0)).current;
+    const rAFRef = useRef<number | null>(null);
 
     const runOpenAnimation = () => {
         translateY.setValue(OPEN_TRANSLATE_Y);
@@ -187,11 +188,19 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
         if (visible && item) {
             setModalVisible(true);
             setEventImageHeight(null);
-            requestAnimationFrame(() => requestAnimationFrame(runOpenAnimation));
+            rAFRef.current = requestAnimationFrame(() => {
+                rAFRef.current = requestAnimationFrame(runOpenAnimation);
+            });
         } else if (modalVisible) {
             runCloseAnimation(() => setModalVisible(false));
         }
     }, [visible]);
+
+    useEffect(() => {
+        return () => {
+            if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+        };
+    }, []);
 
     const handleClose = () => {
         runCloseAnimation(() => {

@@ -144,6 +144,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     const heartOverlayAnim = useRef(new Animated.Value(0)).current;
     const tapCount = useRef(0);
     const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const rAFRef = useRef<number | null>(null);
 
     const runOpenAnimation = () => {
         translateY.setValue(OPEN_TRANSLATE_Y);
@@ -187,7 +188,9 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             
                             // Show modal and animate only after data is ready
                             setModalVisible(true);
-                            requestAnimationFrame(() => requestAnimationFrame(runOpenAnimation));
+                            rAFRef.current = requestAnimationFrame(() => {
+                                rAFRef.current = requestAnimationFrame(runOpenAnimation);
+                            });
                         }
                     })
                     .catch((err) => console.error("fetchPost error:", err))
@@ -202,7 +205,10 @@ const PostPopup: React.FC<PostPopupProps> = ({
     }, [visible, postId]);
 
     useEffect(() => {
-        return () => { if (tapTimer.current) clearTimeout(tapTimer.current); };
+        return () => {
+            if (tapTimer.current) clearTimeout(tapTimer.current);
+            if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+        };
     }, []);
 
     const animateHeartOverlay = () => {

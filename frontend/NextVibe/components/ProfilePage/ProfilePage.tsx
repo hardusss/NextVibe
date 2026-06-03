@@ -256,8 +256,10 @@ const ProfileView = () => {
     useFocusEffect(
         useCallback(() => {
             if (!profileHasFetched) {
-                fetchUserData();
                 profileHasFetched = true;
+                fetchUserData().catch(() => {
+                    profileHasFetched = false;
+                });
             }
         }, [])
     );
