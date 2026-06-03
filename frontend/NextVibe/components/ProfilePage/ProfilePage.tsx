@@ -14,6 +14,7 @@ import {
     useColorScheme,
     StyleSheet,
     Dimensions,
+    InteractionManager,
 } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -158,6 +159,15 @@ const ProfileView = () => {
     const modalRef = useRef<ShareModalRef>(null);
     const inviteSheetRef = useRef<InviteSheetRef>(null);
     const eventConnectionsSheetRef = useRef<EventConnectionsSheetRef>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const [interactionsFinished, setInteractionsFinished] = useState(false);
+
+    useEffect(() => {
+        InteractionManager.runAfterInteractions(() => {
+            setInteractionsFinished(true);
+        });
+    }, []);
 
     const postsOpacity = useRef(new Animated.Value(1)).current;
     const postsTranslate = useRef(new Animated.Value(0)).current;
@@ -197,12 +207,18 @@ const ProfileView = () => {
     };
 
     useEffect(() => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        
         if (visible) {
             setIsVisibleContainer(true);
             Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 10, bounciness: 8 }).start();
         } else {
             Animated.timing(scaleAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-            setTimeout(() => { setIsVisibleContainer(false) }, 200);
+            timeoutRef.current = setTimeout(() => { setIsVisibleContainer(false) }, 200);
+        }
+
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
     }, [visible]);
 
@@ -500,7 +516,7 @@ const ProfileView = () => {
                                         description="Start sharing your moments to make your profile more engaging."
                                         colorScheme={colorScheme} />
                                 ) : (
-                                    <PostGallery key={`posts-${refreshKey}`} id={id as number} previous="profile" />
+                                    interactionsFinished ? <PostGallery key={`posts-${refreshKey}`} id={id as number} previous="profile" /> : <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
                                 )
                             )}
                         </Animated.View>
@@ -514,7 +530,7 @@ const ProfileView = () => {
                                         description="Your collected and created cNFTs will appear here."
                                         colorScheme={colorScheme} />
                                 ) : (
-                                    <CollectionsGallery key={`collections-${refreshKey}`} id={id as number} isOwnProfile={true} />
+                                    interactionsFinished ? <CollectionsGallery key={`collections-${refreshKey}`} id={id as number} isOwnProfile={true} /> : <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
                                 )
                             )}
                         </Animated.View>
