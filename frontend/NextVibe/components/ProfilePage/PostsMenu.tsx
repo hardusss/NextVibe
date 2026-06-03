@@ -97,7 +97,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    const [index, setIndex] = useState(0);
+    const indexRef = useRef(0);
     const [userID, setUserID] = useState<number | null>(null);
 
     const [popupVisible, setPopupVisible] = useState(false);
@@ -132,7 +132,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         else setLoading(true);
 
         try {
-            const response = await getMenuPosts(id, index, POSTS_PER_PAGE);
+            const response = await getMenuPosts(id, indexRef.current, POSTS_PER_PAGE);
             const newPosts = response.data;
             setHasMore(response.more_posts);
 
@@ -154,7 +154,9 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                 }
             });
 
-            setIndex((prevIndex) => shouldLoadMore ? prevIndex + POSTS_PER_PAGE : POSTS_PER_PAGE);
+            indexRef.current = shouldLoadMore
+                ? indexRef.current + POSTS_PER_PAGE
+                : POSTS_PER_PAGE;
         } catch (error) { }
 
         setLoading(false);
@@ -164,7 +166,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     useFocusEffect(
         useCallback(() => {
             setPosts([]);
-            setIndex(0);
+            indexRef.current = 0;
             getId().then((fetchedUserID) => {
                 fetchPosts(false, fetchedUserID);
             });
