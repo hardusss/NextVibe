@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, useColorScheme, FlatList, ActivityIndicator, Linking } from "react-native";
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, useColorScheme, FlatList, ActivityIndicator, Linking, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { CalendarPlus, ChevronLeft, Calendar, Link2, Users, Nfc } from "lucide-react-native";
 import AddLumaEventSheet, { AddLumaEventSheetRef } from "./AddLumaEventSheet";
@@ -172,8 +172,8 @@ export default function EventsScreen() {
                       <Text style={[styles.eventBtnText, { color: attendeesColor }]}>Who's going</Text>
                   </TouchableOpacity>
 
-                  {/* NFC Check-in button — only for active events */}
-                  {!isEnded && (
+                  {/* NFC Check-in button — only for active events, not available on iOS */}
+                  {!isEnded && Platform.OS !== 'ios' && (
                       <TouchableOpacity
                           onPress={() => nfcCheckinSheetRef.current?.presentForPost(item.post_id, item.about)}
                           style={[styles.eventBtn, styles.nfcCheckinBtn, { backgroundColor: nfcBtnBg, borderColor: nfcBtnBorder }]}

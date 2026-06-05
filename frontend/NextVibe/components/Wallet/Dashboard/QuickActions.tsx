@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import * as Haptics from "expo-haptics";
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from "react-native";
 import { ArrowDown, ArrowUp, ArrowLeftRight, Nfc } from "lucide-react-native";
 
 interface QuickActionsProps {
@@ -30,12 +30,17 @@ function PulseDot({ isDarkMode }: { isDarkMode: boolean }) {
     );
 }
 
-const ACTIONS = [
+const ALL_ACTIONS = [
     { id: "receive", Icon: ArrowDown, label: "Receive", pulse: false },
     { id: "send", Icon: ArrowUp, label: "Send", pulse: false },
     { id: "swap", Icon: ArrowLeftRight, label: "Swap", pulse: false },
     { id: "nfc", Icon: Nfc, label: "NFC Deposit", pulse: true },
 ];
+
+// NFC HCE sharing is not supported on iOS — hide the NFC Deposit action
+const ACTIONS = Platform.OS === 'ios'
+    ? ALL_ACTIONS.filter(a => a.id !== 'nfc')
+    : ALL_ACTIONS;
 
 const QuickActions: React.FC<QuickActionsProps> = ({
     isDarkMode,
@@ -44,7 +49,12 @@ const QuickActions: React.FC<QuickActionsProps> = ({
     onSwap,
     onNfcDeposit,
 }) => {
-    const handlers = [onReceive, onSend, onSwap, onNfcDeposit];
+    const allHandlers: Record<string, () => void> = {
+        receive: onReceive,
+        send: onSend,
+        swap: onSwap,
+        nfc: onNfcDeposit,
+    };
 
     const bg = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
     const border = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
@@ -58,7 +68,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
                     <TouchableOpacity
                         onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            handlers[i]();
+                            allHandlers[action.id]();
                         }}
                         activeOpacity={0.6}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
