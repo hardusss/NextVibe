@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, forwardRef, useState, useImperativeHandle } from 'react';
-import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import FastImage from 'react-native-fast-image';
 import { BlurView } from '@react-native-community/blur';
@@ -202,8 +202,8 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                     </View>
                                 </View>
 
-                                {/* NFC Networking Button */}
-                                {item.is_active && (
+                                {/* NFC Networking Button — not available on iOS */}
+                                {item.is_active && Platform.OS !== 'ios' && (
                                     <TouchableOpacity
                                         style={[styles.nfcBtn, { backgroundColor: accent }]}
                                         activeOpacity={0.8}
