@@ -15,6 +15,7 @@ export default {
             jsEngine: "hermes",
             supportsTablet: true,
             bundleIdentifier: "com.nextvibe.app",
+            usesAppleSignIn: true,
             infoPlist: {
                 NSCameraUsageDescription: "NextVibe needs access to your Camera.",
                 NSMicrophoneUsageDescription: "NextVibe needs access to your Microphone.",
@@ -152,7 +153,8 @@ export default {
                 }
             ],
             "./withMapboxMaven.js",
-            "./withSolanaMWA.js"
+            "./withSolanaMWA.js",
+            "expo-apple-authentication"
         ],
         experiments: {
             typedRoutes: true

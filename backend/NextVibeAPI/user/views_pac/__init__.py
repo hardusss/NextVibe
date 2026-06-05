@@ -1,4 +1,5 @@
 from .google_registration import GoogleRegisterView
+from .apple_registration import AppleRegisterView
 from .login_view import LoginUserView
 from .registration_view import RegisterUserView
 from .google_login import GoogleLoginUserView

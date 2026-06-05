@@ -1,7 +1,7 @@
 from django.urls import path
 from .views_pac import (
                             RegisterUserView, LoginUserView,
-                            GoogleRegisterView,
+                            GoogleRegisterView, AppleRegisterView,
                             UserDetailView, RecommendedUsersView,
                             FollowView, SearchUsersView,
                             HistorySearchView, TwoFAView,
@@ -45,5 +45,6 @@ urlpatterns = [
     path("save-wallet/", SaveWalletAddressView.as_view()),
     path("invite-info/", GetInviteInfoView.as_view(), name="invite_info"),
     path("mint-og/", OgNftMintView.as_view(), name="mint_og"),
-    path("wallet-sign-in/", WalletSignInView.as_view(), name="waller_signin")
+    path("wallet-sign-in/", WalletSignInView.as_view(), name="waller_signin"),
+    path("apple-sign-in/", AppleRegisterView.as_view(), name="apple_sign_in"),
 ]

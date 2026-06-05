@@ -23,6 +23,8 @@ import Toast from 'react-native-toast-message';
 import { toastConfig } from '../../src/config/toast-config';
 import { useRouter } from 'expo-router';
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
+import GoogleIconButton from '../oauth-components/GoogleIconButton';
+import AppleButtonAuth from '../oauth-components/AppleButton';
 import FastImage from 'react-native-fast-image';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 
@@ -394,10 +396,17 @@ export default function RegisterView() {
                             <View style={styles.dividerLine} />
                         </View>
 
-                        <View style={{ gap: 16 }}>
-                            <GoogleButtonAuth page="register" />
-                            <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
-                        </View>
+                        {Platform.OS === 'ios' ? (
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <GoogleIconButton page="register" />
+                                <AppleButtonAuth page="register" />
+                            </View>
+                        ) : (
+                            <View style={{ gap: 16 }}>
+                                <GoogleButtonAuth page="register" />
+                                <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                            </View>
+                        )}
 
                         <View style={styles.footerContainer}>
                             <Text style={styles.footerText}>Already have an account?</Text>
