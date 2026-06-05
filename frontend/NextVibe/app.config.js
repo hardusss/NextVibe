@@ -154,7 +154,13 @@ export default {
             ],
             "./withMapboxMaven.js",
             "./withSolanaMWA.js",
-            "expo-apple-authentication"
+            "expo-apple-authentication",
+            [
+                "@react-native-google-signin/google-signin",
+                {
+                    iosUrlScheme: "com.googleusercontent.apps.603386649315-vp4revvrcgrcjme51ebuhbkbspl048l9"
+                }
+            ]
         ],
         experiments: {
             typedRoutes: true
