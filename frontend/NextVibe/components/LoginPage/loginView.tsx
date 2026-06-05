@@ -19,6 +19,8 @@ import { toastConfig } from '../../src/config/toast-config';
 import Login from '../../src/api/login';
 import { useRouter } from 'expo-router';
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
+import GoogleIconButton from '../oauth-components/GoogleIconButton';
+import AppleButtonAuth from '../oauth-components/AppleButton';
 import FastImage from 'react-native-fast-image';
 import { BackHandler } from 'react-native';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
@@ -184,10 +186,17 @@ export default function LoginView() {
                             <View style={styles.dividerLine} />
                         </View>
 
-                        <View style={{ gap: 16 }}>
-                            <GoogleButtonAuth page="login" />
-                            <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
-                        </View>
+                        {Platform.OS === 'ios' ? (
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <GoogleIconButton page="login" />
+                                <AppleButtonAuth page="login" />
+                            </View>
+                        ) : (
+                            <View style={{ gap: 16 }}>
+                                <GoogleButtonAuth page="login" />
+                                <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                            </View>
+                        )}
 
                         {/* Footer */}
                         <View style={styles.footerContainer}>
