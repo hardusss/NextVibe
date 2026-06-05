@@ -15,6 +15,7 @@ import {
     StyleSheet,
     Dimensions,
     InteractionManager,
+    Platform,
 } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -452,9 +453,11 @@ const ProfileView = () => {
 
                     {/* ── Action buttons ── */}
                     <View style={st.actionsRow}>
-                        <View style={{ flex: 1.2 }}>
-                            <ShareViaNFC handlePress={handleOpenModal} />
-                        </View>
+                        {Platform.OS !== 'ios' && (
+                            <View style={{ flex: 1.2 }}>
+                                <ShareViaNFC handlePress={handleOpenModal} />
+                            </View>
+                        )}
                         <View style={{ flex: 0.9 }}>
                             <InviteSecondaryButton handlePress={() => inviteSheetRef.current?.present()} />
                         </View>
