@@ -23,7 +23,8 @@ export default {
                 ITSAppUsesNonExemptEncryption: false,
                 NSLocationWhenInUseUsageDescription: "NextVibe needs your location to show you on the VibeMap and find nearby drops.",
                 NSLocationAlwaysAndWhenInUseUsageDescription: "NextVibe needs your location to notify you about Vibe Zones nearby."
-            }
+            },
+            associatedDomains: ["applinks:nextvibe.io"]
         },
         android: {
             versionCode: 4,
@@ -34,7 +35,7 @@ export default {
                 backgroundColor: "#0A0410"
             },
             notification: {
-                icon: "./assets/push-icon.png",  
+                icon: "./assets/push_icon.png",  
                 color: "#A855F7",                                   
                 androidMode: "default",
             },

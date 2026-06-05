@@ -59,35 +59,25 @@ Notifications.setNotificationHandler({
 const defaultFontFamily = 'Dank Mono';
 const boldFontFamily = 'Dank Mono Bold';
 
-// @ts-ignore
-const oldTextRender = Text.render;
-// @ts-ignore
-Text.render = function (...args) {
-    const origin = oldTextRender.call(this, ...args);
-    const style = StyleSheet.flatten(origin.props.style) || {};
-    const isBold = style.fontWeight === 'bold' ||
-        style.fontWeight === '600' ||
-        style.fontWeight === '700' ||
-        style.fontWeight === '800' ||
-        style.fontWeight === '900' ||
-        (typeof style.fontWeight === 'number' && style.fontWeight > 500);
-    return React.cloneElement(origin, {
-        style: [{ fontFamily: isBold ? boldFontFamily : defaultFontFamily }, origin.props.style],
+if (StyleSheet.setStyleAttributePreprocessor) {
+    StyleSheet.setStyleAttributePreprocessor('fontFamily', (fontFamily) => {
+        return fontFamily || defaultFontFamily;
     });
-};
 
-// @ts-ignore
-const oldTextInputRender = TextInput.render;
-// @ts-ignore
-TextInput.render = function (...args) {
-    const origin = oldTextInputRender.call(this, ...args);
-    const style = StyleSheet.flatten(origin.props.style) || {};
-    const isBold = style.fontWeight === 'bold' || (typeof style.fontWeight === 'number' && style.fontWeight > 500);
-    return React.cloneElement(origin, {
-        style: [{ fontFamily: isBold ? boldFontFamily : defaultFontFamily }, origin.props.style],
+    StyleSheet.setStyleAttributePreprocessor('fontWeight', (fontWeight) => {
+        const isBold = fontWeight === 'bold' ||
+            fontWeight === '600' ||
+            fontWeight === '700' ||
+            fontWeight === '800' ||
+            fontWeight === '900' ||
+            (typeof fontWeight === 'number' && fontWeight > 500);
+        
+        if (isBold) {
+            StyleSheet.setStyleAttributePreprocessor('fontFamily', () => boldFontFamily);
+        }
+        return fontWeight;
     });
-};
-
+}
 
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
