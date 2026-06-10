@@ -11,7 +11,8 @@ from .view_pac import (
     MintNftView, UserCollectionView, GetVibemapNFTsView, GetVibemapEventsView,
     LumaEventPreviewView, LumaEventVerifyView,
     EventRequestCreateView, EventRequestListView, EventRequestActionView, EventAttendeesView,
-    EventCheckinView, EventCheckinListView, UserEventConnectionsView, ClaimEventNftView, EventNFCConnectView
+    EventCheckinView, EventCheckinListView, UserEventConnectionsView, ClaimEventNftView, EventNFCConnectView,
+    EventAnalyticsView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -52,6 +53,7 @@ urlpatterns = [
     path("claim-event-cnft/<int:post_id>/", ClaimEventNftView.as_view(), name="claim_event_cnft"),
     path("user-event-connections/", UserEventConnectionsView.as_view(), name="user_event_connections"),
     path("event-nfc-connect/", EventNFCConnectView.as_view(), name="event_nfc_connect"),
+    path("event-analytics/<int:post_id>/", EventAnalyticsView.as_view(), name="event_analytics"),
 ]
 
 
