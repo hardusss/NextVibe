@@ -202,6 +202,13 @@ class Reputation(models.Model):
         related_name='reputation_entries',
         help_text="The event (post) where this interaction took place",
     )
+    h3_geo = models.CharField(
+        max_length=255,
+        default=None,
+        null=True, 
+        blank=True, 
+        help_text="H3 Geo index with max resolution for accuracy"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

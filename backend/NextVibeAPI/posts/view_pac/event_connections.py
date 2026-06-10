@@ -7,6 +7,7 @@ from user.models import User
 from django.db.models import Sum, Q
 from django.utils import timezone
 from datetime import timedelta
+import h3
 
 class UserEventConnectionsView(APIView):
     """
@@ -114,6 +115,16 @@ class EventNFCConnectView(APIView):
     def post(self, request):
         event_id = request.data.get('event_id')
         scanned_user_id = request.data.get('scanned_user_id')
+        latitude = request.data.get('latitude')
+        longitude = request.data.get('longitude')
+        
+        h3_geo_val = None
+        if latitude is not None and longitude is not None:
+            try:
+                # Use resolution 15 for max precision
+                h3_geo_val = h3.latlng_to_cell(float(latitude), float(longitude), res=15)
+            except Exception as e:
+                print(f"H3 calculation error: {e}")
 
         if not event_id or not scanned_user_id:
             return Response({"error": "event_id and scanned_user_id are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -162,7 +173,8 @@ class EventNFCConnectView(APIView):
             given_by=scanned_user,
             points=scanner_gains,
             is_checkin=False,
-            event=post
+            event=post,
+            h3_geo=h3_geo_val
         )
 
         Reputation.objects.create(
@@ -170,7 +182,8 @@ class EventNFCConnectView(APIView):
             given_by=request.user,
             points=scanned_gains,
             is_checkin=False,
-            event=post
+            event=post,
+            h3_geo=h3_geo_val
         )
 
         # Avatar URL for response
