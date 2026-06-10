@@ -1,5 +1,5 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
-import { useColorScheme, View, TouchableOpacity, Text, TextInput, StyleSheet, Linking } from "react-native";
+import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
@@ -71,7 +71,7 @@ if (StyleSheet.setStyleAttributePreprocessor) {
             fontWeight === '800' ||
             fontWeight === '900' ||
             (typeof fontWeight === 'number' && fontWeight > 500);
-        
+
         if (isBold) {
             StyleSheet.setStyleAttributePreprocessor('fontFamily', () => boldFontFamily);
         }
@@ -221,7 +221,7 @@ export default function Layout() {
         const { internal, external } = resolveNotificationUrl(data);
 
         if (external) {
-            Linking.openURL(external).catch(() => {});
+            Linking.openURL(external).catch(() => { });
             return;
         }
 
@@ -278,7 +278,7 @@ export default function Layout() {
                 const id = await storage.getItem('id');
                 if (id) setUserID(Number(id));
                 else setUserID(null);
-            } catch (e) {}
+            } catch (e) { }
         };
         loadUser();
     }, [segments]);
