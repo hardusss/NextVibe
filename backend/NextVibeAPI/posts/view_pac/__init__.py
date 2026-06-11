@@ -25,4 +25,6 @@ from .event_checkin import EventCheckinView, EventCheckinListView, ClaimEventNft
 from .event_connections import UserEventConnectionsView, EventNFCConnectView
 from .event_analytics import EventAnalyticsView, EventTopUsersView
 from .event_update import EventUpdateView
+from .event_taps import EventTapsView
+
 
