@@ -12,7 +12,7 @@ from .view_pac import (
     LumaEventPreviewView, LumaEventVerifyView,
     EventRequestCreateView, EventRequestListView, EventRequestActionView, EventAttendeesView,
     EventCheckinView, EventCheckinListView, UserEventConnectionsView, ClaimEventNftView, EventNFCConnectView,
-    EventAnalyticsView, EventTopUsersView
+    EventAnalyticsView, EventTopUsersView, EventUpdateView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -55,5 +55,6 @@ urlpatterns = [
     path("event-nfc-connect/", EventNFCConnectView.as_view(), name="event_nfc_connect"),
     path("event-analytics/<int:post_id>/", EventAnalyticsView.as_view(), name="event_analytics"),
     path("event-top-users/<int:post_id>/", EventTopUsersView.as_view(), name="event_top_users"),
+    path("event-update/<int:post_id>/", EventUpdateView.as_view(), name="event_update"),
 ]
 
