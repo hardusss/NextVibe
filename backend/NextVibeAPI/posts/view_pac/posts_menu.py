@@ -77,7 +77,8 @@ class PostMenuView(APIView):
                 "luma_event_verified": post.luma_event_verified,
                 "luma_event_start_time": post.luma_event_start_time,
                 "luma_event_end_time": post.luma_event_end_time,
-                "event_request_status": post.user_request[0].status if hasattr(post, 'user_request') and post.user_request else None
+                "event_request_status": post.user_request[0].status if hasattr(post, 'user_request') and post.user_request else None,
+                "total_supply": post.total_supply,
             }
             for post in posts_qs
         ]
