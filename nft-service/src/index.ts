@@ -82,7 +82,7 @@ new Elysia()
                 creators: [],
             },
         }).sendAndConfirm(umi, {
-            confirm: { commitment: "finalized" },
+            confirm: { commitment: "confirmed" },
         })
 
         /**
@@ -161,7 +161,7 @@ new Elysia()
                 creators: [],
             },
         }).sendAndConfirm(umi, {
-            confirm: { commitment: "finalized" },
+            confirm: { commitment: "confirmed" },
         });
 
         let assetId = null;
