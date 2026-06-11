@@ -23,4 +23,4 @@ from .luma_event import LumaEventPreviewView, LumaEventVerifyView
 from .event_requests import EventRequestCreateView, EventRequestListView, EventRequestActionView, EventAttendeesView
 from .event_checkin import EventCheckinView, EventCheckinListView, ClaimEventNftView
 from .event_connections import UserEventConnectionsView, EventNFCConnectView
-from .event_analytics import EventAnalyticsView
+from .event_analytics import EventAnalyticsView, EventTopUsersView
