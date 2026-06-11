@@ -49,10 +49,22 @@ class EventAnalyticsView(APIView):
             successful_claims = UserCollection.objects.filter(post=post, user_id__in=checked_in_users).count()
             cnft_claim_rate = round((successful_claims / total_checkins * 100), 2) if total_checkins > 0 else 0.0
 
-            # 6. Ecosystem Statistics (Wallet vs Web2 Auth Provider)
-            total_users = User.objects.count()
-            mwa_wallet_users = User.objects.filter(auth_provider='wallet').count()
-            web2_users = User.objects.exclude(auth_provider='wallet').count()
+            # 6. Ecosystem Statistics for accepted attendees (Wallet vs Web2 Auth Provider)
+            accepted_attendee_ids = EventRequest.objects.filter(
+                post=post,
+                status=EventRequest.Status.APPROVED
+            ).values_list('user_id', flat=True)
+
+            total_users = accepted_attendee_ids.count()
+            mwa_wallet_users = User.objects.filter(
+                user_id__in=accepted_attendee_ids,
+                auth_provider='wallet'
+            ).count()
+            web2_users = User.objects.filter(
+                user_id__in=accepted_attendee_ids
+            ).exclude(
+                auth_provider='wallet'
+            ).count()
             mwa_percentage = round((mwa_wallet_users / total_users * 100), 2) if total_users > 0 else 0.0
             web2_percentage = round((web2_users / total_users * 100), 2) if total_users > 0 else 0.0
 
