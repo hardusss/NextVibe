@@ -114,6 +114,7 @@ class Notification(models.Model):
         ("event_request", "Event Request"),
         ("event_request_status", "Event Request Status"),
         ("new_user", "New User Registered"),
+        ("event_announcement", "Event Announcement"),
     )
 
     sender = models.ForeignKey(
