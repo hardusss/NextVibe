@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import Post, EventRequest, EventCheckin, Reputation
-from django.db.models import Sum
+from django.db.models import Sum, Count
+from django.conf import settings
 
 class EventAnalyticsView(APIView):
     """
@@ -49,3 +50,47 @@ class EventAnalyticsView(APIView):
         }
 
         return Response(data, status=status.HTTP_200_OK)
+
+class EventTopUsersView(APIView):
+    """
+    GET /posts/event-top-users/<int:post_id>/
+    Returns top users at an event based on reputation and taps.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, post_id):
+        try:
+            post = Post.objects.get(id=post_id, is_luma_event=True)
+        except Post.DoesNotExist:
+            return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        top_users_qs = Reputation.objects.filter(
+            event=post
+        ).values(
+            'user__user_id',
+            'user__username',
+            'user__avatar',
+            'user__wallet_address'
+        ).annotate(
+            total_reputation=Sum('points'),
+            total_taps=Count('id')
+        ).order_by('-total_reputation', '-total_taps')
+
+        top_users = []
+        for item in top_users_qs:
+            avatar_path = item.get('user__avatar')
+            if avatar_path:
+                avatar_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{avatar_path}"
+            else:
+                avatar_url = None
+
+            top_users.append({
+                "user_id": item['user__user_id'],
+                "username": item['user__username'],
+                "wallet_address": item['user__wallet_address'],
+                "avatar": avatar_url,
+                "total_taps": item['total_taps'],
+                "total_reputation": item['total_reputation'] or 0
+            })
+
+        return Response(top_users, status=status.HTTP_200_OK)
