@@ -42,16 +42,25 @@ def trigger_push_and_cache(sender, instance, created, **kwargs):
 
         elif instance.notification_type == 'new_user':
             body_text = instance.text_preview
+
+        elif instance.notification_type == 'event_announcement':
+            body_text = instance.text_preview
             
         elif instance.notification_type == 'revived_transaction':
             body_text = "Check your wallet for more details."
 
         token = getattr(instance.recipient, 'expo_push_token', None)
         if token:
+            title = instance.text_preview
+            body = body_text
+            if instance.notification_type == 'event_announcement':
+                title = f"Announcement: {instance.post.about if instance.post and instance.post.about else 'Event'}"
+                body = instance.text_preview
+
             send(
                 token=token,
-                title=instance.text_preview, 
-                body=body_text,
+                title=title, 
+                body=body,
                 link="nextvibe://transactions" if instance.notification_type == 'revived_transaction' else "nextvibe://notifications"
             )
 
