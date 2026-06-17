@@ -17,6 +17,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
 import { BlurView } from "@react-native-community/blur";
 import PromoBanner from "@/components/Shared/PromoBanner";
+import { scrollFeedToTop } from "@/src/utils/feedScrollRef";
 import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -321,7 +322,13 @@ export default function Layout() {
 
     if (!fontsLoaded && !fontError) return null;
 
-    const goToTab = (tab: string) => router.navigate(tab as RelativePathString);
+    const goToTab = (tab: string) => {
+        if (currentPage === tab && tab === 'home') {
+            scrollFeedToTop();
+            return;
+        }
+        router.navigate(tab as RelativePathString);
+    };
     const showTabBar = ![...blacklist, "camera"].includes(currentPage);
 
     return (
