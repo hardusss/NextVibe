@@ -123,6 +123,7 @@ export default function PostDetailsScreen() {
     const [postAuthor, setPostAuthor] = useState<string | null>(null);
 
     const mintSheetRef = useRef<MintBottomSheetRef>(null);
+    const likingRef = useRef(false);
     const { address } = useWalletAddress();
     const { sendInstructions } = useTransaction();
 
@@ -169,11 +170,26 @@ export default function PostDetailsScreen() {
         });
     };
 
-    const toggleLike = useCallback(() => {
-        if (!post) return;
-        likePost(post.post_id);
+    const toggleLike = useCallback(async () => {
+        if (!post || likingRef.current) return;
+        likingRef.current = true;
+
+        const wasLiked = isLiked;
+
+        // Optimistic UI updates
         setIsLiked((p) => !p);
-        setLikeCount((p) => (isLiked ? p - 1 : p + 1));
+        setLikeCount((p) => (wasLiked ? p - 1 : p + 1));
+
+        try {
+            await likePost(post.post_id);
+        } catch (error) {
+            console.error("Error toggling like for post details", error);
+            // Revert state
+            setIsLiked(wasLiked);
+            setLikeCount((p) => (wasLiked ? p + 1 : p - 1));
+        } finally {
+            likingRef.current = false;
+        }
     }, [isLiked, post]);
 
     /**
