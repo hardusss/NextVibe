@@ -1,40 +1,36 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     StyleSheet,
     StatusBar,
-    Animated,
-    Easing,
     Dimensions,
     TouchableOpacity,
+    Text,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as Updates from "expo-updates";
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withTiming,
+    withRepeat,
+    withSequence,
+    Easing,
+    FadeIn,
+} from "react-native-reanimated";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
-// ── Design tokens ──────────────────────────────────────────────
-const C = {
-    bg: "#0A0410",
-    card: "rgba(22, 10, 42, 0.65)",
-    violet: "#6D28D9",
-    violetLight: "#8B5CF6",
-    violetMuted: "#4C1D95",
-    purple: "#A855F7",
-    fuchsia: "#D946EF",
-    line: "#2D1F52",
-    text: "#E8E0F5",
-    textSecondary: "#9C8FBB",
-    muted: "#4B3D72",
-    success: "#34D399",
-    successBg: "rgba(52, 211, 153, 0.12)",
-    glow: "rgba(168, 85, 247, 0.25)",
+const COLORS = {
+    bg: "#000000",
+    text: "#FFFFFF",
+    textMuted: "rgba(255, 255, 255, 0.45)",
+    border: "rgba(255, 255, 255, 0.15)",
+    accent: "#8B5CF6", // Violet
+    success: "#10B981", // Green
+    error: "#EF4444", // Red
 };
 
-const ORBIT_SIZE = 200;
-const DOT_SIZE = 8;
-
-// ── Helpers ────────────────────────────────────────────────────
 type UpdatePhase =
     | "checking"
     | "downloading"
@@ -43,256 +39,100 @@ type UpdatePhase =
     | "error";
 
 const phaseLabels: Record<UpdatePhase, string> = {
-    checking: "Checking for updates…",
-    downloading: "Downloading update…",
-    ready: "Update ready!",
-    "up-to-date": "You're up to date",
-    error: "Update check failed",
+    checking: "CHECKING FOR UPDATES",
+    downloading: "DOWNLOADING PATCH",
+    ready: "PATCH READY TO APPLY",
+    "up-to-date": "SYSTEM IS UP TO DATE",
+    error: "UPDATE CHECK FAILED",
 };
 
 const phaseSubLabels: Record<UpdatePhase, string> = {
-    checking: "Connecting to NextVibe servers",
-    downloading: "Pulling the latest micro-patch",
-    ready: "Tap the button below to apply",
-    "up-to-date": "No new updates available",
-    error: "Please try again later",
+    checking: "establishing handshakes with remote nodes…",
+    downloading: "fetching files from edge CDN assets…",
+    ready: "patch files verified. ready to execute hot-swap.",
+    "up-to-date": "no pending patches found on remote channels.",
+    error: "connection failure. bypassing system check.",
 };
 
-// ── Component ──────────────────────────────────────────────────
 export default function EASUpdateScreen() {
     const router = useRouter();
-
-    // ── State ──────────────────────────────────────────────────
     const [phase, setPhase] = useState<UpdatePhase>("checking");
 
-    // ── Animated values ────────────────────────────────────────
-    const fadeIn = useRef(new Animated.Value(0)).current;
-    const logoScale = useRef(new Animated.Value(0.85)).current;
-    const logoPulse = useRef(new Animated.Value(1)).current;
-    const orbit1 = useRef(new Animated.Value(0)).current;
-    const orbit2 = useRef(new Animated.Value(0)).current;
-    const progressWidth = useRef(new Animated.Value(0)).current;
-    const glowOpacity = useRef(new Animated.Value(0.3)).current;
-    const statusFade = useRef(new Animated.Value(0)).current;
-    const buttonSlide = useRef(new Animated.Value(40)).current;
-    const buttonOpacity = useRef(new Animated.Value(0)).current;
-    const particleAnims = useRef(
-        Array.from({ length: 6 }, () => ({
-            x: new Animated.Value(0),
-            y: new Animated.Value(0),
-            opacity: new Animated.Value(0),
-        }))
-    ).current;
+    // ── Reanimated values ────────────────────────────────────────
+    const scannerTranslateX = useSharedValue(-60);
+    const downloadProgress = useSharedValue(0);
+    const laserGlowOpacity = useSharedValue(0.4);
+    const ledOpacity = useSharedValue(0.3);
 
-    // Refs for cleanup
-    const pulseAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-    const orbitAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-    const glowAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-    const particleAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-
-    // ── Particle animation ─────────────────────────────────────
-    const startParticles = useCallback(() => {
-        const anims = particleAnims.map((p, i) => {
-            const angle = (Math.PI * 2 * i) / particleAnims.length;
-            const radius = 80 + Math.random() * 40;
-            return Animated.loop(
-                Animated.sequence([
-                    Animated.delay(i * 300),
-                    Animated.parallel([
-                        Animated.timing(p.opacity, {
-                            toValue: 0.6,
-                            duration: 800,
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(p.x, {
-                            toValue: Math.cos(angle) * radius,
-                            duration: 2000,
-                            easing: Easing.out(Easing.cubic),
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(p.y, {
-                            toValue: Math.sin(angle) * radius,
-                            duration: 2000,
-                            easing: Easing.out(Easing.cubic),
-                            useNativeDriver: true,
-                        }),
-                    ]),
-                    Animated.timing(p.opacity, {
-                        toValue: 0,
-                        duration: 600,
-                        useNativeDriver: true,
-                    }),
-                    Animated.parallel([
-                        Animated.timing(p.x, {
-                            toValue: 0,
-                            duration: 0,
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(p.y, {
-                            toValue: 0,
-                            duration: 0,
-                            useNativeDriver: true,
-                        }),
-                    ]),
-                ])
-            );
-        });
-
-        const composite = Animated.parallel(anims);
-        particleAnimRef.current = composite;
-        composite.start();
-    }, [particleAnims]);
-
-    // ── Continuous animations ──────────────────────────────────
+    // Continuous Laser / LED animations
     useEffect(() => {
-        // Entrance
-        Animated.parallel([
-            Animated.timing(fadeIn, {
-                toValue: 1,
-                duration: 600,
-                useNativeDriver: true,
-            }),
-            Animated.spring(logoScale, {
-                toValue: 1,
-                friction: 6,
-                tension: 80,
-                useNativeDriver: true,
-            }),
-            Animated.timing(statusFade, {
-                toValue: 1,
-                duration: 500,
-                delay: 300,
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-        // Logo pulse
-        const pulse = Animated.loop(
-            Animated.sequence([
-                Animated.timing(logoPulse, {
-                    toValue: 1.06,
-                    duration: 1400,
-                    easing: Easing.inOut(Easing.ease),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(logoPulse, {
-                    toValue: 1,
-                    duration: 1400,
-                    easing: Easing.inOut(Easing.ease),
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-        pulseAnimRef.current = pulse;
-        pulse.start();
-
-        // Orbits
-        const orbitAnim = Animated.parallel([
-            Animated.loop(
-                Animated.timing(orbit1, {
-                    toValue: 1,
-                    duration: 4000,
-                    easing: Easing.linear,
-                    useNativeDriver: true,
-                })
+        // Scanner animation (checking phase)
+        scannerTranslateX.value = withRepeat(
+            withSequence(
+                withTiming(160, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
+                withTiming(-60, { duration: 1500, easing: Easing.inOut(Easing.quad) })
             ),
-            Animated.loop(
-                Animated.timing(orbit2, {
-                    toValue: 1,
-                    duration: 5500,
-                    easing: Easing.linear,
-                    useNativeDriver: true,
-                })
-            ),
-        ]);
-        orbitAnimRef.current = orbitAnim;
-        orbitAnim.start();
-
-        // Glow pulse
-        const glow = Animated.loop(
-            Animated.sequence([
-                Animated.timing(glowOpacity, {
-                    toValue: 0.7,
-                    duration: 2000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(glowOpacity, {
-                    toValue: 0.3,
-                    duration: 2000,
-                    useNativeDriver: true,
-                }),
-            ])
+            -1,
+            false
         );
-        glowAnimRef.current = glow;
-        glow.start();
 
-        startParticles();
+        // LED pulse
+        ledOpacity.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+                withTiming(0.3, { duration: 800, easing: Easing.inOut(Easing.ease) })
+            ),
+            -1,
+            true
+        );
 
-        return () => {
-            pulseAnimRef.current?.stop();
-            orbitAnimRef.current?.stop();
-            glowAnimRef.current?.stop();
-            particleAnimRef.current?.stop();
-        };
+        // Laser glow pulse
+        laserGlowOpacity.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+                withTiming(0.4, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+            ),
+            -1,
+            true
+        );
     }, []);
 
-    // ── Update logic ───────────────────────────────────────────
+    // ── Update logic ─────────────────────────────────────────────
     useEffect(() => {
         let cancelled = false;
 
         const run = async () => {
             try {
-                const result = await Updates.checkForUpdateAsync();
+                await new Promise((resolve) => setTimeout(resolve, 1200));
 
+                const result = await Updates.checkForUpdateAsync();
                 if (cancelled) return;
 
                 if (result.isAvailable) {
                     setPhase("downloading");
-                    // Animate progress bar
-                    Animated.timing(progressWidth, {
-                        toValue: 1,
-                        duration: 3000,
-                        easing: Easing.out(Easing.cubic),
-                        useNativeDriver: false,
-                    }).start();
+
+                    downloadProgress.value = withTiming(1, {
+                        duration: 3500,
+                        easing: Easing.out(Easing.quad),
+                    });
 
                     await Updates.fetchUpdateAsync();
-
                     if (cancelled) return;
+
                     setPhase("ready");
-
-                    // Show button
-                    Animated.parallel([
-                        Animated.timing(buttonOpacity, {
-                            toValue: 1,
-                            duration: 400,
-                            useNativeDriver: true,
-                        }),
-                        Animated.spring(buttonSlide, {
-                            toValue: 0,
-                            friction: 7,
-                            tension: 60,
-                            useNativeDriver: true,
-                        }),
-                    ]).start();
                 } else {
-                    if (cancelled) return;
                     setPhase("up-to-date");
-
-                    // Auto-continue after 2s
                     setTimeout(() => {
                         if (!cancelled) router.replace("/splash");
-                    }, 2000);
+                    }, 2200);
                 }
             } catch (e) {
                 if (cancelled) return;
-                console.error("EAS Update error:", e);
+                console.error("EAS Update failed:", e);
                 setPhase("error");
-
-                // Auto-continue after 3s
                 setTimeout(() => {
                     if (!cancelled) router.replace("/splash");
-                }, 3000);
+                }, 2200);
             }
         };
 
@@ -302,22 +142,27 @@ export default function EASUpdateScreen() {
         };
     }, []);
 
-    // ── Derived animations ─────────────────────────────────────
-    const orbitRotation1 = orbit1.interpolate({
-        inputRange: [0, 1],
-        outputRange: ["0deg", "360deg"],
-    });
-    const orbitRotation2 = orbit2.interpolate({
-        inputRange: [0, 1],
-        outputRange: ["0deg", "-360deg"],
+    // ── Animated Styles ──────────────────────────────────────────
+    const rScannerStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: scannerTranslateX.value }],
+    }));
+
+    const rDownloadProgressStyle = useAnimatedStyle(() => ({
+        width: `${downloadProgress.value * 100}%`,
+    }));
+
+    const rLedStyle = useAnimatedStyle(() => {
+        const pulsePhase = phase === "checking" || phase === "downloading";
+        return {
+            opacity: pulsePhase ? ledOpacity.value : 1,
+        };
     });
 
-    const barWidthInterp = progressWidth.interpolate({
-        inputRange: [0, 1],
-        outputRange: ["0%", "100%"],
-    });
+    const rLaserStyle = useAnimatedStyle(() => ({
+        opacity: laserGlowOpacity.value,
+    }));
 
-    // ── Handlers ───────────────────────────────────────────────
+    // ── Handlers ─────────────────────────────────────────────────
     const handleApply = async () => {
         try {
             await Updates.reloadAsync();
@@ -330,446 +175,234 @@ export default function EASUpdateScreen() {
         router.replace("/splash");
     };
 
-    // ── Render helpers ─────────────────────────────────────────
-    const isLoading = phase === "checking" || phase === "downloading";
-    const showProgress = phase === "downloading";
-    const isDone = phase === "up-to-date" || phase === "error";
+    // Color helpers for active terminal states
+    const getLaserColor = () => {
+        if (phase === "up-to-date") return COLORS.success;
+        if (phase === "error") return COLORS.error;
+        return COLORS.accent;
+    };
 
     return (
         <View style={styles.root}>
-            <StatusBar backgroundColor={C.bg} barStyle="light-content" />
+            <StatusBar backgroundColor="#000000" barStyle="light-content" />
 
-            <Animated.View
-                style={[StyleSheet.absoluteFill, styles.center, { opacity: fadeIn }]}
-            >
-                {/* ─── Background glow ────────────────── */}
-                <Animated.View
-                    style={[
-                        styles.bgGlow,
-                        { opacity: glowOpacity },
-                    ]}
-                />
+            {/* Top HUD bar */}
+            <View style={styles.hudHeader}>
+                <Text style={styles.hudHeaderText}>NEXTVIBE // OTA_CORE_v1.0.4</Text>
+                <View style={styles.hudHeaderLine} />
+            </View>
 
-                {/* ─── Orbit ring 1 ───────────────────── */}
-                <Animated.View
-                    style={[
-                        styles.orbitRing,
-                        {
-                            width: ORBIT_SIZE,
-                            height: ORBIT_SIZE,
-                            borderRadius: ORBIT_SIZE / 2,
-                            transform: [{ rotate: orbitRotation1 }],
-                        },
-                    ]}
-                >
-                    <View style={[styles.orbitDot, { top: -DOT_SIZE / 2, alignSelf: "center" }]} />
-                </Animated.View>
-
-                {/* ─── Orbit ring 2 ───────────────────── */}
-                <Animated.View
-                    style={[
-                        styles.orbitRing2,
-                        {
-                            width: ORBIT_SIZE * 1.35,
-                            height: ORBIT_SIZE * 1.35,
-                            borderRadius: (ORBIT_SIZE * 1.35) / 2,
-                            transform: [{ rotate: orbitRotation2 }],
-                        },
-                    ]}
-                >
-                    <View style={[styles.orbitDot2, { top: -DOT_SIZE / 2 + 1, alignSelf: "center" }]} />
-                </Animated.View>
-
-                {/* ─── Floating particles ─────────────── */}
-                {particleAnims.map((p, i) => (
+            {/* Main Typographic Section */}
+            <View style={styles.mainContainer}>
+                {/* Minimal LED Status Indicator */}
+                <View style={styles.ledRow}>
                     <Animated.View
-                        key={`particle-${i}`}
                         style={[
-                            styles.particle,
-                            {
-                                opacity: p.opacity,
-                                transform: [
-                                    { translateX: p.x },
-                                    { translateY: p.y },
-                                ],
-                            },
+                            styles.led,
+                            { backgroundColor: getLaserColor() },
+                            rLedStyle,
                         ]}
                     />
-                ))}
+                    <Text style={[styles.ledText, { color: getLaserColor() }]}>
+                        {phase.toUpperCase()}
+                    </Text>
+                </View>
 
-                {/* ─── Logo ───────────────────────────── */}
-                <Animated.View
-                    style={[
-                        styles.logoContainer,
-                        {
-                            transform: [
-                                { scale: Animated.multiply(logoScale, logoPulse) },
-                            ],
-                        },
-                    ]}
-                >
-                    <Animated.Image
-                        source={require("@/assets/logo.png")}
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
-                </Animated.View>
+                {/* Term title & sub */}
+                <Animated.Text entering={FadeIn.duration(300)} style={styles.termTitle}>
+                    {phaseLabels[phase]}
+                </Animated.Text>
+                
+                <Text style={styles.termSub}>
+                    {phaseSubLabels[phase]}
+                </Text>
 
-                {/* ─── Status card ─────────────────────── */}
-                <Animated.View
-                    style={[styles.statusCard, { opacity: statusFade }]}
-                >
-                    {/* Phase icon */}
-                    <View style={styles.phaseIconRow}>
-                        <View
+                {/* laser line track / progress */}
+                <View style={styles.laserContainer}>
+                    {phase === "checking" && (
+                        <View style={styles.laserTrack}>
+                            <Animated.View style={[styles.laserScannerBar, rScannerStyle]} />
+                        </View>
+                    )}
+
+                    {phase === "downloading" && (
+                        <View style={styles.laserTrack}>
+                            <Animated.View style={[styles.laserFill, rDownloadProgressStyle]} />
+                        </View>
+                    )}
+
+                    {(phase === "ready" || phase === "up-to-date" || phase === "error") && (
+                        <Animated.View
                             style={[
-                                styles.phaseIndicator,
-                                isDone && phase === "up-to-date" && styles.phaseIndicatorSuccess,
-                                phase === "error" && styles.phaseIndicatorError,
+                                styles.laserStatic,
+                                { backgroundColor: getLaserColor() },
+                                rLaserStyle,
                             ]}
-                        >
-                            <Animated.Text style={styles.phaseIconText}>
-                                {phase === "checking"
-                                    ? "⟳"
-                                    : phase === "downloading"
-                                        ? "↓"
-                                        : phase === "ready"
-                                            ? "✦"
-                                            : phase === "up-to-date"
-                                                ? "✓"
-                                                : "✕"}
-                            </Animated.Text>
-                        </View>
-                    </View>
-
-                    {/* Status text */}
-                    <Animated.Text style={styles.statusTitle}>
-                        {phaseLabels[phase]}
-                    </Animated.Text>
-                    <Animated.Text style={styles.statusSub}>
-                        {phaseSubLabels[phase]}
-                    </Animated.Text>
-
-                    {/* ─── Progress bar ───────────────── */}
-                    {showProgress && (
-                        <View style={styles.progressContainer}>
-                            <View style={styles.progressTrack}>
-                                <Animated.View
-                                    style={[
-                                        styles.progressFill,
-                                        { width: barWidthInterp },
-                                    ]}
-                                >
-                                    <View style={styles.progressShimmer} />
-                                </Animated.View>
-                            </View>
-                        </View>
+                        />
                     )}
+                </View>
 
-                    {/* ─── Loading dots ───────────────── */}
-                    {isLoading && !showProgress && (
-                        <View style={styles.dotsRow}>
-                            {[0, 1, 2].map((i) => (
-                                <LoadingDot key={i} delay={i * 250} />
-                            ))}
-                        </View>
-                    )}
-                </Animated.View>
-
-                {/* ─── Apply button ────────────────────── */}
+                {/* Actions */}
                 {phase === "ready" && (
-                    <Animated.View
-                        style={[
-                            styles.buttonWrapper,
-                            {
-                                opacity: buttonOpacity,
-                                transform: [{ translateY: buttonSlide }],
-                            },
-                        ]}
-                    >
+                    <Animated.View entering={FadeIn.duration(350)} style={styles.btnWrapper}>
                         <TouchableOpacity
-                            style={styles.applyButton}
+                            style={styles.actionBtn}
                             onPress={handleApply}
-                            activeOpacity={0.85}
+                            activeOpacity={0.8}
                         >
-                            <Animated.Text style={styles.applyText}>
-                                Apply Update
-                            </Animated.Text>
+                            <Text style={styles.actionBtnText}>[ DEPLOY PATCH ]</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.skipButton}
+                            style={styles.skipBtn}
                             onPress={handleSkip}
-                            activeOpacity={0.7}
+                            activeOpacity={0.6}
                         >
-                            <Animated.Text style={styles.skipText}>
-                                Skip for now
-                            </Animated.Text>
+                            <Text style={styles.skipBtnText}>SKIP DEPLOYMENT</Text>
                         </TouchableOpacity>
                     </Animated.View>
                 )}
+            </View>
 
-                {/* ─── Version footer ─────────────────── */}
-                <Animated.Text style={[styles.versionText, { opacity: statusFade }]}>
-                    NextVibe · OTA Updates
-                </Animated.Text>
-            </Animated.View>
+            {/* Bottom HUD info */}
+            <View style={styles.hudFooter}>
+                <View style={styles.hudFooterLine} />
+                <View style={styles.hudFooterRow}>
+                    <Text style={styles.hudFooterText}>ENV: PRODUCTION</Text>
+                    <Text style={styles.hudFooterText}>SECURE CON: TRUE</Text>
+                </View>
+            </View>
         </View>
     );
 }
 
-// ── Loading dot sub-component ──────────────────────────────────
-function LoadingDot({ delay }: { delay: number }) {
-    const anim = useRef(new Animated.Value(0.3)).current;
-
-    useEffect(() => {
-        const loop = Animated.loop(
-            Animated.sequence([
-                Animated.delay(delay),
-                Animated.timing(anim, {
-                    toValue: 1,
-                    duration: 500,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(anim, {
-                    toValue: 0.3,
-                    duration: 500,
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-        loop.start();
-        return () => loop.stop();
-    }, []);
-
-    return (
-        <Animated.View
-            style={[
-                styles.dot,
-                { opacity: anim },
-            ]}
-        />
-    );
-}
-
-// ── Styles ─────────────────────────────────────────────────────
 const styles = StyleSheet.create({
     root: {
         flex: 1,
-        backgroundColor: C.bg,
+        backgroundColor: COLORS.bg,
+        paddingHorizontal: 32,
     },
-    center: {
-        alignItems: "center",
+    hudHeader: {
+        position: "absolute",
+        top: 60,
+        left: 32,
+        right: 32,
+    },
+    hudHeaderText: {
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        color: COLORS.textMuted,
+        letterSpacing: 2,
+    },
+    hudHeaderLine: {
+        height: 1,
+        backgroundColor: COLORS.border,
+        marginTop: 10,
+    },
+    mainContainer: {
+        flex: 1,
         justifyContent: "center",
+        alignItems: "flex-start",
     },
-
-    // Background glow
-    bgGlow: {
-        position: "absolute",
-        width: 320,
-        height: 320,
-        borderRadius: 160,
-        backgroundColor: C.glow,
-    },
-
-    // Orbit rings
-    orbitRing: {
-        position: "absolute",
-        borderWidth: 1,
-        borderColor: "rgba(139, 92, 246, 0.18)",
-        borderStyle: "dashed",
+    ledRow: {
+        flexDirection: "row",
         alignItems: "center",
+        gap: 8,
+        marginBottom: 20,
     },
-    orbitRing2: {
-        position: "absolute",
-        borderWidth: 1,
-        borderColor: "rgba(217, 70, 239, 0.12)",
-        borderStyle: "dashed",
-        alignItems: "center",
-    },
-    orbitDot: {
-        position: "absolute",
-        width: DOT_SIZE,
-        height: DOT_SIZE,
-        borderRadius: DOT_SIZE / 2,
-        backgroundColor: C.violetLight,
-        shadowColor: C.violetLight,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 6,
-        elevation: 6,
-    },
-    orbitDot2: {
-        position: "absolute",
-        width: DOT_SIZE - 2,
-        height: DOT_SIZE - 2,
-        borderRadius: (DOT_SIZE - 2) / 2,
-        backgroundColor: C.fuchsia,
-        shadowColor: C.fuchsia,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.7,
-        shadowRadius: 5,
-        elevation: 5,
-    },
-
-    // Particles
-    particle: {
-        position: "absolute",
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: C.purple,
-    },
-
-    // Logo
-    logoContainer: {
-        width: 88,
-        height: 88,
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 48,
-    },
-    logo: {
-        width: 72,
-        height: 72,
-    },
-
-    // Status card
-    statusCard: {
-        width: SCREEN_W * 0.82,
-        backgroundColor: C.card,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: "rgba(139, 92, 246, 0.15)",
-        paddingVertical: 32,
-        paddingHorizontal: 24,
-        alignItems: "center",
-    },
-
-    // Phase indicator
-    phaseIconRow: {
-        marginBottom: 16,
-    },
-    phaseIndicator: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: "rgba(109, 40, 217, 0.2)",
-        borderWidth: 1,
-        borderColor: "rgba(139, 92, 246, 0.3)",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    phaseIndicatorSuccess: {
-        backgroundColor: C.successBg,
-        borderColor: "rgba(52, 211, 153, 0.3)",
-    },
-    phaseIndicatorError: {
-        backgroundColor: "rgba(239, 68, 68, 0.12)",
-        borderColor: "rgba(239, 68, 68, 0.3)",
-    },
-    phaseIconText: {
-        fontSize: 20,
-        color: C.text,
-    },
-
-    // Status texts
-    statusTitle: {
-        fontSize: 18,
-        fontWeight: "600",
-        color: C.text,
-        marginBottom: 6,
-        textAlign: "center",
-    },
-    statusSub: {
-        fontSize: 13,
-        color: C.textSecondary,
-        textAlign: "center",
-        letterSpacing: 0.3,
-    },
-
-    // Progress bar
-    progressContainer: {
-        width: "100%",
-        marginTop: 24,
-    },
-    progressTrack: {
-        width: "100%",
+    led: {
+        width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: "rgba(75, 61, 114, 0.4)",
+    },
+    ledText: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: 10,
+        letterSpacing: 2,
+    },
+    termTitle: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: 22,
+        color: COLORS.text,
+        letterSpacing: 1,
+        marginBottom: 8,
+    },
+    termSub: {
+        fontFamily: "Dank Mono",
+        fontSize: 13,
+        color: COLORS.textMuted,
+        lineHeight: 18,
+    },
+    laserContainer: {
+        width: "100%",
+        height: 2,
+        marginTop: 32,
+    },
+    laserTrack: {
+        width: 200,
+        height: 2,
+        backgroundColor: "rgba(255, 255, 255, 0.05)",
         overflow: "hidden",
     },
-    progressFill: {
+    laserScannerBar: {
+        width: 60,
         height: "100%",
-        borderRadius: 3,
-        backgroundColor: C.violetLight,
-        overflow: "hidden",
+        backgroundColor: COLORS.accent,
     },
-    progressShimmer: {
-        position: "absolute",
-        right: 0,
-        top: 0,
-        bottom: 0,
-        width: 30,
-        backgroundColor: "rgba(255, 255, 255, 0.2)",
-        borderRadius: 3,
+    laserFill: {
+        height: "100%",
+        backgroundColor: COLORS.accent,
     },
-
-    // Loading dots
-    dotsRow: {
-        flexDirection: "row",
-        marginTop: 20,
-        gap: 8,
+    laserStatic: {
+        width: 200,
+        height: 2,
     },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: C.violetLight,
+    btnWrapper: {
+        marginTop: 48,
+        gap: 16,
     },
-
-    // Buttons
-    buttonWrapper: {
-        marginTop: 28,
-        alignItems: "center",
-        gap: 12,
-    },
-    applyButton: {
-        width: SCREEN_W * 0.7,
-        height: 52,
-        borderRadius: 26,
-        alignItems: "center",
+    actionBtn: {
+        height: 44,
         justifyContent: "center",
-        backgroundColor: C.violet,
-        shadowColor: C.purple,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    applyText: {
-        fontSize: 16,
-        fontWeight: "700",
-        color: "#fff",
-        letterSpacing: 0.8,
-    },
-    skipButton: {
-        paddingVertical: 8,
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: COLORS.text,
         paddingHorizontal: 24,
     },
-    skipText: {
+    actionBtnText: {
+        fontFamily: "Dank Mono Bold",
         fontSize: 13,
-        color: C.muted,
-        letterSpacing: 0.5,
+        color: COLORS.text,
+        letterSpacing: 1.5,
     },
-
-    // Footer
-    versionText: {
-        position: "absolute",
-        bottom: 40,
+    skipBtn: {
+        paddingVertical: 6,
+    },
+    skipBtnText: {
+        fontFamily: "Dank Mono",
         fontSize: 11,
-        color: C.muted,
+        color: COLORS.textMuted,
+        letterSpacing: 1.5,
+    },
+    hudFooter: {
+        position: "absolute",
+        bottom: 50,
+        left: 32,
+        right: 32,
+    },
+    hudFooterLine: {
+        height: 1,
+        backgroundColor: COLORS.border,
+        marginBottom: 10,
+    },
+    hudFooterRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+    },
+    hudFooterText: {
+        fontFamily: "Dank Mono",
+        fontSize: 10,
+        color: COLORS.textMuted,
         letterSpacing: 1.5,
     },
 });
