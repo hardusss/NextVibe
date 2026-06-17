@@ -44,6 +44,7 @@ import {
 } from "lucide-react-native";
 import PhotoModal from "@/components/PostDetails/PhotoModal";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
+import { setFeedFlatListRef } from "@/src/utils/feedScrollRef";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -831,14 +832,12 @@ export default function MainPage() {
     const [toastSuccess, setToastSuccess] = useState<boolean>(false);
     const isFetchingRef = useRef(false);
     const flatListRef = useRef<FlatList>(null);
+    const pendingScrollRestore = useRef(hasCached && cachedScrollOffset > 0);
 
+    // Sync the module-level ref so external callers (tab bar) can scroll-to-top
     useEffect(() => {
-        if (hasCached && cachedScrollOffset > 0) {
-            setTimeout(() => {
-                flatListRef.current?.scrollToOffset({ offset: cachedScrollOffset, animated: false });
-            }, 50);
-        }
-    }, [hasCached]);
+        return () => { setFeedFlatListRef(null); };
+    }, []);
 
     // Mint 
     const mintSheetRef = useRef<MintBottomSheetRef>(null);
@@ -1118,10 +1117,20 @@ export default function MainPage() {
             />
 
             <FlatList
-                ref={flatListRef}
+                ref={(ref) => {
+                    (flatListRef as any).current = ref;
+                    setFeedFlatListRef(ref);
+                }}
                 data={dataToRender}
                 onScroll={(e) => {
                     cachedScrollOffset = Math.max(0, e.nativeEvent.contentOffset.y);
+                }}
+                onContentSizeChange={(_w, contentHeight) => {
+                    // Restore scroll once enough content has been rendered
+                    if (pendingScrollRestore.current && contentHeight >= cachedScrollOffset) {
+                        pendingScrollRestore.current = false;
+                        flatListRef.current?.scrollToOffset({ offset: cachedScrollOffset, animated: false });
+                    }
                 }}
                 scrollEventThrottle={16}
                 onScrollBeginDrag={() => setActiveDropdownId(null)}
@@ -1138,11 +1147,11 @@ export default function MainPage() {
                     </View>
                 )}
                 onEndReachedThreshold={0.5}
-                initialNumToRender={2}
-                maxToRenderPerBatch={1}
-                windowSize={2}
+                initialNumToRender={pendingScrollRestore.current ? 10 : 2}
+                maxToRenderPerBatch={pendingScrollRestore.current ? 5 : 1}
+                windowSize={pendingScrollRestore.current ? 5 : 2}
                 updateCellsBatchingPeriod={100}
-                removeClippedSubviews={true}
+                removeClippedSubviews={!pendingScrollRestore.current}
                 showsVerticalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChangedRef.current}
                 viewabilityConfig={viewabilityConfig}
