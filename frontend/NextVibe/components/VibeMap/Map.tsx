@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapboxGL from '@rnmapbox/maps';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import { getVibemapNfts, VibemapNftItem } from '@/src/api/get.vibemap.nfts';
@@ -31,8 +31,6 @@ const EMPTY_GEOJSON = {
     features: [] as any[],
 };
 
-// ─── Static NFT marker ───────────────────────────────────────────────────────
-
 function NftMarker({ item, onPress }: { item: VibemapNftItem; onPress: () => void }) {
     return (
         <Pressable onPress={onPress} style={styles.markerHitArea}>
@@ -48,7 +46,33 @@ function NftMarker({ item, onPress }: { item: VibemapNftItem; onPress: () => voi
                         <Image source={{ uri: item.owner_avatar }} style={styles.nftAvatar} resizeMode="cover" />
                     ) : (
                         <View style={styles.nftAvatarFallback}>
-                            <Camera size={10} color="rgba(188,187,253,0.8)" />
+                            <Camera size={10} color="rgba(168,85,247,0.8)" />
+                        </View>
+                    )}
+                </View>
+            </View>
+        </Pressable>
+    );
+}
+
+// ─── Static Regular Post marker ──────────────────────────────────────────────
+
+function PostMarker({ item, onPress }: { item: VibemapNftItem; onPress: () => void }) {
+    return (
+        <Pressable onPress={onPress} style={styles.markerHitArea}>
+            <View style={styles.postCard}>
+                {item.image ? (
+                    <Image source={{ uri: item.image }} style={styles.postCardImage} resizeMode="cover" />
+                ) : (
+                    <View style={styles.postCardFallback} />
+                )}
+                <View style={styles.postCardBorder} />
+                <View style={styles.postAvatarRing}>
+                    {item.owner_avatar ? (
+                        <Image source={{ uri: item.owner_avatar }} style={styles.postAvatar} resizeMode="cover" />
+                    ) : (
+                        <View style={styles.postAvatarFallback}>
+                            <Camera size={8} color="rgba(255,255,255,0.7)" />
                         </View>
                     )}
                 </View>
@@ -122,6 +146,7 @@ function ClusterBubble({ count, color, onPress }: { count: number; color: string
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MapScreen() {
+    const router = useRouter();
     const [showMap, setShowMap] = useState(false);
     const [userCoords, setUserCoords] = useState<[number, number]>([24.03, 49.84]);
     const [nfts, setNfts] = useState<VibemapNftItem[]>([]);
@@ -179,6 +204,15 @@ export default function MapScreen() {
         }, [loadNfts, loadEvents])
     );
 
+    const handlePostPress = useCallback((postId: number) => {
+        router.push({
+            pathname: "/post-details",
+            params: {
+                id: postId,
+            }
+        });
+    }, [router]);
+
     // ── Derived data ──────────────────────────────────────────────────────────
 
     const showPosts  = filterMode === 'posts';
@@ -204,7 +238,7 @@ export default function MapScreen() {
             features: mapNfts.map(item => ({
                 type: 'Feature' as const,
                 geometry: { type: 'Point' as const, coordinates: [item.lng as number, item.lat as number] },
-                properties: { post_id: item.post_id },
+                properties: { post_id: item.post_id, is_nft: item.is_nft },
             })),
         };
     }, [mapNfts, showPosts]);
@@ -373,12 +407,12 @@ export default function MapScreen() {
                             <MapboxGL.CircleLayer
                                 id="vibemap-nfts-halo"
                                 style={{
-                                    circleColor: '#BCBBFD',
+                                    circleColor: ['case', ['==', ['get', 'is_nft'], true], '#BCBBFD', 'rgba(255, 255, 255, 0.4)'],
                                     circleOpacity: ['interpolate', ['linear'], ['zoom'], 0, 0.5, 4, 0.3, 8, 0.1, 12, 0.0],
-                                    circleRadius: ['interpolate', ['linear'], ['zoom'], 0, 20, 4, 12, 8, 6, 12, 3],
+                                    circleRadius: ['case', ['==', ['get', 'is_nft'], true], ['interpolate', ['linear'], ['zoom'], 0, 24, 4, 14, 8, 7, 12, 3.5], ['interpolate', ['linear'], ['zoom'], 0, 18, 4, 10, 8, 5, 12, 2.5]],
                                     circleBlur: 1.2,
                                     circleStrokeWidth: 1,
-                                    circleStrokeColor: 'rgba(82,5,159,0.85)',
+                                    circleStrokeColor: ['case', ['==', ['get', 'is_nft'], true], 'rgba(82,5,159,0.85)', 'rgba(120, 120, 120, 0.4)'],
                                     circleStrokeOpacity: ['interpolate', ['linear'], ['zoom'], 0, 0.7, 8, 0.2, 12, 0.0],
                                 }}
                             />
@@ -443,15 +477,19 @@ export default function MapScreen() {
                             </MapboxGL.MarkerView>
                         ))}
 
-                        {/* ── NFT single markers ── */}
+                        {/* ── Post single markers ── */}
                         {showPosts && nftClusters.singles.map(item => (
                             <MapboxGL.MarkerView
-                                key={`nft-${item.post_id}`}
+                                key={`post-${item.post_id}`}
                                 coordinate={[item.lng as number, item.lat as number]}
                                 anchor={{ x: 0.5, y: 0.5 }}
                                 allowOverlap={false}
                             >
-                                <NftMarker item={item} onPress={() => {}} />
+                                {item.is_nft ? (
+                                    <NftMarker item={item} onPress={() => handlePostPress(item.post_id)} />
+                                ) : (
+                                    <PostMarker item={item} onPress={() => handlePostPress(item.post_id)} />
+                                )}
                             </MapboxGL.MarkerView>
                         ))}
 
@@ -741,53 +779,106 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     nftCard: {
-        width: 52,
-        height: 72,
-        borderRadius: 13,
+        width: 56,
+        height: 78,
+        borderRadius: 14,
         overflow: 'hidden',
-        backgroundColor: 'rgba(82,5,159,0.2)',
+        backgroundColor: 'rgba(168,85,247,0.15)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     nftCardImage: {
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
-        borderRadius: 13,
+        borderRadius: 14,
     },
     nftCardFallback: {
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(82,5,159,0.25)',
+        backgroundColor: 'rgba(168,85,247,0.25)',
     },
     nftCardBorder: {
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
-        borderRadius: 13,
-        borderWidth: 1.5,
-        borderColor: 'rgba(188,187,253,0.35)',
+        borderRadius: 14,
+        borderWidth: 2,
+        borderColor: '#a855f7',
     },
     nftAvatarRing: {
         position: 'absolute',
         bottom: -8,
-        width: 26,
-        height: 26,
-        borderRadius: 13,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(0,0,0,0.8)',
         borderWidth: 2,
-        borderColor: '#A855F7',
+        borderColor: '#a855f7',
         alignItems: 'center',
         justifyContent: 'center',
     },
     nftAvatar: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
     },
     nftAvatarFallback: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: 'rgba(188,187,253,0.15)',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: 'rgba(168,85,247,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // ── Regular Post marker styles ──────────────────────────────────────────
+    postCard: {
+        width: 42,
+        height: 58,
+        borderRadius: 10,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    postCardImage: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        borderRadius: 10,
+    },
+    postCardFallback: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    },
+    postCardBorder: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
+    },
+    postAvatarRing: {
+        position: 'absolute',
+        bottom: -6,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        borderWidth: 1.5,
+        borderColor: '#888888',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    postAvatar: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+    },
+    postAvatarFallback: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255,255,255,0.1)',
         alignItems: 'center',
         justifyContent: 'center',
     },
