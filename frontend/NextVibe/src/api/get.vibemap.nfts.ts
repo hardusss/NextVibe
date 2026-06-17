@@ -7,6 +7,7 @@ export type VibemapNftItem = {
   lng: number | null;
   image: string | null;
   owner_avatar: string | null;
+  is_nft: boolean;
 };
 
 export async function getVibemapNfts(): Promise<VibemapNftItem[]> {
