@@ -5,7 +5,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import GoogleSignIn from '@/src/api/google.sign.in';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
-import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import InviteCodeSheet from './InviteCodeSheet';
 
 function usernameFromEmail(email: string): string {
