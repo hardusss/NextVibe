@@ -15,6 +15,7 @@ import {
     StyleSheet,
     Dimensions,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import FastImage from 'react-native-fast-image';
@@ -226,6 +227,7 @@ const UserProfileView = () => {
     };
 
     const handleSubscribe = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         followUser(+id);
         setUserData(prev => ({
             ...prev,

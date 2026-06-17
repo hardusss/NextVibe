@@ -1,5 +1,6 @@
 import { TouchableOpacity, Animated, StyleSheet, Text } from "react-native";
 import { useEffect, useRef } from "react";
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { Sparkles, CheckCircle, Lock } from "lucide-react-native";
 
@@ -30,6 +31,12 @@ const ButtonCollect = ({ onPress, state = "collect", supplyLabel }: ButtonCollec
         );
         animation.start();
         return () => animation.stop();
+    }, [state]);
+ 
+    useEffect(() => {
+        if (state === "claimed") {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
     }, [state]);
 
     const translateX = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 200] });

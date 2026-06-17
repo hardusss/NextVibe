@@ -26,6 +26,14 @@ import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
+import { Pressable } from 'react-native';
+import { MOTION } from '@/constants/motion';
 
 const chain = 'solana:mainnet';
 const endpoint = 'https://api.nextvibe.io/api/v1/wallets/rpc/';
@@ -136,6 +144,75 @@ const APP_TABS = [
     { name: "camera", IconOutline: BadgePlus, IconFilled: BadgePlus },
     { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
 ];
+
+const TabButton = ({
+    tab,
+    isActive,
+    theme,
+    activeBgColor,
+    iconColor,
+    imageProfile,
+    userID,
+    onPress,
+    styles,
+}: {
+    tab: typeof APP_TABS[number];
+    isActive: boolean;
+    theme: string | null | undefined;
+    activeBgColor: string;
+    iconColor: string;
+    imageProfile: string | null;
+    userID: number | null;
+    onPress: () => void;
+    styles: any;
+}) => {
+    const scale = useSharedValue(1);
+    const animStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+    }));
+    const Icon = isActive ? tab.IconFilled : tab.IconOutline;
+
+    return (
+        <Pressable
+            onPress={onPress}
+            onPressIn={() => { scale.value = withSpring(MOTION.press.scale, MOTION.spring.snappy); }}
+            onPressOut={() => { scale.value = withSpring(1, MOTION.spring.snappy); }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+            <Animated.View style={animStyle}>
+                {tab.name === "profile" && userID ? (
+                    <View style={styles.iconContainerProfile}>
+                        <FastImage
+                            source={{
+                                uri: imageProfile || DEFAULT_AVATAR,
+                                priority: FastImage.priority.high,
+                            }}
+                            style={[
+                                styles.avatar,
+                                {
+                                    borderWidth: isActive ? 1 : 0,
+                                    backgroundColor: theme === "dark" ? "#2a2a2a" : "#e0e0e0",
+                                },
+                            ]}
+                        />
+                    </View>
+                ) : (
+                    <View
+                        style={[
+                            styles.iconContainer,
+                            {
+                                backgroundColor: isActive ? activeBgColor : "transparent",
+                                borderColor: isActive ? "rgba(255,255,255,0.2)" : "transparent",
+                            },
+                        ]}
+                    >
+                        <Icon size={24} color={iconColor} strokeWidth={isActive ? 2.5 : 1.8} />
+                    </View>
+                )}
+            </Animated.View>
+        </Pressable>
+    );
+};
 
 export default function Layout() {
     const [fontsLoaded, fontError] = useFonts({
@@ -323,6 +400,7 @@ export default function Layout() {
     if (!fontsLoaded && !fontError) return null;
 
     const goToTab = (tab: string) => {
+        Haptics.selectionAsync();
         if (currentPage === tab && tab === 'home') {
             scrollFeedToTop();
             return;
@@ -387,42 +465,20 @@ export default function Layout() {
                                                     const iconColor = isActive
                                                         ? (theme === "dark" ? "#FFFFFF" : "#000000")
                                                         : (theme === "dark" ? "rgb(144, 141, 141)" : "rgb(0,0,0)");
-                                                    const Icon = isActive ? tab.IconFilled : tab.IconOutline;
 
                                                     return (
-                                                        <TouchableOpacity
+                                                        <TabButton
                                                             key={tab.name}
+                                                            tab={tab}
+                                                            isActive={isActive}
+                                                            theme={theme}
+                                                            activeBgColor={activeBgColor}
+                                                            iconColor={iconColor}
+                                                            imageProfile={imageProfile}
+                                                            userID={userID}
                                                             onPress={() => goToTab(tab.name)}
-                                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                        >
-                                                            {tab.name === "profile" && userID ? (
-                                                                <View style={styles.iconContainerProfile}>
-                                                                    <FastImage
-                                                                        source={{
-                                                                            uri: imageProfile || DEFAULT_AVATAR,
-                                                                            priority: FastImage.priority.high,
-                                                                        }}
-                                                                        style={[
-                                                                            styles.avatar,
-                                                                            {
-                                                                                borderWidth: isActive ? 1 : 0,
-                                                                                backgroundColor: theme === "dark" ? "#2a2a2a" : "#e0e0e0"
-                                                                            }
-                                                                        ]}
-                                                                    />
-                                                                </View>
-                                                            ) : (
-                                                                <View style={[
-                                                                    styles.iconContainer,
-                                                                    {
-                                                                        backgroundColor: isActive ? activeBgColor : "transparent",
-                                                                        borderColor: isActive ? "rgba(255,255,255,0.2)" : "transparent"
-                                                                    }
-                                                                ]}>
-                                                                    <Icon size={24} color={iconColor} strokeWidth={isActive ? 2.5 : 1.8} />
-                                                                </View>
-                                                            )}
-                                                        </TouchableOpacity>
+                                                            styles={styles}
+                                                        />
                                                     );
                                                 })}
                                             </View>
