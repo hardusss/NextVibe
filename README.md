@@ -1,221 +1,208 @@
-# 🚀 NextVibe: The IRL-to-Web3 Social Graph
+<p align="center">
+  <img src="https://nextvibe.io/logo.png" alt="NextVibe" width="120" />
+</p>
 
-**Built for the Solana Mobile Hackathon 2026**
+<h1 align="center">NextVibe</h1>
 
-![NextVibe Banner](https://nextvibe.io/logo.png)
+<p align="center">
+  <strong>The IRL Networking Layer on Solana</strong>
+</p>
 
-### 🔗 Important Links
-* **🎥 Demo Video:** https://youtu.be/BZwYKiNW9kI?si=RCM8IiwMReNVF5wF
-* **📊 Pitch Deck:** https://drive.google.com/file/d/1gOSasFNecBx6WxJhF90kDOcvYDxhwWtR/view?usp=drive_link
-* **🎥📊 Video Pitch:** https://youtu.be/1EpUWRV9mZY
-* **📱 Download APK:** https://media.nextvibe.io/NextVibe.apk
-* **🔗 Site:** https://nextvibe.io
+<p align="center">
+  <a href="https://nextvibe.io">Website</a> •
+  <a href="https://media.nextvibe.io/NextVibe.apk">Download APK</a> •
+  <a href="https://x.com/NextVibeWeb3">Twitter</a>
+</p>
 
-> 🚨 **Solana Mobile Judges Update (Post-Submission Grind):** We didn't stop building after March 10th. NextVibe is now in closed beta! 
-> Download our latest release and use the exclusive judge code **`SEEKER`** to bypass the waitlist and claim your OG cNFT Avatar!
+---
 
-## 🔥 The Asymmetric Advantage: Making the Solana Seeker Superior
+NextVibe is a mobile-first IRL networking protocol built on Solana. It turns physical-world interactions — NFC taps, event check-ins, and real-life meetups — into an on-chain social graph backed by compressed NFTs, reputation scores, and verifiable proof of presence.
 
-QR codes are dead. We built a custom **Cross-Platform APDU NFC Module** that transforms any Android device (like the Solana Seeker or Saga) into an active Web3 emitter. 
+> **Closed Beta is Live.** Download the latest build and use the invite code **`SEEKER`** to bypass the waitlist and claim your OG cNFT Avatar.
 
-**Here is the killer hook:** Apple strictly locks down their NFC hardware. An iPhone cannot act as a host. But with NextVibe, a **Solana Seeker can actively push a profile, cNFT, or Solana Pay transaction directly to any iPhone or Android phone** with a single physical tap. The iPhone can receive it instantly without even having the app installed, but it cannot do the reverse. 
+## Why NextVibe Exists
 
-*We just made the Solana Mobile device the most powerful Web3 networking tool in the room.*
+Existing Web3 social tools fail at the physical layer. LinkedIn is Web2. POAPs are passive. QR codes are dead. There is no protocol-level standard for proving "I met this person IRL" and translating that into on-chain reputation.
 
-* 🍏 **Bypassing Apple Wallet:** Our custom APDU logic cleanly bypasses the aggressive Apple Wallet pop-ups on iOS. A tap triggers the native Phantom/Solflare wallet instantly via universal links.
-* 🛡️ **Hardware-Level Proof of Presence:** You can't fake a physical tap. This ensures every interaction on NextVibe happens strictly In-Real-Life.
+NextVibe solves this by making the **smartphone the networking primitive** — specifically crypto-native phones like the Solana Seeker that have NFC hardware access unrestricted by iOS limitations.
 
-### 🎥 Live Demo: Cross-Platform NFC Transaction
-*Watch how seamlessly a Solana phone pushes data to another device using our APDU module.*
+## Core Primitives
 
-https://github.com/user-attachments/assets/4c6867ce-055c-4259-b840-75a5ff21657e
+### 📳 NFC Tap-to-Connect
+A custom **Cross-Platform APDU NFC Module** transforms any Android device into an active Web3 emitter. One physical tap shares your profile, triggers a Solana Pay transaction, or initiates an event check-in. Apple locks down HCE — a Solana Seeker can push data to any iPhone, but not the reverse. This makes the Seeker the most powerful Web3 networking device in the room.
 
-## ❌ The Problem
-Web3 social apps today are plagued by friction. For a mobile user, saving content or interacting with creators requires deep blockchain knowledge, seed phrases, and constant transaction signing. Furthermore, existing apps completely ignore the physical world (IRL) — your real-life connections don't translate into your digital social graph.
+### 🗺️ VibeMap
+A Mapbox-powered interactive map (with globe/3D terrain modes) that plots every post, cNFT drop, and live event geospatially. Filter by posts or events, see clustering at low zoom, and discover what's happening around you in real-time.
 
-## ✅ The Solution
-NextVibe is a mobile-first Web3 social network that makes blockchain invisible but keeps the true ownership. We turn digital content and IRL physical interactions into gasless collectibles on Solana, designed specifically for the next generation of crypto-phones like the Seeker.
+### 🎫 Events & Check-ins
+Create events via Luma integration, manage attendee requests with approve/reject flows, and run NFC-based check-ins at the door. Check-ins feed directly into the reputation system and generate on-chain proof of attendance.
 
-## 🔥 Key Features
-* **📱 IRL Connections (NFC Tap-to-Connect):** Blur the line between the physical and digital worlds. Share your Web3 profile and social graph simply by tapping your phones together.
-* **🤝 Tap-to-Pay (NFC Token Transfers):** Go beyond profile sharing. Bring crypto into the physical world by sending SOL or SPL tokens to another user IRL with a single NFC tap.
-* **⚡ Zero-Friction UX (Gasless Minting):** Users can collect posts as cNFTs in one click. Our ElysiaJS backend acts as the fee payer, completely abstracting away gas fees for the end-user.
-* **💸 Smart Creator Monetization (95/5 Split):** Built-in on-chain revenue sharing. When a user collects a paid post, the transaction automatically splits the SOL: 95% directly to the creator's wallet, and 5% to the platform.
-* **🔒 Mobile-First Onboarding:** Seamless integration with Solana Mobile Wallet Adapter (MWA). Tested and fully functional with Solflare.
+### 💎 Gasless cNFT Minting
+Every post can be minted as a compressed NFT — limited to 50 editions — without the creator signing a single transaction. The backend acts as the fee payer. Collectors pay in SOL with an automatic 95/5 creator/platform revenue split.
 
-## 📈 Traction & The IRL Pivot
-NextVibe is live and actively validating our hypotheses. We currently have **115 active beta users**. 
+### ⭐ On-Chain Reputation
+Every NFC tap, event check-in, and interaction generates reputation points tracked with H3 geo-indexing. Your reputation score is a verifiable proof of your IRL networking activity, tied to specific locations and events.
 
-*Note on our journey:* Before our recent pivot, we successfully scaled to over 300+ posts. However, to fully commit to our new "IRL-first" vision for the Solana Mobile ecosystem, we made the tough but necessary decision to pivot away from our initial AI-centric approach. We archived legacy content to focus strictly on authentic, physical-world interactions.
+### 💳 Embedded Wallet
+Full in-app wallet experience: token dashboard, send/receive, swap, NFC deposits, and complete transaction history — all powered by a real-time Helius-backed transaction indexer.
 
-## 🛠️ What We Built During the Hackathon
-We used this hackathon to completely overhaul NextVibe and maximize the capabilities of crypto-native mobile devices:
+## Architecture
 
-* **📸 Authentic Camera-Only Posts:** To ensure real-world authenticity, posts can now only be created using the in-app camera in real-time (limited to 1 photo per post). No camera roll uploads, no fake vibes.
-* **💎 Gasless cNFT Minting & Monetization:** Creators can instantly mint their posts as cNFTs absolutely for free—without even signing a transaction. They set a price, and followers can collect these limited-edition drops (strictly capped at 50 editions per post) directly from the feed.
-* **📳 NFC-Powered IRL Interactions:** We shipped "Tap-to-Pay" for seamless token transfers and "Tap-to-Connect" for instant profile sharing in the physical world.
-* **🎨 Complete UI/UX Redesign:** A fresh, minimalist interface optimized for a zero-friction mobile Web3 experience.
-* **🛡️ Advanced Content Moderation:** Deployed a brand-new, robust automated moderation engine to ensure a clean and safe community feed.
-
-## 👥 Team
-* **Danylo Klepar - Founder & Lead Developer:** Full-stack architecture, Solana integrations, and microservices backend.
-* **Mark Vendysh - Co-Founder:** Business development, finance, and operations.
-
-## 🛠 Tech Stack
-* **Frontend:** React Native, Expo, Solana MWA, LazorKit
-* **Backend & Microservices:** Django REST Framework, Go, FastAPI, ElysiaJS
-* **Blockchain Layer:** Umi, Bubblegum
-* **Database & Infrastructure:** MySQL, Redis, Cloudflare R2, Cloudinary
-
-
-## 🚀 How to Run (Local Setup)
-
-### 1. Prerequisites
-Ensure you have the following installed and running:
-* **Python 3.11**
-* **Node.js & Bun**
-* **Go**
-* **MySQL & Redis** (running locally or via Docker)
-* **Android Device / Emulator** (with Solflare installed)
-
-### 2. Environment Variables
-You will need to set up `.env` files for each microservice. *Note: Never commit your actual keys to the repository.*
-
-**Data Layer (Django)** Location: `backend/NextVibeAPI/.env` & `backend/NextVibeAPI/setting/.env`
-```env
-ALLOWED_HOSTS=
-CORS_ALLOWED_ORIGINS=
-SECRET_KEY=
-DJANGO_ENV=
-
-# Database
-DB_NAME=
-DB_USER=
-DB_PASSWORD=
-DB_HOST=
-DB_PORT=
-
-# Cloudinary
-CLOUD_NAME=
-API_KEY=
-API_SECRET=
-
-# Cloudflare R2
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-BUCKET_NAME=
-ENDPOINT_URL=
-CUSTOM_DOMAIN=
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        MOBILE APP                               │
+│        React Native · Expo · Solana MWA · LazorKit              │
+│    NFC Module · Mapbox · Vision Camera · Zustand                │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+   ┌─────────────┐ ┌──────────┐ ┌────────────────┐
+   │  Django API  │ │  Socket  │ │  Moderation    │
+   │  (REST)      │ │  Service │ │  Service       │
+   │  Celery +    │ │ FastAPI  │ │  Go + OpenAI   │
+   │  Redis       │ │ WebSocket│ │                │
+   └──────┬──────┘ └────┬─────┘ └────────────────┘
+          │              │
+          ▼              ▼
+   ┌─────────────────────────────┐
+   │         MySQL + Redis       │
+   └──────────┬──────────────────┘
+              │
+     ┌────────┴────────┐
+     ▼                 ▼
+┌──────────┐    ┌─────────────┐
+│ NFT      │    │ TX Indexer  │
+│ Service  │    │ Bun+Elysia  │
+│ Bun+Umi  │    │ Helius+     │
+│ Bubblegum│    │ BullMQ      │
+└──────────┘    └─────────────┘
+              │
+              ▼
+     ┌────────────────┐
+     │  Solana        │
+     │  (Devnet)      │
+     │  Merkle Trees  │
+     │  cNFTs         │
+     └────────────────┘
 ```
 
-**Frontend (React Native / Expo)** Location: `frontend/NextVibe/.env`
-```env
-EXPO_PUBLIC_NEXTVIBE_PUBKEY=
-```
+## Tech Stack
 
-**AI Moderation Service (Go)** Location: `moderation_service/.env`
-```env
-PORT=
-OPENAI_API_KEY=
-```
+| Layer | Technologies |
+|-------|-------------|
+| **Mobile** | React Native 0.79, Expo 53, TypeScript, Zustand, Reanimated |
+| **Solana Integration** | MWA, LazorKit, @solana/web3.js, SPL Token |
+| **NFC** | Custom APDU module (Expo Native Module), react-native-nfc-manager |
+| **Maps** | Mapbox GL (globe + 3D terrain), H3 geo-indexing |
+| **API** | Django 4.2, Django REST Framework, Celery, Redis |
+| **Real-time** | FastAPI WebSockets |
+| **NFT Minting** | ElysiaJS (Bun), Metaplex Umi, Bubblegum (cNFTs) |
+| **TX Indexer** | ElysiaJS (Bun), BullMQ, Helius Enhanced API + Webhooks |
+| **Content Moderation** | Go HTTP service, OpenAI Moderation API |
+| **Storage** | MySQL, Cloudflare R2, Cloudinary |
+| **Auth** | JWT, Google OAuth, Apple Sign-In, Wallet Sign-In (ed25519), 2FA (TOTP) |
 
-**NFT Minting Service (ElysiaJS / Bun)** Location: `nft-service/.env`
-```env
-SOLANA_PRIVATE_KEY=
-COLLECTION_ADDRESS=
-MERKLE_TREE_ADDRESS=
-HELIUS_RPC_URL=
-```
+## Microservices
 
-**Socket Service (FastAPI)** Location: `socket_service/.env`
-```env
-# Database
-DB_NAME=
-DB_USER=
-DB_PASSWORD=
-DB_HOST=
-DB_PORT=
+| Service | Path | Runtime | Port | Purpose |
+|---------|------|---------|------|---------|
+| **Data API** | `backend/` | Python (Django) | 8000 | REST API, auth, posts, events, reputation, user management |
+| **Socket Service** | `socket_service/` | Python (FastAPI) | 8001 | Real-time chat, presence, notifications via WebSocket |
+| **NFT Service** | `nft-service/` | Bun (ElysiaJS) | 3000 | Gasless cNFT minting via Metaplex Bubblegum |
+| **TX Indexer** | `tx-indexer/` | Bun (ElysiaJS) | 3001 | Wallet transaction indexing via Helius webhooks + BullMQ |
+| **Moderation** | `moderation_service/` | Go | 8080 | AI-powered text + image content moderation |
+| **Mobile App** | `frontend/NextVibe/` | React Native (Expo) | — | The user-facing application |
 
-# Cloudflare R2
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-BUCKET_NAME=
-ENDPOINT_URL=
-CUSTOM_DOMAIN=
+## Local Development
 
-# JWT Auth
-JWT_SECRET_KEY=
-JWT_ALGORITHM=
+### Prerequisites
 
-# Settings
-ENVIRONMENT=
-LOG_LEVEL=
-CORS_ORIGINS_PROD=
-```
+- Python 3.11+, Node.js 18+, Bun 1.1+, Go 1.21+
+- MySQL 8.0+, Redis 7+
+- Android device with Solflare installed (or emulator)
 
-### 3. Start the Services
+### Environment Setup
 
-**1. Data Layer & Background Tasks (Django + Celery)**
-Ensure Redis is running before starting Celery.
+Each service requires its own `.env` file. See the table below for locations:
+
+| Service | `.env` Location |
+|---------|----------------|
+| Django API | `backend/NextVibeAPI/.env` and `backend/NextVibeAPI/setting/.env` |
+| Frontend | `frontend/NextVibe/.env` |
+| Moderation | `moderation_service/.env` |
+| NFT Service | `nft-service/.env` |
+| Socket Service | `socket_service/.env` |
+| TX Indexer | `tx-indexer/.env` (see `tx-indexer/.env.example`) |
+
+### Start Services
+
 ```bash
-# Setup Python environment and run Django
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+# 1. Django API + Celery
+cd backend && python -m venv .venv && source .venv/bin/activate
 pip install -r modules.txt
-cd NextVibeAPI
-python manage.py migrate
-python manage.py runserver
+cd NextVibeAPI && python manage.py migrate && python manage.py runserver
+# (new terminal) celery -A NextVibeAPI worker -l info
+# (new terminal) celery -A NextVibeAPI beat -l info
 
-# In a new terminal (with venv activated), start Celery Worker:
-celery -A NextVibeAPI worker -l info
+# 2. Moderation Service
+cd moderation_service && go build -o moderator_bin . && ./moderator_bin
 
-# In another terminal, start Celery Beat:
-celery -A NextVibeAPI beat -l info
-```
-**2. AI Moderation Service (Go)**
-```bash
-cd moderation_service
-go build -o moderator_bin .
-./moderator_bin
-```
+# 3. NFT Service
+cd nft-service && bun install && bun run dev
 
-**3. NFT Minting Service (ElysiaJS)**
-```bash
-cd nft-service
-bun install
-bun run dev
+# 4. TX Indexer
+cd tx-indexer && bun install && bun run dev
+
+# 5. Socket Service
+cd socket_service && uvicorn main:app --reload
+
+# 6. Mobile App
+cd frontend/NextVibe && npm install && npx expo start
+# Press 'a' for Android emulator or scan QR with Expo Go
 ```
 
-**4. Socket Service (FastAPI)**
-```bash
-cd backend
-source .venv/bin/activate
-cd ..
-cd socket_service
-uvicorn main:app --reload
-```
+## Key Features Summary
 
-**5. Mobile App (Expo)**
-```bash
-cd frontend/NextVibe
-npm install
-npx expo start
-```
-*Press `a` to run on the Android emulator, or scan the QR code with Expo Go on a physical device.*
+| Feature | Description |
+|---------|-------------|
+| **NFC Tap-to-Connect** | Share profiles & social graph with a physical phone tap |
+| **NFC Tap-to-Pay** | Send SOL/SPL tokens IRL with one tap |
+| **NFC Event Check-in** | Verify event attendance via NFC at the door |
+| **VibeMap** | Globe/3D map view of all posts, NFTs, and live events |
+| **Camera-Only Posts** | Real-time camera capture only — no gallery uploads, no fakes |
+| **Gasless cNFT Minting** | Zero-cost minting for creators, 50-edition limited drops |
+| **Creator Monetization** | Automatic 95/5 SOL split on paid collections |
+| **Reputation System** | On-chain rep from taps, check-ins, and interactions (H3 geo-indexed) |
+| **Luma Events** | Create, manage, and promote IRL events with attendee management |
+| **Embedded Wallet** | Dashboard, send, swap, deposit, full tx history |
+| **Real-time Chat** | WebSocket-powered messaging with media support |
+| **AI Moderation** | Automated content screening via OpenAI (text + image) |
+| **OG Avatars** | Limited-edition cNFT avatars for early adopters (25 max) |
+| **Multi-Auth** | Email, Google, Apple, Wallet (ed25519 signature), 2FA |
+| **Push Notifications** | Expo push notifications for likes, comments, follows, events |
 
-## ℹ️ Hackathon Info
-* **Track:** Consumer / Social Web3
-* **Network:** Solana Devnet
+## Links
 
-## 📞 Contact & Links
-* **Website:** [nextvibe.io](https://nextvibe.io)
-* **Project X (Twitter):** [@NextVibeWeb3](https://x.com/NextVibeWeb3)
-* **Founder X (Twitter):** [@DanKlepar](https://x.com/DanKlepar)
-* **Founder Telegram:** [@danylo_nv](https://t.me/danylo_nv)
-* **Founder Email:** [dklepar29@gmail.com](mailto:dklepar29@gmail.com)
+| | |
+|---|---|
+| 🌐 **Website** | [nextvibe.io](https://nextvibe.io) |
+| 📱 **Download** | [APK](https://media.nextvibe.io/NextVibe.apk) |
+| 🎥 **Demo** | [YouTube](https://youtu.be/BZwYKiNW9kI?si=RCM8IiwMReNVF5wF) |
+| 📊 **Pitch Deck** | [Google Drive](https://drive.google.com/file/d/1gOSasFNecBx6WxJhF90kDOcvYDxhwWtR/view?usp=drive_link) |
+| 🎥 **Video Pitch** | [YouTube](https://youtu.be/1EpUWRV9mZY) |
+| 𝕏 **Project** | [@NextVibeWeb3](https://x.com/NextVibeWeb3) |
+| 𝕏 **Founder** | [@DanKlepar](https://x.com/DanKlepar) |
+| ✉️ **Email** | [dklepar29@gmail.com](mailto:dklepar29@gmail.com) |
+| 💬 **Telegram** | [@danylo_nv](https://t.me/danylo_nv) |
 
-## 📄 License
+## Team
+
+- **Danylo Klepar** — Founder & Lead Developer. Full-stack architecture, Solana integrations, microservices backend.
+- **Mark Vendysh** — Co-Founder. Business development, finance, operations.
+
+## License
+
 **All Rights Reserved.**
 
-This project and its source code are proprietary. You may view the code for educational and hackathon evaluation purposes. However, you are **strictly prohibited** from copying, modifying, distributing, selling, or using this project (or any of its parts) as a template for your own projects, whether for free or for commercial purposes, without explicit written permission from the author.
+This project and its source code are proprietary. You may view the code for educational and evaluation purposes. You are **strictly prohibited** from copying, modifying, distributing, selling, or using this project (or any of its parts) as a template for your own projects without explicit written permission from the author.
