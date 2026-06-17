@@ -61,21 +61,11 @@ const boldFontFamily = 'Dank Mono Bold';
 
 if (StyleSheet.setStyleAttributePreprocessor) {
     StyleSheet.setStyleAttributePreprocessor('fontFamily', (fontFamily) => {
-        return fontFamily || defaultFontFamily;
-    });
-
-    StyleSheet.setStyleAttributePreprocessor('fontWeight', (fontWeight) => {
-        const isBold = fontWeight === 'bold' ||
-            fontWeight === '600' ||
-            fontWeight === '700' ||
-            fontWeight === '800' ||
-            fontWeight === '900' ||
-            (typeof fontWeight === 'number' && fontWeight > 500);
-
-        if (isBold) {
-            StyleSheet.setStyleAttributePreprocessor('fontFamily', () => boldFontFamily);
-        }
-        return fontWeight;
+        // Only apply the default custom font when no fontFamily is explicitly set.
+        // Icon fonts (MaterialIcons, Ionicons, lucide, etc.) set their own fontFamily
+        // and must NOT be overridden — otherwise icons render as garbled text.
+        if (!fontFamily) return defaultFontFamily;
+        return fontFamily;
     });
 }
 
