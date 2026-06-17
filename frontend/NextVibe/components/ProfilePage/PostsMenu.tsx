@@ -53,14 +53,13 @@ interface PostGalleryProps {
 }
 
 // ── Module-level cache to survive tab-switch remounts ──
-let cachedPosts: Post[] | null = null;
-let cachedUserID: number | null = null;
-let postsHasFetched = false;
+// Keyed by profile user id so own-profile and other-profile caches don't collide
+const postsCache = new Map<number, Post[]>();
+const fetchedProfiles = new Set<number>();
 
 export const clearPostsCache = () => {
-    cachedPosts = null;
-    cachedUserID = null;
-    postsHasFetched = false;
+    postsCache.clear();
+    fetchedProfiles.clear();
 };
 
 function ModerationDot({ delay }: { delay: number }) {
@@ -103,11 +102,12 @@ function ModerationDot({ delay }: { delay: number }) {
 }
 
 const PostGallery = ({ id, previous }: PostGalleryProps) => {
-    const [posts, setPosts] = useState<Post[]>(cachedPosts ?? []);
-    const [loading, setLoading] = useState(!cachedPosts);
+    const cached = postsCache.get(id) ?? null;
+    const [posts, setPosts] = useState<Post[]>(cached ?? []);
+    const [loading, setLoading] = useState(!cached);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    const indexRef = useRef(cachedPosts ? cachedPosts.length : 0);
+    const indexRef = useRef(cached ? cached.length : 0);
     const [userID, setUserID] = useState<number | null>(null);
 
     const [popupVisible, setPopupVisible] = useState(false);
@@ -164,8 +164,8 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                     result = filteredNewPosts;
                 }
 
-                // Update module-level cache
-                cachedPosts = result;
+                // Update per-profile cache
+                postsCache.set(id, result);
                 return result;
             });
 
@@ -180,14 +180,13 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
 
     // Load once on mount — don't re-fetch on every tab focus
     useEffect(() => {
-        if (postsHasFetched && cachedPosts) return;
-        postsHasFetched = true;
+        if (fetchedProfiles.has(id) && postsCache.has(id)) return;
+        fetchedProfiles.add(id);
         indexRef.current = 0;
         getId().then((fetchedUserID) => {
-            cachedUserID = fetchedUserID;
             fetchPosts(false, fetchedUserID);
         }).catch(() => {
-            postsHasFetched = false;
+            fetchedProfiles.delete(id);
         });
     }, []);
 
