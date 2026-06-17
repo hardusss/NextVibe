@@ -16,7 +16,7 @@ class GetVibemapNFTsView(APIView):
 
     def get(self, request) -> Response:
         posts = (
-            Post.objects.filter(is_nft=True, h3_geo__isnull=False)
+            Post.objects.filter(h3_geo__isnull=False)
             .exclude(h3_geo="")
             .exclude(is_hide=True)
             .exclude(moderation_status="denied")
@@ -63,6 +63,7 @@ class GetVibemapNFTsView(APIView):
                     "lng": (coords[1] if coords else None),
                     "image": post_image_url(post),
                     "owner_avatar": owner_avatar_url(post),
+                    "is_nft": post.is_nft,
                 }
             )
 
