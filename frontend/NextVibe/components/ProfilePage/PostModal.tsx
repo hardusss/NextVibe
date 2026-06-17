@@ -9,7 +9,6 @@ import {
     Animated,
     ScrollView,
     Pressable,
-    Image,
     Linking,
 } from "react-native";
 import FastImage from "react-native-fast-image";
@@ -29,7 +28,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
 import { requestToAttend } from "@/src/api/event.requests";
-import { Alert } from 'react-native';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import VerifyBadge from "../VerifyBadge";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
