@@ -45,6 +45,9 @@ import {
 import PhotoModal from "@/components/PostDetails/PhotoModal";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 import { setFeedFlatListRef } from "@/src/utils/feedScrollRef";
+import * as Haptics from 'expo-haptics';
+import { ShimmerSkeleton } from '@/components/Shared/motion';
+import EmptyState from '@/components/Shared/EmptyState';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -314,37 +317,21 @@ const resolveCollectState = (post: Post): CollectState | null => {
 
 const PostSkeleton = memo(() => {
     const colorScheme = useColorScheme();
-    const theme = colorScheme === "dark" ? darkTheme : lightTheme;
+    const isDark = colorScheme === "dark";
+    const theme = isDark ? darkTheme : lightTheme;
     const styles = getStyles(theme);
-    const animatedValue = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(animatedValue, { toValue: 1, duration: 1000, useNativeDriver: false }),
-                Animated.timing(animatedValue, { toValue: 0, duration: 1000, useNativeDriver: false }),
-            ])
-        ).start();
-    }, []);
-
-    const animatedStyle = {
-        backgroundColor: animatedValue.interpolate({
-            inputRange: [0, 1],
-            outputRange: [theme.skeletonBackground, theme.skeletonHighlight],
-        }),
-    };
 
     return (
         <View style={styles.skeletonContainer}>
             <View style={styles.skeletonHeader}>
-                <Animated.View style={[styles.skeletonAvatar, animatedStyle]} />
+                <ShimmerSkeleton width={40} height={40} borderRadius={20} isDark={isDark} />
                 <View style={styles.skeletonInfo}>
-                    <Animated.View style={[styles.skeletonUsername, animatedStyle]} />
-                    <Animated.View style={[styles.skeletonLocation, animatedStyle]} />
+                    <ShimmerSkeleton width={120} height={14} borderRadius={4} isDark={isDark} style={{ marginBottom: 6 }} />
+                    <ShimmerSkeleton width={80} height={10} borderRadius={3} isDark={isDark} />
                 </View>
             </View>
-            <Animated.View style={[styles.mediaPlaceholder, animatedStyle]} />
-            <Animated.View style={[styles.skeletonContent, animatedStyle]} />
+            <ShimmerSkeleton width="100%" height={250} borderRadius={12} isDark={isDark} style={{ marginBottom: 12 }} />
+            <ShimmerSkeleton width="90%" height={16} borderRadius={4} isDark={isDark} />
         </View>
     );
 });
@@ -384,6 +371,7 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
         tapCount.current += 1;
         if (tapTimer.current) clearTimeout(tapTimer.current);
         if (tapCount.current === 2) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             animateHeart();
             if (!isLiked) onLike(postId);
             tapCount.current = 0;
@@ -438,7 +426,7 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
                             style={[styles.fullMedia, dynamicHeight ? { height: dynamicHeight } : {}]}
                             source={{ uri: hd }}
                             resizeMode={ResizeMode.COVER}
-                            isLooping isMuted={isMuted} shouldPlay={isVisible}
+                            isLooping isMuted={isMuted} shouldPlay={isVisible && !showPreview}
                             onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                         />
                     )}
@@ -1024,7 +1012,7 @@ export default function MainPage() {
         setPhotoModalVisible(true);
     }, []);
 
-    const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 70, minimumViewTime: 100 }).current;
+    const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 70, minimumViewTime: 300 }).current;
 
     const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: any[] }) => {
         if (viewableItems.length > 0) {
@@ -1140,18 +1128,19 @@ export default function MainPage() {
                 onEndReached={() => {
                     if (!loading && !loadingMore && hasMore && !isFetchingRef.current) fetchPosts(true);
                 }}
-                ListEmptyComponent={(
-                    <View style={styles.card}>
-                        <Text style={styles.cardText}>🎉 No more posts for now</Text>
-                        <Text style={styles.cardSub}>Check back later for new vibes!</Text>
-                    </View>
-                )}
+                ListEmptyComponent={
+                    <EmptyState
+                        title="No more posts for now"
+                        subtitle="Check back later for new vibes!"
+                        animation="error"
+                    />
+                }
                 onEndReachedThreshold={0.5}
-                initialNumToRender={pendingScrollRestore.current ? 10 : 2}
-                maxToRenderPerBatch={pendingScrollRestore.current ? 5 : 1}
-                windowSize={pendingScrollRestore.current ? 5 : 2}
-                updateCellsBatchingPeriod={100}
-                removeClippedSubviews={!pendingScrollRestore.current}
+                initialNumToRender={pendingScrollRestore.current ? 10 : 3}
+                maxToRenderPerBatch={pendingScrollRestore.current ? 5 : 3}
+                windowSize={pendingScrollRestore.current ? 5 : 5}
+                updateCellsBatchingPeriod={50}
+                removeClippedSubviews={Platform.OS === 'android'}
                 showsVerticalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChangedRef.current}
                 viewabilityConfig={viewabilityConfig}

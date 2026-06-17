@@ -15,6 +15,8 @@ import {
   StatusBar
 } from 'react-native';
 import { ArrowLeft, X, Camera, Send } from 'lucide-react-native';
+import FastImage from 'react-native-fast-image';
+import EmptyState from '../Shared/EmptyState';
 import * as ImagePicker from 'expo-image-picker';
 import ChatBubble from './ChatBubble';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -243,54 +245,12 @@ export default function ChatScreen() {
     }
   }, [userIdState, id]);
 
-  const EmptyChat = () => (
-    <View style={styles.emptyContainer}>
-      {userDetailsLoading ? (
-        <ActivityIndicator color="#00CED1" />
-      ) : (
-        <View style={styles.userInfoColumn}>
-          <View style={styles.avatarSection}>
-            <Image 
-              source={{ 
-                uri: userDetails?.avatar 
-                  ? `${userDetails.avatar}` 
-                  : `https://media.nextvibe.io/images/default.png`
-              }} 
-              style={styles.profileImage} 
-            />
-            <View style={{flexDirection: "row", "alignItems": "center"}}>
-                <Text style={[styles.username, {color: isDark ?  "white" : "black" }]}>{userDetails?.username}</Text>
-                {userDetails?.official ? (
-                    <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={24}/>
-                ) : null}
-            </View>
-          </View>
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{userDetails?.readers_count || 0}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{userDetails?.post_count || 0}</Text>
-              <Text style={styles.statLabel}>Posts</Text>
-            </View>
-          </View>
-          <Text style={styles.joinDate}>
-            Joined {new Date(userDetails?.created_at || '').toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            })}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
+
 
   return (
     <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'android' ? 60 : 0}
       style={styles.container}
     >
       <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
@@ -312,7 +272,7 @@ export default function ChatScreen() {
               params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}`} 
             })}
           >
-            <Image 
+            <FastImage 
               source={{ 
                 uri: userDetails?.avatar 
                   ? `${userDetails.avatar}` 
@@ -334,7 +294,11 @@ export default function ChatScreen() {
         {loading && messages.length === 0 ? (
           <ActivityIndicator style={styles.loading} color="#00CED1" />
         ) : messages.length === 0 ? (
-          <EmptyChat />
+          <EmptyState
+            title="Start messaging!"
+            subtitle={`Send a friendly hello to ${userDetails?.username || ''}`}
+            animation="code"
+          />
         ) : (
           <FlatList
             ref={flatListRef}

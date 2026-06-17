@@ -24,6 +24,13 @@ import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
 import FastImage from "react-native-fast-image";
 import { Star } from "lucide-react-native";
+import AnimatedReanimated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+    withSpring,
+} from 'react-native-reanimated';
+import { FadeIn } from '@/components/Shared/motion';
 import getUserDetail from "@/src/api/user.detail";
 import { storage } from '@/src/utils/storage';
 import formatNumber from "@/src/utils/formatNumber";
@@ -170,10 +177,10 @@ const ProfileView = () => {
         });
     }, []);
 
-    const postsOpacity = useRef(new Animated.Value(1)).current;
-    const postsTranslate = useRef(new Animated.Value(0)).current;
-    const cnftsOpacity = useRef(new Animated.Value(0)).current;
-    const cnftsTranslate = useRef(new Animated.Value(40)).current;
+    const postsOpacity = useSharedValue(1);
+    const postsTranslate = useSharedValue(0);
+    const cnftsOpacity = useSharedValue(0);
+    const cnftsTranslate = useSharedValue(40);
     const prevTabRef = useRef<Tab>("Posts");
 
     const colorScheme = useColorScheme();
@@ -186,18 +193,24 @@ const ProfileView = () => {
         if (from === to) return;
         prevTabRef.current = to;
         const goingRight = to === "cNFTs";
-        const outOpacity = goingRight ? postsOpacity : cnftsOpacity;
-        const outTranslate = goingRight ? postsTranslate : cnftsTranslate;
-        const inOpacity = goingRight ? cnftsOpacity : postsOpacity;
-        const inTranslate = goingRight ? cnftsTranslate : postsTranslate;
-        inTranslate.setValue(goingRight ? 40 : -40);
-        inOpacity.setValue(0);
-        Animated.parallel([
-            Animated.timing(outOpacity, { toValue: 0, duration: 160, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-            Animated.timing(outTranslate, { toValue: goingRight ? -40 : 40, duration: 160, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-            Animated.timing(inOpacity, { toValue: 1, duration: 220, delay: 80, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-            Animated.timing(inTranslate, { toValue: 0, duration: 220, delay: 80, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        ]).start();
+
+        if (goingRight) {
+            postsOpacity.value = withTiming(0, { duration: 160 });
+            postsTranslate.value = withTiming(-40, { duration: 160 });
+
+            cnftsTranslate.value = 40;
+            cnftsOpacity.value = 0;
+            cnftsOpacity.value = withTiming(1, { duration: 220 });
+            cnftsTranslate.value = withSpring(0, { damping: 15, stiffness: 100 });
+        } else {
+            cnftsOpacity.value = withTiming(0, { duration: 160 });
+            cnftsTranslate.value = withTiming(40, { duration: 160 });
+
+            postsTranslate.value = -40;
+            postsOpacity.value = 0;
+            postsOpacity.value = withTiming(1, { duration: 220 });
+            postsTranslate.value = withSpring(0, { damping: 15, stiffness: 100 });
+        }
     };
 
     const handleTabPress = (tab: Tab) => {
@@ -206,6 +219,16 @@ const ProfileView = () => {
         animateTabSwitch(tab);
         setActiveTab(tab);
     };
+
+    const postsAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: postsOpacity.value,
+        transform: [{ translateX: postsTranslate.value }],
+    }));
+
+    const cnftsAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: cnftsOpacity.value,
+        transform: [{ translateX: cnftsTranslate.value }],
+    }));
 
     useEffect(() => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -325,55 +348,57 @@ const ProfileView = () => {
                         — the avatar image, scaled up, blurred,
                           fading into the background on all edges.
                     ═══════════════════════════════ */}
-                    <View style={st.headerContainer}>
-                        {userData.avatar_url && (
-                            <>
-                                <FastImage
-                                    source={{ uri: userData.avatar_url }}
-                                    style={[st.headerImage, { opacity: 0.38 }]}
-                                    resizeMode={FastImage.resizeMode.cover}
-                                />
-                                <View style={[StyleSheet.absoluteFill, {
-                                    backgroundColor: isDark
-                                        ? 'rgba(6, 3, 16, 0.72)'
-                                        : 'rgba(245, 240, 255, 0.72)'
-                                }]} />
-                            </>
-                        )}
-                        {/* Bottom fade */}
-                        <LinearGradient
-                            colors={['transparent', bg]}
-                            locations={[0.2, 1]}
-                            style={st.headerFadeBottom}
-                        />
-                        {/* Top fade */}
-                        <LinearGradient
-                            colors={[bg, 'transparent']}
-                            locations={[0, 0.5]}
-                            style={st.headerFadeTop}
-                        />
-                        {/* Left fade */}
-                        <LinearGradient
-                            colors={[bg, 'transparent']}
-                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                            locations={[0, 0.4]}
-                            style={st.headerFadeLeft}
-                        />
-                        {/* Right fade */}
-                        <LinearGradient
-                            colors={['transparent', bg]}
-                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                            locations={[0.6, 1]}
-                            style={st.headerFadeRight}
-                        />
+                    <FadeIn from="top" duration={400} delay={50}>
+                        <View style={st.headerContainer}>
+                            {userData.avatar_url && (
+                                <>
+                                    <FastImage
+                                        source={{ uri: userData.avatar_url }}
+                                        style={[st.headerImage, { opacity: 0.38 }]}
+                                        resizeMode={FastImage.resizeMode.cover}
+                                    />
+                                    <View style={[StyleSheet.absoluteFill, {
+                                        backgroundColor: isDark
+                                            ? 'rgba(6, 3, 16, 0.72)'
+                                            : 'rgba(245, 240, 255, 0.72)'
+                                    }]} />
+                                </>
+                            )}
+                            {/* Bottom fade */}
+                            <LinearGradient
+                                colors={['transparent', bg]}
+                                locations={[0.2, 1]}
+                                style={st.headerFadeBottom}
+                            />
+                            {/* Top fade */}
+                            <LinearGradient
+                                colors={[bg, 'transparent']}
+                                locations={[0, 0.5]}
+                                style={st.headerFadeTop}
+                            />
+                            {/* Left fade */}
+                            <LinearGradient
+                                colors={[bg, 'transparent']}
+                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                locations={[0, 0.4]}
+                                style={st.headerFadeLeft}
+                            />
+                            {/* Right fade */}
+                            <LinearGradient
+                                colors={['transparent', bg]}
+                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                locations={[0.6, 1]}
+                                style={st.headerFadeRight}
+                            />
 
-                        {/* Top bar overlaid on header */}
-                        <View style={st.topBar}>
-                            <ButtonSettings />
-                            <View style={{ flex: 1 }} />
-                            <ButtonWallet />
+                            {/* Top bar overlaid on header */}
+                            <View style={st.topBar}>
+                                <ButtonSettings />
+                                <View style={{ flex: 1 }} />
+                                <ButtonWallet />
+                            </View>
                         </View>
-                    </View>
+                    </FadeIn>
 
                     {/* ── Avatar centered, overlapping header ── */}
                     <TouchableOpacity
@@ -509,10 +534,9 @@ const ProfileView = () => {
 
                     {/* ── Tab Content ── */}
                     <View style={{ overflow: "hidden" }}>
-                        <Animated.View style={{
+                        <AnimatedReanimated.View style={[postsAnimatedStyle, {
                             display: activeTab === "Posts" ? "flex" : "none",
-                            opacity: postsOpacity, transform: [{ translateX: postsTranslate }],
-                        }}>
+                        }]}>
                             {mountedTabs.has("Posts") && (
                                 userData.post_count === 0 ? (
                                     <EmptyState iconName="photo-camera" title="No Posts Yet"
@@ -522,11 +546,10 @@ const ProfileView = () => {
                                     interactionsFinished ? <PostGallery key={`posts-${refreshKey}`} id={id as number} previous="profile" /> : <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
                                 )
                             )}
-                        </Animated.View>
-                        <Animated.View style={{
+                        </AnimatedReanimated.View>
+                        <AnimatedReanimated.View style={[cnftsAnimatedStyle, {
                             display: activeTab === "cNFTs" ? "flex" : "none",
-                            opacity: cnftsOpacity, transform: [{ translateX: cnftsTranslate }],
-                        }}>
+                        }]}>
                             {mountedTabs.has("cNFTs") && (
                                 userData.cnft_count === 0 ? (
                                     <EmptyState iconName="collections" title="No cNFTs Yet"
@@ -536,7 +559,7 @@ const ProfileView = () => {
                                     interactionsFinished ? <CollectionsGallery key={`collections-${refreshKey}`} id={id as number} isOwnProfile={true} /> : <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
                                 )
                             )}
-                        </Animated.View>
+                        </AnimatedReanimated.View>
                     </View>
                 </ScrollView>
             )}

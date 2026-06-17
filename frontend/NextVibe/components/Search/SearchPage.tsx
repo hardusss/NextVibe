@@ -14,6 +14,7 @@ import VerifyBadge from "../VerifyBadge";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
+import { StaggeredItem } from "@/components/Shared/motion";
 
 const darkColors = {
     background: '#0A0410',
@@ -135,40 +136,42 @@ export default function SearchPage() {
         fetchHistory();
     };
 
-    const renderUserRow = (item: User, showDelete = false) => (
-        <TouchableOpacity
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}
-            onPress={() => handlePress(item)}
-        >
-            <AvatarWithFrame
-                avatarUrl={item.avatar}
-                size={40}
-                isOg={item.is_og}
-                ogEdition={item.og_edition}
-                invitedCount={item.invited_count}
-            />
-            <View style={{ marginLeft: 10 }}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
-                    {item.official ? (
-                        <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16} />
-                    ) : null}
+    const renderUserRow = (item: User, index: number, showDelete = false) => (
+        <StaggeredItem index={index}>
+            <TouchableOpacity
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                style={[styles.userContainer, { borderBottomColor: colors.border, position: "relative" }]}
+                onPress={() => handlePress(item)}
+            >
+                <AvatarWithFrame
+                    avatarUrl={item.avatar}
+                    size={40}
+                    isOg={item.is_og}
+                    ogEdition={item.og_edition}
+                    invitedCount={item.invited_count}
+                />
+                <View style={{ marginLeft: 10 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
+                        {item.official ? (
+                            <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16} />
+                        ) : null}
+                    </View>
+                    <Text style={{ color: "gray", fontFamily: "Dank Mono Bold", includeFontPadding: false }}>
+                        {formatNumber(item.readers_count)} Subs
+                    </Text>
                 </View>
-                <Text style={{ color: "gray", fontFamily: "Dank Mono Bold", includeFontPadding: false }}>
-                    {formatNumber(item.readers_count)} Subs
-                </Text>
-            </View>
-            {showDelete && (
-                <TouchableOpacity
-                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                    onPress={() => handleDeleteUser(item.user_id)}
-                    style={{ position: "absolute", right: 10 }}
-                >
-                    <MaterialIcons name="close" color={colors.textPrimary} size={24} />
-                </TouchableOpacity>
-            )}
-        </TouchableOpacity>
+                {showDelete && (
+                    <TouchableOpacity
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                        onPress={() => handleDeleteUser(item.user_id)}
+                        style={{ position: "absolute", right: 10 }}
+                    >
+                        <MaterialIcons name="close" color={colors.textPrimary} size={24} />
+                    </TouchableOpacity>
+                )}
+            </TouchableOpacity>
+        </StaggeredItem>
     );
 
     return (
@@ -236,7 +239,7 @@ export default function SearchPage() {
                     data={searchHistoryUser}
                     keyExtractor={(item) => item.user_id.toString()}
                     showsVerticalScrollIndicator={false}
-                    renderItem={({ item }) => renderUserRow(item, true)}
+                    renderItem={({ item, index }) => renderUserRow(item, index, true)}
                 />
             )}
 
@@ -255,7 +258,7 @@ export default function SearchPage() {
                     showsVerticalScrollIndicator={false}
                     onEndReachedThreshold={0.5}
                     initialNumToRender={2}
-                    renderItem={({ item }) => renderUserRow(item, false)}
+                    renderItem={({ item, index }) => renderUserRow(item, index, false)}
                 />
             ) : (
                 !loading && (

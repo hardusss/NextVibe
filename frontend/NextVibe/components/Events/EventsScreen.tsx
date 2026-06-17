@@ -11,6 +11,7 @@ import getMenuPosts from "@/src/api/menu.posts";
 import { getEventRequests } from "@/src/api/event.requests";
 import FastImage from "react-native-fast-image";
 import { BlurView } from "@react-native-community/blur";
+import { FadeIn } from "@/components/Shared/motion";
 const formatEventDate = (isoString: string): string => {
     if (!isoString) return "";
     const date = new Date(isoString);
@@ -208,37 +209,39 @@ export default function EventsScreen() {
         </TouchableOpacity>
       </View>
 
-      {loading && pageIndex === 0 ? (
-          <ActivityIndicator size="large" color={t.accent} style={{ marginTop: 40 }} />
-      ) : events.length === 0 ? (
-          <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border, marginHorizontal: 18 }]}>
-            <Text style={[styles.emptyTitle, { color: t.text }]}>No events yet</Text>
-            <Text style={[styles.emptyDesc, { color: t.muted }]}>
-              Your active and past events will appear here.
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.86}
-              onPress={() => sheetRef.current?.present()}
-              style={[styles.cta, { backgroundColor: "rgba(168,85,247,0.16)", borderColor: "rgba(168,85,247,0.35)" }]}
-            >
-              <CalendarPlus size={18} color={t.accent} strokeWidth={1.8} />
-              <Text style={[styles.ctaText, { color: t.accent }]}>Create event</Text>
-            </TouchableOpacity>
-          </View>
-      ) : (
-          <FlatList
-              data={events}
-              keyExtractor={(item) => item.post_id.toString()}
-              renderItem={renderEvent}
-              contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40 }}
-              onRefresh={handleRefresh}
-              refreshing={refreshing}
-              onEndReached={handleLoadMore}
-              onEndReachedThreshold={0.5}
-              showsVerticalScrollIndicator={false}
-              ListFooterComponent={hasMore ? <ActivityIndicator size="small" color={t.accent} style={{ marginVertical: 20 }} /> : null}
-          />
-      )}
+      <FadeIn from="bottom" duration={400} delay={100} style={{ flex: 1 }}>
+        {loading && pageIndex === 0 ? (
+            <ActivityIndicator size="large" color={t.accent} style={{ marginTop: 40 }} />
+        ) : events.length === 0 ? (
+            <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border, marginHorizontal: 18 }]}>
+              <Text style={[styles.emptyTitle, { color: t.text }]}>No events yet</Text>
+              <Text style={[styles.emptyDesc, { color: t.muted }]}>
+                Your active and past events will appear here.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.86}
+                onPress={() => sheetRef.current?.present()}
+                style={[styles.cta, { backgroundColor: "rgba(168,85,247,0.16)", borderColor: "rgba(168,85,247,0.35)" }]}
+              >
+                <CalendarPlus size={18} color={t.accent} strokeWidth={1.8} />
+                <Text style={[styles.ctaText, { color: t.accent }]}>Create event</Text>
+              </TouchableOpacity>
+            </View>
+        ) : (
+            <FlatList
+                data={events}
+                keyExtractor={(item) => item.post_id.toString()}
+                renderItem={renderEvent}
+                contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40 }}
+                onRefresh={handleRefresh}
+                refreshing={refreshing}
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.5}
+                showsVerticalScrollIndicator={false}
+                ListFooterComponent={hasMore ? <ActivityIndicator size="small" color={t.accent} style={{ marginVertical: 20 }} /> : null}
+            />
+        )}
+      </FadeIn>
 
       <AddLumaEventSheet ref={sheetRef} />
       <EventRequestsSheet ref={requestsSheetRef} requests={requests} onRefresh={fetchRequests} />
