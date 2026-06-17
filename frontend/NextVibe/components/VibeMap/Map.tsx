@@ -12,9 +12,18 @@ import { getVibemapNfts, VibemapNftItem } from '@/src/api/get.vibemap.nfts';
 import { getVibemapEvents, VibemapEventItem } from '@/src/api/get.vibemap.events';
 import EventDetailSheet, { EventDetailSheetRef } from './EventDetailSheet';
 import * as Haptics from 'expo-haptics';
-import { Camera, Calendar, Moon, Map as LucideMap } from 'lucide-react-native';
+import { Camera, Calendar, Moon, Map as LucideMap, MapPin, Compass } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withTiming,
+    withDelay,
+    withSequence,
+    Easing,
+} from 'react-native-reanimated';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -140,6 +149,112 @@ function ClusterBubble({ count, color, onPress }: { count: number; color: string
                 </View>
             </View>
         </Pressable>
+    );
+}
+
+function RadarLoader() {
+    const pulse1 = useSharedValue(0);
+    const pulse2 = useSharedValue(0);
+    const pulse3 = useSharedValue(0);
+
+    const opacity1 = useSharedValue(0.7);
+    const opacity2 = useSharedValue(0.7);
+    const opacity3 = useSharedValue(0.7);
+
+    const pinScale = useSharedValue(1);
+
+    useEffect(() => {
+        pulse1.value = withRepeat(
+            withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }),
+            -1,
+            false
+        );
+        opacity1.value = withRepeat(
+            withTiming(0, { duration: 2400, easing: Easing.out(Easing.quad) }),
+            -1,
+            false
+        );
+
+        pulse2.value = withDelay(
+            800,
+            withRepeat(
+                withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }),
+                -1,
+                false
+            )
+        );
+        opacity2.value = withDelay(
+            800,
+            withRepeat(
+                withTiming(0, { duration: 2400, easing: Easing.out(Easing.quad) }),
+                -1,
+                false
+            )
+        );
+
+        pulse3.value = withDelay(
+            1600,
+            withRepeat(
+                withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }),
+                -1,
+                false
+            )
+        );
+        opacity3.value = withDelay(
+            1600,
+            withRepeat(
+                withTiming(0, { duration: 2400, easing: Easing.out(Easing.quad) }),
+                -1,
+                false
+            )
+        );
+
+        pinScale.value = withRepeat(
+            withSequence(
+                withTiming(1.12, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const waveStyle1 = useAnimatedStyle(() => ({
+        transform: [{ scale: pulse1.value * 2.8 + 0.2 }],
+        opacity: opacity1.value,
+    }));
+
+    const waveStyle2 = useAnimatedStyle(() => ({
+        transform: [{ scale: pulse2.value * 2.8 + 0.2 }],
+        opacity: opacity2.value,
+    }));
+
+    const waveStyle3 = useAnimatedStyle(() => ({
+        transform: [{ scale: pulse3.value * 2.8 + 0.2 }],
+        opacity: opacity3.value,
+    }));
+
+    const pinStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: pinScale.value }],
+    }));
+
+    return (
+        <View style={styles.loader}>
+            <View style={styles.radarWrapper}>
+                <Animated.View style={[styles.radarWave, waveStyle1]} />
+                <Animated.View style={[styles.radarWave, waveStyle2]} />
+                <Animated.View style={[styles.radarWave, waveStyle3]} />
+
+                <View style={styles.loaderGlow} />
+
+                <Animated.View style={[styles.centerPin, pinStyle]}>
+                    <MapPin color="#BCBBFD" size={26} strokeWidth={2} />
+                </Animated.View>
+            </View>
+
+            <Text style={styles.loaderTitle}>VibeMap</Text>
+            <Text style={styles.loaderSub}>Mapping the world's energy…</Text>
+        </View>
     );
 }
 
@@ -611,12 +726,7 @@ export default function MapScreen() {
                 </>
             ) : (
                 /* ── Loading screen ── */
-                <View style={styles.loader}>
-                    <View style={styles.loaderGlow} />
-                    <ActivityIndicator size="large" color="#BCBBFD" />
-                    <Text style={styles.loaderTitle}>VibeMap</Text>
-                    <Text style={styles.loaderSub}>Mapping the world's energy…</Text>
-                </View>
+                <RadarLoader />
             )}
 
             <EventDetailSheet ref={eventSheetRef} />
@@ -636,20 +746,51 @@ const styles = StyleSheet.create({
         backgroundColor: '#0A0410',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 16,
+    },
+    radarWrapper: {
+        width: 140,
+        height: 140,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+    },
+    radarWave: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 1.5,
+        borderColor: 'rgba(188, 187, 253, 0.4)',
+        backgroundColor: 'rgba(188, 187, 253, 0.03)',
+    },
+    centerPin: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: '#0A0410',
+        borderWidth: 1.5,
+        borderColor: 'rgba(188, 187, 253, 0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#BCBBFD',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 8,
+        zIndex: 2,
     },
     loaderGlow: {
         position: 'absolute',
-        width: 240,
-        height: 240,
-        borderRadius: 120,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
         backgroundColor: 'rgba(168,85,247,0.12)',
     },
     loaderTitle: {
         color: '#BCBBFD',
-        fontSize: 28,
+        fontSize: 24,
         fontFamily: 'Dank Mono Bold',
-        letterSpacing: 6,
+        letterSpacing: 8,
         textTransform: 'uppercase',
         marginTop: 8,
     },
