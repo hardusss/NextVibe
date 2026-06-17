@@ -16,13 +16,13 @@
 
 ---
 
-NextVibe is a mobile-first IRL networking protocol built on Solana. It turns physical-world interactions — NFC taps, event check-ins, and real-life meetups — into an on-chain social graph backed by compressed NFTs, reputation scores, and verifiable proof of presence.
+NextVibe is a mobile-first IRL Networking Layer built on Solana. It turns physical-world interactions — NFC taps, event check-ins, and real-life meetups — into an on-chain social graph backed by compressed NFTs, reputation scores, and verifiable proof of presence.
 
 > **Closed Beta is Live.** Download the latest build and use the invite code **`SEEKER`** to bypass the waitlist and claim your OG cNFT Avatar.
 
 ## Why NextVibe Exists
 
-Existing Web3 social tools fail at the physical layer. LinkedIn is Web2. POAPs are passive. QR codes are dead. There is no protocol-level standard for proving "I met this person IRL" and translating that into on-chain reputation.
+Existing Web3 social tools fail at the physical layer. LinkedIn is Web2. POAPs are passive. QR codes are dead. There is no standard for proving "I met this person IRL" and translating that into on-chain reputation.
 
 NextVibe solves this by making the **smartphone the networking primitive** — specifically crypto-native phones like the Solana Seeker that have NFC hardware access unrestricted by iOS limitations.
 
