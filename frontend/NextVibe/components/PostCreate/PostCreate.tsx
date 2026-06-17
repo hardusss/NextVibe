@@ -223,7 +223,8 @@ export default function PostCreate() {
 
     return (
         <KeyboardAvoidingView style={[s.root, { backgroundColor: c.bg }]}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            enabled={Platform.OS === 'ios'}>
             <StatusBar barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={c.bg} />
 
             <Web3Toast message={toast.msg} visible={toast.visible}

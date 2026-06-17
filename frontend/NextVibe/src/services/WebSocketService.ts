@@ -7,6 +7,7 @@ class WebSocketService {
   private static instance: WebSocketService;
   private ws: WebSocket | null = null;
   private isConnecting: boolean = false;
+  private isManualDisconnect: boolean = false;
   private messageHandlers: Set<MessageHandler> = new Set();
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts: number = 0;
@@ -60,6 +61,7 @@ class WebSocketService {
     }
 
     this.isConnecting = true;
+    this.isManualDisconnect = false;
     console.log("🔌 WS Service: Starting connection...");
 
     const url = await this.getUrl();
@@ -97,6 +99,11 @@ class WebSocketService {
         this.ws = null;
         this.isConnecting = false;
 
+        if (this.isManualDisconnect) {
+          console.log("🔌 WS Service: Manual disconnect, skipping reconnection");
+          return;
+        }
+
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
           const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Exponential backoff
@@ -118,6 +125,7 @@ class WebSocketService {
 
   public disconnect() {
     console.log("🔌 WS Service: Manual disconnect");
+    this.isManualDisconnect = true;
 
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);

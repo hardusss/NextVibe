@@ -537,6 +537,7 @@ const UserPosts = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [popupPostId, setPopupPostId] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const likingPostsRef = useRef<Record<number, boolean>>({});
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? darkTheme : lightTheme;
   const styles = getStyles(theme);
@@ -634,8 +635,11 @@ const UserPosts = () => {
     }, [TARGET_ID, posts])
   );
 
-  const toggleLike = useCallback((postId: number) => {
-    likePost(postId);
+  const toggleLike = useCallback(async (postId: number) => {
+    if (likingPostsRef.current[postId]) return;
+    likingPostsRef.current[postId] = true;
+
+    const isCurrentlyLiked = likedPosts[postId];
     
     setLikedPosts((prevLiked) => ({
       ...prevLiked,
@@ -643,9 +647,7 @@ const UserPosts = () => {
     }));
     
     setLikeCounts((prevCounts) => {
-      const isCurrentlyLiked = likedPosts[postId];
       const currentCount = prevCounts[postId] || 0;
-      
       return {
         ...prevCounts,
         [postId]: isCurrentlyLiked 
@@ -653,6 +655,28 @@ const UserPosts = () => {
           : currentCount + 1
       };
     });
+
+    try {
+      await likePost(postId);
+    } catch (error) {
+      console.error("Error toggling like for post", postId, error);
+      // Rollback
+      setLikedPosts((prevLiked) => ({
+        ...prevLiked,
+        [postId]: isCurrentlyLiked,
+      }));
+      setLikeCounts((prevCounts) => {
+        const currentCount = prevCounts[postId] || 0;
+        return {
+          ...prevCounts,
+          [postId]: isCurrentlyLiked 
+            ? currentCount + 1
+            : Math.max(0, currentCount - 1)
+        };
+      });
+    } finally {
+      likingPostsRef.current[postId] = false;
+    }
   }, [likedPosts]);
 
   const toggleExpand = (postId: number) => {
