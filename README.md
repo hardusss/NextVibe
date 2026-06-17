@@ -81,7 +81,7 @@ Full in-app wallet experience: token dashboard, send/receive, swap, NFC deposits
               ▼
      ┌────────────────┐
      │  Solana        │
-     │  (Devnet)      │
+     │  (Mainnet)     │
      │  Merkle Trees  │
      │  cNFTs         │
      └────────────────┘
