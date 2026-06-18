@@ -33,6 +33,20 @@ class Post(models.Model):
     # Limited Edition
     total_supply = models.IntegerField(default=50, null=True, blank=True)
     minted_count = models.IntegerField(default=0)
+    on_event = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='event_posts',
+        help_text="The event during which this post was created"
+    )
+    reputation_earned = models.IntegerField(
+        default=0,
+        null=True,
+        blank=True,
+        help_text="Reputation points earned for creating this post"
+    )
     objects = PostsManager()
     all_objects = models.Manager()
 
@@ -208,6 +222,20 @@ class Reputation(models.Model):
         null=True, 
         blank=True, 
         help_text="H3 Geo index with max resolution for accuracy"
+    )
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reputation_entries_for_post',
+        help_text="The post for which this reputation was awarded"
+    )
+    post_type = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="The type of post (e.g. event_post)"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

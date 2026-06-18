@@ -25,14 +25,22 @@ class PostViewSet(viewsets.ModelViewSet):
             "owner": self.request.user
         }
 
-        if is_v2:
-            coords = self.request.data.get("coords")
-            resolution = self.request.data.get("resolution")
+        lat = None
+        lng = None
 
-            if coords and resolution:
+        # Extract lat/lng if coords are provided in the payload
+        coords = self.request.data.get("coords")
+        if coords:
+            try:
+                lat = float(coords.get("lat"))
+                lng = float(coords.get("lng"))
+            except (ValueError, TypeError, AttributeError):
+                pass
+
+        if is_v2:
+            resolution = self.request.data.get("resolution")
+            if lat is not None and lng is not None and resolution:
                 try:
-                    lat = float(coords["lat"])
-                    lng = float(coords["lng"])
                     h3_index = h3.latlng_to_cell(
                         lat=lat,
                         lng=lng,
@@ -42,7 +50,57 @@ class PostViewSet(viewsets.ModelViewSet):
                 except Exception as ex:
                     print("H3 error:", ex)
 
-        serializer.save(**extra_data)
+        # Save post first to obtain an ID
+        post = serializer.save(**extra_data)
+
+        # Event post reputation mechanic:
+        # Check if the user is checked into any active events
+        from django.utils import timezone
+        from ..models import EventCheckin, Reputation
+        
+        now = timezone.now()
+        
+        # Query active check-ins (event must be currently active and check-in must exist)
+        active_checkins = EventCheckin.objects.filter(
+            user=self.request.user,
+            post__is_luma_event=True,
+            post__luma_event_start_time__lte=now,
+            post__luma_event_end_time__gte=now
+        ).select_related('post')
+
+        # If active check-ins exist and we have coordinates for the new post
+        if active_checkins.exists() and lat is not None and lng is not None:
+            for checkin in active_checkins:
+                event = checkin.post
+                if event.h3_geo:
+                    try:
+                        event_res = h3.get_resolution(event.h3_geo)
+                        post_cell_at_event_res = h3.latlng_to_cell(lat, lng, event_res)
+                        
+                        # Verify geolocation: post cell is same or adjacent to the event cell (grid distance <= 1)
+                        if h3.grid_distance(post_cell_at_event_res, event.h3_geo) <= 1:
+                            rep_points = 10
+                            
+                            # Mark post as created during the event and store reputation earned
+                            post.on_event = event
+                            post.reputation_earned = rep_points
+                            post.save(update_fields=['on_event', 'reputation_earned'])
+                            
+                            # Create a reputation entry
+                            Reputation.objects.create(
+                                user=self.request.user,
+                                given_by=event.owner,
+                                points=rep_points,
+                                is_checkin=False,
+                                event=event,
+                                h3_geo=post.h3_geo or event.h3_geo,
+                                post=post,
+                                post_type="event_post"
+                            )
+                            # Reward for the first matching event only
+                            break
+                    except Exception as e:
+                        print("Error verifying event geolocation for post:", e)
 
     @action(detail=True, methods=['post'], url_path='finalize')
     def finalize_creation(self, request, pk=None):
