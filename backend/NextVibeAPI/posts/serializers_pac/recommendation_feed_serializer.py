@@ -59,6 +59,8 @@ class PostFeedSerializer(serializers.ModelSerializer):
             # Luma
             'is_luma_event', 'luma_event_url', 'luma_event_verified',
             'luma_event_start_time', 'luma_event_end_time', 'event_request_status',
+            # Event post additions
+            'on_event', 'reputation_earned',
         ]
 
     def get_owner__avatar(self, obj):
