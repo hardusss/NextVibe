@@ -254,17 +254,16 @@ const UserProfileView = () => {
         };
     }, [visible]);
 
+    const hasFetchedRef = useRef<string | null>(null);
+
     useFocusEffect(
         useCallback(() => {
-            fetchUserData();
-            return () => {
-                setUserData({
-                    user_id: 0, username: "", about: "", avatar_url: null,
-                    post_count: 0, cnft_count: 0, readers_count: 0, follows_count: 0,
-                    official: false, isOg: false, ogEdition: 0, is_subscribed: false,
-                    invited_count: 0, reputation: 0,
-                });
-            };
+            // Refetch only if id changed
+            if (hasFetchedRef.current !== String(id)) {
+                hasFetchedRef.current = String(id);
+                fetchUserData();
+            }
+            // Don't reset userData on blur — that causes blank screen flash
         }, [id])
     );
 

@@ -432,11 +432,14 @@ const MediaItemComponent = ({
     };
 
     useEffect(() => {
-        if (!videoRef.current) return;
-        if (!isVisible) {
-            videoRef.current.unloadAsync();
-            setShowPreview(true);
-        }
+        if (!videoRef.current || !isVideoMedia) return;
+        const timer = setTimeout(async () => {
+            if (!isVisible && videoRef.current) {
+                await videoRef.current.pauseAsync().catch(() => {});
+                setShowPreview(true);
+            }
+        }, 100);
+        return () => clearTimeout(timer);
     }, [isVisible, isVideoMedia]);
 
     return (
@@ -522,6 +525,9 @@ const UserPosts = () => {
   const [hasMore, setHasMore] = useState(true);
   const TARGET_ID = Number(useLocalSearchParams().id);
   const [posts, setPosts] = useState<PostItem[]>([]);
+  const [page, setPage] = useState(0);
+  const isLoadingMoreRef = useRef(false);
+  const hasFetchedRef = useRef(false);
   const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -574,36 +580,30 @@ const UserPosts = () => {
     setDropdownVisible(prev => ({ ...prev, [postId]: false }));
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      clearData();
-      fetchPosts();
-      getUserID();
-      return () => {
-        clearData();
-      };
-    }, [user_id, clearData])
-  );
+  const PAGE_SIZE = 10;
 
-  const fetchPosts = useCallback(async () => {
-    if (isFetching || !hasMore) return;
-    setIsFetching(true);
-    setLoading(true);
-    setError(null);
+  const fetchPosts = useCallback(async (reset = false) => {
+    if (isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    const currentPage = reset ? 0 : page;
     try {
-      const data = await getMenuPosts(+user_id, 0, 100);
+      if (reset) setLoading(true);
+      setError(null);
+      const data = await getMenuPosts(+user_id, currentPage * PAGE_SIZE, PAGE_SIZE);
       if (data) {
-        setPosts(data.data);
-        setUserData(data.user)
+        setPosts(prev => reset ? data.data : [...prev, ...data.data]);
+        setUserData(data.user);
         setHasMore(data.more_posts);
-        
+        if (reset) setPage(1);
+        else setPage(p => p + 1);
+
         // Initialize like counts
         const counts: { [key: number]: number } = {};
         data.data.forEach((post: PostItem) => {
           counts[post.post_id] = post.count_likes;
         });
-        setLikeCounts(counts);
-        
+        setLikeCounts(prev => reset ? counts : { ...prev, ...counts });
+
         if (data.liked_posts) {
           const newLikedPosts = data.liked_posts.reduce(
             (acc: any, liked_id: number) => {
@@ -612,7 +612,7 @@ const UserPosts = () => {
             },
             {}
           );
-          setLikedPosts(newLikedPosts);
+          setLikedPosts(prev => reset ? newLikedPosts : { ...prev, ...newLikedPosts });
         }
       }
     } catch (err) {
@@ -620,8 +620,20 @@ const UserPosts = () => {
     } finally {
       setLoading(false);
       setIsFetching(false);
+      isLoadingMoreRef.current = false;
     }
-  }, [user_id, isFetching, hasMore]);
+  }, [user_id, page]);
+
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      getUserID();
+      fetchPosts(true);
+    }
+    return () => {
+      hasFetchedRef.current = false;
+    };
+  }, [user_id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -945,7 +957,7 @@ const UserPosts = () => {
         onEndReachedThreshold={0.8}
         initialNumToRender={2}
         maxToRenderPerBatch={1}
-        windowSize={2}
+        windowSize={3}
         updateCellsBatchingPeriod={100}
         removeClippedSubviews={true}
         showsVerticalScrollIndicator={false}
@@ -956,11 +968,6 @@ const UserPosts = () => {
           itemVisiblePercentThreshold: 70,
           minimumViewTime: 200,
         }}
-        getItemLayout={(data, index) => ({
-          length: ESTIMATED_POST_HEIGHT,
-          offset: ESTIMATED_POST_HEIGHT * index,
-          index,
-        })}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>

@@ -31,7 +31,11 @@ export default function usePortfolio(): UsePortfolioReturn {
             reset();
             return;
         }
-        void ensurePortfolio(conn, addressKey);
+        // Delay to avoid blocking initial ProfilePage render
+        const timer = setTimeout(() => {
+            void ensurePortfolio(conn, addressKey);
+        }, 2000);
+        return () => clearTimeout(timer);
     }, [addressKey, ensurePortfolio, reset]);
 
     const refresh = useCallback(async () => {
