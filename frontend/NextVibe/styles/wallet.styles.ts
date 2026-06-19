@@ -95,7 +95,7 @@ export const WalletColors = {
     primary: "#000000",
     secondary: "rgba(0, 0, 0, 0.6)",
     tertiary: "rgba(0, 0, 0, 0.4)",
-    accent: "#5856D6",
+    accent: "#7c3aed",
     border: "rgba(220, 220, 220, 0.5)",
     separator: "rgba(0, 0, 0, 0.08)",
     skeleton: "rgba(0, 0, 0, 0.1)",

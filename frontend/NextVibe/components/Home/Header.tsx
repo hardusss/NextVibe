@@ -61,7 +61,7 @@ export default function Header() {
           <Text style={styles.text}>NextVibe</Text>
           <View style={{flexDirection: "row", gap: 15}}>
             <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
-              <Bell size={30} color="#fafafa" />
+              <Bell size={30} color={isDark ? "#fafafa" : "#1A1225"} />
               {notificationsCount > 0 && (
                 <View style={[
                   styles.counterBox,
