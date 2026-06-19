@@ -22,12 +22,14 @@ export const WebSocketProvider = ({
 
       if (nextAppState === "active") {
         if (disconnectTimer.current) {
-          console.log("⚡ Camera/Flicker detected: Canceling disconnect");
           clearTimeout(disconnectTimer.current);
           disconnectTimer.current = null;
         }
 
-        WebSocketService.connect();
+        // Reconnect only if WebSocket actually closed
+        if (WebSocketService.getReadyState() !== WebSocket.OPEN) {
+          WebSocketService.connect();
+        }
       } 
       
       else if (nextAppState.match(/inactive|background/)) {
@@ -36,9 +38,7 @@ export const WebSocketProvider = ({
         // If timer exist, don't create new
         if (disconnectTimer.current) return;
 
-        console.log("⏳ App background → Scheduling disconnect in 5s...");
         disconnectTimer.current = setTimeout(() => {
-          console.log("💤 App background timeout → Disconnecting now");
           WebSocketService.disconnect();
           disconnectTimer.current = null;
         }, 5000); // time delay 5 seconds

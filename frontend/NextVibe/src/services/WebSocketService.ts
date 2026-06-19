@@ -46,23 +46,23 @@ class WebSocketService {
 
   public async connect() {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log("✅ WS Service: Already connected");
+      if (__DEV__) console.log("✅ WS Service: Already connected");
       return;
     }
 
     if (this.ws?.readyState === WebSocket.CONNECTING) {
-      console.log("⏳ WS Service: Connection in progress");
+      if (__DEV__) console.log("⏳ WS Service: Connection in progress");
       return;
     }
 
     if (this.isConnecting) {
-      console.log("⏳ WS Service: Already attempting to connect");
+      if (__DEV__) console.log("⏳ WS Service: Already attempting to connect");
       return;
     }
 
     this.isConnecting = true;
     this.isManualDisconnect = false;
-    console.log("🔌 WS Service: Starting connection...");
+    if (__DEV__) console.log("🔌 WS Service: Starting connection...");
 
     const url = await this.getUrl();
     if (!url) {
@@ -75,7 +75,7 @@ class WebSocketService {
       this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
-        console.log("✅ WS Service: Connected successfully");
+        if (__DEV__) console.log("✅ WS Service: Connected successfully");
         this.isConnecting = false;
         this.reconnectAttempts = 0; 
       };
@@ -95,19 +95,19 @@ class WebSocketService {
       };
 
       this.ws.onclose = (event) => {
-        console.log(`🔌 WS Service: Closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
+        if (__DEV__) console.log(`🔌 WS Service: Closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
         this.ws = null;
         this.isConnecting = false;
 
         if (this.isManualDisconnect) {
-          console.log("🔌 WS Service: Manual disconnect, skipping reconnection");
+          if (__DEV__) console.log("🔌 WS Service: Manual disconnect, skipping reconnection");
           return;
         }
 
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
           const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Exponential backoff
-          console.log(`🔄 WS Service: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+          if (__DEV__) console.log(`🔄 WS Service: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
           
           this.reconnectTimeout = setTimeout(() => {
             this.connect();
@@ -124,7 +124,7 @@ class WebSocketService {
   }
 
   public disconnect() {
-    console.log("🔌 WS Service: Manual disconnect");
+    if (__DEV__) console.log("🔌 WS Service: Manual disconnect");
     this.isManualDisconnect = true;
 
     if (this.reconnectTimeout) {
@@ -153,10 +153,10 @@ class WebSocketService {
 
   public addListener(handler: MessageHandler) {
     this.messageHandlers.add(handler);
-    console.log(`👂 WS Service: Listener added (total: ${this.messageHandlers.size})`);
+    if (__DEV__) console.log(`👂 WS Service: Listener added (total: ${this.messageHandlers.size})`);
     return () => {
       this.messageHandlers.delete(handler);
-      console.log(`👂 WS Service: Listener removed (total: ${this.messageHandlers.size})`);
+      if (__DEV__) console.log(`👂 WS Service: Listener removed (total: ${this.messageHandlers.size})`);
     };
   }
 

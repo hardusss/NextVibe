@@ -206,12 +206,12 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
             removeListenerRef.current = addNfcReadListener(() => {
                 const now = Date.now();
                 if (now - lastReadTimestamp.current > 2000) {
-                    console.log("✅ Valid read! Incrementing vibes.");
+                    if (__DEV__) console.log("\u2705 Valid read! Incrementing vibes.");
                     setVibes(prev => prev + 1);
                     lastReadTimestamp.current = now;
                     triggerNeonGlow();
                 } else {
-                    console.log("⚠️ Debounced duplicate read (ignored)");
+                    if (__DEV__) console.log("\u26a0\ufe0f Debounced duplicate read (ignored)");
                 }
             });
 
@@ -219,7 +219,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
             startSharing(urlToShare);
 
             setIsBroadcasting(true);
-            console.log("✅ Custom Native HCE Broadcasting started with URL:", urlToShare);
+            if (__DEV__) console.log("\u2705 Custom Native HCE Broadcasting started with URL:", urlToShare);
         } catch (error) {
             console.error("❌ Failed to start custom HCE:", error);
         }
@@ -234,7 +234,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
             // Our native func for stop nfc
             stopSharing();
-            console.log("🛑 Custom Native HCE Broadcasting stopped.");
+            if (__DEV__) console.log("\ud83d\uded1 Custom Native HCE Broadcasting stopped.");
         } catch (error) {
             console.warn("Error stopping custom HCE:", error);
         } finally {
@@ -242,14 +242,18 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         }
     };
 
+    const hasStartedRef = useRef(false);
+
     const handleSheetChanges = useCallback((index: number) => {
-        if (index >= 0) {
+        if (index >= 0 && !hasStartedRef.current) {
+            hasStartedRef.current = true;
             startHceBroadcast();
-        } else {
+        } else if (index === -1) {
+            hasStartedRef.current = false;
             stopHceBroadcast();
             resetState();
         }
-    }, [props.profileUrl]);
+    }, [startHceBroadcast, stopHceBroadcast, resetState]);
 
     const handleClose = () => {
         stopHceBroadcast();

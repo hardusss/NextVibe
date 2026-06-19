@@ -10,7 +10,6 @@ import { storage } from "@/src/utils/storage";
 import getMenuPosts from "@/src/api/menu.posts";
 import { getEventRequests } from "@/src/api/event.requests";
 import FastImage from "react-native-fast-image";
-import { BlurView } from "@react-native-community/blur";
 import { FadeIn } from "@/components/Shared/motion";
 const formatEventDate = (isoString: string): string => {
     if (!isoString) return "";
@@ -46,6 +45,8 @@ export default function EventsScreen() {
     [isDark]
   );
 
+  const pageIndexRef = useRef(0);
+
   const fetchEvents = useCallback(async (isRefresh = false) => {
       try {
           const userIdStr = await storage.getItem("id");
@@ -53,18 +54,19 @@ export default function EventsScreen() {
           const userId = parseInt(userIdStr, 10);
 
           const limit = 10;
-          const currentIndex = isRefresh ? 0 : pageIndex;
+          const currentIndex = isRefresh ? 0 : pageIndexRef.current;
           const res = await getMenuPosts(userId, currentIndex, limit, true);
 
           if (res.data) {
               const filteredData = res.data.filter((item: any) => item.is_luma_event);
               if (isRefresh) {
                   setEvents(filteredData);
+                  pageIndexRef.current = limit;
               } else {
                   setEvents(prev => [...prev, ...filteredData]);
+                  pageIndexRef.current = currentIndex + limit;
               }
               setHasMore(res.more_posts);
-              setPageIndex(currentIndex + limit);
           }
       } catch (error) {
           console.error("Failed to fetch events", error);
@@ -72,7 +74,7 @@ export default function EventsScreen() {
           setLoading(false);
           setRefreshing(false);
       }
-  }, [pageIndex]);
+  }, []);
 
   const fetchRequests = async () => {
       try {
@@ -123,7 +125,9 @@ export default function EventsScreen() {
               {mediaUrl && (
                   <View style={[styles.imageContainer, { backgroundColor: isDark ? "#1a1a1a" : "#f3f4f6" }]}>
                       <FastImage source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                      <BlurView blurType={isDark ? "dark" : "light"} blurAmount={20} style={StyleSheet.absoluteFill} />
+                      <View style={[StyleSheet.absoluteFill, {
+                          backgroundColor: isDark ? 'rgba(10,4,16,0.6)' : 'rgba(255,255,255,0.55)'
+                      }]} />
                       <FastImage source={{ uri: mediaUrl }} style={styles.eventImage} resizeMode="contain" />
                   </View>
               )}
@@ -210,7 +214,7 @@ export default function EventsScreen() {
       </View>
 
       <FadeIn from="bottom" duration={400} delay={100} style={{ flex: 1 }}>
-        {loading && pageIndex === 0 ? (
+        {loading && pageIndexRef.current === 0 ? (
             <ActivityIndicator size="large" color={t.accent} style={{ marginTop: 40 }} />
         ) : events.length === 0 ? (
             <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border, marginHorizontal: 18 }]}>
@@ -246,7 +250,7 @@ export default function EventsScreen() {
       <AddLumaEventSheet ref={sheetRef} />
       <EventRequestsSheet ref={requestsSheetRef} requests={requests} onRefresh={fetchRequests} />
       <AttendeesSheet ref={attendeesSheetRef} />
-      <NfcCheckinSheet ref={nfcCheckinSheetRef} />
+      {Platform.OS === 'android' && <NfcCheckinSheet ref={nfcCheckinSheetRef} />}
     </SafeAreaView>
   );
 }
