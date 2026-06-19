@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getMenuPosts from "@/src/api/menu.posts";
+
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
 import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-native";
@@ -323,7 +324,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                             {item.is_luma_event && (
                                                 <>
                                                     <FastImage source={{ uri: getPreviewUrl(mediaUrl!, item) }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
-                                                    <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} />
+                                                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
                                                 </>
                                             )}
                                             <FastImage
@@ -337,7 +338,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                             {item.is_luma_event && (
                                                 <>
                                                     <FastImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
-                                                    <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} />
+                                                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
                                                 </>
                                             )}
                                             <FastImage

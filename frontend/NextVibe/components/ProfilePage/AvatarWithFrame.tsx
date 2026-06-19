@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from "react-native";
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, InteractionManager } from "react-native";
 import FastImage from "react-native-fast-image";
 import LottieView from "lottie-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,6 +22,14 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
 }) => {
     const frameScale = 1.35;
     const frameSize = size * frameScale;
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        const task = InteractionManager.runAfterInteractions(() => {
+            setReady(true);
+        });
+        return () => task.cancel();
+    }, []);
 
     const renderFrame = () => {
         if (invitedCount >= 10) {
@@ -37,7 +45,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
                 >
                     <LottieView
                         source={require('@/assets/lottie/MythicFrame.json')}
-                        autoPlay
+                        autoPlay={ready}
                         loop
                         cacheComposition={true}
                         style={{ width: '100%', height: '100%' }}
@@ -57,7 +65,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
                 >
                     <LottieView
                         source={require('@/assets/lottie/frame.json')}
-                        autoPlay
+                        autoPlay={ready}
                         loop
                         cacheComposition={true}
                         style={{ width: '100%', height: '100%' }}

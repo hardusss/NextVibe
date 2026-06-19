@@ -93,13 +93,17 @@ async function runFetch(
     addressString: string,
     options: { force: boolean },
 ): Promise<void> {
+    const PORTFOLIO_TTL_MS = 60_000; // 1 minute
     const { force } = options;
     const state = usePortfolioStore.getState();
 
     if (!force) {
-        const alreadyLoaded =
-            state.walletKey === addressString && state.lastFetchedAt !== null;
-        if (alreadyLoaded) {
+        const { lastFetchedAt, walletKey } = state;
+        const isStale = !lastFetchedAt || (Date.now() - lastFetchedAt > PORTFOLIO_TTL_MS);
+        const isSameWallet = walletKey === addressString;
+
+        if (isSameWallet && !isStale) {
+            // Data is fresh — skip RPC call
             return;
         }
         if (inFlightKey === addressString && inFlightPromise) {

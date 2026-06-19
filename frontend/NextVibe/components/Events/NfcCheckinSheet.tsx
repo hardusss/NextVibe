@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
     StyleSheet, Text, View, useColorScheme, FlatList,
-    ActivityIndicator, Vibration,
+    ActivityIndicator, Vibration, Platform,
 } from "react-native";
 import {
     BottomSheetBackdrop,
@@ -104,7 +104,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     }, []);
 
     const startNfcBroadcast = useCallback((pid: number) => {
-        if (isBroadcasting) return;
+        if (isBroadcasting || Platform.OS !== 'android') return;
         try {
             const url = `https://nextvibe.io/event-checkin?postId=${pid}`;
 
@@ -122,7 +122,9 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             startSharing(url);
             setIsBroadcasting(true);
         } catch (error) {
-            console.error("Failed to start NFC broadcast:", error);
+            // NFC not supported or HCE unavailable — silently ignore
+            console.warn("NFC not available:", error);
+            setIsBroadcasting(false);
         }
     }, [isBroadcasting, fetchCheckins]);
 
@@ -243,6 +245,11 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             backgroundStyle={{ backgroundColor: bg }}
             handleIndicatorStyle={{ backgroundColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.14)", width: 40, height: 4 }}
             onDismiss={cleanup}
+            onChange={(index) => {
+                if (index === -1) {
+                    cleanup();
+                }
+            }}
         >
             <BottomSheetView style={styles.container}>
                 {/* Header */}
