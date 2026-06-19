@@ -29,15 +29,15 @@ const darkColors = {
 };
 
 const lightColors = {
-    background: '#ffffff',
-    cardBackground: '#f5f5f5',
+    background: '#FAFAFC',
+    cardBackground: '#ffffff',
     inputBackground: '#ffffff',
-    primary: '#007bff',
-    secondary: '#0056b3',
-    textPrimary: '#000000',
-    textSecondary: '#666666',
-    border: '#cccccc',
-    shadow: '#000000',
+    primary: '#7c3aed',
+    secondary: '#6d28d9',
+    textPrimary: '#1a1025',
+    textSecondary: '#6b5f7a',
+    border: '#ebe8f0',
+    shadow: 'rgba(124, 58, 237, 0.05)',
 };
 
 interface User {
@@ -176,7 +176,7 @@ export default function SearchPage() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"} />
+            <StatusBar barStyle={colorScheme === "dark" ? "light-content" : "dark-content"} backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"} />
 
             {/* Search Input */}
             <View style={{ position: "relative", alignItems: "center", marginBottom: 20 }}>

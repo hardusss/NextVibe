@@ -78,22 +78,33 @@ const darkTheme = {
 };
 
 const lightTheme = {
-    background: "white",
-    cardBackground: "rgba(255, 255, 255, 1)",
-    textPrimary: "#333",
-    textSecondary: "#666",
-    skeletonBackground: "#e0e0e0",
-    skeletonHighlight: "#f5f5f5",
-    accentColor: "#0095f6",
-    likeColor: "#e91e63",
-    shadowColor: "#ccc"
+    background: "#FAFAFC",
+    cardBackground: "#FFFFFF",
+    textPrimary: "#1A1225",
+    textSecondary: "#6B5F7A",
+    skeletonBackground: "#f1f0f4",
+    skeletonHighlight: "#f7f6f9",
+    accentColor: "#7c3aed",
+    likeColor: "#ef4444",
+    shadowColor: "rgba(124, 58, 237, 0.06)"
 };
 
 const getStyles = (theme: typeof darkTheme) => {
     return StyleSheet.create({
         container: { flex: 1, backgroundColor: theme.background },
         listContainer: { backgroundColor: theme.background, paddingBottom: 50 },
-        postContainer: { borderRadius: 12, padding: 14, position: "relative" },
+        postContainer: { 
+            borderRadius: 12, 
+            padding: 14, 
+            position: "relative",
+            backgroundColor: theme.cardBackground,
+            marginBottom: 16,
+            shadowColor: theme.shadowColor,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 2,
+        },
         postHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
         avatar: { width: 40, height: 40, borderRadius: 20 },
         userInfo: { flex: 1, marginLeft: 12 },
@@ -192,7 +203,12 @@ const getStyles = (theme: typeof darkTheme) => {
         },
         card: {
             margin: 20, marginBottom: 20, padding: 15, paddingBottom: 40,
-            backgroundColor: theme.background, borderRadius: 12, alignItems: 'center',
+            backgroundColor: theme.cardBackground, borderRadius: 12, alignItems: 'center',
+            shadowColor: theme.shadowColor,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 2,
         },
         cardText: { fontSize: 16, fontFamily: "Dank Mono Bold", includeFontPadding: false, color: theme.textPrimary },
         cardSub: { fontSize: 13, color: '#666', marginTop: 4 },

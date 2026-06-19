@@ -14,6 +14,7 @@ import {
     Modal,
     Animated,
     StatusBar,
+    useColorScheme,
 } from 'react-native';
 import getComments from '@/src/api/get.comments';
 import { MaterialIcons, Entypo, AntDesign } from '@expo/vector-icons';
@@ -81,6 +82,11 @@ interface PopupModalProps {
 }
 
 const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalProps) => {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === "dark";
+    const colors = isDark ? themeColors.dark : themeColors.light;
+    const styles = useMemo(() => getStyles(colors), [colors]);
+
     const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
     const [comments, setComments] = useState<Comment[]>([]);
@@ -439,7 +445,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                                     value={commentText}
                                     onChangeText={setCommentText}
                                     placeholder={`Comment for ${owner ?? 'post'}...`}
-                                    placeholderTextColor="#555"
+                                    placeholderTextColor={colors.textMuted}
                                     style={styles.input}
                                     returnKeyType="send"
                                     onSubmitEditing={handleSendComment}
@@ -453,10 +459,10 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                                 style={[styles.sendBtn, !commentText.trim() && styles.sendBtnDisabled]}
                             >
                                 <LinearGradient
-                                    colors={commentText.trim() ? ['#A855F7', '#7C3AED'] : ['#1a1a1a', '#1a1a1a']}
+                                    colors={commentText.trim() ? ['#A855F7', '#7C3AED'] : colors.disabledSendBg}
                                     style={styles.sendBtnGradient}
                                 >
-                                    <MaterialIcons name="arrow-upward" size={20} color={commentText.trim() ? '#fff' : '#444'} />
+                                    <MaterialIcons name="arrow-upward" size={20} color={commentText.trim() ? '#fff' : colors.disabledSendArrow} />
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
@@ -467,7 +473,50 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
     );
 };
 
-const styles = StyleSheet.create({
+const themeColors = {
+    dark: {
+        sheetBg: '#0f0f0f',
+        sheetBorder: 'rgba(255,255,255,0.07)',
+        handleBg: '#333',
+        headerBorder: 'rgba(255,255,255,0.06)',
+        textPrimary: '#fff',
+        textSecondary: '#ccc',
+        textMuted: '#555',
+        textMutedDark: '#3a3a3a',
+        textMutedLight: '#666',
+        replyingToBg: 'rgba(168,85,247,0.08)',
+        replyingToBorder: 'rgba(168,85,247,0.15)',
+        replyingToText: '#aaa',
+        inputRowBg: '#0f0f0f',
+        inputColor: '#fff',
+        avatarBg: '#1a1a1a',
+        containerBorder: 'rgba(255,255,255,0.04)',
+        disabledSendBg: ['#1a1a1a', '#1a1a1a'] as const,
+        disabledSendArrow: '#444',
+    },
+    light: {
+        sheetBg: '#ffffff',
+        sheetBorder: '#ebe8f0',
+        handleBg: '#e2e8f0',
+        headerBorder: '#f1f0f4',
+        textPrimary: '#1A1225',
+        textSecondary: '#4A3D54',
+        textMuted: '#8A8296',
+        textMutedDark: '#6B5F7A',
+        textMutedLight: '#8A8296',
+        replyingToBg: 'rgba(124, 58, 237, 0.04)',
+        replyingToBorder: 'rgba(124, 58, 237, 0.1)',
+        replyingToText: '#6B5F7A',
+        inputRowBg: '#ffffff',
+        inputColor: '#1A1225',
+        avatarBg: '#f7f6f9',
+        containerBorder: '#f1f0f4',
+        disabledSendBg: ['#f1f0f4', '#f1f0f4'] as const,
+        disabledSendArrow: '#b2acc0',
+    }
+};
+
+const getStyles = (colors: any) => StyleSheet.create({
     keyboardWrapper: {
         flex: 1,
     },
@@ -483,18 +532,18 @@ const styles = StyleSheet.create({
         height: '100%',
         maxHeight: SCREEN_HEIGHT * 0.70,
         marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
-        backgroundColor: '#0f0f0f',
+        backgroundColor: colors.sheetBg,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.07)',
+        borderColor: colors.sheetBorder,
         borderBottomWidth: 0,
         overflow: 'hidden',
     },
     handle: {
         width: 36,
         height: 4,
-        backgroundColor: '#333',
+        backgroundColor: colors.handleBg,
         borderRadius: 2,
         alignSelf: 'center',
         marginTop: 12,
@@ -507,11 +556,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.06)',
+        borderBottomColor: colors.headerBorder,
     },
     headerText: {
         fontSize: 16,
-        color: '#fff',
+        color: colors.textPrimary,
         letterSpacing: 0.2,
     },
     centered: {
@@ -522,11 +571,11 @@ const styles = StyleSheet.create({
         paddingBottom: 60,
     },
     disabledText: {
-        color: '#555',
+        color: colors.textMuted,
         fontSize: 15,
     },
     disabledSubtext: {
-        color: '#3a3a3a',
+        color: colors.textMutedDark,
         fontSize: 13,
     },
     listContent: {
@@ -537,7 +586,7 @@ const styles = StyleSheet.create({
     commentContainer: {
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.04)',
+        borderBottomColor: colors.containerBorder,
     },
     replyContainer: {
         marginTop: 12,
@@ -558,13 +607,13 @@ const styles = StyleSheet.create({
         marginBottom: 3,
     },
     username: {
-        color: '#fff',
+        color: colors.textPrimary,
         fontFamily: "Dank Mono Bold",
         fontSize: 13,
     },
     commentText: {
         fontSize: 14,
-        color: '#ccc',
+        color: colors.textSecondary,
         lineHeight: 20,
     },
     commentFooter: {
@@ -579,11 +628,11 @@ const styles = StyleSheet.create({
         gap: 14,
     },
     timeText: {
-        color: '#555',
+        color: colors.textMuted,
         fontSize: 12,
     },
     replyBtn: {
-        color: '#666',
+        color: colors.textMutedLight,
         fontSize: 12,
         fontFamily: "Dank Mono Bold",
     },
@@ -593,7 +642,7 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     likeCount: {
-        color: '#666',
+        color: colors.textMutedLight,
         fontSize: 12,
     },
     repliesButtonContainer: {
@@ -607,7 +656,7 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     toggleRepliesText: {
-        color: '#888',
+        color: colors.textMuted,
         fontSize: 12,
     },
     showMoreText: {
@@ -621,12 +670,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 8,
-        backgroundColor: 'rgba(168,85,247,0.08)',
+        backgroundColor: colors.replyingToBg,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(168,85,247,0.15)',
+        borderTopColor: colors.replyingToBorder,
     },
     replyingToText: {
-        color: '#aaa',
+        color: colors.replyingToText,
         fontSize: 13,
     },
     inputRow: {
@@ -636,14 +685,14 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         gap: 10,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(46, 26, 87, 0.06)',
-        backgroundColor: '#0f0f0f',
+        borderTopColor: colors.containerBorder,
+        backgroundColor: colors.inputRowBg,
     },
     inputAvatar: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#1a1a1a',
+        backgroundColor: colors.avatarBg,
     },
     inputWrap: {
         flex: 1,
@@ -656,7 +705,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     input: {
-        color: '#fff',
+        color: colors.inputColor,
         fontSize: 14,
         maxHeight: 100,
     },
