@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import FastImage from 'react-native-fast-image';
@@ -194,11 +194,15 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                 onPress={handlePress}
                 activeOpacity={0.7}
             >
-                <BlurView
-                    intensity={isDark ? 30 : 90}
-                    tint={isDark ? 'dark' : 'light'}
-                    style={styles.blurViewAbsolute}
-                />
+                {Platform.OS === 'android' ? (
+                    <View style={[styles.blurViewAbsolute, { backgroundColor: isDark ? 'rgba(15, 2, 28, 0.7)' : 'rgba(255, 255, 255, 0.85)' }]} />
+                ) : (
+                    <BlurView
+                        intensity={isDark ? 30 : 90}
+                        tint={isDark ? 'dark' : 'light'}
+                        style={styles.blurViewAbsolute}
+                    />
+                )}
                 <View style={styles.transactionItemContent}>
                     {/* Dual overlapping token icons */}
                     <View style={swapStyles.dualIconContainer}>
@@ -263,11 +267,15 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
             onPress={handlePress}
             activeOpacity={0.7}
         >
-            <BlurView
-                intensity={isDark ? 30 : 90}
-                tint={isDark ? 'dark' : 'light'}
-                style={styles.blurViewAbsolute}
-            />
+            {Platform.OS === 'android' ? (
+                <View style={[styles.blurViewAbsolute, { backgroundColor: isDark ? 'rgba(15, 2, 28, 0.7)' : 'rgba(255, 255, 255, 0.85)' }]} />
+            ) : (
+                <BlurView
+                    intensity={isDark ? 30 : 90}
+                    tint={isDark ? 'dark' : 'light'}
+                    style={styles.blurViewAbsolute}
+                />
+            )}
             <View style={styles.transactionItemContent}>
                 {/* Icon Section */}
                 <View style={styles.transactionIconContainer}>

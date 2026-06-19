@@ -9,6 +9,7 @@ import {
   RefreshControl,
   StatusBar,
   useColorScheme,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -475,11 +476,15 @@ export default function NotificationsListPage() {
         ]}
         
       >
-        <BlurView
-          intensity={isDarkTheme ? 30 : 90}
-          tint={isDarkTheme ? 'dark' : 'light'}
-          style={styles.blurViewAbsolute}
-        />
+        {Platform.OS === 'android' ? (
+          <View style={[styles.blurViewAbsolute, { backgroundColor: isDarkTheme ? 'rgba(10, 4, 16, 0.7)' : 'rgba(255, 255, 255, 0.85)' }]} />
+        ) : (
+          <BlurView
+            intensity={isDarkTheme ? 30 : 90}
+            tint={isDarkTheme ? 'dark' : 'light'}
+            style={styles.blurViewAbsolute}
+          />
+        )}
         <View style={styles.notificationContent}>
           {renderAvatar(item)}
 
