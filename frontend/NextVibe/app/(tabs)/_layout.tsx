@@ -202,7 +202,9 @@ const TabButton = ({
                             styles.iconContainer,
                             {
                                 backgroundColor: isActive ? activeBgColor : "transparent",
-                                borderColor: isActive ? "rgba(255,255,255,0.2)" : "transparent",
+                                borderColor: isActive 
+                                    ? (theme === "dark" ? "rgba(255,255,255,0.2)" : "rgba(124, 58, 237, 0.15)")
+                                    : "transparent",
                             },
                         ]}
                     >
@@ -454,17 +456,17 @@ export default function Layout() {
                                             />
                                             <View style={[
                                                 StyleSheet.absoluteFill,
-                                                { backgroundColor: theme === "dark" ? "rgba(20, 8, 41, 0.4)" : "rgba(255, 255, 255, 0.4)" }
+                                                { backgroundColor: theme === "dark" ? "rgba(20, 8, 41, 0.4)" : "rgba(255, 255, 255, 0.85)" }
                                             ]} />
                                             <View style={styles.tabsWrapper}>
                                                 {APP_TABS.map((tab) => {
                                                     const isActive = currentPage === tab.name;
                                                     const activeBgColor = theme === "dark"
                                                         ? "rgba(154, 109, 191, 0.15)"
-                                                        : "rgba(0, 0, 0, 0.05)";
+                                                        : "rgba(124, 58, 237, 0.08)";
                                                     const iconColor = isActive
-                                                        ? (theme === "dark" ? "#FFFFFF" : "#000000")
-                                                        : (theme === "dark" ? "rgb(144, 141, 141)" : "rgb(0,0,0)");
+                                                        ? (theme === "dark" ? "#FFFFFF" : "#7c3aed")
+                                                        : (theme === "dark" ? "rgb(144, 141, 141)" : "#8A8296");
 
                                                     return (
                                                         <TabButton

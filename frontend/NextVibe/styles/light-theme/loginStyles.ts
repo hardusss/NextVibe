@@ -1,15 +1,15 @@
 import { StyleSheet } from 'react-native';
 
 const colors = {
-    background: '#ffffff',
-    cardBackground: '#f8f9fa',
-    inputBackground: '#e9ecef',
-    primary: '#007bff',
-    secondary: '#0056b3',
-    textPrimary: '#212529',
-    textSecondary: '#6c757d',
-    border: '#ced4da',
-    shadow: 'rgba(0, 0, 0, 0.15)',
+    background: '#FAFAFC',
+    cardBackground: '#ffffff',
+    inputBackground: '#f7f6f9',
+    primary: '#7c3aed',
+    secondary: '#6d28d9',
+    textPrimary: '#1a1025',
+    textSecondary: '#6b5f7a',
+    border: '#ebe8f0',
+    shadow: 'rgba(124, 58, 237, 0.08)',
 };
 
 
@@ -90,7 +90,7 @@ includeFontPadding:false,
     line: {
         flex: 1,
         height: 1,
-        backgroundColor: "black",
+        backgroundColor: colors.border,
     },
     hrtext: {
         marginHorizontal: 10,
