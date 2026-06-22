@@ -37,8 +37,8 @@ import formatNumber from "@/src/utils/formatNumber";
 
 import ButtonSettings from "./ButtonSettings";
 import ButtonWallet from "./ButtonWallet";
-import PostGallery from "./PostsMenu";
-import CollectionsGallery from "./CollectionsMenu";
+import PostGallery, { clearPostsCache } from "./PostsMenu";
+import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import VerifyBadge from "../VerifyBadge";
 
@@ -65,6 +65,8 @@ export const clearProfileCache = () => {
     cachedUserData = null;
     cachedInvitedCount = null;
     profileHasFetched = false;
+    clearPostsCache();
+    clearCollectionsCache();
 };
 
 type UserData = {
@@ -284,6 +286,8 @@ const ProfileView = () => {
         setRefreshKey(prev => prev + 1);
         setMountedTabs(new Set([activeTab]));
         profileHasFetched = false;
+        clearPostsCache();
+        clearCollectionsCache();
         await fetchUserData();
         profileHasFetched = true;
         setRefreshing(false);

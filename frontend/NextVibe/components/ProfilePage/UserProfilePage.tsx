@@ -30,8 +30,8 @@ import followUser from "@/src/api/follow";
 import CreateChat from "@/src/api/create.chat";
 
 // Components
-import PostGallery from "./PostsMenu";
-import CollectionsGallery from "./CollectionsMenu";
+import PostGallery, { clearPostsCache } from "./PostsMenu";
+import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import RecommendedUsers from "./recommendateProfiles";
 import VerifyBadge from "../VerifyBadge";
@@ -238,6 +238,8 @@ const UserProfileView = () => {
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
+        clearPostsCache();
+        clearCollectionsCache();
         await fetchUserData();
         setRefreshKey(prev => prev + 1);
         setMountedTabs(new Set([activeTab]));
