@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getCollectionsMenu from "@/src/api/get.collections.menu";
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import FastImage from 'react-native-fast-image';
 import { BlurView } from "@react-native-community/blur";
 import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2, Calendar } from "lucide-react-native";
@@ -73,14 +73,14 @@ interface CollectionsGalleryProps {
 }
 
 // ── Module-level cache to survive tab-switch remounts ──
-let cachedItems: CollectionItem[] | null = null;
-let cachedOgAvatar: OgAvatar | null | undefined = undefined; // undefined = not yet fetched
-let collectionsHasFetched = false;
+const collectionsCache = new Map<number, CollectionItem[]>();
+const ogAvatarCache = new Map<number, OgAvatar | null>();
+const fetchedCollectionsProfiles = new Set<number>();
 
 export const clearCollectionsCache = () => {
-    cachedItems = null;
-    cachedOgAvatar = undefined;
-    collectionsHasFetched = false;
+    collectionsCache.clear();
+    ogAvatarCache.clear();
+    fetchedCollectionsProfiles.clear();
 };
 
 interface OgAvatarCardProps {
@@ -234,20 +234,25 @@ function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatarCardPro
 const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProps) => {
     const isDark = useColorScheme() === "dark";
 
-    const [items, setItems] = useState<CollectionItem[]>(cachedItems ?? []);
-    const [ogAvatar, setOgAvatar] = useState<OgAvatar | null>(cachedOgAvatar !== undefined ? cachedOgAvatar : null);
-    const [loading, setLoading] = useState(!cachedItems);
+    const cached = collectionsCache.get(id) ?? null;
+    const cachedOg = ogAvatarCache.get(id) ?? null;
+
+    const [items, setItems] = useState<CollectionItem[]>(cached ?? []);
+    const [ogAvatar, setOgAvatar] = useState<OgAvatar | null>(cachedOg);
+    const [loading, setLoading] = useState(!cached);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    const [index, setIndex] = useState(cachedItems ? cachedItems.length : 0);
+    const [index, setIndex] = useState(cached ? cached.length : 0);
     const [selectedItem, setSelectedItem] = useState<CollectionItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const isFetchingRef = useRef(false);
 
     const POSTS_PER_PAGE = 9;
 
     const fetchItems = async (shouldLoadMore = false) => {
-        if (loadingMore || !hasMore) return;
+        if (isFetchingRef.current || !hasMore) return;
 
+        isFetchingRef.current = true;
         if (shouldLoadMore) setLoadingMore(true);
         else setLoading(true);
 
@@ -259,7 +264,7 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
             // OG avatar is only present on the first page — avoid overwriting with null on subsequent pages
             if (!shouldLoadMore && response.og_avatar) {
                 setOgAvatar(response.og_avatar);
-                cachedOgAvatar = response.og_avatar;
+                ogAvatarCache.set(id, response.og_avatar);
             }
 
             setItems((prev) => {
@@ -273,21 +278,24 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                 }
 
                 // Update module-level cache
-                cachedItems = result;
+                collectionsCache.set(id, result);
                 return result;
             });
 
             setIndex((prev) => shouldLoadMore ? prev + POSTS_PER_PAGE : POSTS_PER_PAGE);
-        } catch (error) { }
-
-        setLoading(false);
-        setLoadingMore(false);
+        } catch (error) {
+            console.error("Error fetching collections:", error);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+            isFetchingRef.current = false;
+        }
     };
 
     // Load once on mount — don't re-fetch on every tab focus
     useEffect(() => {
-        if (collectionsHasFetched && cachedItems) return;
-        collectionsHasFetched = true;
+        if (fetchedCollectionsProfiles.has(id) && collectionsCache.has(id)) return;
+        fetchedCollectionsProfiles.add(id);
         setHasMore(true);
         fetchItems(false);
     }, []);
