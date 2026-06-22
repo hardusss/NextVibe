@@ -64,7 +64,7 @@ export default function useTransaction() {
                 txSignature = await signWithLazor(
                     {
                         instructions,
-                        transactionOptions: { feeToken: 'SOL', clusterSimulation: "mainnet" }
+                        transactionOptions: { feeToken: 'SOL', clusterSimulation: "devnet" }
                     },
                     { redirectUrl: `nextvibe://${redirectPage ? redirectPage : "transaction"}` },
                 );

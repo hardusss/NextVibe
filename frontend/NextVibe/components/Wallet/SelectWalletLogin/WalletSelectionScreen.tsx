@@ -178,7 +178,7 @@ const WalletSelectionScreen = () => {
                   isDimmed={selectedWallet !== null && selectedWallet !== cardConfig.id}
                   onCardPress={handleCardPress}
                   onCtaPress={handleCtaPress}
-                  isDisabled={cardConfig.id === "lazorkit"}
+                  
                 />
               ))}
             </Animated.View>

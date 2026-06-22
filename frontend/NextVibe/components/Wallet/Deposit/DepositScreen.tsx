@@ -70,7 +70,7 @@ export default function DepositScreen() {
 
     const supportedTokens = Object.values(TOKENS);
 
-    const mainBg = isDark ? ['#0A0410', '#1a0a2e', '#0d0618', '#0A0410'] : ['#FFFFFF', '#ede9fe', '#dbd4fb', '#d7cdf2'];
+    const mainBg = isDark ? ['#0A0410', '#1a0a2e', '#0d0618', '#0A0410'] as const : ['#FFFFFF', '#ede9fe', '#dbd4fb', '#d7cdf2'] as const;
     const cardBg = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)';
     const cardBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.5)';
     const textColor = isDark ? '#FFFFFF' : '#1A1A1A';

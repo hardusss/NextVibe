@@ -15,7 +15,7 @@ import SwipeButton from '@/components/Wallet/WalletIntro/SwipeButton';
 import saveWallet from '@/src/api/save.wallet';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 
-const CANCELLATION_DETECTION_DELAY = 1500;
+const CANCELLATION_DETECTION_DELAY = 15000;
 
 export default function WalletIntroScreen() {
     const colorScheme = useColorScheme();
@@ -81,10 +81,12 @@ export default function WalletIntroScreen() {
         } catch (error: any) {
             if (error.message === "USER_CANCELLED") {
                 useWalletStore.setState({ isConnecting: false });
+                setToast({ message: "Connection cancelled", isSuccess: false });
                 return;
             }
             useWalletStore.setState({ isConnecting: false });
             console.error("Connection Error:", error);
+            setToast({ message: error.message || "Failed to connect wallet", isSuccess: false });
         } finally {
             if (appStateSubscription) {
                 appStateSubscription.remove();
