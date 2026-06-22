@@ -385,7 +385,7 @@ export default function RegisterView() {
                                 strength={strengthLabel}
                                 privacy={checked}
                                 inviteCode={inviteCode}
-                                onFieldError={setFieldError}
+                                onFieldError={setFieldError as (field: string, msg: string) => void}
                                 onApiError={handleApiError}
                             />
                         </View>

@@ -170,7 +170,7 @@ export default function CreateTransactionScreen() {
         }
     };
 
-    const gradientColors = isDark ? ['#0A0410', '#1a0a2e', '#0A0410'] : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff'];
+    const gradientColors = isDark ? ['#0A0410', '#1a0a2e', '#0A0410'] as const : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff'] as const;
     const mainColor = isDark ? "#FFFFFF" : "#111827";
     const mutedColor = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
     const accentColor = isDark ? "#C4A7FF" : "#6D28D9";

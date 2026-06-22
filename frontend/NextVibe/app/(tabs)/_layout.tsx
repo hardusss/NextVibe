@@ -416,9 +416,9 @@ export default function Layout() {
             <BottomSheetModalProvider>
                 <MobileWalletProvider chain={chain} endpoint={endpoint} identity={identity}>
                     <LazorKitProvider
-                        rpcUrl={endpoint}
+                        rpcUrl="https://api.devnet.solana.com"
                         portalUrl="https://portal.lazor.sh"
-                        configPaymaster={{ paymasterUrl: "https://kora.lazorkit.com" }}
+                        configPaymaster={{ paymasterUrl: "https://kora.devnet.lazorkit.com" }}
                         isDebug={__DEV__}
                     >
                         <ErrorBoundary FallbackComponent={ErrorFallback}>
