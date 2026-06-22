@@ -110,6 +110,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const [hasMore, setHasMore] = useState(true);
     const indexRef = useRef(cached ? cached.length : 0);
     const [userID, setUserID] = useState<number | null>(null);
+    const isFetchingRef = useRef(false);
 
     const [popupVisible, setPopupVisible] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -137,8 +138,9 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     };
 
     const fetchPosts = async (shouldLoadMore = false, currentUserID?: number) => {
-        if (loadingMore || !hasMore) return;
+        if (isFetchingRef.current || !hasMore) return;
 
+        isFetchingRef.current = true;
         if (shouldLoadMore) setLoadingMore(true);
         else setLoading(true);
 
@@ -173,10 +175,13 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
             indexRef.current = shouldLoadMore
                 ? indexRef.current + POSTS_PER_PAGE
                 : POSTS_PER_PAGE;
-        } catch (error) { }
-
-        setLoading(false);
-        setLoadingMore(false);
+        } catch (error) {
+            console.error("Error fetching posts:", error);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+            isFetchingRef.current = false;
+        }
     };
 
     // Load once on mount — don't re-fetch on every tab focus
