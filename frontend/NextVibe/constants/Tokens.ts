@@ -2,7 +2,7 @@ export const TOKEN_MINT_CONSTANTS = {
     // Solana Native Wrap Mint
     SOL_MINT_ADDRESS: 'So11111111111111111111111111111111111111112',
     // Circle
-    USDC_MINT: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', 
+    USDC_MINT: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 
 };
 
 export const TOKENS = {
@@ -38,7 +38,7 @@ export const TOKENS = {
       name: "Global Dollar",
       logoURL: "https://assets.coingecko.com/coins/images/51281/standard/GDN_USDG_Token_200x200.png",
       priceKey: 'global-dollar' as const,
-      mint: "C6FQWMidLdyVBpfRot59ZEamkiafXSwyHTS3ZpGpcVGX",
+      mint: "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
       decimals: 6
     },
     JUP: {
