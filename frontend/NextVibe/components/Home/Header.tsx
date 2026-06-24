@@ -59,16 +59,15 @@ export default function Header() {
       <View style={styles.headerFixed}>
         <View style={styles.row}>
           <Text style={styles.text}>NextVibe</Text>
-          <View style={{flexDirection: "row", gap: 15}}>
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
-              <Bell size={30} color={isDark ? "#fafafa" : "#1A1225"} />
+          <View style={{flexDirection: "row", alignItems: "center", gap: 15}}>
+            <TouchableOpacity activeOpacity={0.7} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
+              <Bell size={24} color={isDark ? "#fafafa" : "#1A1225"} />
               {notificationsCount > 0 && (
                 <View style={[
                   styles.counterBox,
-                  {right: rightPosition,},
-                  
+                  {right: rightPosition === -15 ? -4 : rightPosition === -6 ? -6 : rightPosition === -1 ? -4 : -8},
                 ]}>
-                  <Text style={[styles.counterText, {fontSize: notificationsCount > 999 ? 8 : 10}]}>
+                  <Text style={[styles.counterText, {fontSize: notificationsCount > 999 ? 7 : 8}]}>
                     {displayCount()}
                   </Text>
                 </View>
@@ -92,36 +91,41 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     zIndex: 100,
     width: '100%',
     marginTop: -5,
-    
   },
   notifyContainer: {
     position: "relative",
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    height: 40,
+    width: 40,
   },
   counterBox: {
     position: "absolute",
-    right: -15,
-    top: 15,
-    backgroundColor: "#7F00FF",
-    paddingHorizontal: 5,
-    height: 14,
-    borderRadius: 9,
+    top: 4,
+    backgroundColor: "#A855F7",
+    paddingHorizontal: 4,
+    height: 16,
+    minWidth: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: isDark ? '#0A0410' : '#fff',
     justifyContent: "center",
     alignItems: "center",
     zIndex: 9999,
   },
   counterText: {
     color: "#fff",
-    fontSize: 10,
-    fontWeight: "bold",
+    fontSize: 8,
+    fontFamily: "Dank Mono Bold",
+    includeFontPadding: false,
     textAlign: "center",
   },
 
   headerFixed: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     backgroundColor: isDark ? '#0A0410' : '#fff',
     zIndex: 2,
+    paddingVertical: 8,
   },
   buttonContainer: {
     paddingHorizontal: 10,
@@ -133,7 +137,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: "center",
     width: "100%",
     justifyContent: "space-between",
-  
   },
   messageButton: {
     backgroundColor: isDark ? '#D9D9D9' : '#0A0410',
@@ -150,14 +153,16 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: "bold"
   },
   text: {
-    fontSize: 35,
-    color: isDark ? '#D9D9D9' : 'black',
-    marginLeft: 2
+    fontFamily: "Dank Mono Bold",
+    fontSize: 26,
+    color: isDark ? '#F3EEFF' : '#1A1225',
+    marginLeft: 2,
+    letterSpacing: -0.75,
+    includeFontPadding: false,
   },
   logo: {
-    width: 50,
-    height: 50,
-    marginTop: 5
+    width: 32,
+    height: 32,
   },
   
 });
