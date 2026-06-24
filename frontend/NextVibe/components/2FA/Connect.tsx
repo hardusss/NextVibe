@@ -17,7 +17,7 @@ import {
   BottomSheetBackdropProps
 } from '@gorhom/bottom-sheet';
 import * as Clipboard from 'expo-clipboard';
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Check, Copy, Play, ArrowRight, ArrowLeft } from "lucide-react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { connect2FA, auth } from "@/src/api/2fa";
 import LottieView from "lottie-react-native";
@@ -249,11 +249,17 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
               <View style={styles.codeRow}>
                 <Text style={styles.codeText}>{qrValue || "..."}</Text>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleCopy}>
-                  <MaterialCommunityIcons
-                    name={copied ? "check" : "content-copy"}
-                    size={20}
-                    color={copied ? colors.success : colors.link}
-                  />
+                  {copied ? (
+                    <Check
+                      size={20}
+                      color={colors.success}
+                    />
+                  ) : (
+                    <Copy
+                      size={20}
+                      color={colors.link}
+                    />
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -262,12 +268,12 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
 
             <TouchableOpacity style={styles.row} onPress={handleDownload}>
               <Text style={styles.rowText}>Get Authenticator App</Text>
-              <MaterialCommunityIcons name="google-play" size={20} color={colors.textSecondary} />
+              <Play size={20} color={colors.textSecondary} />
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.row, styles.lastRow]} onPress={handleNext}>
               <Text style={styles.linkTextMain}>Continue to Code Entry</Text>
-              <MaterialCommunityIcons name="arrow-right" size={20} color={colors.link} />
+              <ArrowRight size={20} color={colors.link} />
             </TouchableOpacity>
           </View>
         ) : (
@@ -308,7 +314,7 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
 
             <TouchableOpacity style={[styles.row, styles.lastRow]} onPress={handleBack}>
               <Text style={styles.rowText}>Go Back</Text>
-              <MaterialCommunityIcons name="arrow-left" size={20} color={colors.textSecondary} />
+              <ArrowLeft size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         )}

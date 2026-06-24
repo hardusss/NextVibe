@@ -19,8 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from '@react-native-community/blur';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Clock, ArrowRight, KeyRound, Wallet, ChevronDown } from 'lucide-react-native';
 
 export type WalletType = 'mwa' | 'lazorkit';
 
@@ -207,7 +206,7 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
 
           {isDisabled && (
             <View style={styles.pauseBanner}>
-              <MaterialCommunityIcons name="clock-outline" size={13} color="#f59e0b" />
+              <Clock size={13} color="#f59e0b" />
               <Text style={styles.pauseText}>Temporarily unavailable — back soon</Text>
             </View>
           )}
@@ -226,7 +225,7 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
                 style={styles.ctaButton}
               >
                 <Text style={styles.ctaLabel}>{config.ctaLabel}</Text>
-                <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.9)" />
+                <ArrowRight size={16} color="rgba(255,255,255,0.9)" />
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -267,9 +266,9 @@ const CardBackground: React.FC<{ isDark: boolean; accentStart: string }> = ({ is
 
 const CardIcon: React.FC<{ id: WalletType; color: string }> = ({ id, color }) => {
   if (id === 'lazorkit') {
-    return <MaterialCommunityIcons name="key-wireless" size={26} color={color} />;
+    return <KeyRound size={26} color={color} />;
   }
-  return <MaterialCommunityIcons name="wallet-outline" size={26} color={color} />;
+  return <Wallet size={26} color={color} />;
 };
 
 const AnimatedDivider: React.FC<{
@@ -301,7 +300,7 @@ const AnimatedChevron: React.FC<{
   }));
   return (
     <Animated.View style={style}>
-      <Ionicons name="chevron-down" size={20} color={color} />
+      <ChevronDown size={20} color={color} />
     </Animated.View>
   );
 };

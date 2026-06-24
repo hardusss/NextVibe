@@ -1,7 +1,7 @@
 import {Animated, TouchableOpacity, useColorScheme} from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Menu } from 'lucide-react-native';
 
 const ButtonSsetings = () => {
     const [scale] = useState(new Animated.Value(1));
@@ -29,7 +29,7 @@ const ButtonSsetings = () => {
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
             >
-                <MaterialCommunityIcons name="menu" color={isDark ? "#c9d1d9" : "black"} size={25}/>
+                <Menu color={isDark ? "#c9d1d9" : "black"} size={25}/>
             </TouchableOpacity>
         </Animated.View>
     );

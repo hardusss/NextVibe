@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, useColorScheme, TouchableOpacity, Animated, StatusBar, Linking, ScrollView } from 'react-native';
 import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ArrowLeftRight, Copy, ExternalLink, CheckCircle2 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useRef, useCallback, useState } from 'react';
 import FastImage from 'react-native-fast-image';
@@ -358,8 +358,7 @@ export default function TransactionDetailScreen() {
                         style={styles.swapTokenIcon}
                     />
                     <View style={styles.swapArrowContainer}>
-                        <MaterialCommunityIcons
-                            name="swap-horizontal"
+                        <ArrowLeftRight
                             size={20}
                             color={isDark ? '#60A5FA' : '#3B82F6'}
                         />
@@ -476,8 +475,7 @@ export default function TransactionDetailScreen() {
                                 <View style={styles.infoRow}>
                                     <Text style={styles.label}>Type</Text>
                                     <View style={styles.valueContainer}>
-                                        <MaterialCommunityIcons
-                                            name="swap-horizontal"
+                                        <ArrowLeftRight
                                             size={16}
                                             color={isDark ? '#60A5FA' : '#3B82F6'}
                                         />
@@ -517,8 +515,7 @@ export default function TransactionDetailScreen() {
                                             <Text style={styles.value} numberOfLines={1}>
                                                 {from_address}
                                             </Text>
-                                            <MaterialCommunityIcons 
-                                                name="content-copy" 
+                                            <Copy 
                                                 size={16} 
                                                 color={isDark ? '#A09CB8' : '#666'} 
                                             />
@@ -547,8 +544,7 @@ export default function TransactionDetailScreen() {
                                             <Text style={styles.value} numberOfLines={1}>
                                                 {to_address}
                                             </Text>
-                                            <MaterialCommunityIcons 
-                                                name="content-copy" 
+                                            <Copy 
                                                 size={16} 
                                                 color={isDark ? '#A09CB8' : '#666'} 
                                             />
@@ -578,8 +574,7 @@ export default function TransactionDetailScreen() {
                                             : tx_id
                                         }
                                     </Text>
-                                    <MaterialCommunityIcons 
-                                        name="content-copy" 
+                                    <Copy 
                                         size={16} 
                                         color={isDark ? '#A09CB8' : '#666'} 
                                     />
@@ -596,8 +591,7 @@ export default function TransactionDetailScreen() {
                                     <Text style={styles.label}>View on Explorer</Text>
                                     <View style={styles.valueContainer}>
                                         <Text style={styles.urlText}>Open Solscan</Text>
-                                        <MaterialCommunityIcons 
-                                            name="open-in-new" 
+                                        <ExternalLink 
                                             size={18} 
                                             color={isDark ? '#A78BFA' : '#5856D6'} 
                                             style={{marginLeft: 4}}
@@ -623,7 +617,7 @@ export default function TransactionDetailScreen() {
                             }] 
                         }
                     ]}>
-                        <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />
+                        <CheckCircle2 size={20} color="#fff" />
                         <Text style={styles.toastText}>{toastMessage}</Text>
                     </Animated.View>
                 )}

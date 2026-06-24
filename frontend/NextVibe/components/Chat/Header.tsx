@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { ChevronLeft } from 'lucide-react-native';
 
 export interface HeaderProps {
   title: string;
@@ -15,7 +15,9 @@ export default function Header({ title, leftIcon, onLeftPress }: HeaderProps) {
     <View style={styles.header}>
       {leftIcon && (
         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={onLeftPress} style={styles.leftButton}>
-          <MaterialIcons name={leftIcon as any} size={28} color={isDark ? '#fff' : '#000'} />
+          {leftIcon === 'arrow-back' ? (
+            <ChevronLeft size={28} color={isDark ? '#fff' : '#000'} />
+          ) : null}
         </TouchableOpacity>
       )}
       <Text style={[styles.title, { color: isDark ? '#fff' : '#000' }]}>{title}</Text>

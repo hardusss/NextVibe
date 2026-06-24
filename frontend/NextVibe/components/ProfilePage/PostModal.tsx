@@ -22,9 +22,8 @@ import {
     X,
     Image as ImageIcon,
     Link2,
+    MoreVertical,
 } from "lucide-react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { MaterialIcons } from "@expo/vector-icons";
 import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
 import { requestToAttend } from "@/src/api/event.requests";
@@ -357,7 +356,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                         onPress={() => setDropdownVisible(prev => !prev)}
                                     >
-                                        <MaterialCommunityIcons name="dots-vertical" size={22} color="rgba(255,255,255,0.75)" />
+                                        <MoreVertical size={22} color="rgba(255,255,255,0.75)" />
                                     </TouchableOpacity>
                                     {post && (
                                         <DropDown
@@ -421,7 +420,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                 }]}
                                                 pointerEvents="none"
                                             >
-                                                <MaterialIcons name="favorite" size={90} color="#A855F7" />
+                                                <Heart size={90} color="#A855F7" fill="#A855F7" />
                                             </Animated.View>
                                         )}
                                         <View style={styles.imageBadges}>

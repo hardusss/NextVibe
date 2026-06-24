@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { View, Text, TouchableOpacity, useColorScheme, StyleSheet, StatusBar, Linking, ScrollView } from "react-native";
 import LottieView from "lottie-react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { RefreshCw, Bug } from "lucide-react-native";
 
 interface ErrorFallbackProps {
     error: Error;
@@ -72,7 +72,7 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
                     style={[styles.primaryButton, { backgroundColor: theme.primaryButton }]}
                     onPress={handleRestart}
                 >
-                    <MaterialIcons name="refresh" size={22} color="#FFF" style={{ marginRight: 8 }} />
+                    <RefreshCw size={22} color="#FFF" style={{ marginRight: 8 }} />
                     <Text style={styles.primaryButtonText}>Restart App</Text>
                 </TouchableOpacity>
 
@@ -80,7 +80,7 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
                     style={styles.secondaryButton}
                     onPress={handleContactSupport}
                 >
-                    <MaterialIcons name="bug-report" size={20} color={theme.secondaryButtonText} style={{ marginRight: 6 }} />
+                    <Bug size={20} color={theme.secondaryButtonText} style={{ marginRight: 6 }} />
                     <Text style={[styles.secondaryButtonText, { color: theme.secondaryButtonText }]}>
                         Report to Developers
                     </Text>

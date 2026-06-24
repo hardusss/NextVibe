@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight, ArrowRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
     useSharedValue,
@@ -160,8 +160,7 @@ export default function SwipeButton({
             {/* Instruction text with fade animation */}
             <Animated.View style={[styles.swipeTextContainer, animatedTextStyle]}>
                 <Text style={styles.swipeText}>Swipe to Activate</Text>
-                <Ionicons
-                    name="chevron-forward"
+                <ChevronRight
                     size={16}
                     color={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                     style={{ marginLeft: 4 }}
@@ -181,7 +180,7 @@ export default function SwipeButton({
                             <ActivityIndicator color="#FFF" size="small" />
                         ) : (
                             <Animated.View style={animatedArrowStyle}>
-                                <Ionicons name="arrow-forward" size={24} color="#FFF" />
+                                <ArrowRight size={24} color="#FFF" />
                             </Animated.View>
                         )}
                     </LinearGradient>

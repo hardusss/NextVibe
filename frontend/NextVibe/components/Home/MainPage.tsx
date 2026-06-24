@@ -29,7 +29,7 @@ import { Platform, UIManager } from 'react-native';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { storage } from '@/src/utils/storage';
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+
 import VerifyBadge from "../VerifyBadge";
 import Hyperlink from "react-native-hyperlink";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
@@ -40,7 +40,7 @@ import useTransaction from "@/hooks/useTransaction";
 import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
 import {
     Heart, MessageCircle, MapPin, Volume2, VolumeX,
-    Sparkles, Clock, Calendar, Link2
+    Sparkles, Clock, Calendar, Link2, MoreVertical
 } from "lucide-react-native";
 import PhotoModal from "@/components/PostDetails/PhotoModal";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
@@ -576,7 +576,7 @@ const PostItem = memo(({
                         style={{ padding: 5 }}
                         onPress={(e) => { e.stopPropagation(); setDropdownVisible(item.id); }}
                     >
-                        <MaterialCommunityIcons name="dots-vertical" color={theme.textPrimary} size={24} />
+                        <MoreVertical color={theme.textPrimary} size={24} />
                     </TouchableOpacity>
                     <DropDown
                         isVisible={dropdownVisible}

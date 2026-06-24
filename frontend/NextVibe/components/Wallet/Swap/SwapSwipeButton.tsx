@@ -12,6 +12,8 @@ interface SwapSwipeButtonProps {
     isSuccess: boolean;
     isFailed: boolean;
     colors: SwapColors;
+    disabled?: boolean;
+    disabledLabel?: string;
 }
 
 const SW = Dimensions.get('window').width;
@@ -26,6 +28,8 @@ export default function SwapSwipeButton({
     isSuccess,
     isFailed,
     colors,
+    disabled = false,
+    disabledLabel = 'swipe to swap',
 }: SwapSwipeButtonProps) {
     const pan = useRef(new Animated.ValueXY()).current;
     const textOpacity = useRef(new Animated.Value(1)).current;
@@ -41,11 +45,11 @@ export default function SwapSwipeButton({
         onSwipeSuccessRef.current = onSwipeSuccess;
     }, [onSwipeSuccess]);
 
-    const isInteractive = useRef(!isLoading && !isSuccess && !isFailed);
+    const isInteractive = useRef(!isLoading && !isSuccess && !isFailed && !disabled);
 
     useEffect(() => {
-        isInteractive.current = !isLoading && !isSuccess && !isFailed;
-    }, [isLoading, isSuccess, isFailed]);
+        isInteractive.current = !isLoading && !isSuccess && !isFailed && !disabled;
+    }, [isLoading, isSuccess, isFailed, disabled]);
 
     useEffect(() => {
         const loop = Animated.loop(
@@ -95,6 +99,18 @@ export default function SwapSwipeButton({
             return () => clearTimeout(t);
         }
     }, [isFailed, resetSwipe]);
+
+    useEffect(() => {
+        if (!isSuccess && !isLoading && !isFailed) {
+            resetSwipe();
+        }
+    }, [isSuccess, isLoading, isFailed, resetSwipe]);
+
+    useEffect(() => {
+        if (disabled) {
+            resetSwipe();
+        }
+    }, [disabled, resetSwipe]);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -175,13 +191,21 @@ export default function SwapSwipeButton({
 
     const isIdle = !isSuccess && !isLoading && !isFailed;
 
+    const thumbBg = disabled
+        ? (colors.isDark ? '#374151' : '#D1D5DB')
+        : '#A855F7';
+
+    const chevronColor = disabled
+        ? (colors.isDark ? '#4B5563' : '#9CA3AF')
+        : '#fff';
+
     return (
-        <View style={[styles.track, { borderColor: colors.cardBorder }]}>
+        <View style={[styles.track, { borderColor: colors.cardBorder, opacity: disabled ? 0.6 : 1 }]}>
             <LinearTrack colors={colors} />
 
             {isIdle && (
-                <Animated.Text style={[styles.label, { color: colors.muted, opacity: textOpacity }]}>
-                    swipe to swap
+                <Animated.Text style={[styles.label, { color: disabled ? (colors.isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)') : colors.muted, opacity: textOpacity }]}>
+                    {disabled ? disabledLabel : 'swipe to swap'}
                 </Animated.Text>
             )}
 
@@ -195,8 +219,8 @@ export default function SwapSwipeButton({
                 style={[styles.thumb, { transform: [{ translateX: pan.x }] }]}
                 {...panResponder.panHandlers}
             >
-                <View style={[styles.thumbInner, { backgroundColor: '#A855F7' }]}>
-                    <ChevronsRight size={22} color="#fff" strokeWidth={2} />
+                <View style={[styles.thumbInner, { backgroundColor: thumbBg }]}>
+                    <ChevronsRight size={22} color={chevronColor} strokeWidth={2} />
                 </View>
             </Animated.View>
 

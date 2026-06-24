@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { TouchableOpacity, StyleSheet, ActivityIndicator, useColorScheme } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Ionicons } from '@expo/vector-icons';
+import { Apple } from 'lucide-react-native';
 import AppleSignIn from '@/src/api/apple.sign.in';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -125,7 +125,7 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
                 {loading ? (
                     <ActivityIndicator size="small" color={iconColor} />
                 ) : (
-                    <Ionicons name="logo-apple" size={24} color={iconColor} />
+                    <Apple size={24} color={iconColor} />
                 )}
             </TouchableOpacity>
 

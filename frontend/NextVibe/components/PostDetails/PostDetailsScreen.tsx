@@ -16,8 +16,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import { Calendar, Clock, Heart, Link2, MapPin, Sparkles, ArrowLeft } from "lucide-react-native";
+import { Calendar, Clock, Heart, Link2, MapPin, Sparkles, ArrowLeft, MoreVertical, MessageSquareOff, MessageSquare } from "lucide-react-native";
 import Hyperlink from "react-native-hyperlink";
 
 import getPost from "@/src/api/get.post";
@@ -97,7 +96,10 @@ const PostHeader = ({ title, isDark, insets, onBack }: { title: string, isDark: 
 export default function PostDetailsScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { id } = useLocalSearchParams();
+    const { id, commentId, replyId } = useLocalSearchParams();
+    const highlightedCommentId = commentId ? Number(Array.isArray(commentId) ? commentId[0] : commentId) : null;
+    const highlightedReplyId = replyId ? Number(Array.isArray(replyId) ? replyId[0] : replyId) : null;
+
     const isDark = useColorScheme() === "dark";
     const theme = isDark ? dark : light;
 
@@ -381,7 +383,7 @@ export default function PostDetailsScreen() {
                                 />
                             )}
                             <Pressable style={{ padding: 6 }} onPress={() => setDropdownOpen(true)}>
-                                <MaterialCommunityIcons name="dots-vertical" color={theme.textPrimary} size={24} />
+                                <MoreVertical color={theme.textPrimary} size={24} />
                             </Pressable>
                             <DropDown
                                 isVisible={dropdownOpen}
@@ -549,12 +551,12 @@ export default function PostDetailsScreen() {
                     </View>
                 ) : !post.is_comments_enabled ? (
                     <View style={s.emptyState}>
-                        <MaterialIcons name="comments-disabled" size={34} color="#333" />
+                        <MessageSquareOff size={34} color={theme.textSecondary} />
                         <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Comments are disabled</Text>
                     </View>
                 ) : comments.length === 0 ? (
                     <View style={s.emptyState}>
-                        <MaterialIcons name="chat-bubble-outline" size={34} color="#333" />
+                        <MessageSquare size={34} color={theme.textSecondary} />
                         <Text style={{ color: theme.textSecondary, fontSize: 14 }}>No comments yet. Be the first!</Text>
                     </View>
                 ) : (
@@ -567,6 +569,8 @@ export default function PostDetailsScreen() {
                             onReply={(item) => setReplyingTo(item)}
                             theme={theme}
                             isLast={idx === comments.length - 1}
+                            highlightedCommentId={highlightedCommentId}
+                            highlightedReplyId={highlightedReplyId}
                         />
                     ))
                 )}

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, StatusBar, Animated, FlatList, Dimensions, RefreshControl, ActivityIndicator } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ghost, Telescope, ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import getFollows from '@/src/api/get.follows';
 import getReaders from '@/src/api/get.readers';
@@ -357,22 +357,23 @@ export default function FollowsScreen() {
         onRefresh: () => void
     }) => {
         const config = type === 'Readers' ? {
-            icon: 'ghost-outline',
+            icon: Ghost,
             title: "It's quiet here...",
             subtitle: "No followers yet. Share your profile to grow your audience!",
             buttonText: "Refresh"
         } : {
-            icon: 'telescope',
+            icon: Telescope,
             title: "No following yet",
             subtitle: "Find interesting people to follow and see them here.",
             buttonText: "Refresh"
         };
 
+        const IconComponent = config.icon;
+
         return (
             <View style={[styles.emptyContainer, { backgroundColor: isDark ? '#0A0410' : '#F5F5F7' }]}>
                 <View style={[styles.iconCircle, { backgroundColor: isDark ? '#180F2E' : '#EAEAEA' }]}>
-                    <MaterialCommunityIcons
-                        name={config.icon as any}
+                    <IconComponent
                         size={64}
                         color={isDark ? '#A78BFA' : '#5856D6'}
                         style={{ opacity: 0.8 }}
@@ -406,7 +407,7 @@ export default function FollowsScreen() {
             />
             <View style={styles.header}>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.backButton} onPress={() => router.back()}>
-                    <MaterialCommunityIcons name="arrow-left" size={28} color={isDark ? '#FFFFFF' : '#000'} />
+                    <ArrowLeft size={28} color={isDark ? '#FFFFFF' : '#000'} />
                 </TouchableOpacity>
                 <Text style={styles.nickname}>{username || 'Profile'}</Text>
             </View>

@@ -13,7 +13,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useMobileWallet } from '@wallet-ui/react-native-web3js';
+// @ts-ignore
+import { useMobileWallet } from '@wallet-ui/react-native-web3js/dist/index.native.mjs';
 import { WalletOptionCard } from './WalletOptionCard';
 import type { WalletType, WalletCardConfig } from './WalletOptionCard';
 import saveWallet from '@/src/api/save.wallet';

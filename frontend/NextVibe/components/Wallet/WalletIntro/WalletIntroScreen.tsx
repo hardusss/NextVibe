@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, useColorScheme, AppState } from 'react-native';
 import { RelativePathString, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Lock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -106,19 +106,19 @@ export default function WalletIntroScreen() {
                         <HeaderSection isDarkMode={isDarkMode} />
                         <View style={styles.listContainer}>
                             <FeatureRow
-                                icon="document-text-outline"
+                                iconType="document"
                                 text="No Seed Phrase"
                                 delay={300}
                                 isDarkMode={isDarkMode}
                             />
                             <FeatureRow
-                                icon="finger-print-outline"
+                                iconType="fingerprint"
                                 text="Biometric Secured"
                                 delay={500}
                                 isDarkMode={isDarkMode}
                             />
                             <FeatureRow
-                                icon="flash-outline"
+                                iconType="flash"
                                 text="Gasless Transactions"
                                 delay={700}
                                 isDarkMode={isDarkMode}
@@ -136,8 +136,7 @@ export default function WalletIntroScreen() {
                         />
 
                         <View style={styles.footerNote}>
-                            <Ionicons
-                                name="lock-closed"
+                            <Lock
                                 size={12}
                                 color={isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                             />

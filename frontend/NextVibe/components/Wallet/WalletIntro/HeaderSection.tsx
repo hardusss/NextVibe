@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ShieldCheck } from 'lucide-react-native';
 import Animated, {
     FadeInDown,
     useSharedValue,
@@ -69,7 +69,7 @@ export default function HeaderSection({
         >
             {/* Animated shield icon */}
             <Animated.View style={[styles.iconWrapper, animatedStyle]}>
-                <Ionicons name="shield-checkmark" size={64} color={iconColor} />
+                <ShieldCheck size={64} color={iconColor} />
             </Animated.View>
 
             {/* App name */}

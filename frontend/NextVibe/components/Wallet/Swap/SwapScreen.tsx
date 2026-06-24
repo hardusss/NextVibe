@@ -264,6 +264,7 @@ export default function SwapScreen() {
     const handleFromAmountChange = (text: string) => {
         setLastEditedField('from');
         setFromAmount(sanitize(text));
+        setIsToastVisible(false);
     };
 
     const handleToAmountChange = (text: string) => {
@@ -294,6 +295,7 @@ export default function SwapScreen() {
         setFromAmount(toAmount);
         setToAmount('');
         clearQuote();
+        setIsToastVisible(false);
     }, [fromToken, toToken, toAmount, clearQuote]);
 
     /**
@@ -318,6 +320,7 @@ export default function SwapScreen() {
         clearQuote();
         setFromAmount('');
         setToAmount('');
+        setIsToastVisible(false);
     }, [pickerSide, fromToken, toToken, clearQuote]);
 
     /**
@@ -376,12 +379,40 @@ export default function SwapScreen() {
             setFromAmount('');
             setToAmount('');
             clearQuote();
+            setTimeout(() => {
+                setIsToastVisible(false);
+            }, 2500);
         } else {
             setToastMessage(error || 'Transaction execution failed.');
             setIsToastSuccess(false);
             setIsToastVisible(true);
+            setTimeout(() => {
+                setIsToastVisible(false);
+            }, 2500);
         }
     };
+    const { disabled, disabledLabel } = useMemo(() => {
+        if (!fromToken || !toToken) {
+            return { disabled: true, disabledLabel: 'Select tokens' };
+        }
+        const parsedAmount = parseFloat(fromAmount);
+        if (!fromAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
+            return { disabled: true, disabledLabel: 'Enter amount' };
+        }
+        if (parsedAmount > (fromToken.amount ?? 0)) {
+            return { disabled: true, disabledLabel: 'Insufficient balance' };
+        }
+        if (isQuoteLoading) {
+            return { disabled: true, disabledLabel: 'Finding best route...' };
+        }
+        if (quoteError) {
+            return { disabled: true, disabledLabel: 'No route available' };
+        }
+        if (!quote) {
+            return { disabled: true, disabledLabel: 'Pair unavailable' };
+        }
+        return { disabled: false, disabledLabel: 'swipe to swap' };
+    }, [fromToken, toToken, fromAmount, isQuoteLoading, quoteError, quote]);
 
     /**
      * Filters the token list to exclude the token already selected on the opposite side.
@@ -572,6 +603,8 @@ export default function SwapScreen() {
                         isSuccess={isToastSuccess && isToastVisible}
                         isFailed={!isToastSuccess && isToastVisible}
                         colors={colors}
+                        disabled={disabled}
+                        disabledLabel={disabledLabel}
                     />
                 </View>
             </ScrollView>

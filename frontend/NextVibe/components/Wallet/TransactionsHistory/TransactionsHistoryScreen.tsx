@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme, TouchableOpacity } from 'react-native';
 import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { AlertCircle, History } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -215,13 +215,12 @@ export default function TransactionsHistoryScreen() {
                <></>
             ) : error ? (
                 <>
-                    <MaterialCommunityIcons name="alert-circle-outline" size={50} color="#E74C3C" />
+                    <AlertCircle size={50} color="#E74C3C" />
                     <Text style={styles.errorText}>{error}</Text>
                 </>
             ) : (
                 <>
-                    <MaterialCommunityIcons 
-                        name="history" 
+                    <History 
                         size={50} 
                         color={isDark ? '#A09CB8' : '#666'} 
                     />

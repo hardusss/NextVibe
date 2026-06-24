@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet, useColorScheme, PanResponder, Dimensions } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { CheckCircle, AlertCircle, Info, X } from 'lucide-react-native';
 
 const { height } = Dimensions.get('window');
 
@@ -18,16 +18,16 @@ const MessagePopup = ({ isVisible, onClose, type, title, message }: MessagePopup
     const [modalVisible, setModalVisible] = useState(false);
     const styles = getStyles(isDark);
 
-    const getIconName = () => {
+    const getIcon = () => {
+        const color = getIconColor();
         switch (type) {
             case 'success':
-                return 'check-circle';
+                return <CheckCircle size={30} color={color} />;
             case 'error':
-                return 'alert-circle';
+                return <AlertCircle size={30} color={color} />;
             case 'info':
-                return 'information';
             default:
-                return 'information';
+                return <Info size={30} color={color} />;
         }
     };
 
@@ -110,10 +110,10 @@ const MessagePopup = ({ isVisible, onClose, type, title, message }: MessagePopup
                 {...panResponder.panHandlers}
             >
                 <View style={styles.headerContainer}>
-                    <MaterialCommunityIcons name={getIconName()} size={30} color={getIconColor()} />
+                    {getIcon()}
                     <Text style={styles.title}>{title}</Text>
                     <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={closeModal} style={styles.closeButton}>
-                        <MaterialCommunityIcons name="close" size={24} color={isDark ? "#c9d1d9" : "#666"} />
+                        <X size={24} color={isDark ? "#c9d1d9" : "#666"} />
                     </TouchableOpacity>
                 </View>
                 

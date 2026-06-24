@@ -1,4 +1,5 @@
-import { useMobileWallet } from "@wallet-ui/react-native-web3js";
+// @ts-ignore
+import { useMobileWallet } from "@wallet-ui/react-native-web3js/dist/index.native.mjs";
 import { useWallet } from "@lazorkit/wallet-mobile-adapter";
 import { useMemo } from "react";
 import { Connection, Transaction, VersionedTransaction, TransactionSignature } from "@solana/web3.js";

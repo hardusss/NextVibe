@@ -11,7 +11,19 @@ import {
   useColorScheme,
   Platform,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { 
+  Heart, 
+  MessageSquarePlus, 
+  UserPlus, 
+  ArrowDownLeft, 
+  Trash2, 
+  ShieldCheck, 
+  ShieldAlert, 
+  CalendarPlus, 
+  CalendarCheck,
+  ArrowLeft,
+  BellOff
+} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import getNotifications from '@/src/api/get.notifications';
 import FastImage from 'react-native-fast-image';
@@ -21,47 +33,47 @@ import readNotifications from '@/src/api/read.notifications';
 
 const icons = {
   like: {
-    icon: "heart-outline",
+    IconComponent: Heart,
     color: "#7F00FF",
   },
   comment: {
-    icon: "comment-plus-outline",
+    IconComponent: MessageSquarePlus,
     color: "#7F00FF",
   },
   comment_reply: {
-    icon: "comment-plus-outline",
+    IconComponent: MessageSquarePlus,
     color: "#7F00FF",
   },
   comment_like: {
-    icon: "heart-outline",
+    IconComponent: Heart,
     color: "#7F00FF",
   },
   follow: {
-    icon: "account-outline",
+    IconComponent: UserPlus,
     color: "#00b7ffff",
   },
   revived_transaction: {
-    icon: "arrow-down-bold-circle-outline",
+    IconComponent: ArrowDownLeft,
     color: "#03fa13ff",
   },
   deleted_post: {
-    icon: "delete-alert-outline",
+    IconComponent: Trash2,
     color: "#fa0101ff"
   },
   moderation_success: {
-    icon: "check-decagram-outline",
+    IconComponent: ShieldCheck,
     color: "#03fa13ff",
   },
   moderation_fail: {
-    icon: "close-circle-multiple-outline",
+    IconComponent: ShieldAlert,
     color: "#fa0101ff"
   },
   event_request: {
-    icon: "calendar-plus",
+    IconComponent: CalendarPlus,
     color: "#7F00FF"
   },
   event_request_status: {
-    icon: "calendar-check",
+    IconComponent: CalendarCheck,
     color: "#7F00FF"
   }
 };
@@ -437,9 +449,8 @@ export default function NotificationsListPage() {
       return (
         <View style={styles.avatarContainer}>
           <View style={[styles.systemAvatar, { backgroundColor: bgColor }]}>
-            <MaterialCommunityIcons
-              name={iconData.icon as any}
-              size={28}
+            <iconData.IconComponent
+              size={24}
               color={iconData.color}
             />
           </View>
@@ -454,9 +465,8 @@ export default function NotificationsListPage() {
           style={styles.avatar}
         />
         <View style={[styles.iconBadge, { backgroundColor: isDarkTheme ? '#1A1A1A' : '#FFFFFF' }]}>
-          <MaterialCommunityIcons
-            name={iconData.icon as any}
-            size={16}
+          <iconData.IconComponent
+            size={12}
             color={iconData.color}
           />
         </View>
@@ -464,17 +474,35 @@ export default function NotificationsListPage() {
     );
   };
 
+  const handleNotificationPress = (item: Notification) => {
+    if (item.post) {
+      const params: any = { id: item.post };
+      if (item.comment) {
+        params.commentId = item.comment;
+      }
+      if (item.comment_reply) {
+        params.replyId = item.comment_reply;
+      }
+      router.push({ pathname: "/post-details", params });
+    } else if (item.notification_type === 'follow' && item.sender__user_id) {
+      router.push({ pathname: "/user-profile", params: { id: item.sender__user_id } });
+    } else if (item.sender__user_id) {
+      router.push({ pathname: "/user-profile", params: { id: item.sender__user_id } });
+    }
+  };
+
   const renderNotification = ({ item }: { item: Notification }) => {
     const { main, sub } = parseTextPreview(item.text_preview);
     const isUnread = !item.is_read;
 
     return (
-      <View
+      <TouchableOpacity
         style={[
           styles.notificationItem,
           isUnread ? styles.notificationItemUnread : styles.notificationItemRead,
         ]}
-        
+        onPress={() => handleNotificationPress(item)}
+        activeOpacity={0.85}
       >
         {Platform.OS === 'android' ? (
           <View style={[styles.blurViewAbsolute, { backgroundColor: isDarkTheme ? 'rgba(10, 4, 16, 0.7)' : 'rgba(255, 255, 255, 0.85)' }]} />
@@ -542,7 +570,7 @@ export default function NotificationsListPage() {
             </Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -575,7 +603,7 @@ export default function NotificationsListPage() {
     if (notifications.length === 0) {
       return (
         <View style={styles.noNotificationsContainer}>
-            <MaterialCommunityIcons name="bell-off-outline" size={64} color={themeColors.textSecondary} />
+            <BellOff size={64} color={themeColors.textSecondary} strokeWidth={1.5} />
             <Text style={styles.noNotificationsText}>No notifications yet</Text>
         </View>
       );
@@ -598,9 +626,9 @@ export default function NotificationsListPage() {
       <View style={styles.header}>
         <View style={styles.titleWrapper}>
           <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()}>
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={28}
+            <ArrowLeft
+              size={24}
+              color={themeColors.text}
               style={styles.backIcon}
             />
           </TouchableOpacity>

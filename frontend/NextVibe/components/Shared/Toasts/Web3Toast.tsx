@@ -1,7 +1,7 @@
 import { useColorScheme, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { CheckCircle, Info, X } from 'lucide-react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -89,11 +89,17 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: Web3T
                         { backgroundColor: isDark ? '#8B5CF620' : '#8B5CF615' },
                     ]}
                 >
-                    <MaterialCommunityIcons
-                        name={isSuccess ? 'check-circle' : 'information-outline'}
-                        size={20}
-                        color="#A78BFA"
-                    />
+                    {isSuccess ? (
+                        <CheckCircle
+                            size={20}
+                            color="#A78BFA"
+                        />
+                    ) : (
+                        <Info
+                            size={20}
+                            color="#A78BFA"
+                        />
+                    )}
                 </View>
                 <Text style={[styles.toastText, { color: isDark ? '#F3F4F6' : '#1F2937' }]}>
                     {message}
@@ -104,8 +110,7 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: Web3T
                     style={styles.closeButton}
                     activeOpacity={0.7}
                 >
-                    <MaterialCommunityIcons
-                        name="close"
+                    <X
                         size={20}
                         color={isDark ? '#9CA3AF' : '#6B7280'}
                     />

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { ImageZoom } from "@likashefqet/react-native-image-zoom";
-import { AntDesign } from "@expo/vector-icons";
+import { X } from "lucide-react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const { width: SW, height: SH } = Dimensions.get("window");
@@ -55,7 +55,7 @@ const PhotoModal: React.FC<Props> = ({ visible, images, initialIndex, onClose })
             <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
 
                 <Pressable onPress={onClose} style={styles.closeBtn}>
-                    <AntDesign name="close" size={20} color="#fff" />
+                    <X size={20} color="#fff" />
                 </Pressable>
 
                 {images.length > 1 && (
