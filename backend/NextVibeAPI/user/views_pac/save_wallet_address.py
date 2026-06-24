@@ -1,7 +1,12 @@
+import logging
+import httpx
+from django.conf import settings
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+
+logger = logging.getLogger(__name__)
 
 class SaveWalletAddressView(APIView):
     permission_classes = [IsAuthenticated]
@@ -28,5 +33,24 @@ class SaveWalletAddressView(APIView):
 
         request.user.wallet_address = wallet_address
         request.user.save(update_fields=["wallet_address"])
+
+        # Directly call indexer register endpoint to ensure immediate indexing
+        if settings.INDEXER_INTERNAL_SECRET and settings.INDEXER_URL:
+            try:
+                httpx.post(
+                    f"{settings.INDEXER_URL.rstrip('/')}/index/register",
+                    json={
+                        "user_id": request.user.user_id,
+                        "wallet_address": wallet_address,
+                    },
+                    headers={"x-internal-secret": settings.INDEXER_INTERNAL_SECRET},
+                    timeout=5.0,
+                )
+            except Exception as error:
+                logger.warning(
+                    "Direct indexer register failed in SaveWalletAddressView for %s: %s",
+                    wallet_address,
+                    error,
+                )
 
         return Response({"success": True}, status=status.HTTP_200_OK)
