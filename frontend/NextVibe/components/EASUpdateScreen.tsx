@@ -3,8 +3,6 @@ import {
     View,
     StyleSheet,
     StatusBar,
-    Dimensions,
-    TouchableOpacity,
     Text,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -16,17 +14,14 @@ import Animated, {
     withRepeat,
     withSequence,
     Easing,
-    FadeIn,
 } from "react-native-reanimated";
 
-const { width: SCREEN_W } = Dimensions.get("window");
-
 const COLORS = {
-    bg: "#000000",
+    bg: "#0A0410",
     text: "#FFFFFF",
     textMuted: "rgba(255, 255, 255, 0.45)",
-    border: "rgba(255, 255, 255, 0.15)",
-    accent: "#8B5CF6", // Violet
+    border: "rgba(255, 255, 255, 0.12)",
+    accent: "#A855F7", // Purple/violet
     success: "#10B981", // Green
     error: "#EF4444", // Red
 };
@@ -39,19 +34,19 @@ type UpdatePhase =
     | "error";
 
 const phaseLabels: Record<UpdatePhase, string> = {
-    checking: "CHECKING FOR UPDATES",
-    downloading: "DOWNLOADING PATCH",
-    ready: "PATCH READY TO APPLY",
-    "up-to-date": "SYSTEM IS UP TO DATE",
-    error: "UPDATE CHECK FAILED",
+    checking: "Checking for updates...",
+    downloading: "Downloading update...",
+    ready: "Finalizing update...",
+    "up-to-date": "NextVibe is up to date!",
+    error: "Launching app...",
 };
 
 const phaseSubLabels: Record<UpdatePhase, string> = {
-    checking: "establishing handshakes with remote nodes…",
-    downloading: "fetching files from edge CDN assets…",
-    ready: "patch files verified. ready to execute hot-swap.",
-    "up-to-date": "no pending patches found on remote channels.",
-    error: "connection failure. bypassing system check.",
+    checking: "Preparing to fetch the latest version...",
+    downloading: "The app might restart once the update is ready.",
+    ready: "Restarting app in a moment...",
+    "up-to-date": "Launching NextVibe...",
+    error: "Continuing to launch NextVibe...",
 };
 
 export default function EASUpdateScreen() {
@@ -61,36 +56,25 @@ export default function EASUpdateScreen() {
     // ── Reanimated values ────────────────────────────────────────
     const scannerTranslateX = useSharedValue(-60);
     const downloadProgress = useSharedValue(0);
-    const laserGlowOpacity = useSharedValue(0.4);
-    const ledOpacity = useSharedValue(0.3);
+    const logoScale = useSharedValue(1);
 
-    // Continuous Laser / LED animations
+    // Continuous Laser / LED / Logo animations
     useEffect(() => {
         // Scanner animation (checking phase)
         scannerTranslateX.value = withRepeat(
             withSequence(
-                withTiming(160, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
+                withTiming(240, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
                 withTiming(-60, { duration: 1500, easing: Easing.inOut(Easing.quad) })
             ),
             -1,
             false
         );
 
-        // LED pulse
-        ledOpacity.value = withRepeat(
+        // Logo pulse
+        logoScale.value = withRepeat(
             withSequence(
-                withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-                withTiming(0.3, { duration: 800, easing: Easing.inOut(Easing.ease) })
-            ),
-            -1,
-            true
-        );
-
-        // Laser glow pulse
-        laserGlowOpacity.value = withRepeat(
-            withSequence(
-                withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-                withTiming(0.4, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+                withTiming(1.06, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) })
             ),
             -1,
             true
@@ -103,7 +87,7 @@ export default function EASUpdateScreen() {
 
         const run = async () => {
             try {
-                await new Promise((resolve) => setTimeout(resolve, 1200));
+                await new Promise((resolve) => setTimeout(resolve, 1500));
 
                 const result = await Updates.checkForUpdateAsync();
                 if (cancelled) return;
@@ -120,11 +104,19 @@ export default function EASUpdateScreen() {
                     if (cancelled) return;
 
                     setPhase("ready");
+                    // Automatically reload the app
+                    setTimeout(async () => {
+                        try {
+                            await Updates.reloadAsync();
+                        } catch {
+                            router.replace("/splash");
+                        }
+                    }, 1500);
                 } else {
                     setPhase("up-to-date");
                     setTimeout(() => {
                         if (!cancelled) router.replace("/splash");
-                    }, 2200);
+                    }, 1500);
                 }
             } catch (e) {
                 if (cancelled) return;
@@ -132,7 +124,7 @@ export default function EASUpdateScreen() {
                 setPhase("error");
                 setTimeout(() => {
                     if (!cancelled) router.replace("/splash");
-                }, 2200);
+                }, 1500);
             }
         };
 
@@ -151,126 +143,53 @@ export default function EASUpdateScreen() {
         width: `${downloadProgress.value * 100}%`,
     }));
 
-    const rLedStyle = useAnimatedStyle(() => {
-        const pulsePhase = phase === "checking" || phase === "downloading";
-        return {
-            opacity: pulsePhase ? ledOpacity.value : 1,
-        };
-    });
-
-    const rLaserStyle = useAnimatedStyle(() => ({
-        opacity: laserGlowOpacity.value,
+    const logoAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: logoScale.value }],
     }));
-
-    // ── Handlers ─────────────────────────────────────────────────
-    const handleApply = async () => {
-        try {
-            await Updates.reloadAsync();
-        } catch {
-            router.replace("/splash");
-        }
-    };
-
-    const handleSkip = () => {
-        router.replace("/splash");
-    };
-
-    // Color helpers for active terminal states
-    const getLaserColor = () => {
-        if (phase === "up-to-date") return COLORS.success;
-        if (phase === "error") return COLORS.error;
-        return COLORS.accent;
-    };
 
     return (
         <View style={styles.root}>
-            <StatusBar backgroundColor="#000000" barStyle="light-content" />
+            <StatusBar backgroundColor={COLORS.bg} barStyle="light-content" />
 
-            {/* Top HUD bar */}
-            <View style={styles.hudHeader}>
-                <Text style={styles.hudHeaderText}>NEXTVIBE // OTA_CORE_v1.0.4</Text>
-                <View style={styles.hudHeaderLine} />
-            </View>
-
-            {/* Main Typographic Section */}
-            <View style={styles.mainContainer}>
-                {/* Minimal LED Status Indicator */}
-                <View style={styles.ledRow}>
-                    <Animated.View
-                        style={[
-                            styles.led,
-                            { backgroundColor: getLaserColor() },
-                            rLedStyle,
-                        ]}
+            <View style={styles.container}>
+                {/* Pulsing Logo Frame */}
+                <View style={styles.logoFrame}>
+                    <Animated.Image
+                        source={require("@/assets/logo.png")}
+                        style={[styles.logo, logoAnimatedStyle]}
+                        resizeMode="contain"
                     />
-                    <Text style={[styles.ledText, { color: getLaserColor() }]}>
-                        {phase.toUpperCase()}
-                    </Text>
                 </View>
 
-                {/* Term title & sub */}
-                <Animated.Text entering={FadeIn.duration(300)} style={styles.termTitle}>
+                {/* Status/Phase Title */}
+                <Text style={styles.title}>
                     {phaseLabels[phase]}
-                </Animated.Text>
-                
-                <Text style={styles.termSub}>
+                </Text>
+
+                {/* Subtitle / User info */}
+                <Text style={styles.subtitle}>
                     {phaseSubLabels[phase]}
                 </Text>
 
-                {/* laser line track / progress */}
-                <View style={styles.laserContainer}>
-                    {phase === "checking" && (
-                        <View style={styles.laserTrack}>
-                            <Animated.View style={[styles.laserScannerBar, rScannerStyle]} />
-                        </View>
-                    )}
-
-                    {phase === "downloading" && (
-                        <View style={styles.laserTrack}>
-                            <Animated.View style={[styles.laserFill, rDownloadProgressStyle]} />
-                        </View>
-                    )}
-
-                    {(phase === "ready" || phase === "up-to-date" || phase === "error") && (
-                        <Animated.View
-                            style={[
-                                styles.laserStatic,
-                                { backgroundColor: getLaserColor() },
-                                rLaserStyle,
-                            ]}
-                        />
-                    )}
+                {/* Progress bar container */}
+                <View style={styles.progressContainer}>
+                    <View style={styles.progressBarBg}>
+                        {phase === "downloading" ? (
+                            <Animated.View style={[styles.progressBarFill, rDownloadProgressStyle]} />
+                        ) : phase === "checking" ? (
+                            <Animated.View style={[styles.progressBarScanner, rScannerStyle]} />
+                        ) : (
+                            <View style={[styles.progressBarFill, { width: "100%", backgroundColor: phase === "error" ? COLORS.error : COLORS.success }]} />
+                        )}
+                    </View>
                 </View>
-
-                {/* Actions */}
-                {phase === "ready" && (
-                    <Animated.View entering={FadeIn.duration(350)} style={styles.btnWrapper}>
-                        <TouchableOpacity
-                            style={styles.actionBtn}
-                            onPress={handleApply}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.actionBtnText}>[ DEPLOY PATCH ]</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.skipBtn}
-                            onPress={handleSkip}
-                            activeOpacity={0.6}
-                        >
-                            <Text style={styles.skipBtnText}>SKIP DEPLOYMENT</Text>
-                        </TouchableOpacity>
-                    </Animated.View>
-                )}
             </View>
 
-            {/* Bottom HUD info */}
-            <View style={styles.hudFooter}>
-                <View style={styles.hudFooterLine} />
-                <View style={styles.hudFooterRow}>
-                    <Text style={styles.hudFooterText}>ENV: PRODUCTION</Text>
-                    <Text style={styles.hudFooterText}>SECURE CON: TRUE</Text>
-                </View>
+            {/* Bottom info to avoid clutter */}
+            <View style={styles.footer}>
+                <Text style={styles.footerText}>
+                    Please do not close the app
+                </Text>
             </View>
         </View>
     );
@@ -280,129 +199,68 @@ const styles = StyleSheet.create({
     root: {
         flex: 1,
         backgroundColor: COLORS.bg,
-        paddingHorizontal: 32,
-    },
-    hudHeader: {
-        position: "absolute",
-        top: 60,
-        left: 32,
-        right: 32,
-    },
-    hudHeaderText: {
-        fontFamily: "Dank Mono",
-        fontSize: 11,
-        color: COLORS.textMuted,
-        letterSpacing: 2,
-    },
-    hudHeaderLine: {
-        height: 1,
-        backgroundColor: COLORS.border,
-        marginTop: 10,
-    },
-    mainContainer: {
-        flex: 1,
         justifyContent: "center",
-        alignItems: "flex-start",
-    },
-    ledRow: {
-        flexDirection: "row",
         alignItems: "center",
-        gap: 8,
-        marginBottom: 20,
+        paddingHorizontal: 40,
     },
-    led: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    ledText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 10,
-        letterSpacing: 2,
-    },
-    termTitle: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 22,
-        color: COLORS.text,
-        letterSpacing: 1,
-        marginBottom: 8,
-    },
-    termSub: {
-        fontFamily: "Dank Mono",
-        fontSize: 13,
-        color: COLORS.textMuted,
-        lineHeight: 18,
-    },
-    laserContainer: {
+    container: {
+        alignItems: "center",
         width: "100%",
-        height: 2,
-        marginTop: 32,
     },
-    laserTrack: {
-        width: 200,
-        height: 2,
-        backgroundColor: "rgba(255, 255, 255, 0.05)",
+    logoFrame: {
+        width: 100,
+        height: 100,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 32,
+    },
+    logo: {
+        width: 80,
+        height: 80,
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: "600",
+        color: COLORS.text,
+        textAlign: "center",
+        marginBottom: 8,
+        letterSpacing: 0.5,
+    },
+    subtitle: {
+        fontSize: 14,
+        color: COLORS.textMuted,
+        textAlign: "center",
+        marginBottom: 32,
+        lineHeight: 20,
+        paddingHorizontal: 20,
+    },
+    progressContainer: {
+        width: 240,
+        height: 4,
+    },
+    progressBarBg: {
+        width: 240,
+        height: 4,
+        backgroundColor: COLORS.border,
+        borderRadius: 2,
         overflow: "hidden",
     },
-    laserScannerBar: {
+    progressBarFill: {
+        height: "100%",
+        backgroundColor: COLORS.accent,
+    },
+    progressBarScanner: {
         width: 60,
         height: "100%",
         backgroundColor: COLORS.accent,
     },
-    laserFill: {
-        height: "100%",
-        backgroundColor: COLORS.accent,
-    },
-    laserStatic: {
-        width: 200,
-        height: 2,
-    },
-    btnWrapper: {
-        marginTop: 48,
-        gap: 16,
-    },
-    actionBtn: {
-        height: 44,
-        justifyContent: "center",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: COLORS.text,
-        paddingHorizontal: 24,
-    },
-    actionBtnText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 13,
-        color: COLORS.text,
-        letterSpacing: 1.5,
-    },
-    skipBtn: {
-        paddingVertical: 6,
-    },
-    skipBtnText: {
-        fontFamily: "Dank Mono",
-        fontSize: 11,
-        color: COLORS.textMuted,
-        letterSpacing: 1.5,
-    },
-    hudFooter: {
+    footer: {
         position: "absolute",
         bottom: 50,
-        left: 32,
-        right: 32,
     },
-    hudFooterLine: {
-        height: 1,
-        backgroundColor: COLORS.border,
-        marginBottom: 10,
-    },
-    hudFooterRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-    },
-    hudFooterText: {
-        fontFamily: "Dank Mono",
-        fontSize: 10,
+    footerText: {
+        fontSize: 12,
         color: COLORS.textMuted,
-        letterSpacing: 1.5,
+        letterSpacing: 0.5,
     },
 });
