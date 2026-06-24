@@ -2,7 +2,7 @@ export const ALLOWED_MINTS = new Set([
   "So11111111111111111111111111111111111111112", // WSOL
   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
   "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3", // SKR
-  "C6FQWMidLdyVBpfRot59ZEamkiafXSwyHTS3ZpGpcVGX", // USDG
+  "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH", // USDG
   "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", // JUP
   "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
   "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZzHmZzG88mB", // PYUSD
