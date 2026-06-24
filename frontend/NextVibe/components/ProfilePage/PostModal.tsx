@@ -319,6 +319,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             blurType="dark"
                             blurAmount={12}
                             reducedTransparencyFallbackColor="#f4ebeb"
+                            pointerEvents="none"
                         />
                         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]} pointerEvents="none" />
 

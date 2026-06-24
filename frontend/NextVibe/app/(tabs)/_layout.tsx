@@ -1,5 +1,5 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
-import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text } from "react-native";
+import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text, AppState, AppStateStatus } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
@@ -347,6 +347,53 @@ export default function Layout() {
             registerForPushNotifications();
         }
     }, [segments, userID]);
+
+    // fix: Firebase Push Token crash (background)
+    useEffect(() => {
+        let pushTokenSubscription: any = null;
+
+        const handleAppStateChange = (nextAppState: AppStateStatus) => {
+            if (nextAppState === 'active') {
+                if (!pushTokenSubscription) {
+                    try {
+                        pushTokenSubscription = Notifications.addPushTokenListener((token) => {
+                            if (token && token.data) {
+                                savePushToken(token.data).catch(() => {});
+                            }
+                        });
+                    } catch (e) {
+                        console.warn("Failed to register push token listener:", e);
+                    }
+                }
+            } else {
+                if (pushTokenSubscription) {
+                    pushTokenSubscription.remove();
+                    pushTokenSubscription = null;
+                }
+            }
+        };
+
+        const appStateSub = AppState.addEventListener('change', handleAppStateChange);
+
+        if (AppState.currentState === 'active') {
+            try {
+                pushTokenSubscription = Notifications.addPushTokenListener((token) => {
+                    if (token && token.data) {
+                        savePushToken(token.data).catch(() => {});
+                    }
+                });
+            } catch (e) {
+                console.warn("Failed to register push token listener on mount:", e);
+            }
+        }
+
+        return () => {
+            if (pushTokenSubscription) {
+                pushTokenSubscription.remove();
+            }
+            appStateSub.remove();
+        };
+    }, []);
 
     useEffect(() => {
         const interceptor = axios.interceptors.response.use(
