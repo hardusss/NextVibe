@@ -17,13 +17,12 @@ import {
     InteractionManager,
     Platform,
 } from "react-native";
-import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { AvatarWithFrame } from "./AvatarWithFrame";
 import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
 import FastImage from "react-native-fast-image";
-import { Star } from "lucide-react-native";
+import { Star, Camera, Layers, Calendar } from "lucide-react-native";
 import AnimatedReanimated, {
     useAnimatedStyle,
     useSharedValue,
@@ -115,9 +114,9 @@ const Dot = ({ isDark }: { isDark: boolean }) => (
 
 /* ─── Empty State ─── */
 const EmptyState = ({
-    iconName, title, description, colorScheme
+    Icon, title, description, colorScheme
 }: {
-    iconName: keyof typeof MaterialIcons.glyphMap;
+    Icon: React.ComponentType<{ size?: number; color?: string }>;
     title: string; description: string;
     colorScheme: "light" | "dark" | null | undefined;
 }) => {
@@ -133,7 +132,7 @@ const EmptyState = ({
                 backgroundColor: isDark ? 'rgba(88,166,255,0.1)' : 'rgba(88,166,255,0.15)',
                 padding: 18, borderRadius: 40, marginBottom: 16,
             }}>
-                <MaterialIcons name={iconName} size={42} color="#58a6ff" />
+                <Icon size={42} color="#58a6ff" />
             </View>
             <Text style={{ fontSize: 20, fontWeight: "bold", color: isDark ? "#fff" : "#000", marginBottom: 8, textAlign: 'center' }}>
                 {title}
@@ -499,7 +498,7 @@ const ProfileView = () => {
                                     backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
                                 }]}
                             >
-                                <MaterialIcons name="event" size={18} color="#A855F7" />
+                                <Calendar size={18} color="#A855F7" />
                                 <Text style={st.eventsBtnText}>Events</Text>
                             </TouchableOpacity>
                         </View>
@@ -543,7 +542,7 @@ const ProfileView = () => {
                         }]}>
                             {mountedTabs.has("Posts") && (
                                 userData.post_count === 0 ? (
-                                    <EmptyState iconName="photo-camera" title="No Posts Yet"
+                                    <EmptyState Icon={Camera} title="No Posts Yet"
                                         description="Start sharing your moments to make your profile more engaging."
                                         colorScheme={colorScheme} />
                                 ) : (
@@ -556,7 +555,7 @@ const ProfileView = () => {
                         }]}>
                             {mountedTabs.has("cNFTs") && (
                                 userData.cnft_count === 0 ? (
-                                    <EmptyState iconName="collections" title="No cNFTs Yet"
+                                    <EmptyState Icon={Layers} title="No cNFTs Yet"
                                         description="Your collected and created cNFTs will appear here."
                                         colorScheme={colorScheme} />
                                 ) : (

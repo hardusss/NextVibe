@@ -1,5 +1,5 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
-import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking } from "react-native";
+import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import FastImage from 'react-native-fast-image';
@@ -14,11 +14,12 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
+import { House, Search, BadgePlus, UserRound, Radar, WifiOff } from "lucide-react-native";
 import { BlurView } from "@react-native-community/blur";
 import PromoBanner from "@/components/Shared/PromoBanner";
 import { scrollFeedToTop } from "@/src/utils/feedScrollRef";
-import { MobileWalletProvider } from '@wallet-ui/react-native-web3js';
+// @ts-ignore
+import { MobileWalletProvider } from '@wallet-ui/react-native-web3js/dist/index.native.mjs';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -31,9 +32,12 @@ import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
+    FadeInUp,
+    FadeOutUp,
 } from 'react-native-reanimated';
 import { Pressable } from 'react-native';
 import { MOTION } from '@/constants/motion';
+
 
 const chain = 'solana:mainnet';
 const endpoint = 'https://api.nextvibe.io/api/v1/wallets/rpc/';
@@ -232,6 +236,22 @@ export default function Layout() {
     const [userID, setUserID] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [visible, setVisible] = useState<boolean>(false);
+    const [isConnected, setIsConnected] = useState<boolean | null>(true);
+
+    useEffect(() => {
+        const { NativeModules } = require('react-native');
+        if (!NativeModules.RNCNetInfo) {
+            console.warn("@react-native-community/netinfo: NativeModule.RNCNetInfo is null. Network status detection is disabled.");
+            setIsConnected(true);
+            return;
+        }
+
+        const NetInfo = require('@react-native-community/netinfo').default;
+        const unsubscribe = NetInfo.addEventListener((state: any) => {
+            setIsConnected(state.isConnected);
+        });
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         if (fontsLoaded || fontError) {
@@ -447,6 +467,17 @@ export default function Layout() {
                                         ))}
                                     </Stack>
 
+                                    {isConnected === false && (
+                                        <Animated.View 
+                                            entering={FadeInUp.duration(300)}
+                                            exiting={FadeOutUp.duration(300)}
+                                            style={styles.offlineBanner}
+                                        >
+                                            <WifiOff size={16} color="#FFFFFF" strokeWidth={2.5} />
+                                            <Text style={styles.offlineText}>No internet connection</Text>
+                                        </Animated.View>
+                                    )}
+
                                     {showTabBar && (
                                         <View style={styles.tabBarContainer}>
                                             <BlurView
@@ -541,5 +572,33 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 16,
         borderColor: "#a18ed5",
+    },
+    offlineBanner: {
+        position: 'absolute',
+        top: 60,
+        left: 20,
+        right: 20,
+        backgroundColor: 'rgba(239, 68, 68, 0.95)',
+        borderRadius: 20,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 10,
+        zIndex: 99999,
+    },
+    offlineText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontFamily: 'Dank Mono Bold',
+        includeFontPadding: false,
     },
 });

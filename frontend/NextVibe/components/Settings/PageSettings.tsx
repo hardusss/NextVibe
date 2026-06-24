@@ -3,7 +3,7 @@ import {
     ScrollView, View, Text, StatusBar, StyleSheet, useColorScheme,
     Animated, TouchableWithoutFeedback, TouchableOpacity, TextInput, RefreshControl
 } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { ArrowLeft } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import { Switch } from "react-native-paper";
 import { useRouter } from "expo-router";
@@ -308,7 +308,7 @@ function PageSettingsContent() {
             
             <View style={styles.header}>
                 <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={handleBackPress}>
-                    <MaterialCommunityIcons name="arrow-left" style={styles.icon} />
+                    <ArrowLeft size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Profile</Text>
                 <TouchableOpacity 

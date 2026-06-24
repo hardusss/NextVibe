@@ -17,7 +17,7 @@ import {
     useColorScheme,
 } from 'react-native';
 import getComments from '@/src/api/get.comments';
-import { MaterialIcons, Entypo, AntDesign } from '@expo/vector-icons';
+import { Heart, ChevronDown, ChevronUp, X, MessageSquareOff, MessageSquare, ArrowUp } from 'lucide-react-native';
 import timeAgo from '@/src/utils/formatTime';
 import { ActivityIndicator } from '../CustomActivityIndicator';
 import getUserDetail from '@/src/api/user.detail';
@@ -290,7 +290,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                         <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => toggleLike(item)}>
                             <View style={styles.likeRow}>
                                 {item.count_likes > 0 && <Text style={styles.likeCount}>{item.count_likes}</Text>}
-                                <MaterialIcons name={isLiked(item) ? 'favorite' : 'favorite-border'} size={16} color={isLiked(item) ? '#A855F7' : '#666'} />
+                                <Heart size={16} color={isLiked(item) ? '#A855F7' : '#666'} fill={isLiked(item) ? '#A855F7' : 'transparent'} />
                             </View>
                         </TouchableOpacity>
                     </View>
@@ -332,7 +332,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                             <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => toggleLike(item)}>
                                 <View style={styles.likeRow}>
                                     {item.count_likes > 0 && <Text style={styles.likeCount}>{item.count_likes}</Text>}
-                                    <MaterialIcons name={isLiked(item) ? 'favorite' : 'favorite-border'} size={16} color={isLiked(item) ? '#A855F7' : '#666'} />
+                                    <Heart size={16} color={isLiked(item) ? '#A855F7' : '#666'} fill={isLiked(item) ? '#A855F7' : 'transparent'} />
                                 </View>
                             </TouchableOpacity>
                         </View>
@@ -349,18 +349,18 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
 
                         {totalReplies > 0 && (
                             <View style={styles.repliesButtonContainer}>
-                                {!allShown && (
+                                 {!allShown && (
                                     <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => showMoreReplies(item.id, totalReplies)} style={styles.replyToggleBtn}>
                                         <Text style={styles.toggleRepliesText}>
                                             {visibleCount === 0 ? `View replies: ${totalReplies}` : `View ${totalReplies - visibleCount} more`}
                                         </Text>
-                                        <Entypo name="chevron-down" size={12} color="#888" />
+                                        <ChevronDown size={12} color="#888" />
                                     </TouchableOpacity>
                                 )}
                                 {visibleCount > 0 && (
                                     <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => hideReplies(item.id)} style={[styles.replyToggleBtn, { marginLeft: 16 }]}>
                                         <Text style={styles.toggleRepliesText}>Hide</Text>
-                                        <Entypo name="chevron-up" size={12} color="#888" />
+                                        <ChevronUp size={12} color="#888" />
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -395,7 +395,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                             Comments{totalCount > 0 ? ` · ${totalCount}` : ''}
                         </Text>
                         <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                            <AntDesign name="close" size={20} color="#888" />
+                            <X size={20} color="#888" />
                         </TouchableOpacity>
                     </View>
 
@@ -405,12 +405,12 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                         </View>
                     ) : !isCommentsEnabled ? (
                         <View style={styles.centered}>
-                            <MaterialIcons name="comments-disabled" size={40} color="#333" />
+                            <MessageSquareOff size={40} color="#333" />
                             <Text style={styles.disabledText}>Comments are disabled</Text>
                         </View>
                     ) : comments.length === 0 ? (
                         <View style={styles.centered}>
-                            <MaterialIcons name="chat-bubble-outline" size={40} color="#333" />
+                            <MessageSquare size={40} color="#333" />
                             <Text style={styles.disabledText}>No comments yet</Text>
                             <Text style={styles.disabledSubtext}>Be the first to comment</Text>
                         </View>
@@ -432,7 +432,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                                 Replying to <Text style={{ color: '#A855F7' }}>{replyingTo.user.username}</Text>
                             </Text>
                             <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setReplyingTo(null)}>
-                                <AntDesign name="close" size={14} color="#888" />
+                                <X size={14} color="#888" />
                             </TouchableOpacity>
                         </View>
                     )}
@@ -462,7 +462,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
                                     colors={commentText.trim() ? ['#A855F7', '#7C3AED'] : colors.disabledSendBg}
                                     style={styles.sendBtnGradient}
                                 >
-                                    <MaterialIcons name="arrow-upward" size={20} color={commentText.trim() ? '#fff' : colors.disabledSendArrow} />
+                                    <ArrowUp size={20} color={commentText.trim() ? '#fff' : colors.disabledSendArrow} />
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>

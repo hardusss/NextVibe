@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ArrowLeftRight, ArrowDownLeft, ArrowUpRight } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import FastImage from 'react-native-fast-image';
 import { useRouter } from 'expo-router';
@@ -224,7 +224,7 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                             right: -6,
                             zIndex: 3,
                         }]}>
-                            <MaterialCommunityIcons name="swap-horizontal" size={14} color="#fff" />
+                            <ArrowLeftRight size={14} color="#fff" />
                         </View>
                     </View>
 
@@ -288,11 +288,11 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                         backgroundColor: isIncoming ? '#2ECC71' : '#E74C3C',
                         borderColor: isDark ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)',
                     }]}>
-                        <MaterialCommunityIcons 
-                            name={isIncoming ? 'arrow-bottom-left' : 'arrow-top-right'} 
-                            size={14} 
-                            color="#fff" 
-                        />
+                        {isIncoming ? (
+                            <ArrowDownLeft size={14} color="#fff" />
+                        ) : (
+                            <ArrowUpRight size={14} color="#fff" />
+                        )}
                     </View>
                 </View>
                 

@@ -14,8 +14,7 @@ import {
   Linking
 } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
-import Icon from "react-native-vector-icons/Ionicons";
-import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { VolumeX, Volume2, Heart, Sparkles, MoreVertical, MessageSquare, ChevronLeft, Frown } from 'lucide-react-native';
 import getMenuPosts from "@/src/api/menu.posts";
 import timeAgo from "@/src/utils/formatTime";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -485,11 +484,11 @@ const MediaItemComponent = ({
                         }} 
                         style={styles.muteButton}
                     >
-                        <MaterialIcons 
-                            name={isMuted ? "volume-off" : "volume-up"} 
-                            size={24} 
-                            color="white" 
-                        />
+                        {isMuted ? (
+                            <VolumeX size={24} color="white" />
+                        ) : (
+                            <Volume2 size={24} color="white" />
+                        )}
                     </Pressable>
                 </>
             ) : (
@@ -511,7 +510,7 @@ const MediaItemComponent = ({
                     }]}
                     pointerEvents="none"
                 >
-                    <MaterialIcons name="favorite" size={80} color="#ff0000" />
+                    <Heart size={80} color="#ff0000" fill="#ff0000" />
                 </Animated.View>
             )}
         </Pressable>
@@ -751,7 +750,7 @@ const UserPosts = () => {
                   {item.is_ai_generated && (
                     <View style={styles.aiBadge}>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <MaterialIcons name="auto-awesome" size={12} color="#fff" />
+                        <Sparkles size={12} color="#fff" />
                         <Text style={styles.aiBadgeText}>AI</Text>
                       </View>
                     </View>
@@ -778,8 +777,7 @@ const UserPosts = () => {
                   });
                 }}
               >
-                <MaterialCommunityIcons 
-                  name="dots-vertical" 
+                <MoreVertical 
                   color={theme.textPrimary} 
                   size={24}
                 />
@@ -889,10 +887,10 @@ const UserPosts = () => {
         
         <View style={styles.postFooter}>
           <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item.post_id)} style={styles.likesContainer}>
-            <Icon 
-              name={isLiked ? "heart" : "heart-outline"} 
+            <Heart 
               size={24} 
               color={isLiked ? "red" : theme.textPrimary} 
+              fill={isLiked ? "red" : "transparent"}
             />
             <Text style={styles.likesCount}>{formatNumber(likeCount)}</Text>
           </TouchableOpacity>
@@ -901,7 +899,7 @@ const UserPosts = () => {
             setPopupPostId(item.post_id);
             setShowPopup(true);
           }}>
-            <Icon name="chatbubble-outline" size={20} color={theme.textPrimary} style={{marginTop: -3}}/>
+            <MessageSquare size={20} color={theme.textPrimary} style={{marginTop: -3}}/>
           </TouchableOpacity>
         </View>
         <Text style={styles.postDate}>
@@ -925,8 +923,7 @@ const UserPosts = () => {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <MaterialIcons
-            name="keyboard-arrow-left"
+          <ChevronLeft
             size={42}
             color={theme.textPrimary}
           />
@@ -971,7 +968,7 @@ const UserPosts = () => {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="sentiment-dissatisfied" size={60} color="#58a6ff" />
+              <Frown size={60} color="#58a6ff" />
               <Text style={styles.emptyText}>No posts found</Text>
             </View>
           ) : null

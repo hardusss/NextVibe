@@ -13,7 +13,7 @@ import {
     useColorScheme,
     ActivityIndicator,
 } from 'react-native';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '../../src/config/toast-config';
 import Login from '../../src/api/login';
@@ -116,8 +116,7 @@ export default function LoginView() {
 
                         {/* Email Input */}
                         <View style={[styles.inputContainer, focusedInput === 'email' && styles.inputFocused]}>
-                            <MaterialCommunityIcons
-                                name="email-outline"
+                            <Mail
                                 size={22}
                                 color={focusedInput === 'email' ? colors.iconActive : colors.iconInactive}
                                 style={styles.inputIcon}
@@ -137,8 +136,7 @@ export default function LoginView() {
 
                         {/* Password Input */}
                         <View style={[styles.inputContainer, focusedInput === 'password' && styles.inputFocused]}>
-                            <MaterialCommunityIcons
-                                name="lock-outline"
+                            <Lock
                                 size={22}
                                 color={focusedInput === 'password' ? colors.iconActive : colors.iconInactive}
                                 style={styles.inputIcon}
@@ -157,11 +155,11 @@ export default function LoginView() {
                                 onPress={() => setHidePassword(!hidePassword)}
                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             >
-                                <MaterialIcons
-                                    name={hidePassword ? 'visibility-off' : 'visibility'}
-                                    size={22}
-                                    color={colors.iconInactive}
-                                />
+                                {hidePassword ? (
+                                    <EyeOff size={22} color={colors.iconInactive} />
+                                ) : (
+                                    <Eye size={22} color={colors.iconInactive} />
+                                )}
                             </TouchableOpacity>
                         </View>
 

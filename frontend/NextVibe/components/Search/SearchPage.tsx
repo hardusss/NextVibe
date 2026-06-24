@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FlatList, View, TextInput, Text, StyleSheet, useColorScheme, TouchableOpacity, Dimensions, StatusBar } from "react-native";
 import searchByName from "@/src/api/search";
 import { ActivityIndicator } from "../CustomActivityIndicator";
-import { MaterialIcons } from "@expo/vector-icons";
+import { X, Search } from "lucide-react-native";
 import formatNumber from "@/src/utils/formatNumber";
 import { setSearchHistory, getSearchHistory, deleteUserFromHistory } from "@/src/api/history.search";
 import { useFocusEffect } from "expo-router";
@@ -167,7 +167,7 @@ export default function SearchPage() {
                         onPress={() => handleDeleteUser(item.user_id)}
                         style={{ position: "absolute", right: 10 }}
                     >
-                        <MaterialIcons name="close" color={colors.textPrimary} size={24} />
+                        <X color={colors.textPrimary} size={24} />
                     </TouchableOpacity>
                 )}
             </TouchableOpacity>
@@ -220,7 +220,7 @@ export default function SearchPage() {
                             justifyContent: "center",
                             alignItems: "center",
                         }}>
-                            <MaterialIcons color={colors.textSecondary} size={24} style={{ marginLeft: 10 }} name="search" />
+                            <Search color={colors.textSecondary} size={24} style={{ marginLeft: 10 }} />
                         </View>
                         <TextInput
                             style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}

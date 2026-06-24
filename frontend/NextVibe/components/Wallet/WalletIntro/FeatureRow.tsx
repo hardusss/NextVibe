@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { FileText, Fingerprint, Zap, CheckCircle2 } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import createIntroStyles from '@/styles/intro.styles';
@@ -9,8 +9,8 @@ import createIntroStyles from '@/styles/intro.styles';
  * Props for the FeatureRow component
  */
 type FeatureProps = {
-    /** Ionicons icon name to display on the left */
-    icon: keyof typeof Ionicons.glyphMap;
+    /** Feature icon type */
+    iconType: 'document' | 'fingerprint' | 'flash';
     /** Feature description text */
     text: string;
     /** Animation delay in milliseconds for staggered entrance */
@@ -38,7 +38,7 @@ type FeatureProps = {
  * @example
  * ```tsx
  * <FeatureRow
- *   icon="shield-checkmark"
+ *   iconType="document"
  *   text="Bank-level security"
  *   delay={200}
  *   isDarkMode={true}
@@ -46,7 +46,7 @@ type FeatureProps = {
  * ```
  */
 export default function FeatureRow({
-    icon,
+    iconType,
     text,
     delay,
     isDarkMode
@@ -66,15 +66,16 @@ export default function FeatureRow({
             >
                 {/* Feature icon */}
                 <View style={styles.featureIconBox}>
-                    <Ionicons name={icon} size={22} color={iconColor} />
+                    {iconType === 'document' && <FileText size={22} color={iconColor} />}
+                    {iconType === 'fingerprint' && <Fingerprint size={22} color={iconColor} />}
+                    {iconType === 'flash' && <Zap size={22} color={iconColor} />}
                 </View>
 
                 {/* Feature description */}
                 <Text style={styles.featureText}>{text}</Text>
 
                 {/* Checkmark indicator */}
-                <Ionicons
-                    name="checkmark-circle"
+                <CheckCircle2
                     size={18}
                     color={isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0,0,0,0.3)'}
                 />

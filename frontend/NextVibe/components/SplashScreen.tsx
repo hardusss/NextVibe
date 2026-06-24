@@ -9,6 +9,7 @@ import {
 import { useRouter } from "expo-router";
 import { storage } from "@/src/utils/storage";
 import getStatusProfile from "@/src/api/check.status";
+import * as Updates from "expo-updates";
 
 
 const C = {
@@ -68,8 +69,36 @@ export default function SplashScreen() {
             Animated.timing(sloganOp, { toValue: 1, duration: 400, useNativeDriver: true }),
         ]).start();
 
-        const navTimer = setTimeout(redirectTo, 2400);
-        return () => clearTimeout(navTimer);
+        let cancelled = false;
+        let updateAvailable = false;
+
+        const checkUpdateAndRedirect = async () => {
+            try {
+                if (!__DEV__) {
+                    const check = await Updates.checkForUpdateAsync();
+                    if (check.isAvailable) {
+                        updateAvailable = true;
+                    }
+                }
+            } catch (err) {
+                console.log("[Splash] Update check failed/skipped:", err);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 2400));
+            if (cancelled) return;
+
+            if (updateAvailable) {
+                router.replace("/eas-update");
+            } else {
+                await redirectTo();
+            }
+        };
+
+        checkUpdateAndRedirect();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const bracketLen = bracketAnim.interpolate({ inputRange: [0, 1], outputRange: [0, BRACKET] });

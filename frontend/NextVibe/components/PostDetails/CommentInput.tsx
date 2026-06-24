@@ -9,7 +9,7 @@ import {
     View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { AntDesign, MaterialIcons } from "@expo/vector-icons";
+import { X, ArrowUp } from "lucide-react-native";
 import FastImage from "react-native-fast-image";
 import { EdgeInsets } from "react-native-safe-area-context";
 import { Comment, Reply } from "./CommentThread";
@@ -51,7 +51,7 @@ const CommentInput: React.FC<Props> = ({
                         Replying to <Text style={{ color: "#A855F7" }}>{replyingTo.user.username}</Text>
                     </Text>
                     <TouchableOpacity onPress={onCancelReply} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <AntDesign name="close" size={14} color="#888" />
+                        <X size={14} color="#888" />
                     </TouchableOpacity>
                 </View>
             )}
@@ -85,7 +85,7 @@ const CommentInput: React.FC<Props> = ({
                         colors={canSend ? ["#A855F7", "#7C3AED"] : ["#1a1a1a", "#1a1a1a"]}
                         style={s.sendGradient}
                     >
-                        <MaterialIcons name="arrow-upward" size={18} color={canSend ? "#fff" : "#444"} />
+                        <ArrowUp size={18} color={canSend ? "#fff" : "#444"} />
                     </LinearGradient>
                 </TouchableOpacity>
             </View>

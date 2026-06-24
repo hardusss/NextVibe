@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Dimensions, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
+import { PlayCircle, X } from 'lucide-react-native';
 import FastImage from 'react-native-fast-image';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
@@ -151,7 +151,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
                 style={StyleSheet.absoluteFill}
               >
                 <View style={styles.playIconContainer}>
-                  <MaterialIcons name="play-circle-filled" size={40} color="white" />
+                  <PlayCircle size={40} color="white" />
                 </View>
               </LinearGradient>
             </View>
@@ -176,7 +176,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
           activeOpacity={0.7}
         >
           <View style={styles.closeButtonCircle}>
-            <MaterialIcons name="close" size={24} color="white" />
+            <X size={24} color="white" />
           </View>
         </TouchableOpacity>
         

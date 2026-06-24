@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity, useColorScheme } fr
 import { useRouter } from 'expo-router';
 import FastImage from 'react-native-fast-image';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
+import { Users } from 'lucide-react-native';
 
 interface OnlineUser {
   user_id: number;
@@ -24,7 +24,7 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
             tint={isDark ? 'dark' : 'light'}
             style={styles.blurViewAbsolute}
         />
-        <Ionicons name="people-outline" size={20} color={isDark ? '#888' : '#555'} />
+        <Users size={20} color={isDark ? '#888' : '#555'} />
         <Text style={styles.emptyText}>No one online</Text>
     </View>
   );

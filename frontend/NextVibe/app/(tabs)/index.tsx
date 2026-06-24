@@ -7,5 +7,5 @@ setupAxiosInterceptor();
 LogBox.ignoreAllLogs(true); 
 
 export default function Index() {
-    return <Redirect href={"/eas-update" as RelativePathString} />;
+    return <Redirect href={"/splash" as RelativePathString} />;
 }
