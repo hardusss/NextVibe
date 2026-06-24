@@ -12,7 +12,7 @@ import { getVibemapNfts, VibemapNftItem } from '@/src/api/get.vibemap.nfts';
 import { getVibemapEvents, VibemapEventItem } from '@/src/api/get.vibemap.events';
 import EventDetailSheet, { EventDetailSheetRef } from './EventDetailSheet';
 import * as Haptics from 'expo-haptics';
-import { Camera, Calendar, Moon, Map as LucideMap, MapPin, Compass } from 'lucide-react-native';
+import { Camera, Calendar, Moon, Map as LucideMap, MapPin, Compass, Info } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, {
@@ -22,6 +22,7 @@ import Animated, {
     withTiming,
     withDelay,
     withSequence,
+    withSpring,
     Easing,
 } from 'react-native-reanimated';
 
@@ -40,16 +41,168 @@ const EMPTY_GEOJSON = {
     features: [] as any[],
 };
 
-function NftMarker({ item, onPress }: { item: VibemapNftItem; onPress: () => void }) {
+// ─── Helper UI components for Redesign ───────────────────────────────────────
+
+function FilterPill({
+    isActive,
+    Icon,
+    label,
+    onPress,
+    gradientColors,
+}: {
+    isActive: boolean;
+    Icon: any;
+    label: string;
+    onPress: () => void;
+    gradientColors: readonly [string, string, ...string[]];
+}) {
+    const scale = useSharedValue(isActive ? 1 : 0.95);
+    const opacity = useSharedValue(isActive ? 1 : 0);
+
+    useEffect(() => {
+        scale.value = withSpring(isActive ? 1 : 0.95, { damping: 15, stiffness: 120 });
+        opacity.value = withTiming(isActive ? 1 : 0, { duration: 250 });
+    }, [isActive]);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        opacity: opacity.value,
+    }));
+
     return (
-        <Pressable onPress={onPress} style={styles.markerHitArea}>
-            <View style={styles.nftCard}>
+        <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onPress}
+            style={styles.pill}
+        >
+            <Animated.View style={[StyleSheet.absoluteFillObject, animatedStyle, { borderRadius: 11, overflow: 'hidden' }]}>
+                <LinearGradient
+                    colors={gradientColors}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                />
+            </Animated.View>
+            <Icon
+                size={13}
+                color={isActive ? '#fff' : 'rgba(255,255,255,0.4)'}
+                strokeWidth={2.5}
+            />
+            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                {label}
+            </Text>
+        </TouchableOpacity>
+    );
+}
+
+function LiveBadge() {
+    const scale = useSharedValue(1);
+    const opacity = useSharedValue(0.9);
+
+    useEffect(() => {
+        scale.value = withRepeat(
+            withSequence(
+                withTiming(1.15, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) })
+            ),
+            -1,
+            true
+        );
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration: 800 }),
+                withTiming(0.65, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View style={[styles.eventLiveBadge, animatedStyle]}>
+            <Text style={styles.eventLiveText}>LIVE</Text>
+        </Animated.View>
+    );
+}
+
+function UserLocationBeacon() {
+    const pulse = useSharedValue(0.4);
+    const opacity = useSharedValue(0.8);
+
+    useEffect(() => {
+        pulse.value = withRepeat(
+            withTiming(1.8, { duration: 2000, easing: Easing.out(Easing.quad) }),
+            -1,
+            false
+        );
+        opacity.value = withRepeat(
+            withTiming(0, { duration: 2000, easing: Easing.out(Easing.quad) }),
+            -1,
+            false
+        );
+    }, []);
+
+    const pulseStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: pulse.value }],
+        opacity: opacity.value,
+    }));
+
+    return (
+        <View style={styles.userBeaconContainer}>
+            <Animated.View style={[styles.userBeaconPulse, pulseStyle]} />
+            <View style={styles.userBeaconCenter} />
+        </View>
+    );
+}
+
+function RadarSweep() {
+    const rotation = useSharedValue(0);
+    useEffect(() => {
+        rotation.value = withRepeat(
+            withTiming(360, { duration: 3200, easing: Easing.linear }),
+            -1,
+            false
+        );
+    }, []);
+    const sweepStyle = useAnimatedStyle(() => ({
+        transform: [{ rotate: `${rotation.value}deg` }],
+    }));
+    return (
+        <Animated.View style={[styles.sweepContainer, sweepStyle]} pointerEvents="none">
+            <LinearGradient
+                colors={['rgba(168, 85, 247, 0.55)', 'rgba(168, 85, 247, 0)']}
+                style={styles.sweepLine}
+            />
+        </Animated.View>
+    );
+}
+
+// ─── Markers ─────────────────────────────────────────────────────────────────
+
+function NftMarker({ item, onPress }: { item: VibemapNftItem; onPress: () => void }) {
+    const handlePress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+    };
+    return (
+        <Pressable onPress={handlePress} style={styles.markerHitArea}>
+            <View style={[styles.nftCard, styles.nftCardGlow]}>
                 {item.image ? (
                     <Image source={{ uri: item.image }} style={styles.nftCardImage} resizeMode="cover" />
                 ) : (
                     <View style={styles.nftCardFallback} />
                 )}
                 <View style={styles.nftCardBorder} />
+                
+                <View style={styles.nftSparkleBadge}>
+                    <Text style={styles.nftSparkleText}>✨</Text>
+                </View>
+
                 <View style={styles.nftAvatarRing}>
                     {item.owner_avatar ? (
                         <Image source={{ uri: item.owner_avatar }} style={styles.nftAvatar} resizeMode="cover" />
@@ -67,8 +220,12 @@ function NftMarker({ item, onPress }: { item: VibemapNftItem; onPress: () => voi
 // ─── Static Regular Post marker ──────────────────────────────────────────────
 
 function PostMarker({ item, onPress }: { item: VibemapNftItem; onPress: () => void }) {
+    const handlePress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+    };
     return (
-        <Pressable onPress={onPress} style={styles.markerHitArea}>
+        <Pressable onPress={handlePress} style={styles.markerHitArea}>
             <View style={styles.postCard}>
                 {item.image ? (
                     <Image source={{ uri: item.image }} style={styles.postCardImage} resizeMode="cover" />
@@ -96,11 +253,17 @@ function EventMarker({ item, onPress }: { item: VibemapEventItem; onPress: () =>
     const isActive = item.is_active;
     const glowColor = isActive ? '#05f0d8' : '#f87171';
 
+    const handlePress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        onPress();
+    };
+
     return (
-        <Pressable onPress={onPress} style={styles.markerHitArea}>
+        <Pressable onPress={handlePress} style={styles.markerHitArea}>
             <View style={[
                 styles.eventCard,
                 { borderColor: isActive ? 'rgba(5,240,216,0.65)' : 'rgba(248,113,113,0.45)' },
+                isActive ? styles.eventCardGlowActive : styles.eventCardGlowEnded,
             ]}>
                 {item.image ? (
                     <Image source={{ uri: item.image }} style={styles.eventCardImage} resizeMode="cover" />
@@ -123,9 +286,11 @@ function EventMarker({ item, onPress }: { item: VibemapEventItem; onPress: () =>
                     <Calendar size={10} color="#000" strokeWidth={2.5} />
                 </View>
 
-                {!!isActive && (
-                    <View style={styles.eventLiveBadge}>
-                        <Text style={styles.eventLiveText}>LIVE</Text>
+                {!!isActive ? (
+                    <LiveBadge />
+                ) : (
+                    <View style={styles.eventEndedBadge}>
+                        <Text style={styles.eventEndedText}>ENDED</Text>
                     </View>
                 )}
 
@@ -165,45 +330,45 @@ function RadarLoader() {
 
     useEffect(() => {
         pulse1.value = withRepeat(
-            withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }),
+            withTiming(1, { duration: 2800, easing: Easing.out(Easing.quad) }),
             -1,
             false
         );
         opacity1.value = withRepeat(
-            withTiming(0, { duration: 2400, easing: Easing.out(Easing.quad) }),
+            withTiming(0, { duration: 2800, easing: Easing.out(Easing.quad) }),
             -1,
             false
         );
 
         pulse2.value = withDelay(
-            800,
+            900,
             withRepeat(
-                withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }),
+                withTiming(1, { duration: 2800, easing: Easing.out(Easing.quad) }),
                 -1,
                 false
             )
         );
         opacity2.value = withDelay(
-            800,
+            900,
             withRepeat(
-                withTiming(0, { duration: 2400, easing: Easing.out(Easing.quad) }),
+                withTiming(0, { duration: 2800, easing: Easing.out(Easing.quad) }),
                 -1,
                 false
             )
         );
 
         pulse3.value = withDelay(
-            1600,
+            1800,
             withRepeat(
-                withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }),
+                withTiming(1, { duration: 2800, easing: Easing.out(Easing.quad) }),
                 -1,
                 false
             )
         );
         opacity3.value = withDelay(
-            1600,
+            1800,
             withRepeat(
-                withTiming(0, { duration: 2400, easing: Easing.out(Easing.quad) }),
+                withTiming(0, { duration: 2800, easing: Easing.out(Easing.quad) }),
                 -1,
                 false
             )
@@ -211,7 +376,7 @@ function RadarLoader() {
 
         pinScale.value = withRepeat(
             withSequence(
-                withTiming(1.12, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1.15, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
                 withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) })
             ),
             -1,
@@ -241,9 +406,15 @@ function RadarLoader() {
     return (
         <View style={styles.loader}>
             <View style={styles.radarWrapper}>
+                {/* Scope grid lines */}
+                <View style={styles.radarCrosshairH} />
+                <View style={styles.radarCrosshairV} />
+
                 <Animated.View style={[styles.radarWave, waveStyle1]} />
                 <Animated.View style={[styles.radarWave, waveStyle2]} />
                 <Animated.View style={[styles.radarWave, waveStyle3]} />
+
+                <RadarSweep />
 
                 <View style={styles.loaderGlow} />
 
@@ -272,6 +443,7 @@ export default function MapScreen() {
 
     const [filterMode, setFilterMode] = useState<FilterMode>('posts');
     const [mapStyle, setMapStyle] = useState<MapStyle>('dark');
+    const [showLegend, setShowLegend] = useState(true);
 
     const insets = useSafeAreaInsets();
     const eventSheetRef = useRef<EventDetailSheetRef>(null);
@@ -320,6 +492,7 @@ export default function MapScreen() {
     );
 
     const handlePostPress = useCallback((postId: number) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         router.push({
             pathname: "/post-details",
             params: {
@@ -371,7 +544,6 @@ export default function MapScreen() {
     }, [mapEvents, showEvents]);
 
     // ── Simple client-side clustering ─────────────────────────────────────────
-    // At low zoom → group by ~5° grid; at medium zoom → ~1°; at high zoom → no cluster
 
     const nftClusters = useMemo(() => {
         if (!showPosts || currentZoom > CLUSTER_MAX_ZOOM) return { clusters: [], singles: mapNfts };
@@ -445,6 +617,43 @@ export default function MapScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         cameraRef.current?.flyTo([lng, lat], 1200);
     }, []);
+
+    const handleMyLocationPress = async () => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        getUserLocation();
+        cameraRef.current?.flyTo(userCoords, 1000);
+    };
+
+    const handleResetCameraPress = async () => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        cameraRef.current?.setCamera({
+            heading: 0,
+            pitch: isDarkMap ? 45 : 55,
+            zoomLevel: isDarkMap ? 5 : 14,
+            animationDuration: 1000,
+            animationMode: 'flyTo',
+        });
+    };
+
+    const handleToggleLegendPress = async () => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setShowLegend(prev => !prev);
+    };
+
+    // ── Legend Animation Styles ──────────────────────────────────────────────
+
+    const legendOpacity = useSharedValue(1);
+    const legendTranslateY = useSharedValue(0);
+
+    useEffect(() => {
+        legendOpacity.value = withTiming(showLegend ? 1 : 0, { duration: 250 });
+        legendTranslateY.value = withSpring(showLegend ? 0 : 25, { damping: 14 });
+    }, [showLegend]);
+
+    const legendAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: legendOpacity.value,
+        transform: [{ translateY: legendTranslateY.value }],
+    }));
 
     // Outdoors = full terrain relief, hill shading, contours, trails — perfect for navigation
     const currentStyleURL = isDarkMap
@@ -577,6 +786,15 @@ export default function MapScreen() {
                             </MapboxGL.VectorSource>
                         )}
 
+                        {/* ── User pulsating beacon ── */}
+                        <MapboxGL.MarkerView
+                            key="user-location-beacon"
+                            coordinate={userCoords}
+                            anchor={{ x: 0.5, y: 0.5 }}
+                        >
+                            <UserLocationBeacon />
+                        </MapboxGL.MarkerView>
+
                         {/* ── NFT clusters ── */}
                         {showPosts && nftClusters.clusters.map(cluster => (
                             <MapboxGL.MarkerView
@@ -653,76 +871,100 @@ export default function MapScreen() {
                         <View style={styles.pillsRow}>
                             {/* Filter pills */}
                             <BlurView intensity={40} tint="dark" style={styles.pillGroup}>
-                                {(['posts', 'events'] as FilterMode[]).map(mode => {
-                                    const isActive = filterMode === mode;
-                                    const Icon = mode === 'posts' ? Camera : Calendar;
-                                    const label = mode === 'posts' ? 'Posts' : 'Events';
-                                    return (
-                                        <TouchableOpacity
-                                            key={mode}
-                                            activeOpacity={0.75}
-                                            onPress={() => handleFilterChange(mode)}
-                                            style={[styles.pill, isActive && styles.pillActive]}
-                                        >
-                                            {isActive && (
-                                                <LinearGradient
-                                                    colors={mode === 'posts'
-                                                        ? ['rgba(168,85,247,0.5)', 'rgba(100,30,180,0.4)']
-                                                        : ['rgba(5,240,216,0.4)', 'rgba(0,160,140,0.35)']
-                                                    }
-                                                    style={StyleSheet.absoluteFillObject}
-                                                    start={{ x: 0, y: 0 }}
-                                                    end={{ x: 1, y: 1 }}
-                                                />
-                                            )}
-                                            <Icon
-                                                size={13}
-                                                color={isActive ? '#fff' : 'rgba(255,255,255,0.4)'}
-                                                strokeWidth={2.5}
-                                            />
-                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
-                                                {label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                                <FilterPill
+                                    isActive={filterMode === 'posts'}
+                                    Icon={Camera}
+                                    label="Posts"
+                                    onPress={() => handleFilterChange('posts')}
+                                    gradientColors={['rgba(168,85,247,0.5)', 'rgba(100,30,180,0.4)']}
+                                />
+                                <FilterPill
+                                    isActive={filterMode === 'events'}
+                                    Icon={Calendar}
+                                    label="Events"
+                                    onPress={() => handleFilterChange('events')}
+                                    gradientColors={['rgba(5,240,216,0.4)', 'rgba(0,160,140,0.35)']}
+                                />
                             </BlurView>
 
                             {/* Map style pills */}
                             <BlurView intensity={40} tint="dark" style={styles.pillGroup}>
-                                {(['dark', 'street'] as MapStyle[]).map(style => {
-                                    const isActive = mapStyle === style;
-                                    const Icon = style === 'dark' ? Moon : LucideMap;
-                                    const label = style === 'dark' ? 'Vibe' : '3D';
-                                    return (
-                                        <TouchableOpacity
-                                            key={style}
-                                            activeOpacity={0.75}
-                                            onPress={() => handleMapStyleChange(style)}
-                                            style={[styles.pill, isActive && styles.pillActive]}
-                                        >
-                                            {isActive && (
-                                                <LinearGradient
-                                                    colors={['rgba(168,85,247,0.5)', 'rgba(100,30,180,0.4)']}
-                                                    style={StyleSheet.absoluteFillObject}
-                                                    start={{ x: 0, y: 0 }}
-                                                    end={{ x: 1, y: 1 }}
-                                                />
-                                            )}
-                                            <Icon
-                                                size={13}
-                                                color={isActive ? '#fff' : 'rgba(255,255,255,0.4)'}
-                                                strokeWidth={2.5}
-                                            />
-                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
-                                                {label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                                <FilterPill
+                                    isActive={mapStyle === 'dark'}
+                                    Icon={Moon}
+                                    label="Vibe"
+                                    onPress={() => handleMapStyleChange('dark')}
+                                    gradientColors={['rgba(168,85,247,0.5)', 'rgba(100,30,180,0.4)']}
+                                />
+                                <FilterPill
+                                    isActive={mapStyle === 'street'}
+                                    Icon={LucideMap}
+                                    label="3D"
+                                    onPress={() => handleMapStyleChange('street')}
+                                    gradientColors={['rgba(168,85,247,0.5)', 'rgba(100,30,180,0.4)']}
+                                />
                             </BlurView>
                         </View>
                     </View>
+
+                    {/* ── Floating HUD Column on the Right ── */}
+                    <View style={[styles.hudContainer, { top: insets.top + 80 }]} pointerEvents="box-none">
+                        {/* Centering on User Location */}
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={handleMyLocationPress}
+                            style={styles.hudButton}
+                        >
+                            <BlurView intensity={45} tint="dark" style={styles.hudButtonInner}>
+                                <Compass color="#BCBBFD" size={20} strokeWidth={2} />
+                            </BlurView>
+                        </TouchableOpacity>
+
+                        {/* Reset Camera to North */}
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={handleResetCameraPress}
+                            style={styles.hudButton}
+                        >
+                            <BlurView intensity={45} tint="dark" style={styles.hudButtonInner}>
+                                <LucideMap color="#BCBBFD" size={18} strokeWidth={2} />
+                            </BlurView>
+                        </TouchableOpacity>
+
+                        {/* Legend Toggle */}
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={handleToggleLegendPress}
+                            style={[styles.hudButton, showLegend && styles.hudButtonActive]}
+                        >
+                            <BlurView intensity={45} tint="dark" style={styles.hudButtonInner}>
+                                <Info color={showLegend ? "#a855f7" : "#BCBBFD"} size={19} strokeWidth={2} />
+                            </BlurView>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* ── Legend Card ── */}
+                    <Animated.View style={[styles.legend, { bottom: insets.bottom + 85 }, legendAnimatedStyle]} pointerEvents={showLegend ? "auto" : "none"}>
+                        <BlurView intensity={45} tint="dark" style={styles.legendInner}>
+                            <Text style={styles.legendTitle}>Map Legend</Text>
+                            <View style={styles.legendRow}>
+                                <View style={[styles.legendDot, { backgroundColor: '#a855f7' }]} />
+                                <Text style={styles.legendLabel}>NFT Post</Text>
+                            </View>
+                            <View style={styles.legendRow}>
+                                <View style={[styles.legendDot, { backgroundColor: 'rgba(255, 255, 255, 0.6)' }]} />
+                                <Text style={styles.legendLabel}>Regular Post</Text>
+                            </View>
+                            <View style={styles.legendRow}>
+                                <View style={[styles.legendDot, { backgroundColor: '#05f0d8' }]} />
+                                <Text style={styles.legendLabel}>Live Event</Text>
+                            </View>
+                            <View style={styles.legendRow}>
+                                <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
+                                <Text style={styles.legendLabel}>Ended Event</Text>
+                            </View>
+                        </BlurView>
+                    </Animated.View>
                 </>
             ) : (
                 /* ── Loading screen ── */
@@ -733,6 +975,8 @@ export default function MapScreen() {
         </View>
     );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -760,8 +1004,8 @@ const styles = StyleSheet.create({
         height: 100,
         borderRadius: 50,
         borderWidth: 1.5,
-        borderColor: 'rgba(188, 187, 253, 0.4)',
-        backgroundColor: 'rgba(188, 187, 253, 0.03)',
+        borderColor: 'rgba(188, 187, 253, 0.35)',
+        backgroundColor: 'rgba(188, 187, 253, 0.02)',
     },
     centerPin: {
         width: 52,
@@ -801,15 +1045,40 @@ const styles = StyleSheet.create({
         letterSpacing: 1.5,
     },
 
+    // ── Radar loader animations styles ──
+    sweepContainer: {
+        position: 'absolute',
+        width: 140,
+        height: 140,
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+    },
+    sweepLine: {
+        width: 2,
+        height: 70,
+    },
+    radarCrosshairH: {
+        position: 'absolute',
+        width: 130,
+        height: 1,
+        backgroundColor: 'rgba(188, 187, 253, 0.12)',
+    },
+    radarCrosshairV: {
+        position: 'absolute',
+        width: 1,
+        height: 130,
+        backgroundColor: 'rgba(188, 187, 253, 0.12)',
+    },
+
     // ── Controls ───────────────────────────────────────────────────────────
     controlsContainer: {
         position: 'absolute',
-        // top is set inline via insets.top + 8
         left: 0,
         right: 0,
         alignItems: 'center',
         gap: 8,
         paddingHorizontal: 16,
+        zIndex: 10,
     },
     loadingBadge: {
         flexDirection: 'row',
@@ -852,7 +1121,6 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     pillActive: {
-        // gradient applied via LinearGradient child
     },
     pillText: {
         color: 'rgba(255,255,255,0.4)',
@@ -864,20 +1132,61 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
 
+    // ── Floating HUD Buttons ──
+    hudContainer: {
+        position: 'absolute',
+        right: 16,
+        alignItems: 'center',
+        gap: 10,
+        zIndex: 10,
+    },
+    hudButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        overflow: 'hidden',
+        borderWidth: 0.5,
+        borderColor: 'rgba(168,85,247,0.25)',
+        shadowColor: '#a855f7',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    hudButtonActive: {
+        borderColor: '#a855f7',
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+    },
+    hudButtonInner: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
     // ── Legend ─────────────────────────────────────────────────────────────
     legend: {
         position: 'absolute',
-        // bottom is set inline via insets.bottom + 16
         right: 16,
+        zIndex: 10,
     },
     legendInner: {
-        borderRadius: 12,
+        borderRadius: 16,
         overflow: 'hidden',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        gap: 8,
         borderWidth: 0.5,
-        borderColor: 'rgba(168,85,247,0.2)',
+        borderColor: 'rgba(168,85,247,0.25)',
+    },
+    legendTitle: {
+        color: '#BCBBFD',
+        fontSize: 10,
+        fontFamily: 'Dank Mono Bold',
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
+        marginBottom: 4,
+        includeFontPadding: false,
     },
     legendRow: {
         flexDirection: 'row',
@@ -885,12 +1194,12 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     legendDot: {
-        width: 7,
-        height: 7,
+        width: 8,
+        height: 8,
         borderRadius: 4,
     },
     legendLabel: {
-        color: 'rgba(255,255,255,0.55)',
+        color: 'rgba(255,255,255,0.65)',
         fontSize: 11,
         fontFamily: 'Dank Mono',
     },
@@ -900,6 +1209,11 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(10,4,22,0.88)',
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#a855f7',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        elevation: 5,
     },
     clusterInner: {
         position: 'absolute',
@@ -928,6 +1242,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    nftCardGlow: {
+        shadowColor: '#a855f7',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 8,
+    },
     nftCardImage: {
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
@@ -944,6 +1265,25 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         borderWidth: 2,
         borderColor: '#a855f7',
+    },
+    nftSparkleBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#a855f7',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#0A0410',
+        zIndex: 5,
+    },
+    nftSparkleText: {
+        fontSize: 9,
+        color: '#fff',
+        includeFontPadding: false,
     },
     nftAvatarRing: {
         position: 'absolute',
@@ -980,6 +1320,11 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#ffffff',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 5,
+        elevation: 4,
     },
     postCardImage: {
         position: 'absolute',
@@ -1033,6 +1378,20 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         backgroundColor: 'rgba(0,0,0,0.3)',
     },
+    eventCardGlowActive: {
+        shadowColor: '#05f0d8',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.45,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    eventCardGlowEnded: {
+        shadowColor: '#f87171',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        elevation: 4,
+    },
     eventCardImage: {
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
@@ -1060,10 +1419,28 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         paddingHorizontal: 4,
         paddingVertical: 1.5,
+        zIndex: 5,
     },
     eventLiveText: {
         color: '#000',
         fontSize: 7,
+        fontFamily: 'Dank Mono Bold',
+        letterSpacing: 0.5,
+        includeFontPadding: false,
+    },
+    eventEndedBadge: {
+        position: 'absolute',
+        top: 4,
+        left: 4,
+        backgroundColor: 'rgba(248,113,113,0.95)',
+        borderRadius: 4,
+        paddingHorizontal: 4,
+        paddingVertical: 1.5,
+        zIndex: 5,
+    },
+    eventEndedText: {
+        color: '#000',
+        fontSize: 6,
         fontFamily: 'Dank Mono Bold',
         letterSpacing: 0.5,
         includeFontPadding: false,
@@ -1077,5 +1454,35 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         borderWidth: 2,
         borderColor: '#000',
+    },
+
+    // ── User location pulse ──
+    userBeaconContainer: {
+        width: 32,
+        height: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    userBeaconPulse: {
+        position: 'absolute',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(168, 85, 247, 0.35)',
+        borderWidth: 1.5,
+        borderColor: 'rgba(168, 85, 247, 0.7)',
+    },
+    userBeaconCenter: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#a855f7',
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        shadowColor: '#a855f7',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 5,
+        elevation: 6,
     },
 });
