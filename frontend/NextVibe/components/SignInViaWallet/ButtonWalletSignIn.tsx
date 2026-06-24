@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle, View } from 'react-native';
 import { Wallet } from 'lucide-react-native';
-import { useMobileWallet } from "@wallet-ui/react-native-web3js";
+// @ts-ignore
+import { useMobileWallet } from "@wallet-ui/react-native-web3js/dist/index.native.mjs";
 import walletSignIn from "@/src/api/wallet.sign.in";
 import { storage } from "@/src/utils/storage";
 import { BottomSheetModal } from '@gorhom/bottom-sheet';

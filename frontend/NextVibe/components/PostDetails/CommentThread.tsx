@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { LayoutAnimation, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Entypo, MaterialIcons } from "@expo/vector-icons";
+import { Heart, ChevronDown, ChevronUp } from "lucide-react-native";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 import VerifyBadge from "@/components/VerifyBadge";
 import timeAgo from "@/src/utils/formatTime";
@@ -55,14 +55,27 @@ interface ReplyProps {
     onLike: () => void;
     onReply: () => void;
     theme: Theme;
+    isHighlighted?: boolean;
 }
 
-export const ReplyItem: React.FC<ReplyProps> = ({ item, isLiked, onLike, onReply, theme }) => {
+export const ReplyItem: React.FC<ReplyProps> = ({ item, isLiked, onLike, onReply, theme, isHighlighted }) => {
     const [expanded, setExpanded] = useState(false);
     const isLong = item.content.length > TRUNCATE_AT;
 
+    const isDark = theme.textPrimary === "#E3E3E3";
+    const highlightBg = isDark ? "rgba(168, 85, 247, 0.15)" : "rgba(168, 85, 247, 0.08)";
+
     return (
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+        <View style={[
+            { flexDirection: "row", gap: 10, marginTop: 14 },
+            isHighlighted && {
+                backgroundColor: highlightBg,
+                borderRadius: 8,
+                padding: 8,
+                borderLeftWidth: 3,
+                borderLeftColor: "#A855F7",
+            }
+        ]}>
             <AvatarWithFrame
                 avatarUrl={item.user.avatar}
                 size={28}
@@ -102,10 +115,10 @@ export const ReplyItem: React.FC<ReplyProps> = ({ item, isLiked, onLike, onReply
                                 {item.count_likes}
                             </Text>
                         )}
-                        <MaterialIcons
-                            name={isLiked ? "favorite" : "favorite-border"}
+                        <Heart
                             size={14}
                             color={isLiked ? "#A855F7" : theme.textSecondary}
+                            fill={isLiked ? "#A855F7" : "transparent"}
                         />
                     </TouchableOpacity>
                 </View>
@@ -122,6 +135,8 @@ interface CommentProps {
     onReply: (item: Comment | Reply) => void;
     theme: Theme;
     isLast: boolean;
+    highlightedCommentId?: number | null;
+    highlightedReplyId?: number | null;
 }
 
 /**
@@ -132,12 +147,22 @@ interface CommentProps {
  */
 export const CommentItem: React.FC<CommentProps> = ({
     item, likedComments, onLike, onReply, theme, isLast,
+    highlightedCommentId, highlightedReplyId,
 }) => {
     const [textExpanded, setTextExpanded] = useState(false);
-    const [visibleReplies, setVisibleReplies] = useState(0);
+    const total = item.replies?.length ?? 0;
+
+    const [visibleReplies, setVisibleReplies] = useState(() => {
+        if (highlightedReplyId && item.replies) {
+            const index = item.replies.findIndex(r => r.reply_id === Number(highlightedReplyId));
+            if (index !== -1) {
+                return Math.max(REPLIES_BATCH, index + 1);
+            }
+        }
+        return 0;
+    });
 
     const isLong = item.content.length > TRUNCATE_AT;
-    const total = item.replies?.length ?? 0;
     const allShown = visibleReplies >= total;
 
     const expand = () => {
@@ -150,8 +175,22 @@ export const CommentItem: React.FC<CommentProps> = ({
         setVisibleReplies(0);
     };
 
+    const isHighlighted = highlightedCommentId ? item.id === Number(highlightedCommentId) : false;
+    const isDark = theme.textPrimary === "#E3E3E3";
+    const highlightBg = isDark ? "rgba(168, 85, 247, 0.15)" : "rgba(168, 85, 247, 0.08)";
+
     return (
-        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: isLast ? 14 : 0 }}>
+        <View style={[
+            { paddingHorizontal: 16, paddingTop: 14, paddingBottom: isLast ? 14 : 0 },
+            isHighlighted && {
+                backgroundColor: highlightBg,
+                borderRadius: 12,
+                marginHorizontal: 8,
+                paddingHorizontal: 8,
+                borderLeftWidth: 3,
+                borderLeftColor: "#A855F7",
+            }
+        ]}>
             <View style={{ flexDirection: "row", gap: 11 }}>
 
                 <View style={{ alignItems: "center", width: 36 }}>
@@ -207,10 +246,10 @@ export const CommentItem: React.FC<CommentProps> = ({
                                     {item.count_likes}
                                 </Text>
                             )}
-                            <MaterialIcons
-                                name={likedComments.comments[item.id] ? "favorite" : "favorite-border"}
+                            <Heart
                                 size={16}
                                 color={likedComments.comments[item.id] ? "#A855F7" : theme.textSecondary}
+                                fill={likedComments.comments[item.id] ? "#A855F7" : "transparent"}
                             />
                         </TouchableOpacity>
                     </View>
@@ -225,6 +264,7 @@ export const CommentItem: React.FC<CommentProps> = ({
                                     onLike={() => onLike(r)}
                                     onReply={() => onReply(r)}
                                     theme={theme}
+                                    isHighlighted={highlightedReplyId ? r.reply_id === Number(highlightedReplyId) : false}
                                 />
                             ))}
                         </View>
@@ -239,13 +279,13 @@ export const CommentItem: React.FC<CommentProps> = ({
                                             ? `${total} ${total === 1 ? "reply" : "replies"}`
                                             : `${total - visibleReplies} more`}
                                     </Text>
-                                    <Entypo name="chevron-down" size={13} color="#A855F7" />
+                                    <ChevronDown size={13} color="#A855F7" />
                                 </TouchableOpacity>
                             )}
                             {visibleReplies > 0 && (
                                 <TouchableOpacity onPress={collapse} style={s.likeRow}>
                                     <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Hide</Text>
-                                    <Entypo name="chevron-up" size={13} color={theme.textSecondary} />
+                                    <ChevronUp size={13} color={theme.textSecondary} />
                                 </TouchableOpacity>
                             )}
                         </View>

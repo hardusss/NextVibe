@@ -16,12 +16,11 @@ import {
     Dimensions,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import FastImage from 'react-native-fast-image';
 import Hyperlink from "react-native-hyperlink";
 import { LinearGradient } from "expo-linear-gradient";
-import { Star } from "lucide-react-native";
+import { Star, ArrowLeft, Camera, Layers } from "lucide-react-native";
 
 // API & Utils
 import formatNumber from "@/src/utils/formatNumber";
@@ -95,9 +94,9 @@ const Dot = ({ isDark }: { isDark: boolean }) => (
 
 /* ─── Empty State ─── */
 const EmptyState = ({
-    iconName, title, description, colorScheme
+    iconType, title, description, colorScheme
 }: {
-    iconName: keyof typeof MaterialIcons.glyphMap;
+    iconType: 'posts' | 'cnfts';
     title: string; description: string;
     colorScheme: "light" | "dark" | null | undefined;
 }) => {
@@ -113,7 +112,11 @@ const EmptyState = ({
                 backgroundColor: isDark ? 'rgba(88,166,255,0.1)' : 'rgba(88,166,255,0.15)',
                 padding: 18, borderRadius: 40, marginBottom: 16,
             }}>
-                <MaterialIcons name={iconName} size={42} color="#58a6ff" />
+                {iconType === 'posts' ? (
+                    <Camera size={42} color="#58a6ff" />
+                ) : (
+                    <Layers size={42} color="#58a6ff" />
+                )}
             </View>
             <Text style={{ fontSize: 20, fontWeight: "bold", color: isDark ? "#fff" : "#000", marginBottom: 8, textAlign: 'center' }}>
                 {title}
@@ -334,7 +337,7 @@ const UserProfileView = () => {
                                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 onPress={() => router.back()}
                             >
-                                <MaterialIcons name="arrow-back" size={28} color={isDark ? '#fff' : '#000'} />
+                                <ArrowLeft size={28} color={isDark ? '#fff' : '#000'} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -464,7 +467,7 @@ const UserProfileView = () => {
                         }}>
                             {mountedTabs.has("Posts") && (
                                 userData.post_count === 0 ? (
-                                    <EmptyState iconName="photo-camera" title="No Posts Yet"
+                                    <EmptyState iconType="posts" title="No Posts Yet"
                                         description="This user hasn't shared any moments yet."
                                         colorScheme={colorScheme} />
                                 ) : (
@@ -478,7 +481,7 @@ const UserProfileView = () => {
                         }}>
                             {mountedTabs.has("cNFTs") && (
                                 userData.cnft_count === 0 ? (
-                                    <EmptyState iconName="collections" title="No cNFTs Yet"
+                                    <EmptyState iconType="cnfts" title="No cNFTs Yet"
                                         description="This user hasn't collected or created any cNFTs yet."
                                         colorScheme={colorScheme} />
                                 ) : (

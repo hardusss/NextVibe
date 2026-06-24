@@ -3,7 +3,7 @@ import {
     View, Text, FlatList, TouchableOpacity, 
     StyleSheet, useColorScheme, Dimensions 
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronUp, ChevronDown } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import getRoccomendationsProfiles from "@/src/api/recommendations.profiles";
 import followUser from "@/src/api/follow";
@@ -63,8 +63,8 @@ const RecommendedUsers = () => {
         if (response === 200) {
             setFollowedUsers(prev =>
                 prev.includes(id)
-                    ? prev.filter(userId => userId !== id)
-                    : [...prev, id]
+                     ? prev.filter(userId => userId !== id)
+                     : [...prev, id]
             );
         }
     };
@@ -80,11 +80,11 @@ const RecommendedUsers = () => {
                     onPress={() => setExpanded(!expanded)}
                     style={styles.iconButton}
                 >
-                    <Ionicons
-                        name={expanded ? "chevron-up" : "chevron-down"}
-                        size={24}
-                        color={theme.iconColor}
-                    />
+                    {expanded ? (
+                        <ChevronUp size={24} color={theme.iconColor} />
+                    ) : (
+                        <ChevronDown size={24} color={theme.iconColor} />
+                    )}
                 </TouchableOpacity>
             </View>
 

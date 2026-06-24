@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import InviteCodeSheet from './InviteCodeSheet';
-import { Ionicons } from '@expo/vector-icons';
+import { Chrome } from 'lucide-react-native';
 
 function usernameFromEmail(email: string): string {
     return email
@@ -122,7 +122,7 @@ export default function GoogleIconButton({ page }: { page: string }) {
                 {loading ? (
                     <ActivityIndicator size="small" color={iconColor} />
                 ) : (
-                    <Ionicons name="logo-google" size={22} color={iconColor} />
+                    <Chrome size={22} color={iconColor} />
                 )}
             </TouchableOpacity>
 

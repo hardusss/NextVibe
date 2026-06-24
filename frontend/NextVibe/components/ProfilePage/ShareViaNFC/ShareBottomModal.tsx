@@ -11,7 +11,7 @@ import {
 import FastImage from 'react-native-fast-image';
 import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Wifi, WifiOff, Users, CheckCircle } from 'lucide-react-native';
 
 import { startSharing, stopSharing, addNfcReadListener } from '../../../modules/nfc-send';
 
@@ -289,12 +289,19 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                         <Text style={[styles.title, { color: colors.textColor }]}>
                             {isBroadcasting ? "Broadcasting Profile..." : "Ready to Share"}
                         </Text>
-                        <MaterialCommunityIcons
-                            name={(isBroadcasting ? "access-point" : "nfc-variant-off") as any}
-                            size={20}
-                            color={isBroadcasting ? colors.accent : colors.subText}
-                            style={{ marginLeft: 8 }}
-                        />
+                        {isBroadcasting ? (
+                            <Wifi
+                                size={20}
+                                color={colors.accent}
+                                style={{ marginLeft: 8 }}
+                            />
+                        ) : (
+                            <WifiOff
+                                size={20}
+                                color={colors.subText}
+                                style={{ marginLeft: 8 }}
+                            />
+                        )}
                     </View>
 
                     <View style={styles.avatarSection}>
@@ -323,8 +330,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                         </Text>
                         <View style={styles.statsRow}>
                             <View style={styles.statItem}>
-                                <MaterialCommunityIcons
-                                    name="account-group-outline"
+                                <Users
                                     size={22}
                                     color={colors.iconColor}
                                 />
@@ -348,8 +354,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                             style={styles.gradientButton}
                         >
                             <Text style={styles.buttonText}>Done</Text>
-                            <MaterialCommunityIcons
-                                name="check-circle-outline"
+                             <CheckCircle
                                 size={20}
                                 color="white"
                                 style={{ marginLeft: 8 }}
