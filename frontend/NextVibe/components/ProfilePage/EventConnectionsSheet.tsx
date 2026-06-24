@@ -157,7 +157,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                 {item.event_image ? (
                                     <View style={styles.heroWrap}>
                                         <FastImage source={{ uri: item.event_image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                                        <BlurView blurType={isDark ? 'dark' : 'light'} blurAmount={18} style={StyleSheet.absoluteFill} />
+                                        <BlurView blurType={isDark ? 'dark' : 'light'} blurAmount={18} style={StyleSheet.absoluteFill} pointerEvents="none" />
                                         <FastImage source={{ uri: item.event_image }} style={styles.heroImg} resizeMode="contain" />
 
                                         <View style={styles.heroBadgeRow}>

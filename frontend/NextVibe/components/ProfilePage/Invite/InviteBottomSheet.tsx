@@ -45,7 +45,7 @@ export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProp
     return (
         <Animated.View style={[StyleSheet.absoluteFill, style, animatedStyle]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => close()}>
-                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={2} />
+                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={2} pointerEvents="none" />
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.2)' }]} />
             </Pressable>
         </Animated.View>
