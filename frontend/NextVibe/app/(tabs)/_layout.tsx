@@ -482,7 +482,7 @@ export default function Layout() {
                                         <View style={styles.tabBarContainer}>
                                             <BlurView
                                                 blurType={theme === "dark" ? "dark" : "light"}
-                                                blurAmount={10}
+                                                blurAmount={20}
                                                 style={StyleSheet.absoluteFill}
                                             />
                                             <View style={[
@@ -531,18 +531,18 @@ export default function Layout() {
 const styles = StyleSheet.create({
     tabBarContainer: {
         position: "absolute",
-        bottom: 10,
+        bottom: 16,
         width: "90%",
         alignSelf: "center",
-        height: 65,
-        borderRadius: 35,
+        height: 68,
+        borderRadius: 34,
         borderWidth: 1,
-        borderColor: "rgba(188, 186, 253, 0.15)",
+        borderColor: "rgba(167, 139, 250, 0.15)",
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 20,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 8,
         overflow: 'hidden',
     },
     tabsWrapper: {

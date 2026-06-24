@@ -94,16 +94,18 @@ const getStyles = (theme: typeof darkTheme) => {
         container: { flex: 1, backgroundColor: theme.background },
         listContainer: { backgroundColor: theme.background, paddingBottom: 50 },
         postContainer: { 
-            borderRadius: 12, 
-            padding: 14, 
+            borderRadius: 22, 
+            padding: 18, 
             position: "relative",
             backgroundColor: theme.cardBackground,
             marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.background === "#0A0410" ? "rgba(255, 255, 255, 0.06)" : "rgba(124, 58, 237, 0.08)",
             shadowColor: theme.shadowColor,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 12,
-            elevation: 2,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: theme.background === "#0A0410" ? 0.35 : 0.05,
+            shadowRadius: 16,
+            elevation: 4,
         },
         postHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
         avatar: { width: 40, height: 40, borderRadius: 20 },
@@ -118,7 +120,7 @@ const getStyles = (theme: typeof darkTheme) => {
         location: { fontSize: 14, color: theme.textSecondary, marginTop: 2 },
         mediaPlaceholder: {
             width: "100%", height: screenWidth, backgroundColor: '#1a1a1a',
-            borderRadius: 8, marginBottom: 12, overflow: "hidden"
+            borderRadius: 16, marginBottom: 14, overflow: "hidden"
         },
         mediaImage: { width: "100%", height: "100%" },
         mediaVideo: { width: "100%", height: "100%" },
@@ -185,7 +187,7 @@ const getStyles = (theme: typeof darkTheme) => {
         },
         pageIndicatorText: { color: "white", fontSize: 12 },
         fullMedia: { width: screenWidth, height: screenWidth },
-        mediaContainer: { width: screenWidth, height: screenWidth, backgroundColor: '#1a1a1a', overflow: "hidden" },
+        mediaContainer: { width: screenWidth, height: screenWidth, backgroundColor: '#1a1a1a', overflow: "hidden", borderRadius: 16 },
         heartOverlay: {
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
             justifyContent: 'center', alignItems: 'center',
@@ -224,27 +226,27 @@ const getStyles = (theme: typeof darkTheme) => {
             flexDirection: "row",
             alignItems: "center",
             gap: 4,
-            backgroundColor: "rgba(0,0,0,0.85)",
-            borderRadius: 20,
+            backgroundColor: theme.background === "#0A0410" ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.9)",
+            borderRadius: 12,
             paddingHorizontal: 10,
             paddingVertical: 5,
             borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.2)",
+            borderColor: theme.background === "#0A0410" ? "rgba(255, 255, 255, 0.12)" : "rgba(124, 58, 237, 0.08)",
         },
         imageBadgeText: {
-            color: "#fff",
+            color: theme.background === "#0A0410" ? "#fff" : "#1A1225",
             fontSize: 11,
-            fontFamily: "Dank Mono",
+            fontFamily: "Dank Mono Bold",
             includeFontPadding: false,
         },
         nftBadge: {
-            borderColor: "rgba(168,85,247,0.6)",
-            backgroundColor: "rgba(30, 0, 50, 0.85)",
+            borderColor: "rgba(168,85,247,0.3)",
+            backgroundColor: theme.background === "#0A0410" ? "rgba(168, 85, 247, 0.15)" : "rgba(168, 85, 247, 0.1)",
         },
         nftBadgeText: {
-            color: "#d8b4fe",
+            color: "#A855F7",
             fontSize: 11,
-            fontFamily: "Dank Mono",
+            fontFamily: "Dank Mono Bold",
             includeFontPadding: false,
         },
     });
@@ -653,9 +655,15 @@ const PostItem = memo(({
                             </View>
                         )}
                         {item.is_luma_event && (
-                            <View style={[styles.imageBadge, { borderColor: "rgba(168,85,247,0.6)", backgroundColor: "rgba(30, 0, 50, 0.85)" }]}>
-                                <Calendar size={11} color="#d8b4fe" />
-                                <Text style={[styles.imageBadgeText, { color: "#d8b4fe" }]}>Event</Text>
+                            <View style={[
+                                styles.imageBadge,
+                                {
+                                    borderColor: theme.background === "#0A0410" ? "rgba(168,85,247,0.4)" : "rgba(168,85,247,0.3)",
+                                    backgroundColor: theme.background === "#0A0410" ? "rgba(168, 85, 247, 0.15)" : "rgba(168, 85, 247, 0.1)"
+                                }
+                            ]}>
+                                <Calendar size={11} color="#A855F7" />
+                                <Text style={[styles.imageBadgeText, { color: "#A855F7" }]}>Event</Text>
                             </View>
                         )}
                         {item.is_nft && (
@@ -786,11 +794,11 @@ const PostItem = memo(({
 
             {/* ── Footer: like | comment | spacer | ButtonCollect ── */}
             <View style={styles.postFooter}>
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
+                <TouchableOpacity activeOpacity={0.6} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
                     <Heart size={22} color={isLiked ? "#A855F7" : theme.textPrimary} fill={isLiked ? "#A855F7" : "transparent"} />
                     <Text style={[styles.likesCount, isLiked && { color: "#A855F7" }]}>{formatNumber(item.count_likes)}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => openComments(item)} style={styles.likesContainer}>
+                <TouchableOpacity activeOpacity={0.6} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => openComments(item)} style={styles.likesContainer}>
                     <MessageCircle size={22} color={theme.textPrimary} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }} />
