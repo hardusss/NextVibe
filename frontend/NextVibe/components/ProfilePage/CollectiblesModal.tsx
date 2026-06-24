@@ -234,6 +234,7 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
                             blurType="dark"
                             blurAmount={12}
                             reducedTransparencyFallbackColor="#f4ebeb"
+                            pointerEvents="none"
                         />
                         <View
                             style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]}

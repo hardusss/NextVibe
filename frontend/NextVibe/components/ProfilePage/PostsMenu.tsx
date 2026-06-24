@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getMenuPosts from "@/src/api/menu.posts";
+import { useIsFocused } from "@react-navigation/native";
 
 import { BlurView } from "@react-native-community/blur";
 import FastImage from 'react-native-fast-image';
@@ -103,6 +104,7 @@ function ModerationDot({ delay }: { delay: number }) {
 }
 
 const PostGallery = ({ id, previous }: PostGalleryProps) => {
+    const isFocused = useIsFocused();
     const cached = postsCache.get(id) ?? null;
     const [posts, setPosts] = useState<Post[]>(cached ?? []);
     const [loading, setLoading] = useState(!cached);
@@ -374,12 +376,13 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                     />
                                 )}
 
-                                {isPending && (
+                                {isPending && isFocused && (
                                     <View style={styles.moderationOverlay}>
                                         <BlurView
                                             style={StyleSheet.absoluteFill}
                                             blurType="dark"
                                             blurAmount={14}
+                                            pointerEvents="none"
                                         />
                                         <View style={styles.moderationContent}>
                                             <View style={styles.moderationIconWrap}>

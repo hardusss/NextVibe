@@ -163,6 +163,7 @@ const ProfileView = () => {
     const [visible, setVisible] = useState<boolean>(false);
     const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
     const [id, setId] = useState<number>();
+    const [fetchError, setFetchError] = useState<boolean>(false);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const modalRef = useRef<ShareModalRef>(null);
@@ -248,28 +249,35 @@ const ProfileView = () => {
     }, [visible]);
 
     const fetchUserData = async () => {
+        setFetchError(false);
         try {
             const data = await getUserDetail(0);
+            if (!data || typeof data !== 'object') {
+                throw new Error("Invalid user data received");
+            }
             const newData: UserData = {
-                username: data?.username || "",
-                about: data?.about || "",
-                avatar_url: data?.avatar ? `${data.avatar}` : null,
-                post_count: data?.post_count || 0,
-                cnft_count: data?.cnft_count || 0,
-                readers_count: data?.readers_count || 0,
-                follows_count: data?.follows_count || 0,
-                official: data?.official === true,
-                isOg: data?.isOg === true,
-                ogEdition: data?.edition ?? null,
-                reputation: data?.reputation || 0,
+                username: data.username || "",
+                about: data.about || "",
+                avatar_url: data.avatar ? `${data.avatar}` : null,
+                post_count: data.post_count || 0,
+                cnft_count: data.cnft_count || 0,
+                readers_count: data.readers_count || 0,
+                follows_count: data.follows_count || 0,
+                official: data.official === true,
+                isOg: data.isOg === true,
+                ogEdition: data.edition ?? null,
+                reputation: data.reputation || 0,
             };
             setUserData(newData);
             cachedUserData = newData;
-            const invited = data?.invited_count || 0;
+            const invited = data.invited_count || 0;
             setInvitedCount(invited);
             cachedInvitedCount = invited;
+            profileHasFetched = true;
         } catch (error) {
             console.error("Fetch error reboot page", error);
+            setFetchError(true);
+            profileHasFetched = false;
         } finally {
             setLoading(false);
         }
@@ -288,7 +296,6 @@ const ProfileView = () => {
         clearPostsCache();
         clearCollectionsCache();
         await fetchUserData();
-        profileHasFetched = true;
         setRefreshing(false);
     }, [activeTab]);
 
@@ -299,10 +306,7 @@ const ProfileView = () => {
     useFocusEffect(
         useCallback(() => {
             if (!profileHasFetched) {
-                profileHasFetched = true;
-                fetchUserData().catch(() => {
-                    profileHasFetched = false;
-                });
+                fetchUserData();
             }
         }, [])
     );
@@ -314,6 +318,31 @@ const ProfileView = () => {
             <StatusBar animated backgroundColor={bg} />
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{ flex: 1, justifyContent: "center", alignItems: "center" }} />
+            ) : fetchError && !userData.username ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <Text style={{ fontSize: 48, marginBottom: 16 }}>⚠️</Text>
+                    <Text style={{ fontSize: 18, fontFamily: 'Dank Mono Bold', color: isDark ? '#fff' : '#000', marginBottom: 8, textAlign: 'center' }}>
+                        Failed to load profile
+                    </Text>
+                    <Text style={{ fontSize: 14, fontFamily: 'Dank Mono', color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', textAlign: 'center', marginBottom: 24 }}>
+                        Please check your internet connection and try again.
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setLoading(true);
+                            setFetchError(false);
+                            fetchUserData();
+                        }}
+                        style={{
+                            backgroundColor: '#A855F7',
+                            paddingHorizontal: 24,
+                            paddingVertical: 12,
+                            borderRadius: 14,
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontFamily: 'Dank Mono Bold', fontSize: 14 }}>Tap to Retry</Text>
+                    </TouchableOpacity>
+                </View>
             ) : (
                 <ScrollView
                     contentContainerStyle={{ paddingBottom: 20 }}
