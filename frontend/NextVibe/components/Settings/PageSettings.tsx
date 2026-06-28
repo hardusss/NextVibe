@@ -25,6 +25,7 @@ import { clearFeedCache } from "../Home/MainPage";
 import { clearProfileCache } from "../ProfilePage/ProfilePage";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
+import GaslessIndicator from "@/components/Shared/GaslessIndicator";
 
 interface User {
     username: string;
@@ -388,6 +389,9 @@ function PageSettingsContent() {
                                 selectionColor={colors.accent}
                             />
                         </View>
+
+                        <Text style={styles.sectionHeader}>GASLESS TRANSACTIONS</Text>
+                        <GaslessIndicator />
 
                         <Text style={styles.sectionHeader}>SECURITY & ACCOUNT</Text>
 

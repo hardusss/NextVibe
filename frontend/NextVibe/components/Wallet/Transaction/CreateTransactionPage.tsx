@@ -18,6 +18,10 @@ import { SwipeButton } from './SwipeButton';
 import TokenInfoCard from './TokenInfoCard';
 import LazorKitShield from './LazorKitShield';
 import useWalletAddress from '@/hooks/useWalletAddress';
+import GaslessIndicator from '@/components/Shared/GaslessIndicator';
+import AccountFundingPrompt from '@/components/Shared/AccountFundingPrompt';
+import { isAccountCreationError } from '@/src/utils/solana/paymasterErrors';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 export default function CreateTransactionScreen() {
     const { token, symbol, address, amount: queryAmount } = useLocalSearchParams();
@@ -27,6 +31,7 @@ export default function CreateTransactionScreen() {
     const { sendTransaction } = useTransaction();
     const { data, refresh } = usePortfolio();
     const { address: smartWalletPubkey, walletType } = useWalletAddress();
+    const fundingPromptRef = useRef<BottomSheetModal>(null);
 
     const rawSymbol = token || symbol;
     const incomingSymbol = Array.isArray(rawSymbol) ? rawSymbol[0] : rawSymbol;
@@ -164,7 +169,11 @@ export default function CreateTransactionScreen() {
         } catch (e: any) {
             setIsFailed(true);
             Vibration.vibrate([0, 400]);
-            showError(e instanceof Error ? e.message : "Transaction failed");
+            if (isAccountCreationError(e)) {
+                fundingPromptRef.current?.present();
+            } else {
+                showError(e instanceof Error ? e.message : "Transaction failed");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -326,6 +335,8 @@ export default function CreateTransactionScreen() {
                     />
                 </View>
 
+                <GaslessIndicator />
+
                 {walletType !== 'mwa' && (
                     <View style={styles.shieldWrap}>
                         <LazorKitShield isDark={isDark} />
@@ -344,6 +355,11 @@ export default function CreateTransactionScreen() {
                     />
                 </View>
             )}
+
+            <AccountFundingPrompt
+                ref={fundingPromptRef}
+                walletAddress={smartWalletPubkey?.toString()}
+            />
         </LinearGradient>
     );
 }
