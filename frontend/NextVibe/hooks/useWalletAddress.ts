@@ -9,8 +9,9 @@ export type WalletState =
     | { 
         address: string; 
         connection: Connection; 
-        disconnect: () => Promise<void>; // Updated to Promise<void>
-        signAndSendTransaction: (transaction: Transaction | VersionedTransaction, minContextSlot: number) => Promise<TransactionSignature>; // Added minContextSlot
+        disconnect: () => Promise<void>;
+        signAndSendTransaction: (transaction: Transaction | VersionedTransaction, minContextSlot: number) => Promise<TransactionSignature>;
+        signTransaction: <T extends Transaction | VersionedTransaction>(transaction: T) => Promise<T>;
         walletType: 'mwa' 
       }
     | { 
@@ -18,13 +19,15 @@ export type WalletState =
         connection: Connection; 
         disconnect: () => Promise<void> | void; 
         signAndSendTransaction: (payload: any, options: any) => Promise<string>; 
+        signTransaction: null;
         walletType: 'lazorkit' 
       }
     | { 
         address: null; 
         connection: null;
-        disconnect: () => Promise<void>; // Updated to Promise<void>
-        signAndSendTransaction: (transaction: Transaction | VersionedTransaction, minContextSlot: number) => Promise<TransactionSignature>;  
+        disconnect: () => Promise<void>;
+        signAndSendTransaction: (transaction: Transaction | VersionedTransaction, minContextSlot: number) => Promise<TransactionSignature>;
+        signTransaction: null;
         walletType: 'none' 
       };
 
@@ -34,7 +37,8 @@ export default function useWalletAddress(): WalletState {
             account: mwaAccount,
             connection: mwaConnection, 
             disconnect: mwaDisconnect, 
-            signAndSendTransaction: mwaSignAndSendTransaction
+            signAndSendTransaction: mwaSignAndSendTransaction,
+            signTransaction: mwaSignTransaction,
         } = useMobileWallet();
     const { 
             smartWalletPubkey: lazorPubkey, 
@@ -50,6 +54,7 @@ export default function useWalletAddress(): WalletState {
                 connection: mwaConnection,
                 disconnect: mwaDisconnect,
                 signAndSendTransaction: mwaSignAndSendTransaction,
+                signTransaction: mwaSignTransaction,
                 walletType: 'mwa'
             } as WalletState;
         } 
@@ -60,6 +65,7 @@ export default function useWalletAddress(): WalletState {
                 connection: lazorConnection,
                 disconnect: lazorDisconnect,
                 signAndSendTransaction: lazorSignAndSendTransaction,
+                signTransaction: null,
                 walletType: 'lazorkit'
             } as WalletState;
         }
@@ -67,7 +73,8 @@ export default function useWalletAddress(): WalletState {
         return { 
             address: null, 
             connection: null, 
+            signTransaction: null,
             walletType: 'none' 
         } as WalletState;
-    }, [mwaAccount, mwaConnection, lazorPubkey, lazorConnection, mwaDisconnect, lazorDisconnect]);
+    }, [mwaAccount, mwaConnection, lazorPubkey, lazorConnection, mwaDisconnect, lazorDisconnect, mwaSignTransaction]);
 }

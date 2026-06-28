@@ -1,13 +1,20 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { VersionedTransaction } from '@solana/web3.js';
+import { VersionedTransaction, Transaction } from '@solana/web3.js';
 import JupiterService from '@/src/services/JupiterService';
 import type { JupiterQuoteResponse } from '@/src/types/jupiter';
 import useWalletAddress from './useWalletAddress';
+import usePaymaster from './usePaymaster';
 import { TOKEN_MINT_CONSTANTS } from '@/constants/Tokens';
 import { Buffer } from 'buffer';
 
 export default function useJupiterSwap() {
     const wallet = useWalletAddress();
+    const {
+        isGaslessAvailable,
+        sendSponsoredTransaction,
+        classifyError,
+    } = usePaymaster();
+
     const [quote, setQuote] = useState<JupiterQuoteResponse | null>(null);
     const [isQuoteLoading, setIsQuoteLoading] = useState(false);
     const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -92,20 +99,30 @@ export default function useJupiterSwap() {
             const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
 
             // 3. Sign and send transaction using the adapter
-            // Note: lazorkit uses a different signature for signAndSendTransaction, handling via type guards
             let signature: string;
 
             if (wallet.walletType === 'lazorkit') {
+                // Lazorkit: paymaster handled by LazorKitProvider config
                 const signWithLazor = wallet.signAndSendTransaction as (payload: any, options: any) => Promise<string>;
-                // lazorkit adapter may require a base64 string or an object depending on version, 
-                // assuming payload is the base64 string or VersionedTx here based on typical usage
                 signature = await signWithLazor(
                     { transaction: swapTransaction, isVersioned: true }, 
                     { redirectUrl: 'nextvibe://swap' }
                 );
             } else if (wallet.walletType === 'mwa') {
-                const signWithMWA = wallet.signAndSendTransaction as (tx: VersionedTransaction, minSlot?: number) => Promise<string>;
-                signature = await signWithMWA(transaction);
+                // MWA: Jupiter swaps use VersionedTransaction which the paymaster
+                // can still broadcast, but partial-sign with VersionedTransaction
+                // works the same way through signTransaction
+                if (isGaslessAvailable) {
+                    // Gasless path: user signs, Kora broadcasts
+                    const signedTx = await wallet.signTransaction(transaction);
+                    // Convert VersionedTransaction to serialized buffer for sendRawTransaction
+                    const serialized = signedTx.serialize();
+                    signature = await sendSponsoredRawTransaction(serialized);
+                } else {
+                    // Fallback: user pays gas
+                    const signWithMWA = wallet.signAndSendTransaction as (tx: VersionedTransaction, minSlot?: number) => Promise<string>;
+                    signature = await signWithMWA(transaction);
+                }
             } else {
                 throw new Error("Unsupported wallet type.");
             }
@@ -113,16 +130,46 @@ export default function useJupiterSwap() {
             return { signature };
         } catch (err: any) {
             console.error('[useJupiterSwap] Swap error:', err);
-            let errMsg = err.message || 'Swap failed';
-            if (errMsg.includes('CancellationException') || errMsg.includes('User rejected')) {
+            let errMsg: string;
+
+            if (err.message?.includes('CancellationException') || err.message?.includes('User rejected')) {
                 errMsg = 'Transaction cancelled by user.';
+            } else {
+                const parsed = classifyError(err);
+                errMsg = parsed.userMessage;
             }
+
             setSwapError(errMsg);
             return { error: errMsg };
         } finally {
             setIsSwapLoading(false);
         }
-    }, [quote, wallet]);
+    }, [quote, wallet, isGaslessAvailable]);
+
+    /**
+     * Send a raw serialized transaction through the paymaster connection.
+     * Used for VersionedTransaction which can't go through sendSponsoredTransaction
+     * (that one expects a legacy Transaction object).
+     */
+    const sendSponsoredRawTransaction = async (serialized: Uint8Array): Promise<string> => {
+        const { getPaymasterConnection } = await import('@/src/services/PaymasterConnection');
+        const { usePaymasterStore } = await import('@/src/stores/paymasterStore');
+        const conn = getPaymasterConnection();
+
+        const sig = await conn.sendRawTransaction(
+            Buffer.from(serialized),
+            {
+                skipPreflight: false,
+                preflightCommitment: 'confirmed',
+                maxRetries: 3,
+            },
+        );
+
+        // Increment the daily counter on success
+        await usePaymasterStore.getState().incrementCount();
+
+        return sig;
+    };
 
     // Cleanup abort controller on unmount
     useEffect(() => {
