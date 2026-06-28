@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useWalletAddress from "./useWalletAddress";
+import usePaymaster from "./usePaymaster";
 import SolanaService from "@/src/services/SolanaService";
 import { TOKENS } from "@/constants/Tokens";
 import {
@@ -7,9 +8,16 @@ import {
     Transaction,
     TransactionInstruction,
 } from "@solana/web3.js";
+import { parsePaymasterError } from "@/src/utils/solana/paymasterErrors";
 
 export default function useTransaction() {
     const wallet = useWalletAddress();
+    const {
+        isGaslessAvailable,
+        sendSponsoredTransaction,
+        paymasterConnection,
+        classifyError,
+    } = usePaymaster();
 
     const [signature, setSignature] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -60,21 +68,17 @@ export default function useTransaction() {
             let txSignature: string | void;
 
             if (wallet.walletType === 'lazorkit') {
+                // Lazorkit: SDK handles paymaster internally via LazorKitProvider config
                 const signWithLazor = wallet.signAndSendTransaction as (payload: any, options: any) => Promise<string>;
                 txSignature = await signWithLazor(
                     {
                         instructions,
-                        transactionOptions: { feeToken: 'SOL', clusterSimulation: "devnet" }
+                        transactionOptions: { feeToken: 'SOL', clusterSimulation: "mainnet" }
                     },
                     { redirectUrl: `nextvibe://${redirectPage ? redirectPage : "transaction"}` },
                 );
             } else if (wallet.walletType === 'mwa') {
-                const { blockhash } = await wallet.connection.getLatestBlockhash();
-                const transaction = new Transaction().add(...instructions);
-                transaction.recentBlockhash = blockhash;
-                transaction.feePayer = new PublicKey(wallet.address);
-                const signWithMWA = wallet.signAndSendTransaction as (tx: Transaction) => Promise<string>;
-                txSignature = await signWithMWA(transaction);
+                txSignature = await executeMwaTransaction(instructions);
             } else {
                 throw new Error("Unsupported wallet type.");
             }
@@ -84,8 +88,8 @@ export default function useTransaction() {
 
         } catch (err: any) {
             console.error("Transaction failed:", err);
-            const message = err instanceof Error ? err.message : "Transaction failed";
-            setError(message);
+            const parsed = classifyError(err);
+            setError(parsed.userMessage);
             throw err;
         } finally {
             setIsLoading(false);
@@ -127,6 +131,7 @@ export default function useTransaction() {
             let txSignature: string;
 
             if (wallet.walletType === 'lazorkit') {
+                // Lazorkit: SDK handles paymaster internally via LazorKitProvider config
                 const signWithLazor = wallet.signAndSendTransaction as (payload: any, options: any) => Promise<string>;
                 txSignature = await signWithLazor(
                     {
@@ -136,12 +141,7 @@ export default function useTransaction() {
                     { redirectUrl: `nextvibe://${redirectPage ? redirectPage : "transaction"}` },
                 );
             } else if (wallet.walletType === 'mwa') {
-                const { blockhash } = await wallet.connection.getLatestBlockhash();
-                const transaction = new Transaction().add(...instructions);
-                transaction.recentBlockhash = blockhash;
-                transaction.feePayer = new PublicKey(wallet.address);
-                const signWithMWA = wallet.signAndSendTransaction as (tx: Transaction) => Promise<string>;
-                txSignature = await signWithMWA(transaction);
+                txSignature = await executeMwaTransaction(instructions);
             } else {
                 throw new Error("Unsupported wallet type.");
             }
@@ -151,11 +151,53 @@ export default function useTransaction() {
 
         } catch (err: any) {
             console.error("sendInstructions failed:", err);
-            const message = err instanceof Error ? err.message : "Transaction failed";
-            setError(message);
+            const parsed = classifyError(err);
+            setError(parsed.userMessage);
             throw err;
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    /**
+     * Executes an MWA transaction using the gasless (partial-sign) flow
+     * when available, falling back to the standard user-pays-gas flow
+     * when the daily limit is exhausted.
+     *
+     * Gasless flow:
+     *   1. Build tx with instructions (no feePayer set)
+     *   2. User signs via signTransaction (partial sign)
+     *   3. Send partially-signed tx to Kora Paymaster
+     *   4. Kora appends fee payer signature and broadcasts
+     *
+     * Fallback flow:
+     *   1. Build tx with user as feePayer
+     *   2. User signs and sends via signAndSendTransaction
+     */
+    const executeMwaTransaction = async (
+        instructions: TransactionInstruction[],
+    ): Promise<string> => {
+        if (wallet.walletType !== 'mwa' || !wallet.connection || !wallet.address) {
+            throw new Error("MWA wallet not connected.");
+        }
+
+        const { blockhash } = await wallet.connection.getLatestBlockhash();
+        const transaction = new Transaction().add(...instructions);
+        transaction.recentBlockhash = blockhash;
+
+        if (isGaslessAvailable) {
+            // ── Gasless path: partial sign → Kora broadcasts ─────────
+            // Do NOT set feePayer — Kora will assign its own paymaster pubkey
+            transaction.feePayer = new PublicKey(wallet.address);
+
+            // signTransaction returns a Transaction with the user's signature
+            const signedTx = await wallet.signTransaction(transaction);
+            return await sendSponsoredTransaction(signedTx);
+        } else {
+            // ── Fallback path: user pays gas ─────────────────────────
+            transaction.feePayer = new PublicKey(wallet.address);
+            const signWithMWA = wallet.signAndSendTransaction as (tx: Transaction) => Promise<string>;
+            return await signWithMWA(transaction);
         }
     };
 
@@ -165,5 +207,7 @@ export default function useTransaction() {
         signature,
         isLoading,
         error,
+        /** Whether gasless transactions are currently available (under daily limit). */
+        isGaslessAvailable,
     };
 }
