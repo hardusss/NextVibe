@@ -147,9 +147,28 @@ function PortfolioList({
     const accentLine = isDarkMode ? "rgba(196,167,255,0.25)" : "rgba(109,40,217,0.2)";
     const sectionDivider = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
 
-    const displayTokens = tokens.slice(0, 3);
-    const hasMore = tokens.length > 3;
-    const count = !isLoading ? tokens.length : null;
+    const nonZeroTokens = React.useMemo(() => {
+        return tokens.filter(t => t.amount > 0);
+    }, [tokens]);
+
+    const displayTokens = React.useMemo(() => {
+        const result = [...nonZeroTokens];
+        const defaultSymbols = ["SOL", "SKR", "USDC"];
+        
+        for (const symbol of defaultSymbols) {
+            if (result.length >= 3) break;
+            const alreadyAdded = result.some(t => t.symbol === symbol);
+            if (!alreadyAdded) {
+                const tokenObj = tokens.find(t => t.symbol === symbol);
+                if (tokenObj) {
+                    result.push(tokenObj);
+                }
+            }
+        }
+        return result.slice(0, 3);
+    }, [tokens, nonZeroTokens]);
+
+    const count = !isLoading ? nonZeroTokens.length : null;
 
     return (
         <View style={[styles.sheet, { backgroundColor: sheetBg, borderColor: border }]}>
@@ -190,7 +209,7 @@ function PortfolioList({
                         <SkeletonItem isDarkMode={isDarkMode} delay={120} />
                         <SkeletonItem isDarkMode={isDarkMode} isLast delay={240} />
                     </View>
-                ) : tokens.length === 0 ? (
+                ) : displayTokens.length === 0 ? (
                     <EmptyState isDarkMode={isDarkMode} />
                 ) : (
                     <View style={styles.tokenList}>
@@ -200,51 +219,49 @@ function PortfolioList({
                                 token={token}
                                 isDarkMode={isDarkMode}
                                 isBalanceHidden={isBalanceHidden}
-                                isLast={i === displayTokens.length - 1 && !hasMore}
+                                isLast={i === displayTokens.length - 1}
                                 index={i}
                             />
                         ))}
 
-                        {hasMore && (
-                            <TouchableOpacity
-                                style={[
-                                    styles.viewAllButton,
-                                    {
-                                        borderColor: sectionDivider,
-                                        backgroundColor: isDarkMode
-                                            ? "rgba(196,167,255,0.04)"
-                                            : "rgba(109,40,217,0.03)",
-                                    },
-                                ]}
-                                activeOpacity={0.65}
-                                onPress={() => router.push("/all-tokens")}
-                            >
-                                <View style={styles.viewAllLeft}>
-                                    <Sparkles
-                                        size={13}
-                                        color={isDarkMode ? "rgba(196,167,255,0.6)" : "rgba(109,40,217,0.55)"}
-                                        strokeWidth={1.5}
-                                    />
-                                    <Text
-                                        style={[
-                                            styles.viewAllText,
-                                            {
-                                                color: isDarkMode
-                                                    ? "rgba(196,167,255,0.85)"
-                                                    : "rgba(109,40,217,0.8)",
-                                            },
-                                        ]}
-                                    >
-                                        View all {tokens.length} tokens
-                                    </Text>
-                                </View>
-                                <ArrowRight
-                                    size={14}
-                                    color={isDarkMode ? "rgba(196,167,255,0.5)" : "rgba(109,40,217,0.45)"}
-                                    strokeWidth={1.8}
+                        <TouchableOpacity
+                            style={[
+                                styles.viewAllButton,
+                                {
+                                    borderColor: sectionDivider,
+                                    backgroundColor: isDarkMode
+                                        ? "rgba(196,167,255,0.04)"
+                                        : "rgba(109,40,217,0.03)",
+                                },
+                            ]}
+                            activeOpacity={0.65}
+                            onPress={() => router.push("/all-tokens")}
+                        >
+                            <View style={styles.viewAllLeft}>
+                                <Sparkles
+                                    size={13}
+                                    color={isDarkMode ? "rgba(196,167,255,0.6)" : "rgba(109,40,217,0.55)"}
+                                    strokeWidth={1.5}
                                 />
-                            </TouchableOpacity>
-                        )}
+                                <Text
+                                    style={[
+                                        styles.viewAllText,
+                                        {
+                                            color: isDarkMode
+                                                ? "rgba(196,167,255,0.85)"
+                                                : "rgba(109,40,217,0.8)",
+                                        },
+                                    ]}
+                                >
+                                    Show all tokens
+                                </Text>
+                            </View>
+                            <ArrowRight
+                                size={14}
+                                color={isDarkMode ? "rgba(196,167,255,0.5)" : "rgba(109,40,217,0.45)"}
+                                strokeWidth={1.8}
+                            />
+                        </TouchableOpacity>
                     </View>
                 )}
             </Animated.View>
@@ -394,7 +411,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         borderRadius: 16,
         borderWidth: StyleSheet.hairlineWidth,
-        marginTop: 0,
+        marginTop: 10,
     },
     viewAllLeft: {
         flexDirection: "row",

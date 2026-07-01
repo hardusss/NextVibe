@@ -17,32 +17,31 @@ export default function usePortfolio(): UsePortfolioReturn {
     const data = usePortfolioStore(s => s.data);
     const isLoading = usePortfolioStore(s => s.isLoading);
     const isRefreshing = usePortfolioStore(s => s.isRefreshing);
-    const ensurePortfolio = usePortfolioStore(s => s.ensurePortfolio);
+    const fetchPortfolio = usePortfolioStore(s => s.fetchPortfolio);
     const refreshStore = usePortfolioStore(s => s.refresh);
     const reset = usePortfolioStore(s => s.reset);
 
     const addressKey = address?.toString() ?? null;
-    const connectionRef = useRef(connection);
-    connectionRef.current = connection;
+    const prevAddressRef = useRef<string | null>(null);
 
     useEffect(() => {
-        const conn = connectionRef.current;
-        if (!addressKey || !conn) {
-            reset();
+        if (!addressKey || !connection) {
+            // Only reset when the user genuinely disconnects,
+            // not when addressKey is temporarily null during re-mounts.
+            if (prevAddressRef.current !== null) {
+                prevAddressRef.current = null;
+                reset();
+            }
             return;
         }
-        // Delay to avoid blocking initial ProfilePage render
-        const timer = setTimeout(() => {
-            void ensurePortfolio(conn, addressKey);
-        }, 2000);
-        return () => clearTimeout(timer);
-    }, [addressKey, ensurePortfolio, reset]);
+        prevAddressRef.current = addressKey;
+        void fetchPortfolio(connection, addressKey);
+    }, [addressKey, connection, fetchPortfolio, reset]);
 
     const refresh = useCallback(async () => {
-        const conn = connectionRef.current;
-        if (!addressKey || !conn) return;
-        await refreshStore(conn, addressKey);
-    }, [addressKey, refreshStore]);
+        if (!addressKey || !connection) return;
+        await refreshStore(connection, addressKey);
+    }, [addressKey, connection, refreshStore]);
 
     return { data, isLoading, isRefreshing, refresh };
 }
