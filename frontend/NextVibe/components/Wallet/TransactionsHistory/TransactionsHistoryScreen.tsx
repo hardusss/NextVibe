@@ -14,6 +14,7 @@ import loadMoreTransactionsFromBlockchain from '@/src/api/load.more.transactions
 import getTokensPrice from '@/src/api/get.tokens.price';
 import { FormattedTransaction } from '@/src/types/solana';
 import { parseHeliusTransactions } from '@/src/utils/solana/heliusParser';
+import { TOKENS } from '@/constants/Tokens';
 
 // Components
 import TransactionItem from './TransactionItem';
@@ -99,12 +100,12 @@ export default function TransactionsHistoryScreen() {
 
     const fetchPrices = async () => {
         try {
-            const response = await getTokensPrice(["solana", "usd-coin", "seeker"]);
+            const priceKeys = Object.values(TOKENS).map(t => t.priceKey).filter(Boolean) as string[];
+            const response = await getTokensPrice(priceKeys);
             if (response?.prices) {
                 setPrices(prev => ({
-                    solana: response.prices.solana ?? prev.solana,
-                    'usd-coin': response.prices['usd-coin'] ?? prev['usd-coin'],
-                    seeker: response.prices.seeker ?? prev.seeker,
+                    ...prev,
+                    ...response.prices
                 }));
             }
         } catch (error) {
