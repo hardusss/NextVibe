@@ -168,7 +168,7 @@ export default function WalletDashboardScreen() {
                             <BalanceSection
                                 isDarkMode={isDarkMode}
                                 isBalanceHidden={isBalanceHidden}
-                                totalBalance={data.totalUsdBalance}
+                                totalBalance={data.tokens.reduce((sum, t) => sum + t.valueUsd, 0)}
                                 isLoading={showPortfolioSkeleton}
                             />
                         </FadeIn>

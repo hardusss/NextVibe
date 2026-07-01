@@ -62,9 +62,10 @@ const ButtonWallet = ( {
     };
 
     const isConnected = !!address;
+    const totalBalance = data?.tokens?.reduce((sum, t) => sum + t.valueUsd, 0) ?? 0;
     const formattedBalance = isConnected
-        ? (data?.totalUsdBalance
-            ? `${data.totalUsdBalance.toFixed(2)} USD`
+        ? (totalBalance > 0
+            ? `${totalBalance.toFixed(2)} USD`
             : "Wallet")
         : "Connect";
 
