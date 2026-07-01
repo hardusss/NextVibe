@@ -14,20 +14,6 @@ const EMPTY_PORTFOLIO: PortfolioData = {
 let inFlightKey: string | null = null;
 let inFlightPromise: Promise<void> | null = null;
 
-function tokensEqual(a: TokenAsset[], b: TokenAsset[]): boolean {
-    if (a.length !== b.length) return false;
-    return a.every((t, i) => {
-        const o = b[i];
-        return (
-            t.symbol === o.symbol &&
-            t.amount === o.amount &&
-            t.price === o.price &&
-            t.valueUsd === o.valueUsd &&
-            t.change24h === o.change24h
-        );
-    });
-}
-
 async function buildPortfolio(
     connection: Connection,
     addressString: string,
@@ -52,7 +38,24 @@ async function buildPortfolio(
         }
 
         const tokenPrice = prices?.prices?.[info.priceKey];
-        const price = tokenPrice?.price ?? 0;
+        let price = tokenPrice?.price ?? 0;
+        
+        // Fallback if price API returns 0/null/undefined
+        if (price === 0 || price === null || price === undefined) {
+            const fallbackPrices: Record<string, number> = {
+                USDG: 1.0,
+                USDC: 1.0,
+                USDT: 1.0,
+                PYUSD: 1.0,
+                SOL: 140.0,
+                SKR: 0.1,
+                JUP: 0.8,
+                JitoSOL: 160.0,
+                mSOL: 160.0,
+                bSOL: 160.0,
+            };
+            price = fallbackPrices[info.symbol] ?? 0;
+        }
         const change24h = tokenPrice?.change_24h ?? 0;
         const direction = tokenPrice?.direction ?? 'flat';
         const val = amount * price;
@@ -72,6 +75,21 @@ async function buildPortfolio(
         });
     });
 
+    // Sort assets so that tokens with balance/value come first
+    assets.sort((a, b) => {
+        if (b.valueUsd !== a.valueUsd) {
+            return b.valueUsd - a.valueUsd;
+        }
+        if (b.amount !== a.amount) {
+            return b.amount - a.amount;
+        }
+        if (a.symbol === 'SOL') return -1;
+        if (b.symbol === 'SOL') return 1;
+        if (a.symbol === 'USDC') return -1;
+        if (b.symbol === 'USDC') return 1;
+        return a.symbol.localeCompare(b.symbol);
+    });
+
     return { totalUsdBalance: total, tokens: assets };
 }
 
@@ -79,10 +97,9 @@ interface PortfolioState {
     data: PortfolioData;
     isLoading: boolean;
     isRefreshing: boolean;
-    lastFetchedAt: number | null;
     walletKey: string | null;
-    /** Load once per wallet if needed; safe to call from every usePortfolio mount. */
-    ensurePortfolio: (connection: Connection, address: PublicKey | string) => Promise<void>;
+    /** Always fetches fresh data. Safe to call from every usePortfolio mount. */
+    fetchPortfolio: (connection: Connection, address: PublicKey | string) => Promise<void>;
     /** Force refetch (pull-to-refresh). */
     refresh: (connection: Connection, address: PublicKey | string) => Promise<void>;
     reset: () => void;
@@ -91,52 +108,33 @@ interface PortfolioState {
 async function runFetch(
     connection: Connection,
     addressString: string,
-    options: { force: boolean },
+    options: { isRefresh: boolean },
 ): Promise<void> {
-    const PORTFOLIO_TTL_MS = 60_000; // 1 minute
-    const { force } = options;
+    const { isRefresh } = options;
     const state = usePortfolioStore.getState();
 
-    if (!force) {
-        const { lastFetchedAt, walletKey } = state;
-        const isStale = !lastFetchedAt || (Date.now() - lastFetchedAt > PORTFOLIO_TTL_MS);
-        const isSameWallet = walletKey === addressString;
-
-        if (isSameWallet && !isStale) {
-            // Data is fresh — skip RPC call
-            return;
-        }
-        if (inFlightKey === addressString && inFlightPromise) {
-            return inFlightPromise;
-        }
-    } else if (inFlightKey === addressString && inFlightPromise) {
+    // Dedupe: if the same wallet is already being fetched, just wait for it
+    if (inFlightKey === addressString && inFlightPromise) {
         return inFlightPromise;
     }
 
-    const isInitial = state.walletKey !== addressString || state.lastFetchedAt === null;
-
-    if (force && !isInitial) {
+    if (isRefresh && state.data.tokens.length > 0) {
         usePortfolioStore.setState({ isRefreshing: true, walletKey: addressString });
-    } else if (isInitial) {
+    } else {
         usePortfolioStore.setState({ isLoading: true, isRefreshing: false, walletKey: addressString });
     }
 
     const promise = (async () => {
         try {
             if (__DEV__) {
-                console.log('[Portfolio] fetch', addressString.slice(0, 8), force ? '(force)' : '');
+                console.log('[Portfolio] fetch', addressString.slice(0, 8), isRefresh ? '(refresh)' : '');
             }
             const next = await buildPortfolio(connection, addressString);
-            usePortfolioStore.setState(current => {
-                const sameTokens = tokensEqual(current.data.tokens, next.tokens);
-                const sameTotal = current.data.totalUsdBalance === next.totalUsdBalance;
-                return {
-                    data: sameTokens && sameTotal ? current.data : next,
-                    isLoading: false,
-                    isRefreshing: false,
-                    lastFetchedAt: Date.now(),
-                    walletKey: addressString,
-                };
+            usePortfolioStore.setState({
+                data: next,
+                isLoading: false,
+                isRefreshing: false,
+                walletKey: addressString,
             });
         } catch (e) {
             console.error('[portfolioStore]', e);
@@ -161,7 +159,6 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     data: EMPTY_PORTFOLIO,
     isLoading: true,
     isRefreshing: false,
-    lastFetchedAt: null,
     walletKey: null,
 
     reset: () => {
@@ -171,23 +168,22 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
             data: EMPTY_PORTFOLIO,
             isLoading: true,
             isRefreshing: false,
-            lastFetchedAt: null,
             walletKey: null,
         });
     },
 
-    ensurePortfolio: async (connection, address) => {
+    fetchPortfolio: async (connection, address) => {
         const addressString = typeof address === 'string' ? address : address.toString();
         if (!addressString) {
             set({ isLoading: false });
             return;
         }
-        await runFetch(connection, addressString, { force: false });
+        await runFetch(connection, addressString, { isRefresh: false });
     },
 
     refresh: async (connection, address) => {
         const addressString = typeof address === 'string' ? address : address.toString();
         if (!addressString) return;
-        await runFetch(connection, addressString, { force: true });
+        await runFetch(connection, addressString, { isRefresh: true });
     },
 }));

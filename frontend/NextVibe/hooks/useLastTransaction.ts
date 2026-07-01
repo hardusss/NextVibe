@@ -24,24 +24,6 @@ interface UseLastTransactionReturn {
  * 
  * Fetches and manages the most recent wallet transaction.
  * Automatically loads on mount and provides manual refetch capability.
- * 
- * Features:
- * - Fetches latest transaction from Solana
- * - Retrieves current token price for USD calculation
- * - Handles loading and error states
- * - Supports manual refresh via refetch function
- * 
- * Error Handling:
- * - Network failures return error message
- * - Missing token data logs warning but continues
- * - Empty transaction history returns null without error
- * 
- * @param connection - Solana RPC connection
- * @param walletPubkey - User's wallet public key
- * @returns Object with transaction data and control functions
- * 
- * @example
- * const { lastTransaction, refetch } = useLastTransaction(connection, pubkey);
  */
 export function useLastTransaction(
   connection: Connection | null,
@@ -89,11 +71,8 @@ export function useLastTransaction(
       }
 
       if (tokenInfo) {
-        // Map token name to API identifier
-        const apiId =
-          tokenInfo.name === "USD Coin"
-            ? "usd-coin"
-            : tokenInfo.name.toLowerCase();
+        // Map using priceKey from the token configuration
+        const apiId = tokenInfo.priceKey;
 
         try {
           const priceData = await getTokensPrice([apiId]);
@@ -101,6 +80,23 @@ export function useLastTransaction(
         } catch (priceError) {
           // Log but don't fail on price fetch error
           console.warn("Failed to fetch token price:", priceError);
+        }
+
+        // Fallback if price API returns 0/null/undefined
+        if (price === 0 || price === null || price === undefined) {
+          const fallbackPrices: Record<string, number> = {
+            USDG: 1.0,
+            USDC: 1.0,
+            USDT: 1.0,
+            PYUSD: 1.0,
+            SOL: 140.0,
+            SKR: 0.1,
+            JUP: 0.8,
+            JitoSOL: 160.0,
+            mSOL: 160.0,
+            bSOL: 160.0,
+          };
+          price = fallbackPrices[tokenInfo.symbol] ?? 0;
         }
       } else {
         console.warn(`Token ${transaction.token} not found in TOKENS constant`);
