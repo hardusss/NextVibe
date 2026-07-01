@@ -152,15 +152,20 @@ export default function CreateTransactionScreen() {
             if (txSig) {
                 setIsSuccess(true);
                 Vibration.vibrate(100);
+                const targetFrom = smartWalletPubkey?.toString() || "Unknown";
+                const targetTo = recipientRef.current;
+                const targetAmount = amountRef.current;
+                const targetSymbol = symbolRef.current;
+
                 setTimeout(() => {
                     resetScreen();
                     router.push({
                         pathname: "/result-transaction",
                         params: {
-                            from: smartWalletPubkey?.toString() || "Unknown",
-                            to: recipientRef.current,
-                            amount: amountRef.current,
-                            symbol: symbolRef.current,
+                            from: targetFrom,
+                            to: targetTo,
+                            amount: targetAmount,
+                            symbol: targetSymbol,
                             tx_url: `https://solscan.io/tx/${txSig}?cluster=mainnet`,
                         },
                     });
