@@ -62,7 +62,8 @@ export default function useTransaction() {
                 wallet.address.toString(),
                 recipientAddress,
                 Number(amountRaw),
-                token.mint
+                token.mint,
+                decimals
             );
 
             let txSignature: string | void;
