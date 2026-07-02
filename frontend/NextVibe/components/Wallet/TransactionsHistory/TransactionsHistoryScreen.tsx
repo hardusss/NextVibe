@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme, TouchableOpacity } from 'react-native';
+import { View, Text, SectionList, ActivityIndicator, RefreshControl, StatusBar, useColorScheme, TouchableOpacity, Animated, Easing } from 'react-native';
 import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
-import { AlertCircle, History } from 'lucide-react-native';
+import { AlertCircle, History, RefreshCw } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { useWallet } from '@lazorkit/wallet-mobile-adapter';
 import SolanaService from '@/src/services/SolanaService';
 import getTransactions from '@/src/api/get.transactions';
 import loadMoreTransactionsFromBlockchain from '@/src/api/load.more.transactions';
+import refreshTransactionsFromBlockchain from '@/src/api/refresh.transactions';
 import getTokensPrice from '@/src/api/get.tokens.price';
 import { FormattedTransaction } from '@/src/types/solana';
 import { parseHeliusTransactions } from '@/src/utils/solana/heliusParser';
@@ -44,6 +45,8 @@ export default function TransactionsHistoryScreen() {
     const [lastSignature, setLastSignature] = useState<string | undefined>(undefined);
     const [hasMore, setHasMore] = useState<boolean>(true);
     const [isSyncingBlockchain, setIsSyncingBlockchain] = useState<boolean>(false);
+    const [isRefreshingBlockchain, setIsRefreshingBlockchain] = useState<boolean>(false);
+    const spinAnim = useMemo(() => new Animated.Value(0), []);
     const [prices, setPrices] = useState<
         Record<string, { price: number; change_24h: number; direction: 'up' | 'down' | 'flat' }>
     >({
@@ -142,11 +145,41 @@ export default function TransactionsHistoryScreen() {
             await fetchTransactions(true);
         } catch (err) {
             console.error('Failed to sync with blockchain:', err);
-            // Optionally, show a toast or error message here
         } finally {
             setIsSyncingBlockchain(false);
         }
     };
+
+    const handleRefreshFromBlockchain = async () => {
+        if (isRefreshingBlockchain) return;
+        setIsRefreshingBlockchain(true);
+
+        // Start spin animation
+        Animated.loop(
+            Animated.timing(spinAnim, {
+                toValue: 1,
+                duration: 800,
+                easing: Easing.linear,
+                useNativeDriver: true,
+            })
+        ).start();
+
+        try {
+            await refreshTransactionsFromBlockchain(20);
+            await fetchTransactions(true);
+        } catch (err) {
+            console.error('Failed to refresh from blockchain:', err);
+        } finally {
+            spinAnim.stopAnimation();
+            spinAnim.setValue(0);
+            setIsRefreshingBlockchain(false);
+        }
+    };
+
+    const spinInterpolation = spinAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+    });
 
     const groupedTransactions = useMemo(() => groupTransactionsByDate(transactions), [transactions]);
 
@@ -242,7 +275,36 @@ export default function TransactionsHistoryScreen() {
             />
             <View style={styles.container}>
 
-                <WalletHeader title="Transaction History" isDark={isDark} />
+                <WalletHeader
+                    title="Transaction History"
+                    isDark={isDark}
+                    rightAction={
+                        <TouchableOpacity
+                            onPress={handleRefreshFromBlockchain}
+                            disabled={isRefreshingBlockchain}
+                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                            activeOpacity={0.7}
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 14,
+                                borderWidth: 1,
+                                borderColor: isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)',
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Animated.View style={{ transform: [{ rotate: spinInterpolation }] }}>
+                                <RefreshCw
+                                    size={18}
+                                    color={isDark ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.85)'}
+                                    strokeWidth={1.8}
+                                />
+                            </Animated.View>
+                        </TouchableOpacity>
+                    }
+                />
                 <SectionList
                     sections={groupedTransactions}
                     keyExtractor={(item) => item.signature}
