@@ -4,3 +4,4 @@ from .rpc_proxy import SolanaRpcProxyView
 from .transactions_view import TransactionsView
 from .load_more_transactions_view import LoadMoreTransactionsView
 from .webhook_notify_view import WebhookNotifyView
+from .refresh_transactions_view import RefreshTransactionsView

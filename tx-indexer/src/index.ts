@@ -5,6 +5,7 @@ import { closeConnections, pingMysql, pingRedis } from "./db/connection";
 import { indexRoutes } from "./routes/index.route";
 import { historyRoutes } from "./routes/history.route";
 import { webhookRoutes } from "./routes/webhook.route";
+import { refreshRoutes } from "./routes/refresh.route";
 import { startWorker } from "./queue/worker";
 import { runInitialSync } from "./cron/initial-sync";
 import type { Worker } from "bullmq";
@@ -86,6 +87,7 @@ async function bootstrap(): Promise<void> {
     .use(indexRoutes)
     .use(historyRoutes)
     .use(webhookRoutes)
+    .use(refreshRoutes)
     .listen(env.PORT);
 
   console.log(
