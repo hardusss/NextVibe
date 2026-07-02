@@ -15,6 +15,7 @@ export default function useTransaction() {
     const {
         isGaslessAvailable,
         sendSponsoredTransaction,
+        incrementCount,
         paymasterConnection,
         classifyError,
     } = usePaymaster();
@@ -78,6 +79,8 @@ export default function useTransaction() {
                     },
                     { redirectUrl: `nextvibe://${redirectPage ? redirectPage : "transaction"}` },
                 );
+                // Track gasless usage — Lazorkit uses Kora paymaster under the hood
+                await incrementCount();
             } else if (wallet.walletType === 'mwa') {
                 txSignature = await executeMwaTransaction(instructions);
             } else {
@@ -141,6 +144,8 @@ export default function useTransaction() {
                     },
                     { redirectUrl: `nextvibe://${redirectPage ? redirectPage : "transaction"}` },
                 );
+                // Track gasless usage — Lazorkit uses Kora paymaster under the hood
+                await incrementCount();
             } else if (wallet.walletType === 'mwa') {
                 txSignature = await executeMwaTransaction(instructions);
             } else {

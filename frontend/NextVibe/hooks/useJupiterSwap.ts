@@ -12,6 +12,7 @@ export default function useJupiterSwap() {
     const {
         isGaslessAvailable,
         sendSponsoredTransaction,
+        incrementCount,
         classifyError,
     } = usePaymaster();
 
@@ -108,6 +109,8 @@ export default function useJupiterSwap() {
                     { transaction: swapTransaction, isVersioned: true }, 
                     { redirectUrl: 'nextvibe://swap' }
                 );
+                // Track gasless usage — Lazorkit uses Kora paymaster under the hood
+                await incrementCount();
             } else if (wallet.walletType === 'mwa') {
                 // MWA: Jupiter swaps use VersionedTransaction which the paymaster
                 // can still broadcast, but partial-sign with VersionedTransaction
