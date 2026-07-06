@@ -14,7 +14,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { House, Search, BadgePlus, UserRound, Radar, WifiOff } from "lucide-react-native";
+import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
 import { BlurView } from "@react-native-community/blur";
 import PromoBanner from "@/components/Shared/PromoBanner";
 import { scrollFeedToTop } from "@/src/utils/feedScrollRef";
@@ -94,10 +94,10 @@ function resolveNotificationUrl(data: Record<string, any>): { internal?: string;
         return { internal: `/user-profile?id=${data.user_id}` };
     }
     if (data?.type === 'new_like' && data?.post_id) {
-        return { internal: `/posts?id=${data.post_id}` };
+        return { internal: `/post-details?id=${data.post_id}` };
     }
     if (data?.type === 'new_comment' && data?.post_id) {
-        return { internal: `/posts?id=${data.post_id}` };
+        return { internal: `/post-details?id=${data.post_id}` };
     }
     if (data?.type === 'new_message' && data?.chat_id && data?.user_id) {
         return { internal: `/chat-room?id=${data.chat_id}&userId=${data.user_id}` };
@@ -139,6 +139,8 @@ const GLOBAL_SCREEN_OPTIONS: any = {
     headerShown: false,
     animation: "slide_from_right",
     contentStyle: { backgroundColor: 'transparent' },
+    freezeOnBlur: false,
+    detachInactiveScreens: false,
 };
 
 const APP_TABS = [
@@ -236,22 +238,6 @@ export default function Layout() {
     const [userID, setUserID] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [visible, setVisible] = useState<boolean>(false);
-    const [isConnected, setIsConnected] = useState<boolean | null>(true);
-
-    useEffect(() => {
-        const { NativeModules } = require('react-native');
-        if (!NativeModules.RNCNetInfo) {
-            console.warn("@react-native-community/netinfo: NativeModule.RNCNetInfo is null. Network status detection is disabled.");
-            setIsConnected(true);
-            return;
-        }
-
-        const NetInfo = require('@react-native-community/netinfo').default;
-        const unsubscribe = NetInfo.addEventListener((state: any) => {
-            setIsConnected(state.isConnected);
-        });
-        return () => unsubscribe();
-    }, []);
 
     useEffect(() => {
         if (fontsLoaded || fontError) {
@@ -516,17 +502,6 @@ export default function Layout() {
                                         ))}
                                     </Stack>
 
-                                    {isConnected === false && (
-                                        <Animated.View 
-                                            entering={FadeInUp.duration(300)}
-                                            exiting={FadeOutUp.duration(300)}
-                                            style={styles.offlineBanner}
-                                        >
-                                            <WifiOff size={16} color="#FFFFFF" strokeWidth={2.5} />
-                                            <Text style={styles.offlineText}>No internet connection</Text>
-                                        </Animated.View>
-                                    )}
-
                                     {showTabBar && (
                                         <View style={styles.tabBarContainer}>
                                             <BlurView
@@ -621,33 +596,5 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 16,
         borderColor: "#a18ed5",
-    },
-    offlineBanner: {
-        position: 'absolute',
-        top: 60,
-        left: 20,
-        right: 20,
-        backgroundColor: 'rgba(239, 68, 68, 0.95)',
-        borderRadius: 20,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 10,
-        zIndex: 99999,
-    },
-    offlineText: {
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontFamily: 'Dank Mono Bold',
-        includeFontPadding: false,
     },
 });
