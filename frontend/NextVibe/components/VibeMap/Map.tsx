@@ -733,7 +733,7 @@ export default function MapScreen() {
                                 style={{
                                     circleColor: ['case', ['==', ['get', 'is_nft'], true], '#BCBBFD', 'rgba(255, 255, 255, 0.4)'],
                                     circleOpacity: ['interpolate', ['linear'], ['zoom'], 0, 0.5, 4, 0.3, 8, 0.1, 12, 0.0],
-                                    circleRadius: ['case', ['==', ['get', 'is_nft'], true], ['interpolate', ['linear'], ['zoom'], 0, 24, 4, 14, 8, 7, 12, 3.5], ['interpolate', ['linear'], ['zoom'], 0, 18, 4, 10, 8, 5, 12, 2.5]],
+                                    circleRadius: ['interpolate', ['linear'], ['zoom'], 0, ['case', ['==', ['get', 'is_nft'], true], 24, 18], 4, ['case', ['==', ['get', 'is_nft'], true], 14, 10], 8, ['case', ['==', ['get', 'is_nft'], true], 7, 5], 12, ['case', ['==', ['get', 'is_nft'], true], 3.5, 2.5]],
                                     circleBlur: 1.2,
                                     circleStrokeWidth: 1,
                                     circleStrokeColor: ['case', ['==', ['get', 'is_nft'], true], 'rgba(82,5,159,0.85)', 'rgba(120, 120, 120, 0.4)'],
