@@ -4,12 +4,16 @@
       "channel": "development",
       "developmentClient": true,
       "distribution": "internal",
-      "cache": { "disabled": true }
+      "cache": {
+        "disabled": true
+      }
     },
     "development-simulator": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": { "simulator": true },
+      "ios": {
+        "simulator": true
+      },
       "environment": "development"
     },
     "preview": {
@@ -45,6 +49,7 @@
     }
   },
   "cli": {
-    "requireCommit": true
+    "requireCommit": true,
+    "appVersionSource": "remote"
   }
 }
