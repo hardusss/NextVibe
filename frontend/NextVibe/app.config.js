@@ -154,7 +154,6 @@ export default {
             ],
             "./withMapboxMaven.js",
             "./withSolanaMWA.js",
-            "./withFmtFix.js",
             "expo-apple-authentication",
             [
                 "@react-native-google-signin/google-signin",
@@ -169,7 +168,7 @@ export default {
         extra: {
             router: {
                 origin: false
-            },
+            },  
             eas: {
                 projectId: "4c7d8842-f989-419d-b3ec-49ceece00b6e"
             }

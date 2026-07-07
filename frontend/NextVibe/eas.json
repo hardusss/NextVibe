@@ -37,7 +37,7 @@
       "ios": {
         "distribution": "store",
         "autoIncrement": true,
-        "image": "latest"
+        "image": "macos-sonoma-15.4"
       },
       "android": {
         "buildType": "apk",
