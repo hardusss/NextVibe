@@ -97,7 +97,8 @@ export default {
                 "expo-build-properties",
                 {
                     ios: {
-                        newArchEnabled: true
+                        useFrameworks: "static",
+                        newArchEnabled: false
                     },
                     android: {
                         usesCleartextTraffic: true,
