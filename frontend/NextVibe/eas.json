@@ -37,7 +37,7 @@
       "ios": {
         "distribution": "store",
         "autoIncrement": true,
-        "image": "macos-sonoma-14.5-xcode-15.4"
+        "image": "macos-sequoia-15.6-xcode-26.2"
       },
       "android": {
         "buildType": "apk",
