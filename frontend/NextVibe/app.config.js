@@ -154,6 +154,7 @@ export default {
             ],
             "./withMapboxMaven.js",
             "./withSolanaMWA.js",
+            "./withFmtConstevalFix.js",
             "expo-apple-authentication",
             [
                 "@react-native-google-signin/google-signin",
