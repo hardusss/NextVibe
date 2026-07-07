@@ -9,21 +9,18 @@ module.exports = function withFmtFix(config) {
       const podfile = path.join(config.modRequest.platformProjectRoot, 'Podfile');
       let contents = await fs.promises.readFile(podfile, 'utf8');
 
-      const fix = `
-  installer.pods_project.targets.each do |target|
-    if target.name == 'RCT-Folly' || target.name == 'fmt'
-      target.build_configurations.each do |config|
-        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
-        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_CONSTEVAL='
-      end
-    end
-  end
-`;
-
       if (!contents.includes('FMT_CONSTEVAL=')) {
         contents = contents.replace(
-          /post_install do \|installer\|/g,
-          `post_install do |installer|\n${fix}`
+          /(post_install do \|installer\|)/,
+          `$1
+    installer.pods_project.targets.each do |target|
+      if target.name == 'RCT-Folly' || target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_CONSTEVAL='
+        end
+      end
+    end`
         );
         await fs.promises.writeFile(podfile, contents);
       }
