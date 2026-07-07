@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, useColorScheme, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, useColorScheme, ActivityIndicator, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Radio } from 'lucide-react-native';
 import LottieView from 'lottie-react-native';
@@ -22,6 +22,19 @@ export default function EventNFCShareScreen() {
 
     useEffect(() => {
         const init = async () => {
+            if (Platform.OS === 'ios') {
+                // HCE broadcasting is not supported on iOS (Apple platform limitation).
+                // Do not call startSharing() here.
+                try {
+                    const storedId = await storage.getItem('id');
+                    if (storedId) {
+                        setUserId(storedId);
+                    }
+                } catch (e) {
+                    console.error('Failed to get user details:', e);
+                }
+                return;
+            }
             try {
                 const storedId = await storage.getItem('id');
                 if (storedId) {
@@ -42,7 +55,9 @@ export default function EventNFCShareScreen() {
         }
 
         return () => {
-            stopSharing();
+            if (Platform.OS !== 'ios') {
+                stopSharing();
+            }
         };
     }, [eventId]);
 
@@ -71,6 +86,29 @@ export default function EventNFCShareScreen() {
             <View style={styles.main}>
                 {!userId ? (
                     <ActivityIndicator size="large" color={accent} />
+                ) : Platform.OS === 'ios' ? (
+                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
+                        <Animated.View entering={FadeInDown.delay(200)}>
+                            <View style={styles.animationContainer}>
+                                <View style={[styles.iconCircle, { backgroundColor: '#EF4444' }]}>
+                                    <Radio size={32} color="#ffffff" />
+                                </View>
+                            </View>
+                        </Animated.View>
+
+                        <Text style={[styles.heading, { color: main }]}>
+                            Not Available on iPhone Yet
+                        </Text>
+                        <Text style={[styles.description, { color: muted }]}>
+                            NFC sharing isn't available on iPhone yet because iOS doesn't support Host Card Emulation (HCE).
+                        </Text>
+                        
+                        <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                            <Text style={[styles.infoCardText, { color: muted }]}>
+                                To connect, please have the other attendee share their NFC card or use Android.
+                            </Text>
+                        </View>
+                    </Animated.View>
                 ) : (
                     <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
                         <Animated.View entering={FadeInDown.delay(200)}>

@@ -4,12 +4,20 @@
       "channel": "development",
       "developmentClient": true,
       "distribution": "internal",
-      "cache": {
-        "disabled": true
-      }
+      "cache": { "disabled": true }
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true },
+      "environment": "development"
     },
     "preview": {
       "channel": "preview",
+      "ios": {
+        "simulator": false,
+        "distribution": "internal"
+      },
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease",
@@ -22,18 +30,18 @@
     },
     "production": {
       "channel": "production",
+      "ios": {
+        "distribution": "store",
+        "autoIncrement": true
+      },
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
-      }
-    },
-    "development-simulator": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "ios": {
-        "simulator": true
       },
-      "environment": "development"
+      "env": {
+        "EXPO_PUBLIC_NEXTVIBE_PUBKEY": "EaKpyd7H9iZQSzUNSa8W5ykntH55y49C3EMVd1YjgDKm",
+        "EXPO_PUBLIC_VEXO_API_KEY": "93f6e34f-8d85-4b17-a2b1-7f974e6d929e"
+      }
     }
   },
   "cli": {
