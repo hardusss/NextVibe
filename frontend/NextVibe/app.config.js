@@ -20,7 +20,6 @@ export default {
             infoPlist: {
                 NSCameraUsageDescription: "NextVibe needs access to your Camera.",
                 NSMicrophoneUsageDescription: "NextVibe needs access to your Microphone.",
-                NFCReaderUsageDescription: "NextVibe needs NFC to connect you with friends.",
                 ITSAppUsesNonExemptEncryption: false,
                 NSLocationWhenInUseUsageDescription: "NextVibe needs your location to show you on the VibeMap and find nearby drops.",
                 NSLocationAlwaysAndWhenInUseUsageDescription: "NextVibe needs your location to notify you about Vibe Zones nearby."
@@ -124,12 +123,6 @@ export default {
                     cameraPermissionText: "NextVibe needs access to your Camera.",
                     enableMicrophonePermission: true,
                     microphonePermissionText: "NextVibe needs access to your Microphone."
-                }
-            ],
-            [
-                "react-native-nfc-manager",
-                {
-                    nfcPermission: "NextVibe needs NFC to connect you with friends."
                 }
             ],
             "expo-image-picker",
