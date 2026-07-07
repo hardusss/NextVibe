@@ -15,6 +15,7 @@ export default {
             jsEngine: "hermes",
             supportsTablet: true,
             bundleIdentifier: "com.nextvibe.app",
+            googleServicesFile: "./GoogleService-Info.plist",
             usesAppleSignIn: true,
             infoPlist: {
                 NSCameraUsageDescription: "NextVibe needs access to your Camera.",
@@ -90,10 +91,14 @@ export default {
             favicon: "./assets/images/favicon.png"
         },
         plugins: [
+            "@react-native-firebase/app",
             "expo-router",
             [
                 "expo-build-properties",
                 {
+                    ios: {
+                        newArchEnabled: true
+                    },
                     android: {
                         usesCleartextTraffic: true,
                         enableProguardInReleaseBuilds: true,
