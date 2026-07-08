@@ -16,7 +16,7 @@ import {
 import { BlurView } from "@react-native-community/blur";
 import { Users, Check, X, Calendar, Clock } from "lucide-react-native";
 import { actionEventRequest } from "@/src/api/event.requests";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -160,7 +160,7 @@ function RequestCard({
             <View style={styles.cardTop}>
                 <View style={styles.avatarWrap}>
                     {avatarUrl ? (
-                        <FastImage source={{ uri: avatarUrl }} style={styles.avatar} />
+                        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
                     ) : (
                         <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: border }]}>
                             <Users size={16} color={muted} />

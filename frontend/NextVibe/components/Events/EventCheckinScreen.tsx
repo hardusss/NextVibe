@@ -21,7 +21,7 @@ import Animated, {
     withTiming,
     withSpring,
 } from "react-native-reanimated";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import { checkinEvent, claimEventNft } from "@/src/api/event.checkin";
 
 type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error" | "claiming" | "claim_success" | "claim_failed";
@@ -194,10 +194,10 @@ export default function EventCheckinScreen() {
                 return (
                     <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
                         {postImage ? (
-                            <FastImage
+                            <Image
                                 source={{ uri: postImage }}
                                 style={styles.eventPhoto}
-                                resizeMode={FastImage.resizeMode.cover}
+                                contentFit="cover"
                             />
                         ) : (
                             <View style={[styles.iconCircle, {

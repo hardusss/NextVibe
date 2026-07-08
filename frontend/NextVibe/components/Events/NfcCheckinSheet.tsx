@@ -11,7 +11,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "@react-native-community/blur";
 import { Nfc, Users, Check, X, Radio } from "lucide-react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import Animated, {
     FadeInDown,
     useSharedValue,
@@ -205,7 +205,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                 style={[styles.checkinRow, { backgroundColor: cardBg, borderColor: border }]}
             >
                 {avatarUrl ? (
-                    <FastImage source={{ uri: avatarUrl }} style={styles.avatar} />
+                    <Image source={{ uri: avatarUrl }} style={styles.avatar} />
                 ) : (
                     <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: border }]}>
                         <Users size={16} color={muted} />

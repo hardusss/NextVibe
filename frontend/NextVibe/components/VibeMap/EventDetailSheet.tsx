@@ -9,7 +9,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "@react-native-community/blur";
 import { Calendar, Users, Send, ExternalLink, MapPin, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { VibemapEventItem } from "@/src/api/get.vibemap.events";
 import { requestToAttend } from "@/src/api/event.requests";
@@ -110,7 +110,7 @@ const EventDetailSheet = forwardRef<EventDetailSheetRef>((_, ref) => {
                     {/* Hero image + overlay */}
                     {event.image && (
                         <View style={[styles.heroContainer, { borderColor: border }]}>
-                            <FastImage source={{ uri: event.image }} style={styles.heroImage} resizeMode="cover" />
+                            <Image source={{ uri: event.image }} style={styles.heroImage} contentFit="cover" />
                             <View style={styles.heroOverlay} />
                             {/* Status badge on image */}
                             <View style={[styles.statusBadgeOnImage, {
@@ -140,7 +140,7 @@ const EventDetailSheet = forwardRef<EventDetailSheetRef>((_, ref) => {
                         {/* Owner */}
                         <View style={[styles.ownerRow, { borderColor: border }]}>
                             {event.owner_avatar ? (
-                                <FastImage source={{ uri: event.owner_avatar }} style={styles.ownerAvatar} />
+                                <Image source={{ uri: event.owner_avatar }} style={styles.ownerAvatar} />
                             ) : (
                                 <View style={[styles.ownerAvatar, { backgroundColor: border }]} />
                             )}

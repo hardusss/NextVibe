@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, InteractionManager } from "react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import LottieView from "lottie-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Crown } from "lucide-react-native";
@@ -74,7 +74,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
             );
         } else if (invitedCount >= 1) {
             return (
-                <FastImage
+                <Image
                     source={require('@/assets/frames/BasicFrame.png')}
                     style={{
                         position: 'absolute',
@@ -83,7 +83,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
                         zIndex: 10,
                         marginTop: -1,
                     }}
-                    resizeMode={FastImage.resizeMode.contain}
+                    contentFit="contain"
                     pointerEvents="none"
                 />
             );
@@ -95,7 +95,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
             <View style={{ width: '100%', height: '100%', borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(128,128,128,0.2)' }}>
                 {avatarUrl && (
-                    <FastImage
+                    <Image
                         style={{ width: '100%', height: '100%' }}
                         source={{ uri: avatarUrl as string }}
                     />

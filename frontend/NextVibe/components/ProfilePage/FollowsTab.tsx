@@ -4,7 +4,7 @@ import { Ghost, Telescope, ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import getFollows from '@/src/api/get.follows';
 import getReaders from '@/src/api/get.readers';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import VerifyBadge from '../VerifyBadge'; 
 
 type UserData = {
@@ -208,7 +208,7 @@ export default function FollowsScreen() {
 
     const renderUserItem = ({ item }: { item: UserData }) => (
         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.userItem} onPress={() => router.push({ pathname: "/user-profile", params: { id: item.user_id, last_page: `/follows-screen?userId=${userId}` } })}>
-            <FastImage
+            <Image
                 style={styles.avatarPlaceholder}
                 source={{
                     uri: item.avatar ? `${item.avatar}` : undefined

@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import Hyperlink from "react-native-hyperlink";
 import { LinearGradient } from "expo-linear-gradient";
 import { Star, ArrowLeft, Camera, Layers } from "lucide-react-native";
@@ -300,10 +300,10 @@ const UserProfileView = () => {
                         >
                             <Animated.View style={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", width: '100%', transform: [{ scale: scaleAnim }] }}>
                                 {userData.avatar_url && (
-                                    <FastImage
+                                    <Image
                                         style={{ width: 320, height: 320, borderRadius: 160 }}
                                         source={{ uri: userData.avatar_url as string }}
-                                        resizeMode={FastImage.resizeMode.cover}
+                                        contentFit="cover"
                                     />
                                 )}
                             </Animated.View>
@@ -314,10 +314,10 @@ const UserProfileView = () => {
                     <View style={st.headerContainer}>
                         {userData.avatar_url && (
                             <>
-                                <FastImage
+                                <Image
                                     source={{ uri: userData.avatar_url }}
                                     style={[st.headerImage, { opacity: 0.38 }]}
-                                    resizeMode={FastImage.resizeMode.cover}
+                                    contentFit="cover"
                                 />
                                 <View style={[StyleSheet.absoluteFill, {
                                     backgroundColor: isDark

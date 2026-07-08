@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import { ArrowLeftRight } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import formatValue from "@/src/utils/solana/formatValue";
@@ -31,7 +31,7 @@ export default function TokenInfoCard({
         <View style={[styles.card, { backgroundColor: bg, borderColor: border }]}>
             <View style={styles.left}>
                 {tokenIcon ? (
-                    <FastImage source={{ uri: tokenIcon }} style={styles.logo} resizeMode={FastImage.resizeMode.cover} />
+                    <Image source={{ uri: tokenIcon }} style={styles.logo} contentFit="cover" />
                 ) : (
                     <View style={[styles.logo, { backgroundColor: border, justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: mainColor, fontFamily: 'Dank Mono', fontSize: 16 }}>{tokenSymbol[0]}</Text>

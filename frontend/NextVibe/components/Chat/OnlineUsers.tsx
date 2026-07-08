@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Users } from 'lucide-react-native';
 
@@ -52,11 +52,9 @@ export default function OnlineUsers({users}: { users: OnlineUser[] }) {
                 style={styles.blurViewAbsolute}
             />
             <View style={styles.avatarContainer}>
-              <FastImage
+              <Image
                 source={{ 
                   uri: `${item.avatar}`,
-                  priority: FastImage.priority.normal,
-                  cache: FastImage.cacheControl.immutable
                 }}
                 style={styles.avatar}
               />

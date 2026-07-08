@@ -4,7 +4,7 @@ import {
     Modal, View, Text, TouchableOpacity, TextInput,
     ScrollView, StyleSheet, Vibration, Platform,
 } from 'react-native';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { Search } from 'lucide-react-native';
 import type { TokenAsset } from '@/hooks/usePortfolio';
 import type { SwapColors } from '@/src/types/swap';
@@ -120,10 +120,10 @@ export default function SwapTokenPicker({
                                 >
                                     <View style={styles.rowLeft}>
                                         {t.logoURI ? (
-                                            <FastImage
+                                            <Image
                                                 source={{ uri: t.logoURI }}
                                                 style={styles.tokenLogo}
-                                                resizeMode={FastImage.resizeMode.cover}
+                                                contentFit="cover"
                                             />
                                         ) : (
                                             <View style={[styles.tokenLogo, { backgroundColor: colors.muted, justifyContent: 'center', alignItems: 'center' }]}>

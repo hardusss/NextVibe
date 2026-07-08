@@ -9,7 +9,7 @@ import NfcCheckinSheet, { NfcCheckinSheetRef } from "./NfcCheckinSheet";
 import { storage } from "@/src/utils/storage";
 import getMenuPosts from "@/src/api/menu.posts";
 import { getEventRequests } from "@/src/api/event.requests";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import { FadeIn } from "@/components/Shared/motion";
 const formatEventDate = (isoString: string): string => {
     if (!isoString) return "";
@@ -124,11 +124,11 @@ export default function EventsScreen() {
           <View style={[styles.eventCard, { backgroundColor: t.card, borderColor: t.border }]}>
               {mediaUrl && (
                   <View style={[styles.imageContainer, { backgroundColor: isDark ? "#1a1a1a" : "#f3f4f6" }]}>
-                      <FastImage source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                      <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
                       <View style={[StyleSheet.absoluteFill, {
                           backgroundColor: isDark ? 'rgba(10,4,16,0.6)' : 'rgba(255,255,255,0.55)'
                       }]} />
-                      <FastImage source={{ uri: mediaUrl }} style={styles.eventImage} resizeMode="contain" />
+                      <Image source={{ uri: mediaUrl }} style={styles.eventImage} contentFit="contain" />
                   </View>
               )}
               

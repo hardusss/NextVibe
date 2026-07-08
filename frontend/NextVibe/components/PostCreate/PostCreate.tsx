@@ -9,7 +9,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import createPost from '@/src/api/create.post';
 import { getLocationName } from '@/src/api/mapbox/get.coords.name';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import * as Location from 'expo-location';
@@ -285,10 +285,10 @@ export default function PostCreate() {
                                 {isVideo(mediaUrl!) ? (
                                     <VideoPlayer uri={fixedUri} />
                                 ) : (
-                                    <FastImage
-                                        source={{ uri: fixedUri, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable }}
+                                    <Image
+                                        source={{ uri: fixedUri }}
                                         style={StyleSheet.absoluteFillObject}
-                                        resizeMode={FastImage.resizeMode.cover}
+                                        contentFit="cover"
                                     />
                                 )}
                                 <LinearGradient

@@ -15,7 +15,7 @@ import {
   StatusBar
 } from 'react-native';
 import { ArrowLeft, X, Camera, Send } from 'lucide-react-native';
-import FastImage from 'react-native-fast-image';
+import { Image as ExpoImage } from 'expo-image';
 import EmptyState from '../Shared/EmptyState';
 import * as ImagePicker from 'expo-image-picker';
 import ChatBubble from './ChatBubble';
@@ -272,7 +272,7 @@ export default function ChatScreen() {
               params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}`} 
             })}
           >
-            <FastImage 
+            <ExpoImage 
               source={{ 
                 uri: userDetails?.avatar 
                   ? `${userDetails.avatar}` 
