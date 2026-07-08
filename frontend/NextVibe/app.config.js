@@ -99,7 +99,21 @@ export default {
                 {
                     ios: {
                         "useFrameworks": "dynamic",
-                        "newArchEnabled": true
+                        "newArchEnabled": true,
+                        "extraPods": [
+                            {
+                                "name": "FirebaseAuth",
+                                "modular_headers": true
+                            },
+                            {
+                                "name": "FirebaseCore",
+                                "modular_headers": true
+                            },
+                            {
+                                "name": "GoogleUtilities",
+                                "modular_headers": true
+                            }
+                        ]
                     },
                     android: {
                         usesCleartextTraffic: true,
