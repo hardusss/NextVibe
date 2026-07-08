@@ -35,8 +35,8 @@ export default {
                 backgroundColor: "#0A0410"
             },
             notification: {
-                icon: "./assets/push_icon.png",  
-                color: "#A855F7",                                   
+                icon: "./assets/push_icon.png",
+                color: "#A855F7",
                 androidMode: "default",
             },
             package: "com.nextvibe.app",
@@ -98,7 +98,8 @@ export default {
                 "expo-build-properties",
                 {
                     ios: {
-                        newArchEnabled: true
+                        "useFrameworks": "dynamic",
+                        "newArchEnabled": true
                     },
                     android: {
                         usesCleartextTraffic: true,
@@ -169,7 +170,7 @@ export default {
         extra: {
             router: {
                 origin: false
-            },  
+            },
             eas: {
                 projectId: "4c7d8842-f989-419d-b3ec-49ceece00b6e"
             }
