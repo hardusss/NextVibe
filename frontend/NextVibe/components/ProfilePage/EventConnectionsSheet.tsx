@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, forwardRef, useState, useImperativeHandle } from 'react';
 import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { BlurView } from '@react-native-community/blur';
 import VerifyBadge from "../VerifyBadge";
 import { Star, Layers, Users, ChevronDown, ShieldCheck, Radio } from 'lucide-react-native';
@@ -156,9 +156,9 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
 
                                 {item.event_image ? (
                                     <View style={styles.heroWrap}>
-                                        <FastImage source={{ uri: item.event_image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                        <Image source={{ uri: item.event_image }} style={StyleSheet.absoluteFill} contentFit="cover" />
                                         <BlurView blurType={isDark ? 'dark' : 'light'} blurAmount={18} style={StyleSheet.absoluteFill} pointerEvents="none" />
-                                        <FastImage source={{ uri: item.event_image }} style={styles.heroImg} resizeMode="contain" />
+                                        <Image source={{ uri: item.event_image }} style={styles.heroImg} contentFit="contain" />
 
                                         <View style={styles.heroBadgeRow}>
                                             <View style={styles.verifiedBadge}>
@@ -233,7 +233,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                 {visible.map((c) => (
                                                     <View key={c.user_id} style={styles.connRow}>
                                                         {c.avatar ? (
-                                                            <FastImage source={{ uri: c.avatar }} style={styles.connAvatar} />
+                                                            <Image source={{ uri: c.avatar }} style={styles.connAvatar} />
                                                         ) : (
                                                             <View style={[styles.connAvatar, {
                                                                 backgroundColor: avatarColor(c.username) + '20',

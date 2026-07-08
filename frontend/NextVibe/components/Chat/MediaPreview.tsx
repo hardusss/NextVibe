@@ -3,7 +3,7 @@ import { View, TouchableOpacity, StyleSheet, Modal, Dimensions, ActivityIndicato
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PlayCircle, X } from 'lucide-react-native';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
 interface MediaPreviewProps {
@@ -14,7 +14,7 @@ interface MediaPreviewProps {
 }
 
 interface OnLoadEvent {
-  nativeEvent: {
+  source: {
     width: number;
     height: number;
   };
@@ -112,15 +112,15 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
                 <ActivityIndicator color="#00CED1" />
               </View>
             )}
-            <FastImage
+            <Image
               source={{ uri }}
               style={{
                 width: size.width,
                 height: size.height,
               }}
-              resizeMode={FastImage.resizeMode.cover}
+              contentFit="cover"
               onLoad={(e: OnLoadEvent) => {
-                const { width, height } = e.nativeEvent;
+                const { width, height } = e.source;
                 handleLoad(width, height);
               }}
               onError={() => setIsLoading(false)}
@@ -135,13 +135,13 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
             )}
             
             {thumbnailUri && (
-              <FastImage
+              <Image
                 source={{ uri: thumbnailUri }}
                 style={{
                   width: size.width,
                   height: size.height,
                 }}
-                resizeMode={FastImage.resizeMode.cover}
+                contentFit="cover"
               />
             )}
 
@@ -181,13 +181,12 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
         </TouchableOpacity>
         
         {type === 'image' ? (
-          <FastImage
+          <Image
             source={{ 
               uri,
-              priority: FastImage.priority.high,
             }}
             style={styles.fullScreenMedia}
-            resizeMode={FastImage.resizeMode.contain}
+            contentFit="contain"
           />
         ) : (
           fullScreenPlayer && (

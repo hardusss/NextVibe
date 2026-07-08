@@ -26,7 +26,7 @@ import {
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import getNotifications from '@/src/api/get.notifications';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import readNotifications from '@/src/api/read.notifications';
@@ -460,7 +460,7 @@ export default function NotificationsListPage() {
 
     return (
       <View style={styles.avatarContainer}>
-        <FastImage
+        <Image
           source={{ uri: `${notification.sender__avatar}` }}
           style={styles.avatar}
         />

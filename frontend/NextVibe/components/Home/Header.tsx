@@ -2,7 +2,7 @@ import { TouchableOpacity, Text, View, StyleSheet, Animated } from "react-native
 import { useRef, useState, useCallback } from "react";
 import { useColorScheme } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
 import { Bell } from "lucide-react-native"
 
@@ -74,10 +74,10 @@ export default function Header() {
               )}
             </TouchableOpacity>
 
-            <FastImage
+            <Image
               source={require('@/assets/logo.png')}
               style={styles.logo}
-              resizeMode={FastImage.resizeMode.contain}
+              contentFit="contain"
             />
           </View>
         </View>

@@ -21,7 +21,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import likePost from "@/src/api/like.post";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import VerifyBadge from "../VerifyBadge";
@@ -449,14 +449,12 @@ const MediaItemComponent = ({
             {isVideoMedia ? (
                 <>
                     {(showPreview || !isVisible) && (
-                        <FastImage
+                        <Image
                             source={{ 
                                 uri: preview,
-                                priority: FastImage.priority.high,
-                                cache: FastImage.cacheControl.immutable
                             }}
                             style={[styles.previewImage, isLoading && { opacity: 0.7 }]}
-                            resizeMode={FastImage.resizeMode.cover}
+                            contentFit="cover"
                         />
                     )}
                     {isVideoMedia && isVisible && (
@@ -492,14 +490,12 @@ const MediaItemComponent = ({
                     </Pressable>
                 </>
             ) : (
-                <FastImage
+                <Image
                     source={{ 
                         uri: preview,
-                        priority: FastImage.priority.normal,
-                        cache: FastImage.cacheControl.immutable
                     }}
                     style={styles.mediaImage}
-                    resizeMode={FastImage.resizeMode.cover}
+                    contentFit="cover"
                 />
             )}
             {showHeart && (
@@ -735,10 +731,7 @@ const UserPosts = () => {
         <View style={styles.postHeader}>
           {userData && (
             <>
-              <FastImage source={{ uri:  `${userData.avatar}`,
-                    priority: FastImage.priority.normal,
-                    cache: FastImage.cacheControl.immutable 
-                }} style={styles.avatar} />
+              <Image source={{ uri:  `${userData.avatar}` }} style={styles.avatar} />
               <View style={styles.userInfo}>
                 <View style={styles.usernameContainer}>
                   <View style={{flexDirection: "row", "alignItems": "center"}}>

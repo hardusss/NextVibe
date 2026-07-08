@@ -12,7 +12,7 @@ import { ActivityIndicator } from "../CustomActivityIndicator";
 import getCollectionsMenu from "@/src/api/get.collections.menu";
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useIsFocused } from "@react-navigation/native";
-import FastImage from 'react-native-fast-image';
+import { Image as ExpoImage } from 'expo-image';
 import { BlurView } from "@react-native-community/blur";
 import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2, Calendar } from "lucide-react-native";
 import { useColorScheme } from "react-native";
@@ -150,10 +150,10 @@ function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatarCardPro
     return (
         <View style={[styles.ogCard, { backgroundColor: cardBg, borderColor }]}>
             <View style={styles.ogImageWrap}>
-                <FastImage
+                <ExpoImage
                     source={{ uri: og.image_url }}
                     style={styles.ogImage}
-                    resizeMode={FastImage.resizeMode.cover}
+                    contentFit="cover"
                 />
                 <LinearGradient
                     colors={['#7c3aed', '#a855f7']}
@@ -371,28 +371,28 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                                         <View style={styles.videoContainer}>
                                             {item.is_luma_event && isFocused && (
                                                 <>
-                                                    <FastImage source={{ uri: getPreviewUrl(mediaUrl!, item as any) }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
+                                                    <ExpoImage source={{ uri: getPreviewUrl(mediaUrl!, item as any) }} style={StyleSheet.absoluteFill} contentFit="cover" />
                                                     <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} pointerEvents="none" />
                                                 </>
                                             )}
-                                            <FastImage
+                                            <ExpoImage
                                                 source={{ uri: getPreviewUrl(mediaUrl!, item as any) }}
                                                 style={styles.media}
-                                                resizeMode={item.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                                contentFit={item.is_luma_event ? "contain" : "cover"}
                                             />
                                         </View>
                                     ) : (
                                         <View style={styles.videoContainer}>
                                             {item.is_luma_event && isFocused && (
                                                 <>
-                                                    <FastImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
+                                                    <ExpoImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} contentFit="cover" />
                                                     <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} pointerEvents="none" />
                                                 </>
                                             )}
-                                            <FastImage
+                                            <ExpoImage
                                                 source={{ uri: mediaUrl! }}
                                                 style={styles.media}
-                                                resizeMode={item.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                                contentFit={item.is_luma_event ? "contain" : "cover"}
                                             />
                                         </View>
                                     )

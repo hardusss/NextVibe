@@ -21,7 +21,7 @@ import { Check, Copy, Play, ArrowRight, ArrowLeft } from "lucide-react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import { connect2FA, auth } from "@/src/api/2fa";
 import LottieView from "lottie-react-native";
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 
 interface Props {
   isVisible: boolean;
@@ -230,14 +230,12 @@ const BottomSheet = ({ isVisible, onClose, onFail, onSuccess }: Props) => {
 
             <View style={styles.qrSection}>
               {qrUrl ? (
-                <FastImage
+                <Image
                   source={{
                     uri: qrUrl,
-                    priority: FastImage.priority.normal,
-                    cache: FastImage.cacheControl.immutable
                   }}
                   style={styles.qrImage}
-                  resizeMode={FastImage.resizeMode.contain}
+                  contentFit="contain"
                 />
               ) : (
                 <ActivityIndicator />

@@ -14,7 +14,7 @@ import getMenuPosts from "@/src/api/menu.posts";
 import { useIsFocused } from "@react-navigation/native";
 
 import { BlurView } from "@react-native-community/blur";
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { storage } from '@/src/utils/storage';
@@ -330,28 +330,28 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                         <View style={styles.videoContainer}>
                                             {item.is_luma_event && (
                                                 <>
-                                                    <FastImage source={{ uri: getPreviewUrl(mediaUrl!, item) }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
+                                                    <Image source={{ uri: getPreviewUrl(mediaUrl!, item) }} style={StyleSheet.absoluteFill} contentFit="cover" />
                                                     <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
                                                 </>
                                             )}
-                                            <FastImage
+                                            <Image
                                                 source={{ uri: getPreviewUrl(mediaUrl!, item) }}
                                                 style={styles.media}
-                                                resizeMode={item.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                                contentFit={item.is_luma_event ? "contain" : "cover"}
                                             />
                                         </View>
                                     ) : (
                                         <View style={styles.videoContainer}>
                                             {item.is_luma_event && (
                                                 <>
-                                                    <FastImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} resizeMode={FastImage.resizeMode.cover} />
+                                                    <Image source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} contentFit="cover" />
                                                     <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
                                                 </>
                                             )}
-                                            <FastImage
+                                            <Image
                                                 source={{ uri: mediaUrl! }}
                                                 style={styles.media}
-                                                resizeMode={item.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                                contentFit={item.is_luma_event ? "contain" : "cover"}
                                             />
                                         </View>
                                     )

@@ -23,7 +23,7 @@ import PopupModal from "../Comments/CommentPopup";
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { requestToAttend } from "@/src/api/event.requests";
 import likePost from "@/src/api/like.post";
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import timeAgo from "@/src/utils/formatTime";
 import { Platform, UIManager } from 'react-native';
 import DropDown from "../Shared/Posts/PostsDropdown";
@@ -432,10 +432,10 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
             {isVideoMedia ? (
                 <>
                     {(showPreview || !isVisible) && (
-                        <FastImage
-                            source={{ uri: preview, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable }}
+                        <Image
+                            source={{ uri: preview }}
                             style={styles.previewImage}
-                            resizeMode={FastImage.resizeMode.cover}
+                            contentFit="cover"
                         />
                     )}
                     {isVideoMedia && isVisible && (
@@ -464,13 +464,13 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
                     </Pressable>
                 </>
             ) : (
-                <FastImage
-                    source={{ uri: item.media_url, priority: FastImage.priority.normal, cache: FastImage.cacheControl.immutable }}
+                <Image
+                    source={{ uri: item.media_url }}
                     style={styles.mediaImage}
-                    resizeMode={isLumaEvent ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                    contentFit={isLumaEvent ? "contain" : "cover"}
                     onLoad={(e) => {
                         if (isLumaEvent && onMediaSize) {
-                            const { width, height } = e.nativeEvent;
+                            const { width, height } = e.source;
                             if (width > 0) onMediaSize(width, height);
                         }
                     }}

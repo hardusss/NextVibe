@@ -10,7 +10,7 @@ import {
     ScrollView,
     Linking,
 } from "react-native";
-import FastImage from "react-native-fast-image";
+import { Image as ExpoImage } from "expo-image";
 import { BlurView } from "@react-native-community/blur";
 import {
     Sparkles,
@@ -294,18 +294,19 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
                                         eventImageHeight ? { height: eventImageHeight } : {},
                                         item.is_luma_event ? { borderTopLeftRadius: 16, borderTopRightRadius: 16 } : {},
                                     ]}>
-                                        <FastImage
+                                        <ExpoImage
                                             source={{ uri: mediaUrl }}
                                             style={s.image}
-                                            resizeMode={
+                                            contentFit={
                                                 item.is_luma_event
-                                                    ? FastImage.resizeMode.contain
-                                                    : FastImage.resizeMode.cover
+                                                    ? "contain"
+                                                    : "cover"
                                             }
                                             onLoad={(evt) => {
                                                 if (item.is_luma_event) {
-                                                    const { width, height } = evt.nativeEvent;
-                                                    if (width > 0) {
+                                                    const width = evt.source?.width || (evt as any).nativeEvent?.width;
+                                                    const height = evt.source?.height || (evt as any).nativeEvent?.height;
+                                                    if (width && width > 0 && height) {
                                                         setEventImageHeight((CARD_WIDTH / width) * height);
                                                     }
                                                 }
