@@ -39,7 +39,7 @@ export default function EventNFCShareScreen() {
                 const storedId = await storage.getItem('id');
                 if (storedId) {
                     setUserId(storedId);
-                    
+
                     const shareUrl = `https://nextvibe.io/event-nfc-receive?eventId=${eventId}&userId=${storedId}`;
                     startSharing(shareUrl);
                 } else {
@@ -102,7 +102,7 @@ export default function EventNFCShareScreen() {
                         <Text style={[styles.description, { color: muted }]}>
                             NFC sharing isn't available on iPhone yet because iOS doesn't support Host Card Emulation (HCE).
                         </Text>
-                        
+
                         <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
                             <Text style={[styles.infoCardText, { color: muted }]}>
                                 To connect, please have the other attendee share their NFC card or use Android.
@@ -131,7 +131,7 @@ export default function EventNFCShareScreen() {
                         <Text style={[styles.description, { color: muted }]}>
                             Hold the top of your phone near another attendee's phone to connect and share reputation!
                         </Text>
-                        
+
                         <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
                             <Text style={[styles.infoCardText, { color: muted }]}>
                                 Make sure the other person's screen is unlocked.
