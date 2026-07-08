@@ -194,7 +194,7 @@ export default function EventNFCReceiveScreen() {
                         <Animated.Text entering={FadeInDown.delay(400)} style={[styles.heading, { color: main, fontSize: 24, marginTop: 16 }]}>
                             Connected with {scannedUser?.username}
                         </Animated.Text>
-                        
+
                         <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>
                             <Star size={24} color="#fbbf24" fill="#fbbf24" />
                             <Text style={styles.repPointsText}>+{displayPoints} Rep</Text>

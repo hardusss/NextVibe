@@ -4,7 +4,7 @@ import {
     FlatList,
     TouchableOpacity,
     StyleSheet,
-    StatusBar,
+
     Dimensions,
     useColorScheme,
     Animated,
@@ -14,6 +14,7 @@ import {
     Linking,
 } from "react-native";
 import Header from "./Header";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
@@ -93,9 +94,9 @@ const getStyles = (theme: typeof darkTheme) => {
     return StyleSheet.create({
         container: { flex: 1, backgroundColor: theme.background },
         listContainer: { backgroundColor: theme.background, paddingBottom: 50 },
-        postContainer: { 
-            borderRadius: 22, 
-            padding: 18, 
+        postContainer: {
+            borderRadius: 22,
+            padding: 18,
             position: "relative",
             backgroundColor: theme.cardBackground,
             marginBottom: 16,
@@ -1094,7 +1095,7 @@ export default function MainPage() {
 
     return (
         <View style={styles.container}>
-            <StatusBar backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"} />
+            <StatusBar style="light" />
             <Web3Toast
                 message={toastMessage}
                 visible={isToastVisible}

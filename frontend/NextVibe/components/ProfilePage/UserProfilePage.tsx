@@ -1,9 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
     View,
-    SafeAreaView,
     Text,
-    StatusBar,
     Modal,
     ScrollView,
     RefreshControl,
@@ -17,6 +15,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import Hyperlink from "react-native-hyperlink";
 import { LinearGradient } from "expo-linear-gradient";
@@ -275,8 +274,8 @@ const UserProfileView = () => {
     const bg = isDark ? '#0A0410' : '#ffffff';
 
     return (
-        <SafeAreaView style={profileStyle.container}>
-            <StatusBar animated backgroundColor={bg} />
+        <View style={profileStyle.container}>
+            <StatusBar style="light" />
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{ flex: 1, justifyContent: "center", alignItems: "center" }} />
             ) : (
@@ -500,7 +499,7 @@ const UserProfileView = () => {
                 message="Earn reputation by attending events, interacting with organizers and other participants 🚀"
                 isSuccess={true}
             />
-        </SafeAreaView>
+        </View>
     );
 };
 
