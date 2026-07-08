@@ -97,7 +97,7 @@ export default {
                 {
                     ios: {
                         useFrameworks: "static",
-                        newArchEnabled: false
+                        newArchEnabled: true
                     },
                     android: {
                         usesCleartextTraffic: true,
