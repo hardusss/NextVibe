@@ -98,7 +98,6 @@ export default {
                 "expo-build-properties",
                 {
                     ios: {
-                        useFrameworks: "static",
                         newArchEnabled: true
                     },
                     android: {
