@@ -13,8 +13,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-// @ts-ignore
-import { useMobileWallet } from '@wallet-ui/react-native-web3js/dist/index.native.mjs';
+import { useMwaAdapter } from '@/hooks/useMwaAdapter';
 import { WalletOptionCard } from './WalletOptionCard';
 import type { WalletType, WalletCardConfig } from './WalletOptionCard';
 import saveWallet from '@/src/api/save.wallet';
@@ -31,7 +30,7 @@ const COLORS = {
   },
 };
 
-const WALLET_CARDS: WalletCardConfig[] = [
+const ALL_WALLET_CARDS: WalletCardConfig[] = [
   {
     id: 'lazorkit',
     title: 'Create Seedless Wallet',
@@ -60,13 +59,18 @@ const WALLET_CARDS: WalletCardConfig[] = [
   },
 ];
 
+// On iOS, only LazorKit is available — MWA is Android-only
+const WALLET_CARDS = Platform.OS === 'ios'
+  ? ALL_WALLET_CARDS.filter(c => c.id !== 'mwa')
+  : ALL_WALLET_CARDS;
+
 const WalletSelectionScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const colors = isDark ? COLORS.dark : COLORS.light;
   const router = useRouter();
   const { page } = useLocalSearchParams();
-  const { account, connect, disconnect } = useMobileWallet();
+  const { account, connect, disconnect } = useMwaAdapter();
 
   const isMounted = useRef(true);
 

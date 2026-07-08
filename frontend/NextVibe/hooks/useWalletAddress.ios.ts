@@ -1,7 +1,3 @@
-/**
- * Fallback wallet hook (used when no platform-specific file matches, e.g. web).
- * LazorKit-only — same as iOS variant.
- */
 import { useWallet } from "@lazorkit/wallet-mobile-adapter";
 import { useMemo } from "react";
 import { Connection, Transaction, VersionedTransaction, TransactionSignature } from "@solana/web3.js";
@@ -33,6 +29,10 @@ export type WalletState =
         walletType: 'none' 
       };
 
+/**
+ * iOS-specific wallet hook — only LazorKit is available.
+ * MWA (Mobile Wallet Adapter) is not used on iOS.
+ */
 export default function useWalletAddress(): WalletState {
     const { 
             smartWalletPubkey: lazorPubkey, 
