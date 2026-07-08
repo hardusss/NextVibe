@@ -24,6 +24,7 @@ import AppleButtonAuth from '../oauth-components/AppleButton';
 import { Image } from 'expo-image';
 import { BackHandler } from 'react-native';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
+import ButtonLazorKitSignIn from '../SignInViaWallet/ButtonLazorKitSignIn';
 
 export default function LoginView() {
     const router = useRouter();
@@ -185,9 +186,12 @@ export default function LoginView() {
                         </View>
 
                         {Platform.OS === 'ios' ? (
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <GoogleIconButton page="login" />
-                                <AppleButtonAuth page="login" />
+                            <View style={{ gap: 16 }}>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <GoogleIconButton page="login" />
+                                    <AppleButtonAuth page="login" />
+                                </View>
+                                <ButtonLazorKitSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
                             </View>
                         ) : (
                             <View style={{ gap: 16 }}>

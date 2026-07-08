@@ -27,6 +27,7 @@ import GoogleIconButton from '../oauth-components/GoogleIconButton';
 import AppleButtonAuth from '../oauth-components/AppleButton';
 import { Image } from 'expo-image';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
+import ButtonLazorKitSignIn from '../SignInViaWallet/ButtonLazorKitSignIn';
 
 
 type FieldErrors = {
@@ -397,9 +398,12 @@ export default function RegisterView() {
                         </View>
 
                         {Platform.OS === 'ios' ? (
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <GoogleIconButton page="register" />
-                                <AppleButtonAuth page="register" />
+                            <View style={{ gap: 16 }}>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <GoogleIconButton page="register" />
+                                    <AppleButtonAuth page="register" />
+                                </View>
+                                <ButtonLazorKitSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
                             </View>
                         ) : (
                             <View style={{ gap: 16 }}>
