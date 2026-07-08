@@ -9,7 +9,7 @@ export default {
         icon: "./assets/new_icon.png",
         scheme: "nextvibe",
         userInterfaceStyle: "automatic",
-        newArchEnabled: false,
+        newArchEnabled: true,
         jsEngine: "hermes",
         ios: {
             jsEngine: "hermes",
@@ -92,6 +92,8 @@ export default {
         plugins: [
             "@react-native-firebase/app",
             "expo-router",
+            "expo-image",
+            "expo-web-browser",
             [
                 "expo-build-properties",
                 {
