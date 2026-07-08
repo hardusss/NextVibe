@@ -16,12 +16,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
 import { BlurView } from "@react-native-community/blur";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PromoBanner from "@/components/Shared/PromoBanner";
 import { scrollFeedToTop } from "@/src/utils/feedScrollRef";
 import MobileWalletProviderGate from "@/components/Providers/MobileWalletProviderGate";
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
+import * as SystemUI from 'expo-system-ui';
 import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapboxGL from '@rnmapbox/maps';
@@ -137,7 +138,6 @@ const getStackScreenOptions = (name: string) => {
 const GLOBAL_SCREEN_OPTIONS: any = {
     headerShown: false,
     animation: "slide_from_right",
-    contentStyle: { backgroundColor: 'transparent' },
     freezeOnBlur: false,
     detachInactiveScreens: false,
 };
@@ -230,6 +230,7 @@ export default function Layout() {
     const theme = useColorScheme();
     const router = useRouter();
     const segments = useSegments();
+    const insets = useSafeAreaInsets();
     const currentPage = segments[segments.length - 1];
     const cachedAvatarRef = useRef<{ userId: number; url: string } | null>(null);
     const pushRegisteredRef = useRef(false);
@@ -243,6 +244,12 @@ export default function Layout() {
             SplashScreen.hideAsync();
         }
     }, [fontsLoaded, fontError]);
+
+    useEffect(() => {
+        if (Platform.OS === 'ios') {
+            SystemUI.setBackgroundColorAsync(theme === "dark" ? "#0A0410" : "#ffffff");
+        }
+    }, [theme]);
 
     function handleRegistrationError(errorMessage: string) {
         setToastMessage(errorMessage);
@@ -464,7 +471,7 @@ export default function Layout() {
     const showTabBar = ![...blacklist, "camera"].includes(currentPage);
 
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme === "dark" ? "#0A0410" : "#ffffff" }}>
             <BottomSheetModalProvider>
                 <MobileWalletProviderGate chain={chain} endpoint={endpoint} identity={identity}>
                     <LazorKitProvider
@@ -485,7 +492,7 @@ export default function Layout() {
                                         isSuccess={false}
                                     />
                                 )}
-                                <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#000" : "#fff" }}>
+                                <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#0A0410" : "#fff" }}>
                                     <Stack screenOptions={GLOBAL_SCREEN_OPTIONS}>
                                         <Stack.Screen name="home" options={getStackScreenOptions("home")} />
                                         <Stack.Screen name="search" options={getStackScreenOptions("search")} />
