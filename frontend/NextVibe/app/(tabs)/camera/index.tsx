@@ -1,3 +1,4 @@
+// @ts-ignore
 import CameraScreen from "@/components/Camera/OpenCamera";
 
 
