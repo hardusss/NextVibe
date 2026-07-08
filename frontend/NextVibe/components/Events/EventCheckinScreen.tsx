@@ -126,7 +126,7 @@ export default function EventCheckinScreen() {
             console.log("DATA:", JSON.stringify(error.response?.data));
             console.log("MSG:", error.message);
 
-            setState("claim_failed"); 
+            setState("claim_failed");
             setMessage(error.response?.data?.error || "Something went wrong during claim. Please try again.");
             Vibration.vibrate([0, 200]);
         }

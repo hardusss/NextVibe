@@ -1,4 +1,4 @@
-import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
+import { RelativePathString, Stack, useRouter, useSegments, Tabs } from "expo-router";
 import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text, AppState, AppStateStatus, Platform } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
@@ -15,7 +15,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
-import { BlurView } from "@react-native-community/blur";
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PromoBanner from "@/components/Shared/PromoBanner";
 import { scrollFeedToTop } from "@/src/utils/feedScrollRef";
@@ -23,6 +23,7 @@ import MobileWalletProviderGate from "@/components/Providers/MobileWalletProvide
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SystemUI from 'expo-system-ui';
+import Constants from 'expo-constants';
 import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapboxGL from '@rnmapbox/maps';
@@ -142,83 +143,6 @@ const GLOBAL_SCREEN_OPTIONS: any = {
     detachInactiveScreens: false,
 };
 
-const APP_TABS = [
-    { name: "home", IconOutline: House, IconFilled: House },
-    { name: "search", IconOutline: Search, IconFilled: Search },
-    { name: "vibe-map", IconOutline: Radar, IconFilled: Radar },
-    { name: "camera", IconOutline: BadgePlus, IconFilled: BadgePlus },
-    { name: "profile", IconOutline: UserRound, IconFilled: UserRound },
-];
-
-const TabButton = ({
-    tab,
-    isActive,
-    theme,
-    activeBgColor,
-    iconColor,
-    imageProfile,
-    userID,
-    onPress,
-    styles,
-}: {
-    tab: typeof APP_TABS[number];
-    isActive: boolean;
-    theme: string | null | undefined;
-    activeBgColor: string;
-    iconColor: string;
-    imageProfile: string | null;
-    userID: number | null;
-    onPress: () => void;
-    styles: any;
-}) => {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-    }));
-    const Icon = isActive ? tab.IconFilled : tab.IconOutline;
-
-    return (
-        <Pressable
-            onPress={onPress}
-            onPressIn={() => { scale.value = withSpring(MOTION.press.scale, MOTION.spring.snappy); }}
-            onPressOut={() => { scale.value = withSpring(1, MOTION.spring.snappy); }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-            <Animated.View style={animStyle}>
-                {tab.name === "profile" && userID ? (
-                    <View style={styles.iconContainerProfile}>
-                        <Image
-                            source={{
-                                uri: imageProfile || DEFAULT_AVATAR,
-                            }}
-                            style={[
-                                styles.avatar,
-                                {
-                                    borderWidth: isActive ? 1 : 0,
-                                    backgroundColor: theme === "dark" ? "#2a2a2a" : "#e0e0e0",
-                                },
-                            ]}
-                        />
-                    </View>
-                ) : (
-                    <View
-                        style={[
-                            styles.iconContainer,
-                            {
-                                backgroundColor: isActive ? activeBgColor : "transparent",
-                                borderColor: isActive 
-                                    ? (theme === "dark" ? "rgba(255,255,255,0.2)" : "rgba(124, 58, 237, 0.15)")
-                                    : "transparent",
-                            },
-                        ]}
-                    >
-                        <Icon size={24} color={iconColor} strokeWidth={isActive ? 2.5 : 1.8} />
-                    </View>
-                )}
-            </Animated.View>
-        </Pressable>
-    );
-};
 
 
 export default function Layout() {
@@ -350,7 +274,7 @@ export default function Layout() {
                     try {
                         pushTokenSubscription = Notifications.addPushTokenListener((token) => {
                             if (token && token.data) {
-                                savePushToken(token.data).catch(() => {});
+                                savePushToken(token.data).catch(() => { });
                             }
                         });
                     } catch (e) {
@@ -371,7 +295,7 @@ export default function Layout() {
             try {
                 pushTokenSubscription = Notifications.addPushTokenListener((token) => {
                     if (token && token.data) {
-                        savePushToken(token.data).catch(() => {});
+                        savePushToken(token.data).catch(() => { });
                     }
                 });
             } catch (e) {
@@ -460,15 +384,7 @@ export default function Layout() {
 
     if (!fontsLoaded && !fontError) return null;
 
-    const goToTab = (tab: string) => {
-        Haptics.selectionAsync();
-        if (currentPage === tab && tab === 'home') {
-            scrollFeedToTop();
-            return;
-        }
-        router.navigate(tab as RelativePathString);
-    };
-    const showTabBar = ![...blacklist, "camera"].includes(currentPage);
+
 
     return (
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme === "dark" ? "#0A0410" : "#ffffff" }}>
@@ -477,9 +393,10 @@ export default function Layout() {
                     <LazorKitProvider
                         rpcUrl={endpoint}
                         portalUrl="https://portal.lazor.sh"
-                        configPaymaster={{ paymasterUrl: process.env.EXPO_PUBLIC_PAYMASTER_URL || "https://paymaster.lazor.sh",
+                        configPaymaster={{
+                            paymasterUrl: process.env.EXPO_PUBLIC_PAYMASTER_URL || "https://paymaster.lazor.sh",
                             apiKey: process.env.EXPO_PUBLIC_PAYMASTER_API_KEY
-                         }}
+                        }}
                         isDebug={__DEV__}
                     >
                         <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -492,63 +409,51 @@ export default function Layout() {
                                         isSuccess={false}
                                     />
                                 )}
-                                <View style={{ flex: 1, backgroundColor: theme === "dark" ? "#0A0410" : "#fff" }}>
-                                    <Stack screenOptions={GLOBAL_SCREEN_OPTIONS}>
-                                        <Stack.Screen name="home" options={getStackScreenOptions("home")} />
-                                        <Stack.Screen name="search" options={getStackScreenOptions("search")} />
-                                        <Stack.Screen name="vibe-map" options={getStackScreenOptions("vibe-map")} />
-                                        <Stack.Screen name="camera" options={getStackScreenOptions("camera")} />
-                                        <Stack.Screen name="profile" options={getStackScreenOptions("profile")} />
-                                        {stackScreens.map((item) => (
-                                            <Stack.Screen
-                                                key={item}
-                                                name={item}
-                                                options={getStackScreenOptions(item)}
-                                            />
-                                        ))}
-                                    </Stack>
-
-                                    {showTabBar && (
-                                        <View style={styles.tabBarContainer}>
-                                            <BlurView
-                                                blurType={theme === "dark" ? "dark" : "light"}
-                                                blurAmount={20}
-                                                style={StyleSheet.absoluteFill}
-                                            />
-                                            <View style={[
-                                                StyleSheet.absoluteFill,
-                                                { backgroundColor: theme === "dark" ? "rgba(20, 8, 41, 0.4)" : "rgba(255, 255, 255, 0.85)" }
-                                            ]} />
-                                            <View style={styles.tabsWrapper}>
-                                                {APP_TABS.map((tab) => {
-                                                    const isActive = currentPage === tab.name;
-                                                    const activeBgColor = theme === "dark"
-                                                        ? "rgba(154, 109, 191, 0.15)"
-                                                        : "rgba(124, 58, 237, 0.08)";
-                                                    const iconColor = isActive
-                                                        ? (theme === "dark" ? "#FFFFFF" : "#7c3aed")
-                                                        : (theme === "dark" ? "rgb(144, 141, 141)" : "#8A8296");
-
-                                                    return (
-                                                        <TabButton
-                                                            key={tab.name}
-                                                            tab={tab}
-                                                            isActive={isActive}
-                                                            theme={theme}
-                                                            activeBgColor={activeBgColor}
-                                                            iconColor={iconColor}
-                                                            imageProfile={imageProfile}
-                                                            userID={userID}
-                                                            onPress={() => goToTab(tab.name)}
-                                                            styles={styles}
-                                                        />
-                                                    );
-                                                })}
-                                            </View>
-                                        </View>
-                                    )}
-                                    <PromoBanner />
-                                </View>
+                                <Tabs screenOptions={{ headerShown: false }}>
+                                    <Tabs.Screen 
+                                        name="home" 
+                                        options={{
+                                            title: 'Home',
+                                            tabBarIcon: ({ color, size }) => <House color={color} size={size} />, 
+                                        }} 
+                                    />
+                                    <Tabs.Screen 
+                                        name="search" 
+                                        options={{
+                                            title: 'Search',
+                                            tabBarIcon: ({ color, size }) => <Search color={color} size={size} />, 
+                                        }} 
+                                    />
+                                    <Tabs.Screen 
+                                        name="vibe-map" 
+                                        options={{
+                                            title: 'Map',
+                                            tabBarIcon: ({ color, size }) => <Radar color={color} size={size} />, 
+                                        }} 
+                                    />
+                                    <Tabs.Screen 
+                                        name="camera" 
+                                        options={{
+                                            title: 'Camera',
+                                            tabBarIcon: ({ color, size }) => <BadgePlus color={color} size={size} />, 
+                                        }} 
+                                    />
+                                    <Tabs.Screen 
+                                        name="profile" 
+                                        options={{
+                                            title: 'Profile',
+                                            tabBarIcon: ({ color, size }) => <UserRound color={color} size={size} />, 
+                                        }} 
+                                    />
+                                    {stackScreens.map((item) => (
+                                        <Tabs.Screen
+                                            key={item}
+                                            name={item}
+                                            options={{ href: null }}
+                                        />
+                                    ))}
+                                </Tabs>
+                                <PromoBanner />
                             </WebSocketProvider>
                         </ErrorBoundary>
                     </LazorKitProvider>
@@ -558,49 +463,4 @@ export default function Layout() {
     );
 }
 
-const styles = StyleSheet.create({
-    tabBarContainer: {
-        position: "absolute",
-        bottom: 16,
-        width: "90%",
-        alignSelf: "center",
-        height: 68,
-        borderRadius: 34,
-        borderWidth: 1,
-        borderColor: "rgba(167, 139, 250, 0.15)",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
-        elevation: 8,
-        overflow: 'hidden',
-    },
-    tabsWrapper: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingHorizontal: 30,
-        alignItems: "center",
-        width: "100%",
-        height: "100%",
-    },
-    iconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: "center",
-        alignItems: "center",
-        borderWidth: 1,
-    },
-    iconContainerProfile: {
-        width: 44,
-        height: 44,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        borderColor: "#a18ed5",
-    },
-});
+const styles = StyleSheet.create({});

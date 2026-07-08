@@ -3,7 +3,7 @@ import {
     View,
     SafeAreaView,
     Text,
-    StatusBar,
+
     Modal,
     ScrollView,
     TouchableOpacity,
@@ -18,6 +18,7 @@ import {
     Platform,
 } from "react-native";
 import { useFocusEffect, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { AvatarWithFrame } from "./AvatarWithFrame";
 import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
@@ -234,7 +235,7 @@ const ProfileView = () => {
 
     useEffect(() => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        
+
         if (visible) {
             setIsVisibleContainer(true);
             Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 10, bounciness: 8 }).start();
@@ -314,8 +315,8 @@ const ProfileView = () => {
     const bg = isDark ? '#0A0410' : '#ffffff';
 
     return (
-        <SafeAreaView style={profileStyle.container}>
-            <StatusBar animated backgroundColor={bg} />
+        <View style={profileStyle.container}>
+            <StatusBar style="light" />
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{ flex: 1, justifyContent: "center", alignItems: "center" }} />
             ) : fetchError && !userData.username ? (
@@ -600,7 +601,7 @@ const ProfileView = () => {
             <ShareModal ref={modalRef} avatarUrl={userData.avatar_url} profileUrl={`https://nextvibe.io/u/${id}`} />
             <InviteBottomSheet ref={inviteSheetRef} />
             <EventConnectionsSheet ref={eventConnectionsSheetRef} />
-        </SafeAreaView>
+        </View>
     );
 };
 
