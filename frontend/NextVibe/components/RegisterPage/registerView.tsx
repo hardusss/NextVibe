@@ -4,14 +4,13 @@ import {
     TextInput,
     TouchableOpacity,
     Linking,
-    SafeAreaView,
     StatusBar,
     ScrollView,
     StyleSheet,
     KeyboardAvoidingView,
     Platform,
     useColorScheme,
-    BackHandler,
+    SafeAreaView,
     Animated,
 } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
@@ -28,7 +27,7 @@ import AppleButtonAuth from '../oauth-components/AppleButton';
 import { Image } from 'expo-image';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 import ButtonLazorKitSignIn from '../SignInViaWallet/ButtonLazorKitSignIn';
-
+import * as NavigationBar from 'expo-navigation-bar';
 
 type FieldErrors = {
     username?: string;
@@ -88,7 +87,6 @@ export default function RegisterView() {
         }
     };
 
-    /** Called by ButtonRegister after a failed API response */
     const handleApiError = (error: any) => {
         const serverError = error?.response?.data?.error;
         const detail = error?.response?.data?.detail;
@@ -126,20 +124,15 @@ export default function RegisterView() {
     };
 
     const getStrengthColor = () => {
-        if (!password.length) return isDark ? '#333' : '#e0e0e0';
-        return ['#ff4d4d', '#ff944d', '#ffda4d', ACCENT, '#00cc66'][strengthScore]
-            ?? (isDark ? '#333' : '#e0e0e0');
+        if (!password.length) return isDark ? '#2A2440' : '#E5E5EA';
+        return ['#FF453A', '#FF9F0A', '#FFD60A', ACCENT, '#30D158'][strengthScore]
+            ?? (isDark ? '#2A2440' : '#E5E5EA');
     };
-
-    useEffect(() => {
-        const handler = BackHandler.addEventListener('hardwareBackPress', () => true);
-        return () => handler.remove();
-    }, []);
 
     const hasError = (field: keyof FieldErrors) => !!fieldErrors[field];
     const iconColor = (field: string) =>
         hasError(field as keyof FieldErrors)
-            ? (isDark ? '#fca5a5' : '#ef4444')
+            ? (isDark ? '#FF6B6B' : '#FF3B30')
             : focusedInput === field
                 ? colors.iconActive
                 : colors.iconInactive;
@@ -150,22 +143,17 @@ export default function RegisterView() {
         hasError(field) && styles.inputError,
     ];
 
-    // Handle successful wallet authentication
     const handleWalletSuccess = (backendResponse: any) => {
         Toast.show({
             type: 'success',
             text1: 'Connected Successfully',
             text2: 'Welcome to NextVibe!',
         });
-
-        // Redirect user to the main application flow
         router.replace('/home');
     };
 
-    // Handle wallet connection errors or user cancellations
     const handleWalletError = (error: any) => {
         const realError = error?.response?.data?.error || error?.message || 'Unknown error';
-
         Toast.show({
             type: 'error',
             text1: 'Connection Failed',
@@ -173,256 +161,270 @@ export default function RegisterView() {
         });
     };
 
+    // Отримуємо колір фону для кореневого елемента
+    const rootBackgroundColor = isDark ? '#0A0410' : '#FFFFFF';
+
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.toastWrap}>
-                <Toast config={toastConfig} />
-            </View>
+        /* ГОЛОВНИЙ ФІКС: Кореневий View заливає "чубок" і статус-бар iOS */
+        <View style={{ flex: 1, backgroundColor: rootBackgroundColor }}>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.toastWrap}>
+                    <Toast config={toastConfig} />
+                </View>
 
-            <StatusBar
-                animated
-                barStyle={isDark ? 'light-content' : 'dark-content'}
-                backgroundColor={isDark ? '#0A0410' : '#ffffff'}
-            />
+                <StatusBar
+                    animated
+                    translucent={true}
+                    barStyle={isDark ? 'light-content' : 'dark-content'}
+                    backgroundColor="transparent"
+                />
 
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={{ flex: 1 }}
-            >
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                    style={{ flex: 1 }}
                 >
-                    <View style={styles.headerContainer}>
-                        <Image
-                            source={require('../../assets/logo.png')}
-                            style={styles.logo}
-                            contentFit="contain"
-                        />
-                        <Text style={styles.title}>Join NextVibe</Text>
-                        <Text style={styles.subtitle}>Create an account to start your journey</Text>
-                    </View>
-
-                    <View style={styles.formContainer}>
-
-                        {/* Username */}
-                        <Animated.View style={{ transform: [{ translateX: shakeAnims.username }] }}>
-                            <View style={inputStyle('username')}>
-                                <User size={20} color={iconColor('username')} style={styles.inputIcon} />
-                                <TextInput
-                                    placeholder="Username"
-                                    style={styles.input}
-                                    placeholderTextColor={colors.placeholder}
-                                    value={username}
-                                    onChangeText={t => { setUsername(t); clearFieldError('username'); }}
-                                    onFocus={() => setFocusedInput('username')}
-                                    onBlur={() => setFocusedInput(null)}
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View style={styles.headerContainer}>
+                            <View style={styles.logoWrap}>
+                                <Image
+                                    source={require('../../assets/logo.png')}
+                                    style={styles.logo}
+                                    contentFit="contain"
                                 />
                             </View>
-                            {hasError('username') && (
-                                <View style={styles.errorRow}>
-                                    <AlertCircle size={12} color={isDark ? '#fca5a5' : '#ef4444'} />
-                                    <Text style={[styles.errorText, { color: isDark ? '#fca5a5' : '#ef4444' }]}>
-                                        {fieldErrors.username}
+                            <Text style={styles.title}>Create Account</Text>
+                            <Text style={styles.subtitle}>Start your vibe journey today</Text>
+                        </View>
+
+                        <View style={styles.formContainer}>
+
+                            {/* Username */}
+                            <Animated.View style={{ transform: [{ translateX: shakeAnims.username }] }}>
+                                <Text style={styles.inputLabel}>Username</Text>
+                                <View style={inputStyle('username')}>
+                                    <User size={18} color={iconColor('username')} style={styles.inputIcon} />
+                                    <TextInput
+                                        placeholder="your_username"
+                                        style={styles.input}
+                                        placeholderTextColor={colors.placeholder}
+                                        value={username}
+                                        onChangeText={t => { setUsername(t); clearFieldError('username'); }}
+                                        onFocus={() => setFocusedInput('username')}
+                                        onBlur={() => setFocusedInput(null)}
+                                    />
+                                </View>
+                                {hasError('username') && (
+                                    <View style={styles.errorRow}>
+                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                            {fieldErrors.username}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Animated.View>
+
+                            {/* Email */}
+                            <Animated.View style={{ transform: [{ translateX: shakeAnims.email }] }}>
+                                <Text style={styles.inputLabel}>Email</Text>
+                                <View style={inputStyle('email')}>
+                                    <Mail size={18} color={iconColor('email')} style={styles.inputIcon} />
+                                    <TextInput
+                                        placeholder="you@example.com"
+                                        style={styles.input}
+                                        placeholderTextColor={colors.placeholder}
+                                        value={email}
+                                        onChangeText={t => { setEmail(t); clearFieldError('email'); }}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                        onFocus={() => setFocusedInput('email')}
+                                        onBlur={() => setFocusedInput(null)}
+                                    />
+                                </View>
+                                {hasError('email') && (
+                                    <View style={styles.errorRow}>
+                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                            {fieldErrors.email}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Animated.View>
+
+                            {/* Password */}
+                            <Animated.View style={{ transform: [{ translateX: shakeAnims.password }] }}>
+                                <Text style={styles.inputLabel}>Password</Text>
+                                <View style={inputStyle('password')}>
+                                    <Lock size={18} color={iconColor('password')} style={styles.inputIcon} />
+                                    <TextInput
+                                        placeholder="••••••••"
+                                        style={styles.input}
+                                        placeholderTextColor={colors.placeholder}
+                                        secureTextEntry={hidePassword}
+                                        value={password}
+                                        onChangeText={handlePasswordChange}
+                                        onFocus={() => setFocusedInput('password')}
+                                        onBlur={() => setFocusedInput(null)}
+                                    />
+                                    <TouchableOpacity
+                                        onPress={() => setHidePassword(v => !v)}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                        {hidePassword
+                                            ? <EyeOff size={18} color={colors.iconInactive} />
+                                            : <Eye size={18} color={colors.iconInactive} />
+                                        }
+                                    </TouchableOpacity>
+                                </View>
+                                {hasError('password') && (
+                                    <View style={styles.errorRow}>
+                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                            {fieldErrors.password}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Animated.View>
+
+                            {/* Strength bar */}
+                            {password.length > 0 && (
+                                <View style={styles.strengthContainer}>
+                                    <View style={styles.strengthBarContainer}>
+                                        {[0, 1, 2, 3].map(level => (
+                                            <View
+                                                key={level}
+                                                style={[
+                                                    styles.strengthBarItem,
+                                                    { backgroundColor: strengthScore > level ? getStrengthColor() : (isDark ? '#2A2440' : '#E5E5EA') },
+                                                ]}
+                                            />
+                                        ))}
+                                    </View>
+                                    <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
+                                        {strengthLabel}
                                     </Text>
                                 </View>
                             )}
-                        </Animated.View>
 
-                        {/* Email */}
-                        <Animated.View style={{ transform: [{ translateX: shakeAnims.email }] }}>
-                            <View style={inputStyle('email')}>
-                                <Mail size={20} color={iconColor('email')} style={styles.inputIcon} />
-                                <TextInput
-                                    placeholder="Email Address"
-                                    style={styles.input}
-                                    placeholderTextColor={colors.placeholder}
-                                    value={email}
-                                    onChangeText={t => { setEmail(t); clearFieldError('email'); }}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    onFocus={() => setFocusedInput('email')}
-                                    onBlur={() => setFocusedInput(null)}
-                                />
-                            </View>
-                            {hasError('email') && (
-                                <View style={styles.errorRow}>
-                                    <AlertCircle size={12} color={isDark ? '#fca5a5' : '#ef4444'} />
-                                    <Text style={[styles.errorText, { color: isDark ? '#fca5a5' : '#ef4444' }]}>
-                                        {fieldErrors.email}
+                            {/* Invite code */}
+                            <Animated.View style={{ transform: [{ translateX: shakeAnims.inviteCode }] }}>
+                                <Text style={styles.inputLabel}>Invite Code <Text style={styles.optionalTag}>(optional)</Text></Text>
+                                <View style={inputStyle('inviteCode')}>
+                                    <Ticket size={18} color={iconColor('inviteCode')} style={styles.inputIcon} />
+                                    <TextInput
+                                        placeholder="XXXXXX"
+                                        style={styles.input}
+                                        placeholderTextColor={colors.placeholder}
+                                        value={inviteCode}
+                                        onChangeText={t => {
+                                            setInviteCode(t);
+                                            clearFieldError('inviteCode');
+                                        }}
+                                        autoCapitalize="characters"
+                                        autoCorrect={false}
+                                        maxLength={6}
+                                        onFocus={() => setFocusedInput('invite')}
+                                        onBlur={() => setFocusedInput(null)}
+                                    />
+                                    {inviteCode.length > 0 && (
+                                        <Text style={[
+                                            styles.codeCount,
+                                            { color: inviteCode.length === 6 ? ACCENT : colors.placeholder },
+                                        ]}>
+                                            {inviteCode.length}/6
+                                        </Text>
+                                    )}
+                                </View>
+                                {hasError('inviteCode') && (
+                                    <View style={styles.errorRow}>
+                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                            {fieldErrors.inviteCode}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Animated.View>
+
+                            {/* Terms */}
+                            <Animated.View style={{ transform: [{ translateX: shakeAnims.privacy }] }}>
+                                <View style={styles.privacyContainer}>
+                                    <Checkbox.Android
+                                        status={checked ? 'checked' : 'unchecked'}
+                                        onPress={() => { setChecked(v => !v); clearFieldError('privacy'); }}
+                                        color={hasError('privacy') ? '#FF3B30' : ACCENT}
+                                        uncheckedColor={hasError('privacy') ? '#FF3B30' : colors.iconInactive}
+                                    />
+                                    <Text style={styles.privacyText}>
+                                        I agree to the{' '}
+                                        <Text style={styles.linkText} onPress={() => Linking.openURL('https://nextvibe.io/privacy')}>
+                                            Privacy Policy
+                                        </Text>
+                                        {' '}and{' '}
+                                        <Text style={styles.linkText} onPress={() => Linking.openURL('https://nextvibe.io/terms')}>
+                                            Terms of Use
+                                        </Text>
                                     </Text>
                                 </View>
-                            )}
-                        </Animated.View>
+                                {hasError('privacy') && (
+                                    <View style={[styles.errorRow, { marginTop: -14, marginBottom: 10 }]}>
+                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                            {fieldErrors.privacy}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Animated.View>
 
-                        {/* Password */}
-                        <Animated.View style={{ transform: [{ translateX: shakeAnims.password }] }}>
-                            <View style={inputStyle('password')}>
-                                <Lock size={20} color={iconColor('password')} style={styles.inputIcon} />
-                                <TextInput
-                                    placeholder="Password"
-                                    style={styles.input}
-                                    placeholderTextColor={colors.placeholder}
-                                    secureTextEntry={hidePassword}
-                                    value={password}
-                                    onChangeText={handlePasswordChange}
-                                    onFocus={() => setFocusedInput('password')}
-                                    onBlur={() => setFocusedInput(null)}
+                            <View style={{ marginTop: 8 }}>
+                                <ButtonRegister
+                                    username={username}
+                                    email={email}
+                                    password={password}
+                                    strength={strengthLabel}
+                                    privacy={checked}
+                                    inviteCode={inviteCode}
+                                    onFieldError={setFieldError as (field: string, msg: string) => void}
+                                    onApiError={handleApiError}
                                 />
-                                <TouchableOpacity
-                                    onPress={() => setHidePassword(v => !v)}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                >
-                                    {hidePassword
-                                        ? <EyeOff size={20} color={colors.iconInactive} />
-                                        : <Eye size={20} color={colors.iconInactive} />
-                                    }
+                            </View>
+
+                            <View style={styles.dividerContainer}>
+                                <View style={styles.dividerLine} />
+                                <Text style={styles.dividerText}>or continue with</Text>
+                                <View style={styles.dividerLine} />
+                            </View>
+
+                            {Platform.OS === 'ios' ? (
+                                <View style={{ gap: 10 }}>
+                                    <View style={styles.socialRow}>
+                                        <GoogleIconButton page="register" />
+                                        <AppleButtonAuth page="register" />
+                                    </View>
+                                    <ButtonLazorKitSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                                </View>
+                            ) : (
+                                <View style={{ gap: 12 }}>
+                                    <GoogleButtonAuth page="register" />
+                                    <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                                </View>
+                            )}
+
+                            <View style={styles.footerContainer}>
+                                <Text style={styles.footerText}>Already have an account?</Text>
+                                <TouchableOpacity onPress={() => router.replace('/login')}>
+                                    <Text style={styles.loginLink}> Sign In</Text>
                                 </TouchableOpacity>
                             </View>
-                            {hasError('password') && (
-                                <View style={styles.errorRow}>
-                                    <AlertCircle size={12} color={isDark ? '#fca5a5' : '#ef4444'} />
-                                    <Text style={[styles.errorText, { color: isDark ? '#fca5a5' : '#ef4444' }]}>
-                                        {fieldErrors.password}
-                                    </Text>
-                                </View>
-                            )}
-                        </Animated.View>
 
-                        {/* Strength bar */}
-                        {password.length > 0 && (
-                            <View style={styles.strengthContainer}>
-                                <View style={styles.strengthBarContainer}>
-                                    {[0, 1, 2, 3].map(level => (
-                                        <View
-                                            key={level}
-                                            style={[
-                                                styles.strengthBarItem,
-                                                { backgroundColor: strengthScore > level ? getStrengthColor() : (isDark ? '#333' : '#e0e0e0') },
-                                            ]}
-                                        />
-                                    ))}
-                                </View>
-                                <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
-                                    {strengthLabel}
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* Invite code */}
-                        <Animated.View style={{ transform: [{ translateX: shakeAnims.inviteCode }] }}>
-                            <View style={inputStyle('inviteCode')}>
-                                <Ticket size={20} color={iconColor('inviteCode')} style={styles.inputIcon} />
-                                <TextInput
-                                    placeholder="Invite Code (Optional)"
-                                    style={styles.input}
-                                    placeholderTextColor={colors.placeholder}
-                                    value={inviteCode}
-                                    onChangeText={t => {
-                                        setInviteCode(t);
-                                        clearFieldError('inviteCode');
-                                    }}
-                                    autoCapitalize="characters"
-                                    autoCorrect={false}
-                                    maxLength={6}
-                                    onFocus={() => setFocusedInput('invite')}
-                                    onBlur={() => setFocusedInput(null)}
-                                />
-                                {inviteCode.length > 0 && (
-                                    <Text style={[
-                                        styles.codeCount,
-                                        { color: inviteCode.length === 6 ? ACCENT : colors.placeholder },
-                                    ]}>
-                                        {inviteCode.length}/6
-                                    </Text>
-                                )}
-                            </View>
-                            {hasError('inviteCode') && (
-                                <View style={styles.errorRow}>
-                                    <AlertCircle size={12} color={isDark ? '#fca5a5' : '#ef4444'} />
-                                    <Text style={[styles.errorText, { color: isDark ? '#fca5a5' : '#ef4444' }]}>
-                                        {fieldErrors.inviteCode}
-                                    </Text>
-                                </View>
-                            )}
-                        </Animated.View>
-
-                        {/* Terms */}
-                        <Animated.View style={{ transform: [{ translateX: shakeAnims.privacy }] }}>
-                            <View style={styles.privacyContainer}>
-                                <Checkbox.Android
-                                    status={checked ? 'checked' : 'unchecked'}
-                                    onPress={() => { setChecked(v => !v); clearFieldError('privacy'); }}
-                                    color={hasError('privacy') ? '#ef4444' : ACCENT}
-                                    uncheckedColor={hasError('privacy') ? '#ef4444' : colors.iconInactive}
-                                />
-                                <Text style={styles.privacyText}>
-                                    I agree to the{' '}
-                                    <Text style={styles.linkText} onPress={() => Linking.openURL('https://nextvibe.io/privacy')}>
-                                        Privacy Policy
-                                    </Text>
-                                    {' '}and{' '}
-                                    <Text style={styles.linkText} onPress={() => Linking.openURL('https://nextvibe.io/terms')}>
-                                        Terms of Use
-                                    </Text>
-                                </Text>
-                            </View>
-                            {hasError('privacy') && (
-                                <View style={[styles.errorRow, { marginTop: -16, marginBottom: 12 }]}>
-                                    <AlertCircle size={12} color={isDark ? '#fca5a5' : '#ef4444'} />
-                                    <Text style={[styles.errorText, { color: isDark ? '#fca5a5' : '#ef4444' }]}>
-                                        {fieldErrors.privacy}
-                                    </Text>
-                                </View>
-                            )}
-                        </Animated.View>
-
-                        <View style={{ marginTop: 10 }}>
-                            <ButtonRegister
-                                username={username}
-                                email={email}
-                                password={password}
-                                strength={strengthLabel}
-                                privacy={checked}
-                                inviteCode={inviteCode}
-                                onFieldError={setFieldError as (field: string, msg: string) => void}
-                                onApiError={handleApiError}
-                            />
                         </View>
-
-                        <View style={styles.dividerContainer}>
-                            <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
-                            <View style={styles.dividerLine} />
-                        </View>
-
-                        {Platform.OS === 'ios' ? (
-                            <View style={{ gap: 16 }}>
-                                <View style={{ flexDirection: 'row', gap: 12 }}>
-                                    <GoogleIconButton page="register" />
-                                    <AppleButtonAuth page="register" />
-                                </View>
-                                <ButtonLazorKitSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
-                            </View>
-                        ) : (
-                            <View style={{ gap: 16 }}>
-                                <GoogleButtonAuth page="register" />
-                                <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
-                            </View>
-                        )}
-
-                        <View style={styles.footerContainer}>
-                            <Text style={styles.footerText}>Already have an account?</Text>
-                            <TouchableOpacity onPress={() => router.replace('/login')}>
-                                <Text style={styles.loginLink}>Login</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                    </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </View>
     );
 }
 
@@ -433,76 +435,103 @@ const getTheme = (isDark: boolean, accent: string) => {
         iconInactive: isDark ? '#666' : '#999',
     };
 
+    const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+
     const styles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: isDark ? '#0A0410' : '#ffffff',
+            /* ФІКС 2: Прозорий фон для SafeAreaView, щоб просвічувався кореневий View */
+            backgroundColor: 'transparent', 
         },
         toastWrap: {
             position: 'absolute',
             zIndex: 9999,
             width: '100%',
             alignItems: 'center',
+            top: Platform.OS === 'ios' ? 50 : statusBarHeight + 20,
         },
         scrollContent: {
             flexGrow: 1,
             paddingHorizontal: 24,
-            paddingBottom: 40,
-            paddingTop: 40,
+            paddingBottom: Platform.OS === 'android' ? 160 : 80,
+            paddingTop: Platform.OS === 'android' ? statusBarHeight + 12 : 20,
         },
         headerContainer: {
             alignItems: 'center',
-            marginBottom: 32,
-            marginTop: 20,
+            marginBottom: 14,
+        },
+        logoWrap: {
+            width: 60,
+            height: 60,
+            marginBottom: 10,
+            justifyContent: 'center',
+            alignItems: 'center',
         },
         logo: {
-            width: 80,
-            height: 80,
-            borderRadius: 20,
+            width: 60,
+            height: 60,
+            borderRadius: 12,
         },
         title: {
-            fontSize: 28,
+            fontSize: 22,
             fontFamily: 'Dank Mono Bold',
             includeFontPadding: false,
-            color: isDark ? '#ffffff' : '#1a1a1a',
+            color: isDark ? '#FFFFFF' : '#000000',
+            marginBottom: 4,
+            letterSpacing: -0.3,
         },
         subtitle: {
-            fontSize: 14,
+            fontSize: 13,
             fontFamily: 'Dank Mono',
             includeFontPadding: false,
-            color: isDark ? '#a0a0a0' : '#666666',
+            color: isDark ? '#888' : '#777',
             textAlign: 'center',
         },
         formContainer: {
             width: '100%',
         },
+        inputLabel: {
+            fontSize: 11,
+            fontFamily: 'Dank Mono Bold',
+            includeFontPadding: false,
+            color: isDark ? '#888' : '#777',
+            marginBottom: 4,
+            marginLeft: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+        },
+        optionalTag: {
+            fontFamily: 'Dank Mono',
+            color: isDark ? '#555' : '#AAA',
+            textTransform: 'none',
+        },
         inputContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: isDark ? '#1A1625' : '#f5f5f5',
-            borderRadius: 20,
-            paddingHorizontal: 16,
-            height: 52,
-            marginBottom: 6,
+            backgroundColor: isDark ? '#120D1A' : '#F7F7F7',
+            borderRadius: 12,
+            paddingHorizontal: 14,
+            height: Platform.OS === 'ios' ? 44 : 48,
+            marginBottom: 4,
             borderWidth: 1,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+            borderColor: 'transparent',
         },
         inputFocused: {
             borderColor: accent,
-            backgroundColor: isDark ? '#1F1B2E' : '#f3e8ff',
+            backgroundColor: isDark ? '#150E1F' : '#FFFFFF',
         },
         inputError: {
-            borderColor: isDark ? '#fca5a5' : '#ef4444',
-            backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.05)',
+            borderColor: isDark ? '#FF6B6B' : '#FF3B30',
+            backgroundColor: isDark ? 'rgba(255,107,107,0.08)' : 'rgba(255,59,48,0.05)',
         },
         inputIcon: {
-            marginRight: 12,
+            marginRight: 10,
         },
         input: {
             flex: 1,
             height: '100%',
-            color: isDark ? '#fff' : '#000',
-            fontSize: 16,
+            color: isDark ? '#FFFFFF' : '#000000',
+            fontSize: 15,
             fontFamily: 'Dank Mono',
             includeFontPadding: false,
         },
@@ -515,7 +544,7 @@ const getTheme = (isDark: boolean, accent: string) => {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 6,
-            marginBottom: 12,
+            marginBottom: 10,
             paddingHorizontal: 4,
         },
         errorText: {
@@ -525,7 +554,7 @@ const getTheme = (isDark: boolean, accent: string) => {
         },
         strengthContainer: {
             marginTop: 2,
-            marginBottom: 16,
+            marginBottom: 14,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -557,10 +586,9 @@ const getTheme = (isDark: boolean, accent: string) => {
             fontSize: 13,
             fontFamily: 'Dank Mono',
             includeFontPadding: false,
-            color: isDark ? '#ccc' : '#444',
+            color: isDark ? '#888' : '#666',
             flex: 1,
             marginLeft: 4,
-
         },
         linkText: {
             color: accent,
@@ -570,27 +598,29 @@ const getTheme = (isDark: boolean, accent: string) => {
         dividerContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            marginVertical: 24,
+            marginVertical: 14,
         },
         dividerLine: {
             flex: 1,
             height: 1,
-            backgroundColor: isDark ? '#333' : '#e0e0e0',
+            backgroundColor: isDark ? '#1F1A2A' : '#EAEAEA',
         },
         dividerText: {
-            paddingHorizontal: 16,
+            paddingHorizontal: 14,
             color: isDark ? '#666' : '#999',
             fontSize: 12,
-            fontFamily: 'Dank Mono Bold',
-            includeFontPadding: false,
+        },
+        socialRow: {
+            flexDirection: 'row',
+            gap: 10,
         },
         footerContainer: {
             flexDirection: 'row',
             justifyContent: 'center',
-            marginTop: 24,
+            marginTop: 14,
         },
         footerText: {
-            color: isDark ? '#888' : '#666',
+            color: isDark ? '#888' : '#777',
             fontSize: 14,
             fontFamily: 'Dank Mono',
             includeFontPadding: false,
@@ -599,7 +629,6 @@ const getTheme = (isDark: boolean, accent: string) => {
             color: accent,
             fontFamily: 'Dank Mono Bold',
             includeFontPadding: false,
-            marginLeft: 6,
             fontSize: 14,
         },
     });

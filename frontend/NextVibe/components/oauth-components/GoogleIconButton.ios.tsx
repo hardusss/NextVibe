@@ -1,16 +1,44 @@
 /**
- * Minimalistic Google icon-only button for iOS registration/login.
- * Shows just the Google icon on a grey background.
+ * Google icon-only button with authentic Google logo (coloured G).
+ * Logo is drawn with react-native-svg — no image asset needed.
+ * Styled to sit alongside AppleButtonAuth in the same row on a #0A0410 background.
  */
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { TouchableOpacity, ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
+import { Pressable, ActivityIndicator, StyleSheet, View, Animated } from 'react-native';
 import { useEffect, useRef, useState, useCallback } from 'react';
+import Svg, { Path } from 'react-native-svg';
 import GoogleSignIn from '@/src/api/google.sign.in';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import InviteCodeSheet from './InviteCodeSheet';
-import { Chrome } from 'lucide-react-native';
+
+/**
+ * Authentic multi-colour Google "G" logo, drawn as vector paths using
+ * Google's official brand colours — crisp at any size, no image asset needed.
+ */
+function GoogleLogo({ size = 20 }: { size?: number }) {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 48 48">
+            <Path
+                fill="#ffffffff"
+                d="M43.6 20.5H42V20.4H24v7.2h11.3c-1.6 4.6-6 7.9-11.3 7.9-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.1-5.1C33.6 6 29 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.4-.4-3.5z"
+            />
+            <Path
+                fill="#ffffffff"
+                d="M6.3 14.7l5.9 4.3C13.9 15.4 18.6 12.4 24 12.4c3.1 0 5.9 1.2 8 3.1l5.1-5.1C33.6 6.6 29 4.4 24 4.4c-7.6 0-14.2 4.3-17.7 10.3z"
+            />
+            <Path
+                fill="#ffffffff"
+                d="M24 44c4.9 0 9.4-1.9 12.8-4.9l-5.9-5c-2 1.5-4.5 2.4-6.9 2.4-5.2 0-9.6-3.3-11.3-7.9l-5.9 4.5C10.1 39.6 16.6 44 24 44z"
+            />
+            <Path
+                fill="#ffffffff"
+                d="M43.6 20.5H42V20.4H24v7.2h11.3c-.8 2.2-2.2 4.1-4 5.5l5.9 5c-.4.4 6.8-4.9 6.8-14.7 0-1.2-.1-2.4-.4-3.5z"
+            />
+        </Svg>
+    );
+}
 
 function usernameFromEmail(email: string): string {
     return email
@@ -32,16 +60,25 @@ interface PendingGoogle {
 
 export default function GoogleIconButton({ page }: { page: string }) {
     const router = useRouter();
-    const isDark = useColorScheme() === 'dark';
     const [loading, setLoading] = useState(false);
 
     const sheetRef = useRef<BottomSheetModal>(null);
     const pendingRef = useRef<PendingGoogle | null>(null);
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const animateTo = (value: number) => {
+        Animated.spring(scale, {
+            toValue: value,
+            useNativeDriver: true,
+            speed: 40,
+            bounciness: 6,
+        }).start();
+    };
 
     useEffect(() => {
         GoogleSignin.configure({
             webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
-            iosClientId: '603386649315-vp4revvrcgrcjme51ebuhbkbspl048l9.apps.googleusercontent.com',
+            iosClientId: '1063264156706-9of910einuhchb1pef6g482vu8b91nh4.apps.googleusercontent.com',
             offlineAccess: true,
         });
     }, []);
@@ -108,23 +145,28 @@ export default function GoogleIconButton({ page }: { page: string }) {
         }
     };
 
-    const bg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-    const iconColor = isDark ? '#ffffff' : '#1a1a1a';
-
     return (
         <>
-            <TouchableOpacity
-                onPress={signInWithGoogle}
-                activeOpacity={0.7}
-                style={[styles.button, { backgroundColor: bg }]}
-                disabled={loading}
-            >
-                {loading ? (
-                    <ActivityIndicator size="small" color={iconColor} />
-                ) : (
-                    <Chrome size={22} color={iconColor} />
-                )}
-            </TouchableOpacity>
+            <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
+                <Pressable
+                    onPress={signInWithGoogle}
+                    onPressIn={() => animateTo(0.96)}
+                    onPressOut={() => animateTo(1)}
+                    disabled={loading}
+                    style={({ pressed }) => [
+                        styles.button,
+                        { opacity: pressed ? 0.88 : 1 },
+                    ]}
+                >
+                    {loading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                        <View style={styles.content}>
+                            <GoogleLogo size={20} />
+                        </View>
+                    )}
+                </Pressable>
+            </Animated.View>
 
             <InviteCodeSheet ref={sheetRef} onSubmit={handleInviteSubmit} />
         </>
@@ -133,10 +175,23 @@ export default function GoogleIconButton({ page }: { page: string }) {
 
 const styles = StyleSheet.create({
     button: {
-        flex: 1,
-        height: 56,
-        borderRadius: 16,
+        height: 52,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
+        // Same tinted surface as AppleButtonAuth so both icon buttons read as one set
+        backgroundColor: '#170F24',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.09)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    content: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
