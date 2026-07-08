@@ -1,7 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { TouchableOpacity, StyleSheet, ActivityIndicator, useColorScheme } from 'react-native';
+import {
+    Pressable,
+    StyleSheet,
+    ActivityIndicator,
+    View,
+    Animated,
+} from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Apple } from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 import AppleSignIn from '@/src/api/apple.sign.in';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -20,13 +26,37 @@ interface AppleButtonAuthProps {
     onError?: (error: any) => void;
 }
 
+/**
+ * The real Apple logo silhouette (not the fruit emoji) rendered as vector
+ * paths, so it stays crisp at any size and matches Apple's HIG artwork.
+ */
+function AppleLogo({ size = 20, color = '#FFFFFF' }: { size?: number; color?: string }) {
+    return (
+        <Svg width={size} height={size * 1.22} viewBox="0 0 384 512">
+            <Path
+                fill={color}
+                d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141 8 184.8 8 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-65.7-90-65.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"
+            />
+        </Svg>
+    );
+}
+
 export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButtonAuthProps) {
     const router = useRouter();
-    const isDark = useColorScheme() === 'dark';
     const [loading, setLoading] = useState(false);
 
     const sheetRef = useRef<BottomSheetModal>(null);
     const pendingRef = useRef<PendingApple | null>(null);
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const animateTo = (value: number) => {
+        Animated.spring(scale, {
+            toValue: value,
+            useNativeDriver: true,
+            speed: 40,
+            bounciness: 6,
+        }).start();
+    };
 
     const signInWithApple = async () => {
         if (loading) return;
@@ -63,7 +93,6 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
             if (onSuccess) onSuccess({});
         } catch (error: any) {
             if (error?.response?.data?.error === 'invite_code_required') {
-                // Save pending data and open invite sheet
                 pendingRef.current = {
                     identityToken: error?.config?.data
                         ? JSON.parse(error.config.data)?.identityToken ?? ''
@@ -77,7 +106,6 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
             }
 
             if (error?.code === 'ERR_REQUEST_CANCELED') {
-                // User cancelled — don't show error
                 setLoading(false);
                 return;
             }
@@ -111,23 +139,28 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
         sheetRef.current?.dismiss();
     }, [router]);
 
-    const bg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-    const iconColor = isDark ? '#ffffff' : '#1a1a1a';
-
     return (
         <>
-            <TouchableOpacity
-                onPress={signInWithApple}
-                activeOpacity={0.7}
-                style={[styles.button, { backgroundColor: bg }]}
-                disabled={loading}
-            >
-                {loading ? (
-                    <ActivityIndicator size="small" color={iconColor} />
-                ) : (
-                    <Apple size={24} color={iconColor} />
-                )}
-            </TouchableOpacity>
+            <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
+                <Pressable
+                    onPress={signInWithApple}
+                    onPressIn={() => animateTo(0.96)}
+                    onPressOut={() => animateTo(1)}
+                    disabled={loading}
+                    style={({ pressed }) => [
+                        styles.button,
+                        { opacity: pressed ? 0.88 : 1 },
+                    ]}
+                >
+                    {loading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                        <View style={styles.content}>
+                            <AppleLogo size={20} color="#FFFFFF" />
+                        </View>
+                    )}
+                </Pressable>
+            </Animated.View>
 
             <InviteCodeSheet ref={sheetRef} onSubmit={handleInviteSubmit} />
         </>
@@ -136,10 +169,23 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
 
 const styles = StyleSheet.create({
     button: {
-        flex: 1,
-        height: 56,
-        borderRadius: 16,
+        height: 52,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
+        // Tinted surface that sits on top of #0A0410 without looking like a flat black hole
+        backgroundColor: '#170F24',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.09)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    content: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });

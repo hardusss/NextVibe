@@ -1,6 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle, View, AppState } from 'react-native';
-import { KeyRound } from 'lucide-react-native';
+import {
+    ActivityIndicator,
+    StyleSheet,
+    ViewStyle,
+    TextStyle,
+    View,
+    Text,
+    AppState,
+    useColorScheme,
+    Animated,
+    Pressable,
+} from 'react-native';
+import { Wallet } from 'lucide-react-native';
 import { useWallet, useWalletStore } from '@lazorkit/wallet-mobile-adapter';
 import walletSignIn from '@/src/api/wallet.sign.in';
 import saveWallet from '@/src/api/save.wallet';
@@ -28,13 +39,15 @@ export default function ButtonLazorKitSignIn({
     onError,
     buttonStyle,
     textStyle,
-    title = "Sign in Via Passkey"
+    title = 'Sign in via Lazorkit Wallet',
 }: ButtonLazorKitSignInProps) {
+    const isDark = useColorScheme() === 'dark';
     const [isLoading, setIsLoading] = useState(false);
     const isMounted = useRef(true);
 
     const sheetRef = useRef<BottomSheetModal>(null);
     const pendingAddressRef = useRef<string | null>(null);
+    const scale = useRef(new Animated.Value(1)).current;
 
     const { connect, disconnect } = useWallet();
     const wallet = useWalletStore((s) => s.wallet);
@@ -52,24 +65,30 @@ export default function ButtonLazorKitSignIn({
         handleWalletConnected(address);
     }, [wallet?.smartWallet]);
 
+    const animateTo = (value: number) => {
+        Animated.spring(scale, {
+            toValue: value,
+            useNativeDriver: true,
+            speed: 40,
+            bounciness: 6,
+        }).start();
+    };
+
     const handleWalletConnected = async (address: string) => {
         try {
-            // First save the wallet
             await saveWallet(address);
 
-            // Then sign in — LazorKit doesn't support signMessage,
-            // so we authenticate via wallet address only
             const backendResponse = await walletSignIn({
                 pubkey: address,
-                signature: new Uint8Array(64), // LazorKit uses passkey auth, no ed25519 signature
+                signature: new Uint8Array(64),
                 message: `Sign in to NextVibe via LazorKit.\nAddress: ${address}`,
                 username: `vibe_${address.slice(0, 6)}.lzr`,
             });
 
             if (backendResponse?.token) {
-                await storage.setItem("id", `${backendResponse.user_id}`);
-                await storage.setItem("access", backendResponse.token.access);
-                await storage.setItem("refresh", backendResponse.token.refresh);
+                await storage.setItem('id', `${backendResponse.user_id}`);
+                await storage.setItem('access', backendResponse.token.access);
+                await storage.setItem('refresh', backendResponse.token.refresh);
             }
 
             if (!isMounted.current) return;
@@ -86,7 +105,7 @@ export default function ButtonLazorKitSignIn({
                 return;
             }
 
-            console.error("LazorKit Sign-In Error:", error);
+            console.error('LazorKit Sign-In Error:', error);
             await disconnect();
             onError?.(error);
         }
@@ -104,12 +123,12 @@ export default function ButtonLazorKitSignIn({
 
         const userCancelRace = new Promise<void>((_, reject) => {
             let returnCount = 0;
-            appStateSubscription = AppState.addEventListener("change", (nextAppState) => {
-                if (nextAppState === "active") {
+            appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+                if (nextAppState === 'active') {
                     returnCount++;
                     if (returnCount > 1) {
                         setTimeout(() => {
-                            reject(new Error("USER_CANCELLED"));
+                            reject(new Error('USER_CANCELLED'));
                         }, CANCELLATION_DETECTION_DELAY);
                     }
                 }
@@ -124,7 +143,7 @@ export default function ButtonLazorKitSignIn({
         } catch (error: any) {
             if (!isMounted.current) return;
 
-            if (error.message === "USER_CANCELLED") {
+            if (error.message === 'USER_CANCELLED') {
                 useWalletStore.setState({ isConnecting: false });
                 setIsLoading(false);
                 return;
@@ -132,7 +151,7 @@ export default function ButtonLazorKitSignIn({
 
             useWalletStore.setState({ isConnecting: false });
             setIsLoading(false);
-            console.error("LazorKit Connection Error:", error);
+            console.error('LazorKit Connection Error:', error);
             onError?.(error);
         } finally {
             if (appStateSubscription) {
@@ -157,39 +176,57 @@ export default function ButtonLazorKitSignIn({
             );
 
             if (backendResponse?.token) {
-                await storage.setItem("id", `${backendResponse.user_id}`);
-                await storage.setItem("access", backendResponse.token.access);
-                await storage.setItem("refresh", backendResponse.token.refresh);
+                await storage.setItem('id', `${backendResponse.user_id}`);
+                await storage.setItem('access', backendResponse.token.access);
+                await storage.setItem('refresh', backendResponse.token.refresh);
             }
 
             pendingAddressRef.current = null;
             sheetRef.current?.dismiss();
             onSuccess(backendResponse);
         } catch (error: any) {
-            console.error("LazorKit Sign-In Error (Invite Code):", error);
+            console.error('LazorKit Sign-In Error (Invite Code):', error);
             throw error;
         }
     };
 
+    const ACCENT = '#A78BFA';
+    const bgColor = isDark ? '#170F24' : '#F3EEFF'; 
+    const borderColor = isDark ? 'rgba(167, 139, 250, 0.4)' : 'rgba(124, 58, 237, 0.3)';
+    const iconColor = isDark ? ACCENT : '#6D28D9';
+    const textColor = isDark ? '#FFFFFF' : '#4C1D95';
+
     return (
         <View>
-            <TouchableOpacity
-                style={[styles.buttonContainer, buttonStyle]}
-                onPress={handleConnect}
-                disabled={isLoading}
-                activeOpacity={0.8}
-            >
-                {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                    <>
-                        <KeyRound size={20} color="#FFFFFF" style={styles.icon} />
-                        <Text style={[styles.buttonText, textStyle]}>
-                            {title}
-                        </Text>
-                    </>
-                )}
-            </TouchableOpacity>
+            <Animated.View style={[{ transform: [{ scale }] }, buttonStyle]}>
+                <Pressable
+                    onPress={handleConnect}
+                    onPressIn={() => animateTo(0.96)}
+                    onPressOut={() => animateTo(1)}
+                    disabled={isLoading}
+                    style={({ pressed }) => [
+                        styles.button,
+                        {
+                            backgroundColor: bgColor,
+                            borderColor: borderColor,
+                            opacity: pressed ? 0.88 : 1,
+                        },
+                    ]}
+                >
+                    {isLoading ? (
+                        <ActivityIndicator size="small" color={iconColor} />
+                    ) : (
+                        <View style={styles.content}>
+                            <View style={styles.iconWrap}>
+                                <Wallet size={19} color={iconColor} />
+                            </View>
+                            <Text style={[styles.buttonText, { color: textColor }, textStyle]}>
+                                {title}
+                            </Text>
+                        </View>
+                    )}
+                </Pressable>
+            </Animated.View>
 
             <InviteCodeSheet ref={sheetRef} onSubmit={handleInviteSubmit} />
         </View>
@@ -197,28 +234,30 @@ export default function ButtonLazorKitSignIn({
 }
 
 const styles = StyleSheet.create({
-    buttonContainer: {
-        backgroundColor: '#0A0410',
-        paddingHorizontal: 24,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#00F5D4',
-        flexDirection: 'row',
+    button: {
+        height: 52,
+        borderRadius: 14,
+        borderWidth: 1.5,
         justifyContent: 'center',
         alignItems: 'center',
-        height: 56,
-        shadowColor: '#00F5D4',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowColor: '#A78BFA',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
         shadowRadius: 8,
-        elevation: 5,
+        elevation: 4,
     },
-    icon: { marginRight: 10 },
+    content: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    iconWrap: {
+        marginRight: 10,
+    },
     buttonText: {
-        color: '#FFFFFF',
         fontSize: 16,
         fontFamily: 'Dank Mono Bold',
         includeFontPadding: false,
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
     },
 });

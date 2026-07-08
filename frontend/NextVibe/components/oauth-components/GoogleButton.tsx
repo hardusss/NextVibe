@@ -37,7 +37,7 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
     useEffect(() => {
         GoogleSignin.configure({
             webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
-            iosClientId: '603386649315-vp4revvrcgrcjme51ebuhbkbspl048l9.apps.googleusercontent.com',
+            iosClientId: '1063264156706-9of910einuhchb1pef6g482vu8b91nh4.apps.googleusercontent.com',
             offlineAccess: true,
         });
     }, []);
