@@ -6,6 +6,12 @@
       "distribution": "internal",
       "cache": {
         "disabled": true
+      },
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-26.2"
+      },
+      "env": {
+        "EXPO_USE_PRECOMPILED_MODULES": "0"
       }
     },
     "development-simulator": {
