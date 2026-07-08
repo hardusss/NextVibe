@@ -1,7 +1,5 @@
-/**
- * Fallback wallet hook (used when no platform-specific file matches, e.g. web).
- * LazorKit-only — same as iOS variant.
- */
+// @ts-ignore
+import { useMobileWallet } from "@wallet-ui/react-native-web3js/dist/index.native.mjs";
 import { useWallet } from "@lazorkit/wallet-mobile-adapter";
 import { useMemo } from "react";
 import { Connection, Transaction, VersionedTransaction, TransactionSignature } from "@solana/web3.js";
@@ -33,7 +31,15 @@ export type WalletState =
         walletType: 'none' 
       };
 
+// 2. Force the hook to return the Discriminated Union
 export default function useWalletAddress(): WalletState {
+    const { 
+            account: mwaAccount,
+            connection: mwaConnection, 
+            disconnect: mwaDisconnect, 
+            signAndSendTransaction: mwaSignAndSendTransaction,
+            signTransaction: mwaSignTransaction,
+        } = useMobileWallet();
     const { 
             smartWalletPubkey: lazorPubkey, 
             connection: lazorConnection, 
@@ -42,6 +48,17 @@ export default function useWalletAddress(): WalletState {
         } = useWallet();
 
     return useMemo(() => {
+        if (mwaAccount && mwaConnection) {
+            return { 
+                address: (mwaAccount.publicKey).toString(), 
+                connection: mwaConnection,
+                disconnect: mwaDisconnect,
+                signAndSendTransaction: mwaSignAndSendTransaction,
+                signTransaction: mwaSignTransaction,
+                walletType: 'mwa'
+            } as WalletState;
+        } 
+        
         if (lazorPubkey && lazorConnection) {
             return { 
                 address: lazorPubkey.toString(), 
@@ -59,5 +76,5 @@ export default function useWalletAddress(): WalletState {
             signTransaction: null,
             walletType: 'none' 
         } as WalletState;
-    }, [lazorPubkey, lazorConnection, lazorDisconnect]);
+    }, [mwaAccount, mwaConnection, lazorPubkey, lazorConnection, mwaDisconnect, lazorDisconnect, mwaSignTransaction]);
 }

@@ -1,5 +1,5 @@
 import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
-import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text, AppState, AppStateStatus } from "react-native";
+import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text, AppState, AppStateStatus, Platform } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import { Image } from 'expo-image';
@@ -18,8 +18,7 @@ import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native"
 import { BlurView } from "@react-native-community/blur";
 import PromoBanner from "@/components/Shared/PromoBanner";
 import { scrollFeedToTop } from "@/src/utils/feedScrollRef";
-// @ts-ignore
-import { MobileWalletProvider } from '@wallet-ui/react-native-web3js/dist/index.native.mjs';
+import MobileWalletProviderGate from "@/components/Providers/MobileWalletProviderGate";
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -220,6 +219,7 @@ const TabButton = ({
         </Pressable>
     );
 };
+
 
 export default function Layout() {
     const [fontsLoaded, fontError] = useFonts({
@@ -466,7 +466,7 @@ export default function Layout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <BottomSheetModalProvider>
-                <MobileWalletProvider chain={chain} endpoint={endpoint} identity={identity}>
+                <MobileWalletProviderGate chain={chain} endpoint={endpoint} identity={identity}>
                     <LazorKitProvider
                         rpcUrl={endpoint}
                         portalUrl="https://portal.lazor.sh"
@@ -545,7 +545,7 @@ export default function Layout() {
                             </WebSocketProvider>
                         </ErrorBoundary>
                     </LazorKitProvider>
-                </MobileWalletProvider>
+                </MobileWalletProviderGate>
             </BottomSheetModalProvider>
         </GestureHandlerRootView>
     );
