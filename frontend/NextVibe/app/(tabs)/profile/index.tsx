@@ -1,3 +1,4 @@
+// @ts-ignore
 import ProfileView from "@/components/ProfilePage/ProfilePage";
 
 
