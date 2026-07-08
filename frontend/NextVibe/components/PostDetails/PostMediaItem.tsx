@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Animated, Dimensions, Pressable, StyleSheet, TouchableOpacity } from "react-native";
 import { Video, ResizeMode } from "expo-av";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import { Heart, Volume2, VolumeX } from "lucide-react-native";
 
 const { width: SW } = Dimensions.get("window");
@@ -87,10 +87,10 @@ const PostMediaItem: React.FC<Props> = ({ item, isLiked, onLike, onOpenPhoto }) 
                     </Pressable>
                 </>
             ) : (
-                <FastImage
-                    source={{ uri: item.media_url, priority: FastImage.priority.high }}
+                <Image
+                    source={{ uri: item.media_url }}
                     style={styles.media}
-                    resizeMode={FastImage.resizeMode.cover}
+                    contentFit="cover"
                 />
             )}
 

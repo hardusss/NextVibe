@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { View, Text, StyleSheet, Animated, Pressable } from "react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import { TokenAsset } from "@/hooks/usePortfolio.types";
 import { MOTION } from "@/constants/motion";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react-native";
@@ -124,10 +124,10 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
             >
                 <View style={styles.logoContainer}>
                     {token.logoURI ? (
-                        <FastImage
-                            source={{ uri: token.logoURI, priority: FastImage.priority.normal }}
+                        <Image
+                            source={{ uri: token.logoURI }}
                             style={styles.logo}
-                            resizeMode={FastImage.resizeMode.cover}
+                            contentFit="cover"
                         />
                     ) : (
                         <View style={[styles.logo, { backgroundColor: logoBg }]}>

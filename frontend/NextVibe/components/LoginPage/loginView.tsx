@@ -21,7 +21,7 @@ import { useRouter } from 'expo-router';
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
 import GoogleIconButton from '../oauth-components/GoogleIconButton';
 import AppleButtonAuth from '../oauth-components/AppleButton';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { BackHandler } from 'react-native';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 
@@ -103,10 +103,10 @@ export default function LoginView() {
                 >
                     {/* Header */}
                     <View style={styles.headerContainer}>
-                        <FastImage
+                        <Image
                             source={require('../../assets/logo.png')}
                             style={styles.logo}
-                            resizeMode={FastImage.resizeMode.contain}
+                            contentFit="contain"
                         />
                         <Text style={styles.title}>Welcome Back!</Text>
                         <Text style={styles.subtitle}>Login to continue your vibe</Text>

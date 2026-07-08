@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 
 interface TokenRowProps {
     item: { name: string; symbol: string; icon: string };
@@ -24,10 +24,10 @@ export const TokenRow = ({ item, onPress, isDark, index }: TokenRowProps) => {
             style={[styles.row, { backgroundColor: bg, borderColor: border }]}
         >
             {/* Logo */}
-            <FastImage
+            <Image
                 source={{ uri: item.icon }}
                 style={styles.logo}
-                resizeMode={FastImage.resizeMode.cover}
+                contentFit="cover"
             />
 
             {/* Text */}

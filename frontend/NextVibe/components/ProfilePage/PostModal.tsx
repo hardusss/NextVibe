@@ -11,7 +11,7 @@ import {
     Pressable,
     Linking,
 } from "react-native";
-import FastImage from "react-native-fast-image";
+import { Image as ExpoImage } from "expo-image";
 import { BlurView } from "@react-native-community/blur";
 import {
     Sparkles,
@@ -400,14 +400,15 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                         ]} 
                                         onPress={handleDoubleTap}
                                     >
-                                        <FastImage
+                                        <ExpoImage
                                             source={{ uri: mediaUrl }}
                                             style={styles.image}
-                                            resizeMode={post.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                            contentFit={post.is_luma_event ? "contain" : "cover"}
                                             onLoad={(evt) => {
                                                 if (post.is_luma_event) {
-                                                    const { width, height } = evt.nativeEvent;
-                                                    if (width > 0) {
+                                                    const width = evt.source?.width || (evt as any).nativeEvent?.width;
+                                                    const height = evt.source?.height || (evt as any).nativeEvent?.height;
+                                                    if (width && width > 0 && height) {
                                                         setEventImageHeight((CARD_WIDTH / width) * height);
                                                     }
                                                 }

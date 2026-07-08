@@ -8,7 +8,7 @@ import {
     BottomSheetView,
     BottomSheetBackdrop
 } from '@gorhom/bottom-sheet';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Wifi, WifiOff, Users, CheckCircle } from 'lucide-react-native';
@@ -315,10 +315,10 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                                 />
                             )}
                             {props.avatarUrl && (
-                                <FastImage
+                                <Image
                                     source={{ uri: props.avatarUrl }}
                                     style={styles.avatar}
-                                    resizeMode={FastImage.resizeMode.cover}
+                                    contentFit="cover"
                                 />
                             )}
                         </View>

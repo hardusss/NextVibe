@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import { ShimmerSkeleton } from "@/components/Shared/motion";
 import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft } from "lucide-react-native";
 import { FormattedTransaction } from "@/src/types/solana";
@@ -107,7 +107,7 @@ const SwapContent: React.FC<{
             {/* Dual token icons with overlap */}
             <View style={styles.swapAvatarWrap}>
                 {swap.inputLogoURL ? (
-                    <FastImage source={{ uri: swap.inputLogoURL }} style={styles.swapTokenLeft} />
+                    <Image source={{ uri: swap.inputLogoURL }} style={styles.swapTokenLeft} />
                 ) : (
                     <View style={[styles.swapTokenLeft, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 8, fontFamily: "Dank Mono" }}>
@@ -116,7 +116,7 @@ const SwapContent: React.FC<{
                     </View>
                 )}
                 {swap.outputLogoURL ? (
-                    <FastImage source={{ uri: swap.outputLogoURL }} style={styles.swapTokenRight} />
+                    <Image source={{ uri: swap.outputLogoURL }} style={styles.swapTokenRight} />
                 ) : (
                     <View style={[styles.swapTokenRight, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 8, fontFamily: "Dank Mono" }}>
@@ -198,7 +198,7 @@ const TransactionContent: React.FC<{
             {/* Token image + type icon badge */}
             <View style={styles.avatarWrap}>
                 {tokenInfo?.logoURL ? (
-                    <FastImage source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
+                    <Image source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
                 ) : (
                     <View style={[styles.tokenImage, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 10, fontFamily: "Dank Mono" }}>

@@ -2,7 +2,7 @@ import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
 import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text, AppState, AppStateStatus } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { storage } from "@/src/utils/storage";
 import { WebSocketProvider } from "@/src/context/WebSocketContext";
 import axios from "axios";
@@ -188,10 +188,9 @@ const TabButton = ({
             <Animated.View style={animStyle}>
                 {tab.name === "profile" && userID ? (
                     <View style={styles.iconContainerProfile}>
-                        <FastImage
+                        <Image
                             source={{
                                 uri: imageProfile || DEFAULT_AVATAR,
-                                priority: FastImage.priority.high,
                             }}
                             style={[
                                 styles.avatar,
@@ -411,7 +410,7 @@ export default function Layout() {
             setImageProfile(null);
             cachedAvatarRef.current = null;
             pushRegisteredRef.current = false;
-            FastImage.clearMemoryCache();
+            Image.clearMemoryCache();
             AsyncStorage.removeItem(PUSH_TOKEN_KEY);
         }
     }, [userID]);
@@ -437,7 +436,7 @@ export default function Layout() {
                 const cached = cachedAvatarRef.current;
 
                 if (isMounted && (cached?.userId !== userID || cached?.url !== newUrl)) {
-                    FastImage.preload([{ uri: newUrl, priority: FastImage.priority.high }]);
+                    Image.prefetch([newUrl]);
                     cachedAvatarRef.current = { userId: userID, url: newUrl };
                     setImageProfile(newUrl);
                 }

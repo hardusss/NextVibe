@@ -25,7 +25,7 @@ import { useRouter } from 'expo-router';
 import GoogleButtonAuth from '../oauth-components/GoogleButton';
 import GoogleIconButton from '../oauth-components/GoogleIconButton';
 import AppleButtonAuth from '../oauth-components/AppleButton';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 
 
@@ -194,10 +194,10 @@ export default function RegisterView() {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.headerContainer}>
-                        <FastImage
+                        <Image
                             source={require('../../assets/logo.png')}
                             style={styles.logo}
-                            resizeMode={FastImage.resizeMode.contain}
+                            contentFit="contain"
                         />
                         <Text style={styles.title}>Join NextVibe</Text>
                         <Text style={styles.subtitle}>Create an account to start your journey</Text>
