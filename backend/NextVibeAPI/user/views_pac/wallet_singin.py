@@ -15,19 +15,24 @@ class WalletSignInView(APIView):
         message = request.data.get('message')
         username = request.data.get('username')
 
-        try:
-            pubkey_bytes = base58.b58decode(wallet_address)
-            verify_key = VerifyKey(pubkey_bytes)
+        # LazorKit smart wallets (.lzr) use passkey-based signatures (secp256r1 / WebAuthn), 
+        # which cannot be verified using standard Ed25519 VerifyKey.
+        is_lazor = username and username.endswith('.lzr')
 
-            signature_bytes = bytes(signature_list)
+        if not is_lazor:
+            try:
+                pubkey_bytes = base58.b58decode(wallet_address)
+                verify_key = VerifyKey(pubkey_bytes)
 
-            verify_key.verify(message.encode('utf-8'), signature_bytes)
-            
-        except (BadSignatureError, ValueError, TypeError):
-            return Response(
-                {"error": "Invalid cryptographic signature. Nice try, hacker!"}, 
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+                signature_bytes = bytes(signature_list)
+
+                verify_key.verify(message.encode('utf-8'), signature_bytes)
+                
+            except (BadSignatureError, ValueError, TypeError):
+                return Response(
+                    {"error": "Invalid cryptographic signature. Nice try, hacker!"}, 
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
 
 
         User = get_user_model()
