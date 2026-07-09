@@ -100,6 +100,7 @@ export default {
                     ios: {
                         "useFrameworks": "static",
                         "newArchEnabled": true,
+                        "forceStaticLinking": ["RNFBApp", "RNFBAuth"],
                         "extraPods": [
                             {
                                 "name": "FirebaseAuth",
