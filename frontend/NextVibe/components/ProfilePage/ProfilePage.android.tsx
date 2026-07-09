@@ -18,6 +18,7 @@ import {
     Platform,
 } from "react-native";
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from 'expo-status-bar';
 import { AvatarWithFrame } from "./AvatarWithFrame";
 import Hyperlink from 'react-native-hyperlink';
@@ -149,6 +150,7 @@ const EmptyState = ({
    ProfileView — Minimalist + Blur Header
    ══════════════════════════════════ */
 const ProfileView = () => {
+    const insets = useSafeAreaInsets();
     const [userData, setUserData] = useState<UserData>(cachedUserData ?? {
         username: "", about: "", avatar_url: null,
         post_count: 0, cnft_count: 0, readers_count: 0, follows_count: 0,
@@ -356,6 +358,7 @@ const ProfileView = () => {
                             tintColor={isDark ? "#fff" : "#000"}
                             colors={["#58a6ff"]}
                             progressBackgroundColor={isDark ? "#000" : "#fff"}
+                            progressViewOffset={insets.top + 10}
                         />
                     }
                 >

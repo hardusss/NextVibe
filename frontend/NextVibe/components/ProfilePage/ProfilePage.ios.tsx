@@ -384,6 +384,9 @@ const ProfileView = () => {
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                         contentInsetAdjustmentBehavior="never"
+                        contentInset={{ top: insets.top }}
+                        contentOffset={{ x: 0, y: -insets.top }}
+                        automaticallyAdjustContentInsets={false}
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing} onRefresh={onRefresh}
@@ -412,7 +415,7 @@ const ProfileView = () => {
                         </Modal>
 
                         {/* Spacer to push profile details down */}
-                        <View style={{ height: HEADER_HEIGHT }} />
+                        <View style={{ height: Math.max(0, HEADER_HEIGHT - insets.top) }} />
 
                         {/* ── Profile content wrapper (restores 16px horizontal padding below the header) ── */}
                         <View style={{ paddingHorizontal: 16 }}>

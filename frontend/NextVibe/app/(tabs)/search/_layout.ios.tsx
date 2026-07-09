@@ -6,11 +6,10 @@ export default function SearchStackLayout() {
             <Stack.Screen
                 name="index"
                 options={{
-                    headerTitle: "Search",
-                    headerLargeTitle: true,
+                    headerTitle: "",
+                    headerLargeTitle: false,
                     headerShadowVisible: false,
                     headerTransparent: true,
-                    headerBlurEffect: "prominent",
                 }}
             />
         </Stack>
