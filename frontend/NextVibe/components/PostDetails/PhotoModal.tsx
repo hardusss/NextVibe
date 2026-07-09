@@ -8,7 +8,7 @@ import {
     Text,
     View,
 } from "react-native";
-import { Video, ResizeMode } from "expo-av";
+
 import { ImageZoom } from "@likashefqet/react-native-image-zoom";
 import { X } from "lucide-react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -21,9 +21,7 @@ export interface PostMedia {
     media_preview?: string | null;
 }
 
-const isVideo = (url: string) =>
-    url.includes("/video/") ||
-    [".mp4", ".mov", ".avi", ".mkv", ".webm"].some((e) => url.toLowerCase().endsWith(e));
+
 
 interface Props {
     visible: boolean;
@@ -76,35 +74,20 @@ const PhotoModal: React.FC<Props> = ({ visible, images, initialIndex, onClose })
                         setCurrent(Math.round(e.nativeEvent.contentOffset.x / SW))
                     }
                     keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => {
-                        if (isVideo(item.media_url)) {
-                            return (
-                                <View style={styles.slide}>
-                                    <Video
-                                        source={{ uri: item.media_url }}
-                                        style={{ width: SW, height: SW }}
-                                        resizeMode={ResizeMode.CONTAIN}
-                                        isLooping
-                                        shouldPlay
-                                    />
-                                </View>
-                            );
-                        }
-                        return (
-                            <View style={styles.slide}>
-                                <ImageZoom
-                                    uri={item.media_url}
-                                    minScale={1}
-                                    maxScale={6}
-                                    isDoubleTapEnabled
-                                    style={{ width: SW, height: SH }}
-                                    resizeMode="contain"
-                                    onPinchStart={() => setScrollEnabled(false)}
-                                    onResetAnimationEnd={() => setScrollEnabled(true)}
-                                />
-                            </View>
-                        );
-                    }}
+                    renderItem={({ item }) => (
+                        <View style={styles.slide}>
+                            <ImageZoom
+                                uri={item.media_url}
+                                minScale={1}
+                                maxScale={6}
+                                isDoubleTapEnabled
+                                style={{ width: SW, height: SH }}
+                                resizeMode="contain"
+                                onPinchStart={() => setScrollEnabled(false)}
+                                onResetAnimationEnd={() => setScrollEnabled(true)}
+                            />
+                        </View>
+                    )}
                 />
             </GestureHandlerRootView>
         </Modal>
