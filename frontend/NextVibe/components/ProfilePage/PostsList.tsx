@@ -13,7 +13,7 @@ import {
   Pressable,
   Linking
 } from "react-native";
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+
 import { VolumeX, Volume2, Heart, Sparkles, MoreVertical, MessageSquare, ChevronLeft, Frown } from 'lucide-react-native';
 import getMenuPosts from "@/src/api/menu.posts";
 import timeAgo from "@/src/utils/formatTime";
@@ -290,58 +290,11 @@ interface User {
   official: boolean;
 }
 
-type VideoStorage = 
-    | { storage: "cloudinary"; is_video: true }
-    | { storage: "r2"; is_video: true }
-    | false;
-
-const isVideo = (url: string): VideoStorage => {
-    if (url.includes("/video/")) {
-        return {
-            storage: "cloudinary",
-            is_video: true
-        };
-    }
-
-    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
-    if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) {
-        return {
-            storage: "r2",
-            is_video: true
-        };
-    }
-
-    return false;
-};
-
-const getVideoUrls = (mediaItem: MediaItem) => {
-    const videoCheck = isVideo(mediaItem.media_url);
-
-    if (!videoCheck) {
-        return { preview: mediaItem.media_url, hd: mediaItem.media_url, isVideo: false };
-    }
-
-    if (videoCheck.storage === "cloudinary") {
-        const previewUrl = mediaItem.media_url.replace(
-            '/video/upload/',
-            '/video/upload/q_auto:low,w_400,f_jpg,so_0/'
-        );
-
-        const hdUrl = mediaItem.media_url.replace(
-            '/video/upload/',
-            '/video/upload/q_auto:good,f_auto,vc_h264:baseline,br_1500k/' 
-        );
-
-        return { preview: previewUrl, hd: hdUrl, isVideo: true };
-    }
-
-    // R2 storage
-    return { 
-        preview: mediaItem.media_preview || mediaItem.media_url, 
-        hd: mediaItem.media_url,
-        isVideo: true
-    };
-};
+const getVideoUrls = (mediaItem: MediaItem) => ({
+    preview: mediaItem.media_url,
+    hd: mediaItem.media_url,
+    isVideo: false as false,
+});
 
 const MediaItemComponent = ({ 
     item, 
@@ -356,20 +309,15 @@ const MediaItemComponent = ({
     isLiked: boolean;
     isVisible: boolean;
 }) => {
-    const { preview, hd, isVideo: isVideoMedia } = getVideoUrls(item);
+    const { preview } = getVideoUrls(item);
     
-    const [isMuted, setIsMuted] = useState(true);
     const [showHeart, setShowHeart] = useState(false);
-    const [isLoading, setIsLoading] = useState(isVideoMedia);
-    const [showPreview, setShowPreview] = useState(isVideoMedia);
     const heartAnim = useRef(new Animated.Value(0)).current;
     const tapCount = useRef<number>(0);
     const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
-    
-    const videoRef = useRef<Video>(null);
 
     const handleDoublePress = () => {
         tapCount.current += 1;
@@ -419,85 +367,18 @@ const MediaItemComponent = ({
         };
     }, []);
 
-    const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-        if (!status.isLoaded) {
-            return;
-        }
 
-        if (status.isLoaded && status.isPlaying) {
-            setIsLoading(false);
-            setTimeout(() => setShowPreview(false), 150);
-        }
-    };
-
-    useEffect(() => {
-        if (!videoRef.current || !isVideoMedia) return;
-        const timer = setTimeout(async () => {
-            if (!isVisible && videoRef.current) {
-                await videoRef.current.pauseAsync().catch(() => {});
-                setShowPreview(true);
-            }
-        }, 100);
-        return () => clearTimeout(timer);
-    }, [isVisible, isVideoMedia]);
 
     return (
         <Pressable 
             onPress={handleDoublePress}
             style={styles.mediaContainer}
         >
-            {isVideoMedia ? (
-                <>
-                    {(showPreview || !isVisible) && (
-                        <Image
-                            source={{ 
-                                uri: preview,
-                            }}
-                            style={[styles.previewImage, isLoading && { opacity: 0.7 }]}
-                            contentFit="cover"
-                        />
-                    )}
-                    {isVideoMedia && isVisible && (
-                        <Video
-                            ref={videoRef}
-                            style={styles.fullMedia}
-                            source={{ uri: hd }}
-                            resizeMode={ResizeMode.COVER}
-                            isLooping
-                            isMuted={isMuted}
-                            shouldPlay={isVisible}
-                            onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-                        />
-                    )}
-                    {isLoading && isVisible && (
-                        <View style={styles.mediaLoading}>
-                            <ActivityIndicator size="large" color="#ffffff" />
-                        </View>
-                    )}
-                    
-                    <Pressable 
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            setIsMuted(prev => !prev);
-                        }} 
-                        style={styles.muteButton}
-                    >
-                        {isMuted ? (
-                            <VolumeX size={24} color="white" />
-                        ) : (
-                            <Volume2 size={24} color="white" />
-                        )}
-                    </Pressable>
-                </>
-            ) : (
-                <Image
-                    source={{ 
-                        uri: preview,
-                    }}
-                    style={styles.mediaImage}
-                    contentFit="cover"
-                />
-            )}
+            <Image
+                source={{ uri: preview }}
+                style={styles.mediaImage}
+                contentFit="cover"
+            />
             {showHeart && (
                 <Animated.View 
                     style={[styles.heartOverlay, {
