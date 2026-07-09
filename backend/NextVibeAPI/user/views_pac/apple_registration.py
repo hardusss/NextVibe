@@ -59,12 +59,10 @@ class AppleRegisterView(APIView):
                 user.save(update_fields=["apple_user_id"])
 
         if user:
+            logger.info(f"[Apple] Existing user found, logging in. apple_user_id={apple_user_id}")
             serializer = GoogleRegister(user)
             return Response(serializer.data, status=200)
 
-        # ── New user — require invite code ────────────────────────────────────
-        if "from_invite_code" not in request.data:
-            return Response({"error": "invite_code_required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Build username from email or Apple sub
         username = request.data.get("username")
@@ -88,6 +86,7 @@ class AppleRegisterView(APIView):
         user = serializer.save()
 
         # Store the stable Apple user ID and correct auth_provider
+        logger.info(f"[Apple] Creating new user account. apple_user_id={apple_user_id}")
         user.apple_user_id = apple_user_id
         user.auth_provider = "apple"
         user.save(update_fields=["apple_user_id", "auth_provider"])
