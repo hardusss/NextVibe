@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { House, Search, BadgePlus, UserRound, Radar } from "lucide-react-native";
 
-export default function AndroidTabsLayout() {
+export default function TabsLayout() {
     return (
         <Tabs screenOptions={{ headerShown: false, tabBarShowLabel: false }}>
             <Tabs.Screen name="home" options={{ title: "Home", tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }} />
