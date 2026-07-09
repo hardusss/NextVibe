@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, Platform } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface HeaderProps {
   title: string;
@@ -10,9 +11,10 @@ export interface HeaderProps {
 
 export default function Header({ title, leftIcon, onLeftPress }: HeaderProps) {
   const isDark = useColorScheme() === 'dark';
+  const insets = useSafeAreaInsets();
   
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top + 20 : 20 }]}>
       {leftIcon && (
         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={onLeftPress} style={styles.leftButton}>
           {leftIcon === 'arrow-back' ? (
