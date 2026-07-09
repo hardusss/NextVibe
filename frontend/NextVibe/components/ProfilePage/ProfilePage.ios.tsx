@@ -35,6 +35,8 @@ import getUserDetail from "@/src/api/user.detail";
 import { storage } from '@/src/utils/storage';
 import formatNumber from "@/src/utils/formatNumber";
 
+import ButtonSettings from "./ButtonSettings";
+import ButtonWallet from "./ButtonWallet";
 import PostGallery, { clearPostsCache } from "./PostsMenu";
 import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
@@ -380,48 +382,58 @@ const ProfileView = () => {
                           fading into the background on all edges.
                     ═══════════════════════════════ */}
                     <FadeIn from="top" duration={400} delay={50}>
+                        {/* Outer container — NO overflow:hidden so BlurView shadows render */}
                         <View style={st.headerContainer}>
-                            {userData.avatar_url && (
-                                <>
-                                    <Image
-                                        source={{ uri: userData.avatar_url }}
-                                        style={[st.headerImage, { opacity: 0.38 }]}
-                                        contentFit="cover"
-                                    />
-                                    <View style={[StyleSheet.absoluteFill, {
-                                        backgroundColor: isDark
-                                            ? 'rgba(6, 3, 16, 0.72)'
-                                            : 'rgba(245, 240, 255, 0.72)'
-                                    }]} />
-                                </>
-                            )}
-                            {/* Bottom fade */}
-                            <LinearGradient
-                                colors={['transparent', bg]}
-                                locations={[0.2, 1]}
-                                style={st.headerFadeBottom}
-                            />
-                            {/* Top fade */}
-                            <LinearGradient
-                                colors={[bg, 'transparent']}
-                                locations={[0, 0.5]}
-                                style={st.headerFadeTop}
-                            />
-                            {/* Left fade */}
-                            <LinearGradient
-                                colors={[bg, 'transparent']}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                locations={[0, 0.4]}
-                                style={st.headerFadeLeft}
-                            />
-                            {/* Right fade */}
-                            <LinearGradient
-                                colors={['transparent', bg]}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                locations={[0.6, 1]}
-                                style={st.headerFadeRight}
-                            />
+                            {/* Inner clip for image + gradients only */}
+                            <View style={st.headerClip}>
+                                {userData.avatar_url && (
+                                    <>
+                                        <Image
+                                            source={{ uri: userData.avatar_url }}
+                                            style={[st.headerImage, { opacity: 0.38 }]}
+                                            contentFit="cover"
+                                        />
+                                        <View style={[StyleSheet.absoluteFill, {
+                                            backgroundColor: isDark
+                                                ? 'rgba(6, 3, 16, 0.72)'
+                                                : 'rgba(245, 240, 255, 0.72)'
+                                        }]} />
+                                    </>
+                                )}
+                                {/* Bottom fade */}
+                                <LinearGradient
+                                    colors={['transparent', bg]}
+                                    locations={[0.2, 1]}
+                                    style={st.headerFadeBottom}
+                                />
+                                {/* Top fade */}
+                                <LinearGradient
+                                    colors={[bg, 'transparent']}
+                                    locations={[0, 0.5]}
+                                    style={st.headerFadeTop}
+                                />
+                                {/* Left fade */}
+                                <LinearGradient
+                                    colors={[bg, 'transparent']}
+                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                    locations={[0, 0.4]}
+                                    style={st.headerFadeLeft}
+                                />
+                                {/* Right fade */}
+                                <LinearGradient
+                                    colors={['transparent', bg]}
+                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                    locations={[0.6, 1]}
+                                    style={st.headerFadeRight}
+                                />
+                            </View>
 
+                            {/* Top bar: Settings left, Wallet right — outside clip so BlurView works */}
+                            <View style={st.topBar}>
+                                <ButtonSettings />
+                                <View style={{ flex: 1 }} />
+                                <ButtonWallet />
+                            </View>
                         </View>
                     </FadeIn>
 
@@ -604,10 +616,15 @@ const st = StyleSheet.create({
         width: SCREEN_WIDTH,
         marginLeft: -16,
         marginTop: 10,
-        overflow: 'hidden',
         position: 'relative',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
+    },
+    headerClip: {
+        ...StyleSheet.absoluteFillObject,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        overflow: 'hidden',
     },
     headerImage: {
         width: '100%',
