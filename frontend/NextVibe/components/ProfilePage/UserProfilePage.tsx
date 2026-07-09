@@ -311,12 +311,17 @@ const UserProfileView = () => {
                     <ScrollView
                         contentContainerStyle={{ paddingBottom: 20 }}
                         showsVerticalScrollIndicator={false}
+                        contentInset={Platform.OS === 'ios' ? { top: insets.top } : undefined}
+                        contentOffset={Platform.OS === 'ios' ? { x: 0, y: -insets.top } : undefined}
+                        automaticallyAdjustContentInsets={false}
+                        contentInsetAdjustmentBehavior="never"
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing} onRefresh={onRefresh}
                                 tintColor={isDark ? "#fff" : "#000"}
                                 colors={["#58a6ff"]}
                                 progressBackgroundColor={isDark ? "#000" : "#fff"}
+                                progressViewOffset={Platform.OS === 'android' ? insets.top + 10 : undefined}
                             />
                         }
                     >
@@ -340,7 +345,7 @@ const UserProfileView = () => {
 
                         {/* Spacer for iOS to shift profile details down */}
                         {Platform.OS === 'ios' && (
-                            <View style={{ height: HEADER_HEIGHT }} />
+                            <View style={{ height: Math.max(0, HEADER_HEIGHT - insets.top) }} />
                         )}
 
                         {/* ── Blurred avatar header (Android/Web/etc.) ── */}
