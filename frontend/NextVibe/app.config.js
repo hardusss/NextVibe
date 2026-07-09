@@ -170,7 +170,6 @@ export default {
             ],
             "./withMapboxMaven.js",
             "./withSolanaMWA.js",
-            "./withVexoAnalyticsFix.js",
             "expo-apple-authentication",
             [
                 "@react-native-google-signin/google-signin",
