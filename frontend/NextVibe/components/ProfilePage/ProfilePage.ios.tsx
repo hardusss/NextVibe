@@ -17,6 +17,8 @@ import {
     InteractionManager,
     Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AvatarWithFrame } from "./AvatarWithFrame";
@@ -149,6 +151,7 @@ const EmptyState = ({
    ProfileView — Minimalist + Blur Header
    ══════════════════════════════════ */
 const ProfileView = () => {
+    const insets = useSafeAreaInsets();
     const [userData, setUserData] = useState<UserData>(cachedUserData ?? {
         username: "", about: "", avatar_url: null,
         post_count: 0, cnft_count: 0, readers_count: 0, follows_count: 0,
@@ -313,9 +316,10 @@ const ProfileView = () => {
     );
 
     const bg = isDark ? '#0A0410' : '#ffffff';
+    const bgTransparent = isDark ? 'rgba(10, 4, 16, 0)' : 'rgba(255, 255, 255, 0)';
 
     return (
-        <View style={profileStyle.container}>
+        <View style={[profileStyle.container, { paddingHorizontal: 0 }]}>
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{ flex: 1, justifyContent: "center", alignItems: "center" }} />
             ) : fetchError && !userData.username ? (
@@ -344,101 +348,76 @@ const ProfileView = () => {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <ScrollView
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                    contentInsetAdjustmentBehavior="automatic"
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing} onRefresh={onRefresh}
-                            tintColor={isDark ? "#fff" : "#000"}
-                            colors={["#58a6ff"]}
-                            progressBackgroundColor={isDark ? "#000" : "#fff"}
-                        />
-                    }
-                >
-                    {/* Avatar fullscreen modal */}
-                    <Modal transparent visible={isVisibleContainer} animationType="fade">
-                        <TouchableOpacity
-                            style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.75)" }}
-                            activeOpacity={1} onPress={() => setVisible(false)}
-                        >
-                            <Animated.View style={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", width: '100%', transform: [{ scale: scaleAnim }] }}>
-                                {userData.avatar_url && (
-                                    <Image
-                                        style={{ width: 320, height: 320, borderRadius: 160 }}
-                                        source={{ uri: userData.avatar_url as string }}
-                                        contentFit="cover"
-                                    />
-                                )}
-                            </Animated.View>
-                        </TouchableOpacity>
-                    </Modal>
-
-                    {/* ═══════════════════════════════
-                        BLURRED AVATAR HEADER
-                        — the avatar image, scaled up, blurred,
-                          fading into the background on all edges.
-                    ═══════════════════════════════ */}
-                    <FadeIn from="top" duration={400} delay={50}>
-                        {/* Outer container — NO overflow:hidden so BlurView shadows render */}
-                        <View style={st.headerContainer}>
-                            {/* Inner clip for image + gradients only */}
+                <>
+                    {/* iOS Absolute Background Header */}
+                    {userData.avatar_url && (
+                        <View style={st.headerContainerAbsolute}>
                             <View style={st.headerClip}>
-                                {userData.avatar_url && (
-                                    <>
-                                        <Image
-                                            source={{ uri: userData.avatar_url }}
-                                            style={[st.headerImage, { opacity: 0.38 }]}
-                                            contentFit="cover"
-                                        />
-                                        <View style={[StyleSheet.absoluteFill, {
-                                            backgroundColor: isDark
-                                                ? 'rgba(6, 3, 16, 0.72)'
-                                                : 'rgba(245, 240, 255, 0.72)'
-                                        }]} />
-                                    </>
-                                )}
+                                <Image
+                                    source={{ uri: userData.avatar_url }}
+                                    style={[st.headerImage, { opacity: isDark ? 0.45 : 0.65 }]}
+                                    contentFit="cover"
+                                    blurRadius={40}
+                                />
+                                <BlurView
+                                    intensity={75}
+                                    tint={isDark ? 'dark' : 'light'}
+                                    style={StyleSheet.absoluteFill}
+                                />
+                                <View style={[StyleSheet.absoluteFill, {
+                                    backgroundColor: isDark
+                                        ? 'rgba(10, 4, 16, 0.72)'
+                                        : 'rgba(255, 255, 255, 0.35)'
+                                }]} />
                                 {/* Bottom fade */}
                                 <LinearGradient
-                                    colors={['transparent', bg]}
+                                    colors={[bgTransparent, bg]}
                                     locations={[0.2, 1]}
                                     style={st.headerFadeBottom}
                                 />
-                                {/* Top fade */}
-                                <LinearGradient
-                                    colors={[bg, 'transparent']}
-                                    locations={[0, 0.5]}
-                                    style={st.headerFadeTop}
-                                />
-                                {/* Left fade */}
-                                <LinearGradient
-                                    colors={[bg, 'transparent']}
-                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                    locations={[0, 0.4]}
-                                    style={st.headerFadeLeft}
-                                />
-                                {/* Right fade */}
-                                <LinearGradient
-                                    colors={['transparent', bg]}
-                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                    locations={[0.6, 1]}
-                                    style={st.headerFadeRight}
-                                />
-                            </View>
-
-                            {/* Top bar: Settings left, Wallet right — outside clip so BlurView works */}
-                            <View style={st.topBar}>
-                                <ButtonSettings />
-                                <View style={{ flex: 1 }} />
-                                <ButtonWallet />
                             </View>
                         </View>
-                    </FadeIn>
+                    )}
 
-                    {/* ── Avatar centered, overlapping header ── */}
-                    <TouchableOpacity
+                    <ScrollView
+                        contentContainerStyle={{ paddingBottom: 20 }}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                        contentInsetAdjustmentBehavior="never"
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing} onRefresh={onRefresh}
+                                tintColor={isDark ? "#fff" : "#000"}
+                                colors={["#58a6ff"]}
+                                progressBackgroundColor={isDark ? "#000" : "#fff"}
+                            />
+                        }
+                    >
+                        {/* Avatar fullscreen modal */}
+                        <Modal transparent visible={isVisibleContainer} animationType="fade">
+                            <TouchableOpacity
+                                style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.75)" }}
+                                activeOpacity={1} onPress={() => setVisible(false)}
+                            >
+                                <Animated.View style={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", width: '100%', transform: [{ scale: scaleAnim }] }}>
+                                    {userData.avatar_url && (
+                                        <Image
+                                            style={{ width: 320, height: 320, borderRadius: 160 }}
+                                            source={{ uri: userData.avatar_url as string }}
+                                            contentFit="cover"
+                                        />
+                                    )}
+                                </Animated.View>
+                            </TouchableOpacity>
+                        </Modal>
+
+                        {/* Spacer to push profile details down */}
+                        <View style={{ height: HEADER_HEIGHT }} />
+
+                        {/* ── Profile content wrapper (restores 16px horizontal padding below the header) ── */}
+                        <View style={{ paddingHorizontal: 16 }}>
+                            {/* ── Avatar centered, overlapping header ── */}
+                            <TouchableOpacity
                         onPress={() => { if (userData.avatar_url) setVisible(true); }}
                         activeOpacity={0.85}
                         style={st.avatarWrap}
@@ -598,8 +577,17 @@ const ProfileView = () => {
                             )}
                         </AnimatedReanimated.View>
                     </View>
-                </ScrollView>
-            )}
+                </View>
+            </ScrollView>
+
+            {/* Fixed Settings/Wallet Top Bar with safe area top inset */}
+            <View style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
+                <ButtonSettings />
+                <View style={{ flex: 1 }} />
+                <ButtonWallet />
+            </View>
+        </>
+    )}
 
             {/* Bottom sheets */}
             <ShareModal ref={modalRef} avatarUrl={userData.avatar_url} profileUrl={`https://nextvibe.io/u/${id}`} />
@@ -611,19 +599,21 @@ const ProfileView = () => {
 
 /* ─── Styles ─── */
 const st = StyleSheet.create({
+    headerContainerAbsolute: {
+        position: 'absolute',
+        top: -20,
+        left: -20,
+        right: -20,
+        height: HEADER_HEIGHT + 20,
+        zIndex: 0,
+    },
     headerContainer: {
         height: HEADER_HEIGHT,
-        width: SCREEN_WIDTH,
-        marginLeft: -16,
-        marginTop: 10,
+        width: '100%',
         position: 'relative',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
     },
     headerClip: {
         ...StyleSheet.absoluteFillObject,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
         overflow: 'hidden',
     },
     headerImage: {
@@ -636,28 +626,28 @@ const st = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        height: '65%',
+        height: '40%',
     },
     headerFadeTop: {
         position: 'absolute',
         left: 0,
         right: 0,
         top: 0,
-        height: '40%',
+        height: '25%',
     },
     headerFadeLeft: {
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
-        width: '25%',
+        width: '15%',
     },
     headerFadeRight: {
         position: 'absolute',
         right: 0,
         top: 0,
         bottom: 0,
-        width: '25%',
+        width: '15%',
     },
     topBar: {
         position: 'absolute',
