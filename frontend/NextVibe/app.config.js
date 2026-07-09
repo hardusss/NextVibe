@@ -112,10 +112,6 @@ export default {
                             {
                                 "name": "GoogleUtilities",
                                 "modular_headers": true
-                            },
-                            {
-                                "name": "VexoAnalytics",
-                                "modular_headers": true
                             }
                         ]
                     },
