@@ -7,6 +7,7 @@ import {
     Text,
     ActivityIndicator as RNActivityIndicator,
     Vibration,
+    Platform,
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getCollectionsMenu from "@/src/api/get.collections.menu";
@@ -14,6 +15,8 @@ import { useCallback, useState, useEffect, useRef } from 'react';
 import { useIsFocused } from "@react-navigation/native";
 import { Image as ExpoImage } from 'expo-image';
 import { BlurView } from "@react-native-community/blur";
+import { GlassView } from 'expo-glass-effect';
+import GlassPill from "@/components/Shared/GlassPill";
 import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2, Calendar } from "lucide-react-native";
 import { useColorScheme } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -372,7 +375,11 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                                             {item.is_luma_event && isFocused && (
                                                 <>
                                                     <ExpoImage source={{ uri: getPreviewUrl(mediaUrl!, item as any) }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                                                    <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                                                    {Platform.OS === 'ios' ? (
+                                                        <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
+                                                    ) : (
+                                                        <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                                                    )}
                                                 </>
                                             )}
                                             <ExpoImage
@@ -386,7 +393,11 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                                             {item.is_luma_event && isFocused && (
                                                 <>
                                                     <ExpoImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                                                    <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                                                    {Platform.OS === 'ios' ? (
+                                                        <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
+                                                    ) : (
+                                                        <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                                                    )}
                                                 </>
                                             )}
                                             <ExpoImage
@@ -403,7 +414,11 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                                 )}
 
                                 {hasMedia && (
-                                    <View style={styles.iconContainer}>
+                                    <GlassPill
+                                        style={styles.iconContainer}
+                                        colorScheme="dark"
+                                        fallbackBackgroundColor="rgba(0,0,0,0.6)"
+                                    >
                                         <View style={styles.iconRow}>
                                             {isMediaVideo
                                                 ? <Video size={16} color="white" />
@@ -419,14 +434,19 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                                                 <Gem size={16} color="#a78bfa" />
                                             )}
                                         </View>
-                                    </View>
+                                    </GlassPill>
                                 )}
 
-                                <View style={styles.editionBadge}>
+                                <GlassPill
+                                    style={styles.editionBadge}
+                                    colorScheme="dark"
+                                    tintColor="rgba(168,85,247,0.12)"
+                                    fallbackBackgroundColor="rgba(0,0,0,0.6)"
+                                >
                                     <Text style={[styles.editionText, { color: accentColor }]}>
                                         #{item.edition}
                                     </Text>
-                                </View>
+                                </GlassPill>
                             </TouchableOpacity>
                         );
                     }}
@@ -583,9 +603,9 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: 5,
         right: 5,
-        backgroundColor: "rgba(0,0,0,0.6)",
         borderRadius: 10,
         padding: 5,
+        overflow: 'hidden',
     },
     iconRow: {
         flexDirection: 'row',
@@ -596,10 +616,10 @@ const styles = StyleSheet.create({
         position: "absolute",
         bottom: 5,
         left: 5,
-        backgroundColor: "rgba(0,0,0,0.6)",
         borderRadius: 8,
         paddingHorizontal: 6,
         paddingVertical: 2,
+        overflow: 'hidden',
     },
     editionText: {
         fontSize: 10,

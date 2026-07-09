@@ -48,6 +48,8 @@ import { setFeedFlatListRef } from "@/src/utils/feedScrollRef";
 import * as Haptics from 'expo-haptics';
 import { ShimmerSkeleton } from '@/components/Shared/motion';
 import EmptyState from '@/components/Shared/EmptyState';
+import GlassBadge from '@/components/Shared/GlassBadge';
+import GlassPill from '@/components/Shared/GlassPill';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AnimatedReanimated, {
@@ -202,7 +204,7 @@ const getStyles = (theme: typeof darkTheme, headerHeight: number = 0) => {
         },
         pageIndicator: {
             position: "absolute", right: 30, top: 10,
-            backgroundColor: "rgba(0, 0, 0, 0.6)", padding: 5, borderRadius: 10
+            padding: 5, borderRadius: 10, zIndex: 20, overflow: 'hidden',
         },
         pageIndicatorText: { color: "white", fontSize: 12 },
         fullMedia: { width: screenWidth, height: screenWidth },
@@ -477,6 +479,7 @@ const PostItem = memo(({
 
     const collectState = resolveCollectState(item);
     const supplyLabel = `${item.minted_count ?? 0}/${item.total_supply ?? 50}`;
+    const isDarkFeed = theme.background === "#0A0410";
 
     return (
         <TouchableOpacity style={styles.postContainer} onPress={() => {
@@ -581,9 +584,13 @@ const PostItem = memo(({
                                 updateCellsBatchingPeriod={100} removeClippedSubviews={true}
                                 scrollEventThrottle={16} initialNumToRender={1} maxToRenderPerBatch={1} windowSize={2}
                             />
-                            <View style={styles.pageIndicator}>
+                            <GlassPill
+                                style={styles.pageIndicator}
+                                colorScheme="dark"
+                                fallbackBackgroundColor="rgba(0,0,0,0.6)"
+                            >
                                 <Text style={styles.pageIndicatorText}>{currentMediaIndex + 1}/{mediaItems.length}</Text>
-                            </View>
+                            </GlassPill>
                         </View>
                     ) : (
                         <MediaItemComponent
@@ -599,33 +606,27 @@ const PostItem = memo(({
                     {/* Overlay badges */}
                     <View style={styles.imageBadges} pointerEvents="none">
                         {item.is_ai_generated && (
-                            <View style={styles.imageBadge}>
+                            <GlassBadge variant="feed" feedLight={!isDarkFeed}>
                                 <Sparkles size={11} color="#05f0d8" />
                                 <Text style={styles.imageBadgeText}>AI</Text>
-                            </View>
+                            </GlassBadge>
                         )}
                         {item.is_luma_event && (
-                            <View style={[
-                                styles.imageBadge,
-                                {
-                                    borderColor: theme.background === "#0A0410" ? "rgba(168,85,247,0.4)" : "rgba(168,85,247,0.3)",
-                                    backgroundColor: theme.background === "#0A0410" ? "rgba(168, 85, 247, 0.15)" : "rgba(168, 85, 247, 0.1)"
-                                }
-                            ]}>
+                            <GlassBadge variant="feed-event" feedLight={!isDarkFeed}>
                                 <Calendar size={11} color="#A855F7" />
                                 <Text style={[styles.imageBadgeText, { color: "#A855F7" }]}>Event</Text>
-                            </View>
+                            </GlassBadge>
                         )}
                         {item.is_nft && (
-                            <View style={[styles.imageBadge, styles.nftBadge]}>
+                            <GlassBadge variant="feed-nft" feedLight={!isDarkFeed}>
                                 <Text style={styles.nftBadgeText}>{item.minted_count}/{item.total_supply} minted</Text>
-                            </View>
+                            </GlassBadge>
                         )}
                         {item.location && (
-                            <View style={styles.imageBadge}>
-                                <MapPin size={11} color="#fff" />
+                            <GlassBadge variant="feed" feedLight={!isDarkFeed}>
+                                <MapPin size={11} color={isDarkFeed ? "#fff" : "#1A1225"} />
                                 <Text style={styles.imageBadgeText}>{item.location}</Text>
-                            </View>
+                            </GlassBadge>
                         )}
                     </View>
                 </View>

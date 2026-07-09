@@ -45,6 +45,8 @@ import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 
 import PhotoModal from "./PhotoModal";
+import GlassBadge from "@/components/Shared/GlassBadge";
+import GlassPill from "@/components/Shared/GlassPill";
 import PostMediaItem from "./PostMediaItem";
 import { CommentItem, Comment, Reply, LikedComments } from "./CommentThread";
 import CommentInput from "./CommentInput";
@@ -421,9 +423,13 @@ export default function PostDetailsScreen() {
                                             />
                                         )}
                                     />
-                                    <View style={s.pageIndicator}>
+                                    <GlassPill
+                                        style={s.pageIndicator}
+                                        colorScheme="dark"
+                                        fallbackBackgroundColor="rgba(0,0,0,0.55)"
+                                    >
                                         <Text style={s.pageIndicatorText}>{currentMediaIndex + 1}/{mediaItems.length}</Text>
-                                    </View>
+                                    </GlassPill>
                                 </View>
                             ) : (
                                 <PostMediaItem
@@ -435,21 +441,21 @@ export default function PostDetailsScreen() {
                             )}
                             <View style={s.imageBadges} pointerEvents="none">
                                 {post.is_ai_generated && (
-                                    <View style={s.badge}>
+                                    <GlassBadge variant="overlay">
                                         <Sparkles size={11} color="#05f0d8" />
                                         <Text style={s.badgeText}>AI</Text>
-                                    </View>
+                                    </GlassBadge>
                                 )}
                                 {post.is_nft && (
-                                    <View style={[s.badge, s.nftBadge]}>
+                                    <GlassBadge variant="overlay-nft">
                                         <Text style={s.nftBadgeText}>{post.minted_count}/{post.total_supply} minted</Text>
-                                    </View>
+                                    </GlassBadge>
                                 )}
                                 {post.location && (
-                                    <View style={s.badge}>
+                                    <GlassBadge variant="overlay">
                                         <MapPin size={11} color="#fff" />
                                         <Text style={s.badgeText}>{post.location}</Text>
-                                    </View>
+                                    </GlassBadge>
                                 )}
                             </View>
                         </View>
@@ -631,10 +637,10 @@ const s = StyleSheet.create({
         position: "absolute",
         right: 12,
         top: 10,
-        backgroundColor: "rgba(0,0,0,0.55)",
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 10,
+        overflow: 'hidden',
     },
     pageIndicatorText: {
         color: "#fff",

@@ -5,8 +5,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import { Bell, Plus } from "lucide-react-native";
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
-
-const GlassViewComponent = Platform.OS === 'ios' ? require('expo-glass-effect').GlassView : View;
+import GlassSurface from "@/components/Shared/GlassSurface";
 
 type BtnProps = { isDark: boolean; onPress: () => void; badge?: React.ReactNode };
 
@@ -19,13 +18,13 @@ function CameraBtn({ isDark, onPress }: BtnProps) {
                 onPress={onPress}
                 style={{ width: 40, height: 40 }}
             >
-                <GlassViewComponent
+                <GlassSurface
                     style={styles.glassBtn}
                     glassEffectStyle="regular"
                     colorScheme={isDark ? "dark" : "light"}
                 >
                     <Plus size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
-                </GlassViewComponent>
+                </GlassSurface>
             </TouchableOpacity>
         );
     }
@@ -50,13 +49,13 @@ function BellBtn({ isDark, onPress, badge }: BtnProps) {
                 onPress={onPress}
                 style={{ position: 'relative', width: 40, height: 40 }}
             >
-                <GlassViewComponent
+                <GlassSurface
                     style={styles.glassBtn}
                     glassEffectStyle="regular"
                     colorScheme={isDark ? "dark" : "light"}
                 >
                     <Bell size={22} color={isDark ? "#fafafa" : "#1A1225"} />
-                </GlassViewComponent>
+                </GlassSurface>
                 {badge}
             </TouchableOpacity>
         );
