@@ -8,8 +8,6 @@ import getCountUnreadNotifications from "@/src/api/get.count.unread.notification
 
 const GlassViewComponent = Platform.OS === 'ios' ? require('expo-glass-effect').GlassView : View;
 
-// ─── Компоненти ПОЗА функцією — не ремаунтяться на кожен рендер ───────────────
-
 type BtnProps = { isDark: boolean; onPress: () => void; badge?: React.ReactNode };
 
 function CameraBtn({ isDark, onPress }: BtnProps) {
@@ -75,8 +73,6 @@ function BellBtn({ isDark, onPress, badge }: BtnProps) {
         </TouchableOpacity>
     );
 }
-
-// ─── Головний компонент ────────────────────────────────────────────────────────
 
 export default function HomeHeaderTitle() {
     const isDark = useColorScheme() === "dark";
@@ -152,7 +148,7 @@ const styles = StyleSheet.create({
         letterSpacing: -0.75,
         includeFontPadding: false,
         position: "absolute",
-        left: 0,
+        left: -17,
         right: 0,
         textAlign: "center",
         pointerEvents: "none",
