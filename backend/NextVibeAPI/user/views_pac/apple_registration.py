@@ -82,7 +82,10 @@ class AppleRegisterView(APIView):
             "avatar_url": None,
             "from_invite_code": request.data.get("from_invite_code"),
         })
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.error(f"[Apple] SERIALIZER ERRORS: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
         user = serializer.save()
 
         # Store the stable Apple user ID and correct auth_provider
