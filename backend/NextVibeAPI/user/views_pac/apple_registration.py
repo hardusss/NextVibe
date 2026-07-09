@@ -1,3 +1,4 @@
+import logging
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -6,6 +7,8 @@ from rest_framework.throttling import ScopedRateThrottle
 from user.src.validate_apple_token import validate
 from django.contrib.auth import get_user_model
 from user.src.notify_admin_new_user import notify_admin_new_user
+
+logger = logging.getLogger(__name__)
 
 
 class AppleRegisterView(APIView):
@@ -27,16 +30,19 @@ class AppleRegisterView(APIView):
     def post(self, request, *args, **kwargs):
         identity_token = request.data.get("identityToken")
         if not identity_token:
+            logger.error("[Apple] Request missing identityToken")
             return Response({"error": "Not found identity token"}, status=400)
 
         apple_data = validate(identity_token)
         if not apple_data:
+            logger.error("[Apple] Token validation failed (see validate_apple_token logs above)")
             return Response({"error": "Token not valid"}, status=400)
 
         apple_email = apple_data.get("email")
         apple_user_id = apple_data.get("sub")  # Apple's stable unique user identifier
 
         if not apple_user_id:
+            logger.error(f"[Apple] Token valid but missing 'sub'. Payload keys: {list(apple_data.keys())}")
             return Response({"error": "Cannot extract user info from token"}, status=400)
 
         User = get_user_model()
