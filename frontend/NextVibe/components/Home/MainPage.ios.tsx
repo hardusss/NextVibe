@@ -110,7 +110,7 @@ const getStyles = (theme: typeof darkTheme, headerHeight: number = 0) => {
         listContainer: {
             backgroundColor: theme.background,
             paddingBottom: 50,
-            paddingTop: headerHeight,
+            paddingTop: 0,
         },
         postContainer: {
             borderRadius: 22,
@@ -784,7 +784,7 @@ export default function MainPage() {
 
     const scrollHandler = useAnimatedScrollHandler({
         onScroll: (event) => {
-            const currentY = event.contentOffset.y;
+            const currentY = event.contentOffset.y + headerHeight;
             const diff = currentY - lastScrollY.value;
 
             if (currentY <= 0) {
@@ -797,7 +797,7 @@ export default function MainPage() {
             runOnJS(updateCache)(currentY);
         },
         onEndDrag: (event) => {
-            const currentY = event.contentOffset.y;
+            const currentY = event.contentOffset.y + headerHeight;
             if (currentY > headerHeight) {
                 if (translateY.value < -headerHeight / 2) {
                     translateY.value = withSpring(-headerHeight, { damping: 20, stiffness: 120 });
@@ -1134,13 +1134,16 @@ export default function MainPage() {
                     setFeedFlatListRef(ref as any);
                 }}
                 contentInsetAdjustmentBehavior="never"
+                contentInset={{ top: headerHeight }}
+                contentOffset={{ x: 0, y: -headerHeight }}
+                automaticallyAdjustContentInsets={false}
                 data={dataToRender}
                 onScroll={scrollHandler}
                 onContentSizeChange={(_w, contentHeight) => {
                     // Restore scroll once enough content has been rendered
                     if (pendingScrollRestore.current && contentHeight >= cachedScrollOffset) {
                         pendingScrollRestore.current = false;
-                        flatListRef.current?.scrollToOffset({ offset: cachedScrollOffset, animated: false });
+                        flatListRef.current?.scrollToOffset({ offset: cachedScrollOffset - headerHeight, animated: false });
                     }
                 }}
                 scrollEventThrottle={16}
