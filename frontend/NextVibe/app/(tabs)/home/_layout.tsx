@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import HomeHeaderTitle from "@/components/Home/HomeHeaderTitle";
+import { Platform } from "react-native";
 
 export default function HomeStackLayout() {
     return (
@@ -7,7 +8,7 @@ export default function HomeStackLayout() {
             <Stack.Screen
                 name="index"
                 options={{
-                    headerShown: true,
+                    headerShown: Platform.OS === 'android',
                     headerTransparent: true,
                     headerTitle: () => <HomeHeaderTitle />,
                     headerBackVisible: false,

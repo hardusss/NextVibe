@@ -13,7 +13,7 @@ import {
     Pressable,
     Linking,
 } from "react-native";
-// Header and StatusBar managed by parent navigation stack / root layout
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
@@ -48,6 +48,19 @@ import { setFeedFlatListRef } from "@/src/utils/feedScrollRef";
 import * as Haptics from 'expo-haptics';
 import { ShimmerSkeleton } from '@/components/Shared/motion';
 import EmptyState from '@/components/Shared/EmptyState';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import AnimatedReanimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    useAnimatedScrollHandler,
+    withTiming,
+    withSpring,
+    interpolate,
+    Extrapolate,
+    runOnJS
+} from "react-native-reanimated";
+import HomeHeaderTitle from "@/components/Home/HomeHeaderTitle";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -89,10 +102,14 @@ const lightTheme = {
     shadowColor: "rgba(124, 58, 237, 0.06)"
 };
 
-const getStyles = (theme: typeof darkTheme) => {
+const getStyles = (theme: typeof darkTheme, headerHeight: number = 0) => {
     return StyleSheet.create({
         container: { flex: 1, backgroundColor: theme.background },
-        listContainer: { backgroundColor: theme.background, paddingBottom: 50 },
+        listContainer: {
+            backgroundColor: theme.background,
+            paddingBottom: 50,
+            paddingTop: headerHeight,
+        },
         postContainer: {
             borderRadius: 22,
             padding: 18,
@@ -100,6 +117,8 @@ const getStyles = (theme: typeof darkTheme) => {
             backgroundColor: theme.cardBackground,
             marginBottom: 16,
             borderWidth: 1,
+            borderLeftWidth: 0,
+            borderRightWidth: 0,
             borderColor: theme.background === "#0A0410" ? "rgba(255, 255, 255, 0.06)" : "rgba(124, 58, 237, 0.08)",
             shadowColor: theme.shadowColor,
             shadowOffset: { width: 0, height: 8 },
@@ -158,7 +177,7 @@ const getStyles = (theme: typeof darkTheme) => {
         skeletonContainer: {
             marginBottom: 16, padding: 14, shadowColor: theme.shadowColor,
             shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1,
-            shadowRadius: 4, elevation: 3, position: "relative"
+            shadowRadius: 4, elevation: 3, position: "relative",
         },
         skeletonHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
         skeletonAvatar: {
@@ -342,7 +361,7 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
     onMediaSize?: (width: number, height: number) => void;
     onImagePress?: () => void;
 }) => {
-    const { preview } = getVideoUrls(item);
+    const { preview, isVideo: isVideoMedia } = getVideoUrls(item);
     const [showHeart, setShowHeart] = useState(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [showPreview] = useState<boolean>(false);
@@ -753,6 +772,56 @@ const PostItem = memo(({
 });
 
 export default function MainPage() {
+    const insets = useSafeAreaInsets();
+    const headerHeight = insets.top + 46;
+    const translateY = useSharedValue(0);
+    const lastScrollY = useSharedValue(0);
+
+    const updateCache = (y: number) => {
+        cachedScrollOffset = Math.max(0, y);
+    };
+
+    const scrollHandler = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            const currentY = event.contentOffset.y;
+            const diff = currentY - lastScrollY.value;
+
+            if (currentY <= 0) {
+                translateY.value = withTiming(0, { duration: 100 });
+            } else {
+                const nextVal = translateY.value - diff;
+                translateY.value = Math.max(-headerHeight, Math.min(0, nextVal));
+            }
+            lastScrollY.value = currentY;
+            runOnJS(updateCache)(currentY);
+        },
+        onEndDrag: (event) => {
+            const currentY = event.contentOffset.y;
+            if (currentY > headerHeight) {
+                if (translateY.value < -headerHeight / 2) {
+                    translateY.value = withSpring(-headerHeight, { damping: 20, stiffness: 120 });
+                } else {
+                    translateY.value = withSpring(0, { damping: 20, stiffness: 120 });
+                }
+            } else {
+                translateY.value = withSpring(0, { damping: 20, stiffness: 120 });
+            }
+        }
+    });
+
+    const animatedHeaderStyle = useAnimatedStyle(() => {
+        const opacity = interpolate(
+            translateY.value,
+            [-headerHeight, 0],
+            [0, 1],
+            Extrapolate.CLAMP
+        );
+        return {
+            transform: [{ translateY: translateY.value }],
+            opacity,
+        };
+    });
+
     const router = useRouter();
     const hasCached = cachedPosts !== null && cachedPosts.length > 0;
     const [posts, setPosts] = useState<Post[]>(cachedPosts ?? []);
@@ -766,7 +835,7 @@ export default function MainPage() {
     const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
-    const styles = getStyles(theme);
+    const styles = getStyles(theme, headerHeight);
     const [refreshing, setRefreshing] = useState(false);
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
@@ -1025,6 +1094,7 @@ export default function MainPage() {
 
     return (
         <View style={styles.container}>
+            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
             <Web3Toast
                 message={toastMessage}
                 visible={isToastVisible}
@@ -1057,16 +1127,14 @@ export default function MainPage() {
                 page="home"
             />
 
-            <FlatList
+            <AnimatedReanimated.FlatList
                 ref={(ref) => {
                     (flatListRef as any).current = ref;
-                    setFeedFlatListRef(ref);
+                    setFeedFlatListRef(ref as any);
                 }}
-                contentInsetAdjustmentBehavior="automatic"
+                contentInsetAdjustmentBehavior="never"
                 data={dataToRender}
-                onScroll={(e) => {
-                    cachedScrollOffset = Math.max(0, e.nativeEvent.contentOffset.y);
-                }}
+                onScroll={scrollHandler}
                 onContentSizeChange={(_w, contentHeight) => {
                     // Restore scroll once enough content has been rendered
                     if (pendingScrollRestore.current && contentHeight >= cachedScrollOffset) {
@@ -1101,6 +1169,22 @@ export default function MainPage() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListFooterComponent={!loading ? renderFooter : null}
             />
+
+            <AnimatedReanimated.View style={[
+                {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 100,
+                    height: headerHeight,
+                    paddingTop: insets.top - 4,
+                    paddingLeft: 16,
+                },
+                animatedHeaderStyle
+            ]}>
+                <HomeHeaderTitle />
+            </AnimatedReanimated.View>
         </View>
     );
 }

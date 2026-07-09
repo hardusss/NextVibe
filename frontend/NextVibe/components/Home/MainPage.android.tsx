@@ -101,6 +101,8 @@ const getStyles = (theme: typeof darkTheme) => {
             backgroundColor: theme.cardBackground,
             marginBottom: 16,
             borderWidth: 1,
+            borderLeftWidth: 0,
+            borderRightWidth: 0,
             borderColor: theme.background === "#0A0410" ? "rgba(255, 255, 255, 0.06)" : "rgba(124, 58, 237, 0.08)",
             shadowColor: theme.shadowColor,
             shadowOffset: { width: 0, height: 8 },
@@ -159,7 +161,7 @@ const getStyles = (theme: typeof darkTheme) => {
         skeletonContainer: {
             marginBottom: 16, padding: 14, shadowColor: theme.shadowColor,
             shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1,
-            shadowRadius: 4, elevation: 3, position: "relative"
+            shadowRadius: 4, elevation: 3, position: "relative",
         },
         skeletonHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
         skeletonAvatar: {
@@ -1024,7 +1026,7 @@ export default function MainPage() {
 
     return (
         <View style={styles.container}>
-            <StatusBar style="light" />
+            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
             <Web3Toast
                 message={toastMessage}
                 visible={isToastVisible}
