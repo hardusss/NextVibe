@@ -9,9 +9,12 @@ import {
     Animated,
     ScrollView,
     Linking,
+    Platform,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { BlurView } from "@react-native-community/blur";
+import GlassBadge from "@/components/Shared/GlassBadge";
+import GlassPill from "@/components/Shared/GlassPill";
+import GlassModalCard from "@/components/Shared/GlassModalCard";
 import {
     Sparkles,
     MapPin,
@@ -167,21 +170,29 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
         scale.setValue(OPEN_SCALE_FROM);
         cardOpacity.setValue(0);
         backdropOpacity.setValue(0);
-        Animated.parallel([
+        const animations = [
             Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
             Animated.spring(translateY, { toValue: 0, tension: 70, friction: 12, useNativeDriver: true }),
             Animated.spring(scale, { toValue: 1, tension: 70, friction: 12, useNativeDriver: true }),
-            Animated.timing(cardOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-        ]).start();
+        ];
+        if (Platform.OS !== 'ios') {
+            animations.push(Animated.timing(cardOpacity, { toValue: 1, duration: 220, useNativeDriver: true }));
+        } else {
+            cardOpacity.setValue(1);
+        }
+        Animated.parallel(animations).start();
     };
 
     const runCloseAnimation = (onDone: () => void) => {
-        Animated.parallel([
+        const animations = [
             Animated.timing(backdropOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
             Animated.timing(translateY, { toValue: CLOSE_TRANSLATE_Y, duration: 200, useNativeDriver: true }),
             Animated.timing(scale, { toValue: CLOSE_SCALE_TO, duration: 200, useNativeDriver: true }),
-            Animated.timing(cardOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-        ]).start(onDone);
+        ];
+        if (Platform.OS !== 'ios') {
+            animations.push(Animated.timing(cardOpacity, { toValue: 0, duration: 180, useNativeDriver: true }));
+        }
+        Animated.parallel(animations).start(onDone);
     };
 
     useEffect(() => {
@@ -219,27 +230,21 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
             statusBarTranslucent={false}
             onRequestClose={handleClose}
         >
-            <Animated.View style={[s.backdrop, { opacity: backdropOpacity }]} pointerEvents="auto">
+            <Animated.View style={[s.backdrop, Platform.OS === 'ios' && s.backdropIOS, { opacity: backdropOpacity }]} pointerEvents="auto">
                 <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
             </Animated.View>
 
             <Animated.View
-                style={[s.cardWrapper, { opacity: cardOpacity, transform: [{ translateY }, { scale }] }]}
+                style={[
+                    s.cardWrapper,
+                    Platform.OS === 'ios'
+                        ? { transform: [{ translateY }, { scale }] }
+                        : { opacity: cardOpacity, transform: [{ translateY }, { scale }] },
+                ]}
                 pointerEvents="box-none"
             >
                 <View style={s.glowWrapper}>
-                    <View style={s.card}>
-                        <BlurView
-                            style={StyleSheet.absoluteFillObject}
-                            blurType="dark"
-                            blurAmount={12}
-                            reducedTransparencyFallbackColor="#f4ebeb"
-                            pointerEvents="none"
-                        />
-                        <View
-                            style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]}
-                            pointerEvents="none"
-                        />
+                    <GlassModalCard style={s.card}>
 
                         {/* Header */}
                         <View style={s.postHeader}>
@@ -271,16 +276,28 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
 
                             <View style={s.headerActions}>
                                 {/* Edition pill */}
-                                <View style={s.editionPill}>
+                                <GlassPill
+                                    style={s.editionPill}
+                                    colorScheme="dark"
+                                    tintColor="rgba(168,85,247,0.15)"
+                                    fallbackBackgroundColor="rgba(168,85,247,0.15)"
+                                    fallbackBorderColor="rgba(168,85,247,0.3)"
+                                >
                                     <Text style={s.editionPillText}>
                                         #{item?.edition ?? 0} of {item?.total_supply ?? 50}
                                     </Text>
-                                </View>
+                                </GlassPill>
 
                                 <TouchableOpacity onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                                    <View style={s.closeBtn}>
+                                    <GlassPill
+                                        style={s.closeBtn}
+                                        colorScheme="dark"
+                                        fallbackBackgroundColor="rgba(255,255,255,0.08)"
+                                        fallbackBorderColor="rgba(255,255,255,0.12)"
+                                        isInteractive
+                                    >
                                         <X size={15} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
-                                    </View>
+                                    </GlassPill>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -315,24 +332,24 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
                                         {/* Badges */}
                                         <View style={s.imageBadges}>
                                             {item.is_ai_generated && (
-                                                <View style={s.badge}>
+                                                <GlassBadge variant="overlay">
                                                     <Sparkles size={11} color="#05f0d8" />
                                                     <Text style={s.badgeText}>AI Generated</Text>
-                                                </View>
+                                                </GlassBadge>
                                             )}
                                             {item.is_nft && (
-                                                <View style={[s.badge, s.nftBadge]}>
+                                                <GlassBadge variant="overlay-nft">
                                                     <Gem size={11} color="#d8b4fe" />
                                                     <Text style={s.nftBadgeText}>
                                                         {item.minted_count}/{item.total_supply} minted
                                                     </Text>
-                                                </View>
+                                                </GlassBadge>
                                             )}
                                             {item.location && (
-                                                <View style={s.badge}>
+                                                <GlassBadge variant="overlay">
                                                     <MapPin size={11} color="#fff" />
                                                     <Text style={s.badgeText}>{item.location}</Text>
-                                                </View>
+                                                </GlassBadge>
                                             )}
                                         </View>
                                     </View>
@@ -430,7 +447,7 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
                                 </View>
                             </ScrollView>
                         ) : null}
-                    </View>
+                    </GlassModalCard>
                 </View>
             </Animated.View>
         </Modal>
@@ -442,6 +459,9 @@ const s = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         backgroundColor: "rgba(0,0,0,0.55)",
     },
+    backdropIOS: {
+        backgroundColor: "rgba(0,0,0,0.28)",
+    },
     cardWrapper: {
         flex: 1,
         justifyContent: "center",
@@ -452,9 +472,9 @@ const s = StyleSheet.create({
         width: CARD_WIDTH,
         borderRadius: 24,
         shadowColor: "#a855f7",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 28,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 24,
         elevation: 20,
     },
     card: {
@@ -489,6 +509,11 @@ const s = StyleSheet.create({
         fontFamily: "Dank Mono Bold",
         includeFontPadding: false,
         textAlignVertical: "center",
+        ...(Platform.OS === 'ios' ? {
+            textShadowColor: 'rgba(0,0,0,0.45)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 3,
+        } : {}),
     },
     badgeWrapper: {
         width: 15,
@@ -502,12 +527,10 @@ const s = StyleSheet.create({
         gap: 8,
     },
     editionPill: {
-        backgroundColor: "rgba(168, 85, 247, 0.15)",
-        borderWidth: 1,
-        borderColor: "rgba(168, 85, 247, 0.3)",
         borderRadius: 12,
         paddingHorizontal: 10,
         paddingVertical: 4,
+        overflow: 'hidden',
     },
     editionPillText: {
         color: "#d8b4fe",
@@ -519,11 +542,9 @@ const s = StyleSheet.create({
         width: 30,
         height: 30,
         borderRadius: 15,
-        backgroundColor: "rgba(255,255,255,0.08)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.12)",
         justifyContent: "center",
         alignItems: "center",
+        overflow: 'hidden',
     },
     imageWrapper: {
         width: "100%",
@@ -586,6 +607,11 @@ const s = StyleSheet.create({
         includeFontPadding: false,
         letterSpacing: 0.1,
         marginBottom: 4,
+        ...(Platform.OS === 'ios' ? {
+            textShadowColor: 'rgba(0,0,0,0.5)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 4,
+        } : {}),
     },
     divider: {
         height: 1,

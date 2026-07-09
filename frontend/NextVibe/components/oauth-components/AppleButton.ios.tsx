@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Svg, { Path } from 'react-native-svg';
+import { GlassView } from 'expo-glass-effect';
 import AppleSignIn from '@/src/api/apple.sign.in';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -152,6 +153,12 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
                         { opacity: pressed ? 0.88 : 1 },
                     ]}
                 >
+                    <GlassView
+                        style={StyleSheet.absoluteFill}
+                        glassEffectStyle="regular"
+                        colorScheme="dark"
+                        isInteractive
+                    />
                     {loading ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
@@ -173,10 +180,7 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-        // Tinted surface that sits on top of #0A0410 without looking like a flat black hole
-        backgroundColor: '#170F24',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.09)',
+        overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.35,

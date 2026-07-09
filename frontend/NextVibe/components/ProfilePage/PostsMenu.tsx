@@ -8,12 +8,15 @@ import {
     Text,
     Animated,
     Easing,
+    Platform,
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getMenuPosts from "@/src/api/menu.posts";
 import { useIsFocused } from "@react-navigation/native";
 
 import { BlurView } from "@react-native-community/blur";
+import { GlassView } from 'expo-glass-effect';
+import GlassBadge from "@/components/Shared/GlassBadge";
 import { Image } from 'expo-image';
 import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -378,12 +381,16 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
 
                                 {isPending && isFocused && (
                                     <View style={styles.moderationOverlay}>
-                                        <BlurView
-                                            style={StyleSheet.absoluteFill}
-                                            blurType="dark"
-                                            blurAmount={14}
-                                            pointerEvents="none"
-                                        />
+                                        {Platform.OS === 'ios' ? (
+                                            <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
+                                        ) : (
+                                            <BlurView
+                                                style={StyleSheet.absoluteFill}
+                                                blurType="dark"
+                                                blurAmount={14}
+                                                pointerEvents="none"
+                                            />
+                                        )}
                                         <View style={styles.moderationContent}>
                                             <View style={styles.moderationIconWrap}>
                                                 <Clock3
@@ -405,24 +412,24 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                 {hasMedia && isApproved && (
                                     <View style={styles.badgeRow}>
                                         {isMediaVideo && (
-                                            <View style={styles.badge}>
+                                            <GlassBadge variant="grid" iconOnly>
                                                 <Video size={11} color="rgba(255,255,255,0.9)" strokeWidth={2} />
-                                            </View>
+                                            </GlassBadge>
                                         )}
                                         {item.is_nft && (
-                                            <View style={[styles.badge, styles.badgeNft]}>
+                                            <GlassBadge variant="grid-nft" iconOnly>
                                                 <Gem size={11} color="#c4b5fd" strokeWidth={2} />
-                                            </View>
+                                            </GlassBadge>
                                         )}
                                         {item.is_ai_generated && (
-                                            <View style={[styles.badge, styles.badgeAi]}>
+                                            <GlassBadge variant="grid-ai" iconOnly>
                                                 <Sparkles size={11} color="#05f0d8" strokeWidth={2} />
-                                            </View>
+                                            </GlassBadge>
                                         )}
                                         {item.is_luma_event && (
-                                            <View style={[styles.badge, styles.badgeEvent]}>
+                                            <GlassBadge variant="grid-event" iconOnly>
                                                 <Calendar size={11} color="#d8b4fe" strokeWidth={2} />
-                                            </View>
+                                            </GlassBadge>
                                         )}
                                     </View>
                                 )}

@@ -10,8 +10,10 @@ import {
     useColorScheme,
     Animated,
     Pressable,
+    Platform,
 } from 'react-native';
 import { Wallet } from 'lucide-react-native';
+import { GlassView } from 'expo-glass-effect';
 import { useWallet, useWalletStore } from '@lazorkit/wallet-mobile-adapter';
 import walletSignIn from '@/src/api/wallet.sign.in';
 import saveWallet from '@/src/api/save.wallet';
@@ -191,10 +193,10 @@ export default function ButtonLazorKitSignIn({
     };
 
     const ACCENT = '#A78BFA';
-    const bgColor = isDark ? '#170F24' : '#F3EEFF'; 
-    const borderColor = isDark ? 'rgba(167, 139, 250, 0.4)' : 'rgba(124, 58, 237, 0.3)';
     const iconColor = isDark ? ACCENT : '#6D28D9';
     const textColor = isDark ? '#FFFFFF' : '#4C1D95';
+    const androidBgColor = isDark ? '#170F24' : '#F3EEFF';
+    const androidBorderColor = isDark ? 'rgba(167, 139, 250, 0.4)' : 'rgba(124, 58, 237, 0.3)';
 
     return (
         <View>
@@ -206,13 +208,22 @@ export default function ButtonLazorKitSignIn({
                     disabled={isLoading}
                     style={({ pressed }) => [
                         styles.button,
-                        {
-                            backgroundColor: bgColor,
-                            borderColor: borderColor,
-                            opacity: pressed ? 0.88 : 1,
+                        Platform.OS !== 'ios' && {
+                            backgroundColor: androidBgColor,
+                            borderColor: androidBorderColor,
                         },
+                        { opacity: pressed ? 0.88 : 1 },
                     ]}
                 >
+                    {Platform.OS === 'ios' && (
+                        <GlassView
+                            style={StyleSheet.absoluteFill}
+                            glassEffectStyle="regular"
+                            colorScheme={isDark ? 'dark' : 'light'}
+                            tintColor={isDark ? 'rgba(167,139,250,0.15)' : 'rgba(124,58,237,0.1)'}
+                            isInteractive
+                        />
+                    )}
                     {isLoading ? (
                         <ActivityIndicator size="small" color={iconColor} />
                     ) : (
@@ -237,9 +248,10 @@ const styles = StyleSheet.create({
     button: {
         height: 52,
         borderRadius: 14,
-        borderWidth: 1.5,
+        borderWidth: Platform.OS === 'ios' ? 0 : 1.5,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
         shadowColor: '#A78BFA',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.25,

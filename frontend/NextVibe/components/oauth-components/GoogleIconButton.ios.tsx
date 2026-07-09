@@ -7,6 +7,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { Pressable, ActivityIndicator, StyleSheet, View, Animated } from 'react-native';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Svg, { Path } from 'react-native-svg';
+import { GlassView } from 'expo-glass-effect';
 import GoogleSignIn from '@/src/api/google.sign.in';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -158,6 +159,12 @@ export default function GoogleIconButton({ page }: { page: string }) {
                         { opacity: pressed ? 0.88 : 1 },
                     ]}
                 >
+                    <GlassView
+                        style={StyleSheet.absoluteFill}
+                        glassEffectStyle="regular"
+                        colorScheme="dark"
+                        isInteractive
+                    />
                     {loading ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
@@ -179,10 +186,7 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-        // Same tinted surface as AppleButtonAuth so both icon buttons read as one set
-        backgroundColor: '#170F24',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.09)',
+        overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.35,

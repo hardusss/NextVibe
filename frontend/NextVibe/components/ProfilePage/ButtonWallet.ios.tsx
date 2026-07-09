@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import useWalletAddress from "@/hooks/useWalletAddress";
 import usePortfolio from "@/hooks/usePortfolio";
 import { WalletMinimal } from "lucide-react-native";
-import { GlassView } from 'expo-glass-effect';
+import { GlassSurface } from '@/components/Shared/GlassSurface';
 
 const ButtonWallet = () => {
     const router = useRouter();
@@ -48,7 +48,7 @@ const ButtonWallet = () => {
                 activeOpacity={1}
                 style={styles.touchable}
             >
-                <GlassView
+                <GlassSurface
                     style={styles.glass}
                     glassEffectStyle="regular"
                     colorScheme={isDark ? "dark" : "light"}
@@ -71,7 +71,7 @@ const ButtonWallet = () => {
                             </Text>
                         )}
                     </View>
-                </GlassView>
+                </GlassSurface>
             </TouchableOpacity>
         </Animated.View>
     );
