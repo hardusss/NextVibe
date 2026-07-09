@@ -4,6 +4,7 @@ import {
     Switch, useColorScheme, Dimensions, ActivityIndicator,
     KeyboardAvoidingView, Platform, Animated, Easing, ScrollView, StatusBar, Vibration
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { LinearGradient } from 'expo-linear-gradient';
@@ -100,6 +101,7 @@ export default function PostCreate() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const scheme = useColorScheme();
+    const insets = useSafeAreaInsets();
     const c = scheme === 'dark' ? dark : light;
 
     const rawUrl = (() => {
@@ -220,7 +222,7 @@ export default function PostCreate() {
                 confirmLabel="Discard"
                 confirmGradient={['#F87171', '#EF4444']} />
 
-            <View style={[s.header, { borderBottomColor: c.sep }]}>
+            <View style={[s.header, { borderBottomColor: c.sep, paddingTop: Platform.OS === 'ios' ? insets.top + 14 : 18 }]}>
                 <TouchableOpacity onPress={handleLeave}
                     style={[s.backBtn, { backgroundColor: c.sep }]}
                     hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
