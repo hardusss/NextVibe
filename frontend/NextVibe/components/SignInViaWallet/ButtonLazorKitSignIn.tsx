@@ -78,8 +78,6 @@ export default function ButtonLazorKitSignIn({
 
     const handleWalletConnected = async (address: string) => {
         try {
-            await saveWallet(address);
-
             const backendResponse = await walletSignIn({
                 pubkey: address,
                 signature: new Uint8Array(64),
@@ -91,6 +89,12 @@ export default function ButtonLazorKitSignIn({
                 await storage.setItem('id', `${backendResponse.user_id}`);
                 await storage.setItem('access', backendResponse.token.access);
                 await storage.setItem('refresh', backendResponse.token.refresh);
+
+                try {
+                    await saveWallet(address);
+                } catch (saveErr) {
+                    console.warn('Failed to call saveWallet after wallet connection:', saveErr);
+                }
             }
 
             if (!isMounted.current) return;
@@ -181,6 +185,12 @@ export default function ButtonLazorKitSignIn({
                 await storage.setItem('id', `${backendResponse.user_id}`);
                 await storage.setItem('access', backendResponse.token.access);
                 await storage.setItem('refresh', backendResponse.token.refresh);
+
+                try {
+                    await saveWallet(address);
+                } catch (saveErr) {
+                    console.warn('Failed to call saveWallet after invite registration:', saveErr);
+                }
             }
 
             pendingAddressRef.current = null;

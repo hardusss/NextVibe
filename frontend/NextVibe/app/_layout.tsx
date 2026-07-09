@@ -25,8 +25,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
 import { StatusBar } from "expo-status-bar";
+import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
+
+setupAxiosInterceptor();
 
 const chain = 'solana:mainnet';
+
 const endpoint = 'https://api.nextvibe.io/api/v1/wallets/rpc/';
 const identity = {
     name: 'NextVibe',
