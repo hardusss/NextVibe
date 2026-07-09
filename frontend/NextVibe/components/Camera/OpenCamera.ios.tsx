@@ -8,6 +8,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { X, SwitchCamera, Zap, ZapOff, Timer, Grid3x3 } from "lucide-react-native";
 import { StatusBar } from "expo-status-bar";
+import { GlassView } from 'expo-glass-effect';
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -18,6 +19,37 @@ const ACCENT = "rgba(196,167,255,0.95)";
 const ACCENT_BG = "rgba(167,139,250,0.2)";
 const ACCENT_BORDER = "rgba(196,167,255,0.4)";
 const FOCUS_COLOR = "rgba(255,213,0,0.95)";
+
+function CameraGlassButton({
+    onPress,
+    active,
+    hitSlop,
+    children,
+}: {
+    onPress: () => void;
+    active?: boolean;
+    hitSlop?: { top: number; bottom: number; left: number; right: number };
+    children: React.ReactNode;
+}) {
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            hitSlop={hitSlop}
+            activeOpacity={0.8}
+            style={[styles.glassBtnWrap, active && styles.glassBtnWrapActive]}
+        >
+            <GlassView
+                style={styles.iconBtnGlass}
+                glassEffectStyle="regular"
+                colorScheme="dark"
+                isInteractive
+                tintColor={active ? ACCENT_BG : undefined}
+            >
+                {children}
+            </GlassView>
+        </TouchableOpacity>
+    );
+}
 const BG_SOLID = "#0A0410";
 
 type FlashMode = 'off' | 'on' | 'auto';
@@ -304,37 +336,36 @@ export default function CameraScreen() {
                     <X size={22} color={WHITE} strokeWidth={1.8} />
                 </TouchableOpacity>
                 <View style={styles.topIcons}>
-                    <TouchableOpacity
+                    <CameraGlassButton
                         onPress={() => setFlash(f => f === 'off' ? 'on' : f === 'on' ? 'auto' : 'off')}
+                        active={flash !== 'off'}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        style={[styles.iconBtn, flash !== 'off' && styles.iconBtnActive]}
                     >
                         {flash === 'on' ? <Zap size={17} color="#FFD600" strokeWidth={1.8} /> :
                             flash === 'auto' ? <><Zap size={17} color={ACCENT} strokeWidth={1.8} /><Text style={styles.iconBtnLabel}>A</Text></> :
                                 <ZapOff size={17} color={WHITE_DIM} strokeWidth={1.8} />}
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                    </CameraGlassButton>
+                    <CameraGlassButton
                         onPress={() => setTimer(t => t === 0 ? 3 : t === 3 ? 10 : 0)}
+                        active={timer > 0}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        style={[styles.iconBtn, timer > 0 && styles.iconBtnActive]}
                     >
                         <Timer size={17} color={timer > 0 ? ACCENT : WHITE_DIM} strokeWidth={1.8} />
                         {timer > 0 && <Text style={styles.iconBtnLabel}>{timer}s</Text>}
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                    </CameraGlassButton>
+                    <CameraGlassButton
                         onPress={() => setGrid(v => !v)}
+                        active={grid}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        style={[styles.iconBtn, grid && styles.iconBtnActive]}
                     >
                         <Grid3x3 size={17} color={grid ? ACCENT : WHITE_DIM} strokeWidth={1.8} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                    </CameraGlassButton>
+                    <CameraGlassButton
                         onPress={() => setAspect(a => a === 'full' ? '4:3' : a === '4:3' ? '1:1' : 'full')}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        style={styles.iconBtn}
                     >
                         <Text style={styles.aspectText}>{aspect === 'full' ? '9:16' : aspect}</Text>
-                    </TouchableOpacity>
+                    </CameraGlassButton>
                 </View>
             </View>
 
@@ -406,10 +437,18 @@ export default function CameraScreen() {
 
                 <TouchableOpacity
                     onPress={() => setCameraSide(s => s === "back" ? "front" : "back")}
-                    style={styles.flipBtn}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    activeOpacity={0.8}
+                    style={styles.flipBtnWrap}
                 >
-                    <SwitchCamera size={24} color={WHITE} strokeWidth={1.5} />
+                    <GlassView
+                        style={styles.flipBtnGlass}
+                        glassEffectStyle="regular"
+                        colorScheme="dark"
+                        isInteractive
+                    >
+                        <SwitchCamera size={24} color={WHITE} strokeWidth={1.5} />
+                    </GlassView>
                 </TouchableOpacity>
             </View>
         </View>
@@ -435,13 +474,23 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     topIcons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    iconBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 3,
-        paddingHorizontal: 10, paddingVertical: 7,
-        borderRadius: 20, backgroundColor: WHITE_FAINT,
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    glassBtnWrap: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
-    iconBtnActive: { backgroundColor: ACCENT_BG, borderColor: ACCENT_BORDER },
+    glassBtnWrapActive: {
+        borderColor: ACCENT_BORDER,
+    },
+    iconBtnGlass: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderRadius: 20,
+    },
     iconBtnLabel: { fontFamily: 'Dank Mono', fontSize: 10, color: ACCENT },
     aspectText: { fontFamily: 'Dank Mono', fontSize: 11, color: WHITE_DIM },
 
@@ -468,11 +517,20 @@ const styles = StyleSheet.create({
         paddingBottom: Platform.OS === 'ios' ? 28 : 12,
         backgroundColor: 'rgba(0,0,0,0.55)',
     },
-    flipBtn: {
-        width: 50, height: 50, borderRadius: 25,
-        backgroundColor: WHITE_FAINT,
-        justifyContent: 'center', alignItems: 'center',
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    flipBtnWrap: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+    },
+    flipBtnGlass: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     shutterOuter: {
         width: 80, height: 80, borderRadius: 40,

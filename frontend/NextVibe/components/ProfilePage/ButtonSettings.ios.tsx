@@ -2,7 +2,7 @@ import { Animated, TouchableOpacity, useColorScheme, StyleSheet } from "react-na
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Menu } from 'lucide-react-native';
-import { GlassView } from 'expo-glass-effect';
+import { GlassSurface } from '@/components/Shared/GlassSurface';
 
 const ButtonSettings = () => {
     const [scale] = useState(new Animated.Value(1));
@@ -34,7 +34,7 @@ const ButtonSettings = () => {
                 activeOpacity={1}
                 style={styles.touchable}
             >
-                <GlassView
+                <GlassSurface
                     style={styles.glass}
                     glassEffectStyle="regular"
                     colorScheme={isDark ? "dark" : "light"}
@@ -44,7 +44,7 @@ const ButtonSettings = () => {
                         color={isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)"}
                         size={20}
                     />
-                </GlassView>
+                </GlassSurface>
             </TouchableOpacity>
         </Animated.View>
     );

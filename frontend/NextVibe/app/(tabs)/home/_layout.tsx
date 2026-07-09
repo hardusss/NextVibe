@@ -8,7 +8,7 @@ export default function HomeStackLayout() {
             <Stack.Screen
                 name="index"
                 options={{
-                    headerShown: Platform.OS === 'android',
+                    headerShown: false,
                     headerTransparent: true,
                     headerTitle: () => <HomeHeaderTitle />,
                     headerBackVisible: false,
