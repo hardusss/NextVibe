@@ -11,15 +11,16 @@ import {
   useColorScheme,
   Platform,
 } from 'react-native';
-import { 
-  Heart, 
-  MessageSquarePlus, 
-  UserPlus, 
-  ArrowDownLeft, 
-  Trash2, 
-  ShieldCheck, 
-  ShieldAlert, 
-  CalendarPlus, 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Heart,
+  MessageSquarePlus,
+  UserPlus,
+  ArrowDownLeft,
+  Trash2,
+  ShieldCheck,
+  ShieldAlert,
+  CalendarPlus,
   CalendarCheck,
   ArrowLeft,
   BellOff
@@ -78,7 +79,7 @@ const icons = {
   }
 };
 
-type NotificationType = 
+type NotificationType =
   | 'like'
   | 'comment'
   | 'comment_reply'
@@ -137,7 +138,7 @@ const getStyles = (isDarkTheme: boolean, themeColors: any) =>
       color: themeColors.text,
       fontSize: 22,
       fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+      includeFontPadding: false,
       letterSpacing: 0.5,
     },
     notificationItem: {
@@ -208,7 +209,7 @@ includeFontPadding:false,
     },
     username: {
       fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+      includeFontPadding: false,
     },
     notificationSubText: {
       color: themeColors.textSecondary,
@@ -222,9 +223,9 @@ includeFontPadding:false,
       marginTop: 4,
     },
     noNotificationsContainer: {
-        paddingTop: 100,
-        alignItems: 'center',
-        justifyContent: 'center'
+      paddingTop: 100,
+      alignItems: 'center',
+      justifyContent: 'center'
     },
     noNotificationsText: {
       color: themeColors.textSecondary,
@@ -233,7 +234,7 @@ includeFontPadding:false,
       fontSize: 16,
     },
     skeletonContainer: {
-        paddingTop: 8,
+      paddingTop: 8,
     },
     skeletonRow: {
       flexDirection: 'row',
@@ -299,14 +300,15 @@ includeFontPadding:false,
       lineHeight: 18,
     },
     replyText: {
-      color: themeColors.text, 
+      color: themeColors.text,
       fontSize: 14,
-      marginTop: 4, 
+      marginTop: 4,
       lineHeight: 19,
     },
   });
 
 export default function NotificationsListPage() {
+  const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadMore, setLoadMore] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -320,7 +322,7 @@ export default function NotificationsListPage() {
     background: 'transparent',
     text: isDarkTheme ? '#F1F5F9' : '#1E293B',
     textSecondary: isDarkTheme ? '#94A3B8' : '#64748B',
-    border: isDarkTheme 
+    border: isDarkTheme
       ? 'rgba(255, 255, 255, 0.15)'
       : 'rgba(220, 220, 220, 0.5)',
     unreadBorder: isDarkTheme
@@ -345,15 +347,15 @@ export default function NotificationsListPage() {
 
     try {
       const response = await getNotifications(pageNum);
-      
+
       if (isInitial) {
         setNotifications(response.data.notify);
       } else {
         setNotifications(prev => [...prev, ...response.data.notify]);
       }
-      
+
       setLoadMore(response.data.load_more);
-      
+
       if (response.data.load_more) {
         setPage(pageNum + 1);
       }
@@ -393,7 +395,7 @@ export default function NotificationsListPage() {
     setTimeout(() => {
       fetchReadNotifications();
     }, 2000)
-    
+
   }, []);
 
   const handleEndReached = () => {
@@ -431,21 +433,21 @@ export default function NotificationsListPage() {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return date.toLocaleDateString();
   };
 
   const renderAvatar = (notification: Notification) => {
     const iconData = icons[notification.notification_type] || icons.follow;
-    
+
     const systemNotifications = ['deleted_post', 'moderation_success', 'moderation_fail', 'revived_transaction'];
     const isSystemNotification = systemNotifications.includes(notification.notification_type);
 
     if (isSystemNotification) {
-      const bgColor = iconData.color.length === 9 
+      const bgColor = iconData.color.length === 9
         ? iconData.color.slice(0, 7) + '30'
         : iconData.color + '30';
-      
+
       return (
         <View style={styles.avatarContainer}>
           <View style={[styles.systemAvatar, { backgroundColor: bgColor }]}>
@@ -518,26 +520,26 @@ export default function NotificationsListPage() {
 
           <View style={styles.notificationTextContainer}>
             <View style={styles.notificationTextRow}>
-                
+
               <Text style={styles.notificationText}>
                 {item.sender__username && (
-                    <Text style={styles.username}>
-                        {item.sender__username}{' '}
-                    </Text>
+                  <Text style={styles.username}>
+                    {item.sender__username}{' '}
+                  </Text>
                 )}
 
-               
+
                 {main.replace(item.sender__username, '').trim()}
               </Text>
               {isUnread && <View style={styles.unreadIndicator} />}
             </View>
-            
-           {sub && (
+
+            {sub && (
               <Text style={styles.notificationSubText} numberOfLines={2}>
                 {sub}
               </Text>
             )}
-            
+
             {item.notification_type === 'comment_reply' && (
               <View style={styles.replyQuoteBlock}>
                 {item.comment__content && (
@@ -552,19 +554,19 @@ export default function NotificationsListPage() {
                 )}
               </View>
             )}
-            
+
             {item.notification_type === 'comment' && item.comment__content && (
               <Text style={styles.notificationSubText} numberOfLines={2}>
                 "{item.comment__content}"
               </Text>
             )}
-            
+
             {item.post__about && (
               <Text style={styles.notificationSubText} numberOfLines={1}>
                 Post: {item.post__about}
               </Text>
             )}
-            
+
             <Text style={styles.timestamp}>
               {formatTimestamp(item.created_at)}
             </Text>
@@ -603,12 +605,12 @@ export default function NotificationsListPage() {
     if (notifications.length === 0) {
       return (
         <View style={styles.noNotificationsContainer}>
-            <BellOff size={64} color={themeColors.textSecondary} strokeWidth={1.5} />
-            <Text style={styles.noNotificationsText}>No notifications yet</Text>
+          <BellOff size={64} color={themeColors.textSecondary} strokeWidth={1.5} />
+          <Text style={styles.noNotificationsText}>No notifications yet</Text>
         </View>
       );
     }
-    
+
     return null;
   };
 
@@ -622,8 +624,8 @@ export default function NotificationsListPage() {
       style={{ flex: 1 }}
     >
       <StatusBar backgroundColor={isDarkTheme ? "#0A0410" : "#FFFFFF"} />
-      
-      <View style={styles.header}>
+
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top + 16 : 16 }]}>
         <View style={styles.titleWrapper}>
           <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()}>
             <ArrowLeft

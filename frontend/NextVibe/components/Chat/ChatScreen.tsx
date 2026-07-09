@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  FlatList, 
-  TextInput, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
+import {
+  View,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
   Platform,
   useColorScheme,
   StyleSheet,
@@ -14,6 +14,7 @@ import {
   ScrollView,
   StatusBar
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, X, Camera, Send } from 'lucide-react-native';
 import { Image as ExpoImage } from 'expo-image';
 import EmptyState from '../Shared/EmptyState';
@@ -68,23 +69,24 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
-  const styles = getStyles(isDark);
+  const insets = useSafeAreaInsets();
+  const styles = getStyles(isDark, insets);
 
   const fetchMessages = async (loadMore = false) => {
     if (loading || (!hasMore && loadMore)) return;
-    
+
     setLoading(true);
 
     try {
       const response = await getMessages(+id, loadMore ? lastMessageId : undefined);
       const newMessages = response;
-      
+
       if (loadMore) {
         setMessages(prev => [...prev, ...newMessages]);
       } else {
         setMessages(newMessages);
       }
-      
+
       setHasMore(newMessages.length > 0);
       if (newMessages.length > 0) {
         setLastMessageId(newMessages[newMessages.length - 1].message_id);
@@ -110,7 +112,7 @@ export default function ChatScreen() {
       setUserDetailsLoading(true);
       try {
         const details = await getUserDetail(+userId);
-        setUserDetails(details || { 
+        setUserDetails(details || {
           username: 'User',
           avatar: '',
           created_at: new Date().toISOString(),
@@ -134,7 +136,7 @@ export default function ChatScreen() {
   const handleCameraPress = async () => {
     setIsMediaPickerVisible(false);
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
+
     if (status !== 'granted') {
       alert('Sorry, we need camera permissions to make this work!');
       return;
@@ -154,7 +156,7 @@ export default function ChatScreen() {
   const handleGalleryPress = async () => {
     setIsMediaPickerVisible(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+
     if (status !== 'granted') {
       alert('Sorry, we need gallery permissions to make this work!');
       return;
@@ -173,9 +175,9 @@ export default function ChatScreen() {
 
   const sendMessage = async () => {
     if (!text.trim() && selectedMedia.length === 0) return;
-    
+
     const tempMessage: Message = {
-      message_id: Date.now(), 
+      message_id: Date.now(),
       content: text.trim(),
       sender_id: userIdState!,
       created_at: new Date().toISOString(),
@@ -187,10 +189,10 @@ export default function ChatScreen() {
     };
 
     setMessages(prev => [tempMessage, ...prev]);
-    
+
     const messageText = text.trim();
     const mediaToSend = [...selectedMedia];
-    
+
     setText('');
     setSelectedMedia([]);
 
@@ -210,7 +212,7 @@ export default function ChatScreen() {
         setMessages(prev => {
           const exists = prev.some(msg => msg.message_id === data.message_id);
           if (exists) return prev;
-          
+
           return [{
             message_id: data.message_id,
             sender_id: data.sender_id,
@@ -232,7 +234,7 @@ export default function ChatScreen() {
       fetchUserDetails();
     }
   }, [userId]);
-  
+
   useEffect(() => {
     if (id) {
       fetchMessages();
@@ -248,49 +250,49 @@ export default function ChatScreen() {
 
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'android' ? 60 : 0}
       style={styles.container}
     >
-      <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/>  
+      <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"} />
       <View style={{ flex: 1 }}>
         <View style={styles.navbar}>
-          <TouchableOpacity 
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+          <TouchableOpacity
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             onPress={() => router.back()}
             style={styles.backButton}
           >
             <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-            style={styles.userInfo} 
-            onPress={() => router.push({ 
-              pathname: "/user-profile", 
-              params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}`} 
+          <TouchableOpacity
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            style={styles.userInfo}
+            onPress={() => router.push({
+              pathname: "/user-profile",
+              params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}` }
             })}
           >
-            <ExpoImage 
-              source={{ 
-                uri: userDetails?.avatar 
-                  ? `${userDetails.avatar}` 
+            <ExpoImage
+              source={{
+                uri: userDetails?.avatar
+                  ? `${userDetails.avatar}`
                   : `https://media.nextvibe.io/images/default.png`
-              }} 
-              style={styles.headerAvatar} 
+              }}
+              style={styles.headerAvatar}
             />
-            <View style={{flexDirection: "row", "alignItems": "center"}}>
-                <Text style={[styles.headerUsername, {color: isDark ?  "white" : "black" }]}>{userDetails?.username}</Text>
-                {userDetails?.official ? (
-                    <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={false} size={24}/>
-                ) : null}
+            <View style={{ flexDirection: "row", "alignItems": "center" }}>
+              <Text style={[styles.headerUsername, { color: isDark ? "white" : "black" }]}>{userDetails?.username}</Text>
+              {userDetails?.official ? (
+                <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={false} size={24} />
+              ) : null}
             </View>
           </TouchableOpacity>
 
           <View style={styles.rightPlaceholder} />
         </View>
-        
+
         {loading && messages.length === 0 ? (
           <ActivityIndicator style={styles.loading} color="#00CED1" />
         ) : messages.length === 0 ? (
@@ -323,18 +325,18 @@ export default function ChatScreen() {
         <View style={[styles.inputContainer, Platform.OS === 'android' && { paddingBottom: 10 }]}>
           <View style={styles.mediaInputRow}>
             {selectedMedia.length > 0 && (
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 style={styles.previewList}
                 showsHorizontalScrollIndicator={false}
               >
                 {selectedMedia.map((media, index) => (
                   <View key={index} style={styles.previewContainer}>
                     <Image source={{ uri: media.uri }} style={styles.previewImage} />
-                    <TouchableOpacity 
-                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+                    <TouchableOpacity
+                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                       style={styles.removeButton}
-                      onPress={() => setSelectedMedia(prev => 
+                      onPress={() => setSelectedMedia(prev =>
                         prev.filter((_, i) => i !== index)
                       )}
                     >
@@ -345,24 +347,24 @@ export default function ChatScreen() {
               </ScrollView>
             )}
           </View>
-            
+
           <View style={styles.inputRow}>
             <BlurView
               intensity={isDark ? 30 : 90}
               tint={isDark ? 'dark' : 'light'}
               style={styles.blurViewAbsolute}
             />
-            <TouchableOpacity 
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-              onPress={pickMedia} 
+            <TouchableOpacity
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              onPress={pickMedia}
               style={styles.mediaButton}
             >
-              <Camera 
-                size={24} 
-                color={isDark ? '#A09CB8' : '#333'} 
+              <Camera
+                size={24}
+                color={isDark ? '#A09CB8' : '#333'}
               />
             </TouchableOpacity>
-            
+
             <TextInput
               value={text}
               onChangeText={setText}
@@ -371,9 +373,9 @@ export default function ChatScreen() {
               style={[styles.inputField, { color: isDark ? '#fff' : '#000' }]}
               multiline
             />
-            
-            <TouchableOpacity 
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+
+            <TouchableOpacity
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               onPress={sendMessage}
               style={[styles.sendButton, !text.trim() && !selectedMedia.length && styles.sendButtonDisabled]}
               disabled={!text.trim() && !selectedMedia.length}
@@ -398,7 +400,7 @@ export default function ChatScreen() {
   );
 }
 
-const getStyles = (isDark: boolean) => StyleSheet.create({
+const getStyles = (isDark: boolean, insets: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: isDark ? '#0A0410' : '#fff'
@@ -496,7 +498,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   headerUsername: {
     fontSize: 16,
     fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+    includeFontPadding: false,
     color: isDark ? '#fff' : '#000',
   },
   emptyContainer: {
@@ -557,7 +559,9 @@ includeFontPadding:false,
   navbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? insets.top + 16 : 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
     backgroundColor: isDark ? 'rgba(10, 4, 16, 0.8)' : 'rgba(255, 255, 255, 0.8)',

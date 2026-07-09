@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, useColorScheme, FlatList, ActivityIndicator, Linking, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { CalendarPlus, ChevronLeft, Calendar, Link2, Users, Nfc } from "lucide-react-native";
 import AddLumaEventSheet, { AddLumaEventSheetRef } from "./AddLumaEventSheet";
@@ -22,6 +23,7 @@ export default function EventsScreen() {
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
     const sheetRef = useRef<AddLumaEventSheetRef>(null);
+    const insets = useSafeAreaInsets();
 
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -196,7 +198,7 @@ export default function EventsScreen() {
     return (
         <View style={[styles.container, { backgroundColor: t.bg }]} >
             <StatusBar style="light" />
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top + 6 : 6, marginTop: Platform.OS === 'ios' ? 0 : 6 }]}>
                 <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={styles.backBtn}>
                     <ChevronLeft size={22} color={t.text} strokeWidth={2} />
                 </TouchableOpacity>
