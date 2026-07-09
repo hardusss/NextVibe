@@ -20,7 +20,7 @@ import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityI
 import { useRouter, useFocusEffect } from "expo-router";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+
 import { requestToAttend } from "@/src/api/event.requests";
 import likePost from "@/src/api/like.post";
 import { Image } from 'expo-image';
@@ -39,7 +39,7 @@ import mintNFT from "@/src/api/mint.nft";
 import useTransaction from "@/hooks/useTransaction";
 import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
 import {
-    Heart, MessageCircle, MapPin, Volume2, VolumeX,
+    Heart, MessageCircle, MapPin,
     Sparkles, Clock, Calendar, Link2, MoreVertical
 } from "lucide-react-native";
 import PhotoModal from "@/components/PostDetails/PhotoModal";
@@ -301,30 +301,11 @@ const formatEventDate = (isoString: string): string => {
 
 interface LikedPosts { [key: number]: boolean; }
 
-type VideoStorage =
-    | { storage: "cloudinary"; is_video: true }
-    | { storage: "r2"; is_video: true }
-    | false;
-
-const isVideo = (url: string): VideoStorage => {
-    if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
-    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
-    if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) return { storage: "r2", is_video: true };
-    return false;
-};
-
-const getVideoUrls = (mediaItem: MediaItem) => {
-    const videoCheck = isVideo(mediaItem.media_url);
-    if (!videoCheck) return { preview: mediaItem.media_url, hd: mediaItem.media_url, isVideo: false };
-    if (videoCheck.storage === "cloudinary") {
-        return {
-            preview: mediaItem.media_url.replace('/video/upload/', '/video/upload/q_auto:low,w_400,f_jpg,so_0/'),
-            hd: mediaItem.media_url.replace('/video/upload/', '/video/upload/q_auto:good,f_auto,vc_h264:baseline,br_1500k/'),
-            isVideo: true,
-        };
-    }
-    return { preview: mediaItem.media_preview || mediaItem.media_url, hd: mediaItem.media_url, isVideo: true };
-};
+const getVideoUrls = (mediaItem: MediaItem) => ({
+    preview: mediaItem.media_url,
+    hd: mediaItem.media_url,
+    isVideo: false as false,
+});
 
 const resolveCollectState = (post: Post): CollectState | null => {
     if (!post.is_nft && !post.is_owner) return null;
@@ -361,17 +342,15 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
     onMediaSize?: (width: number, height: number) => void;
     onImagePress?: () => void;
 }) => {
-    const { preview, hd, isVideo: isVideoMedia } = getVideoUrls(item);
-    const [isMuted, setIsMuted] = useState(true);
+    const { preview } = getVideoUrls(item);
     const [showHeart, setShowHeart] = useState(false);
-    const [isLoading, setIsLoading] = useState<boolean>(isVideoMedia as boolean);
-    const [showPreview, setShowPreview] = useState<boolean>(isVideoMedia as boolean);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [showPreview] = useState<boolean>(false);
     const heartAnim = useRef(new Animated.Value(0)).current;
     const dimAnim = useRef(new Animated.Value(0)).current;
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme);
-    const videoRef = useRef<Video>(null);
     const tapCount = useRef<number>(0);
     const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -416,78 +395,30 @@ const MediaItemComponent = memo(({ item, postId, onLike, isLiked, isVisible, dyn
         ]).start(() => { setShowHeart(false); heartAnim.setValue(0); });
     };
 
-    useEffect(() => {
-        if (!videoRef.current) return;
-        if (!isVisible) { videoRef.current.unloadAsync(); setShowPreview(true); }
-        return () => { if (videoRef.current) videoRef.current.unloadAsync().catch(() => { }); };
-    }, [isVisible, isVideoMedia]);
-
-    const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-        if (!status.isLoaded) return;
-        if (status.isLoaded && status.isPlaying) { setIsLoading(false); setTimeout(() => setShowPreview(false), 150); }
-    };
 
     return (
         <Pressable onPress={handleDoublePress} style={[styles.mediaContainer, dynamicHeight ? { height: dynamicHeight } : {}]}>
-            {isVideoMedia ? (
-                <>
-                    {(showPreview || !isVisible) && (
-                        <Image
-                            source={{ uri: preview }}
-                            style={styles.previewImage}
-                            contentFit="cover"
-                        />
-                    )}
-                    {isVideoMedia && isVisible && (
-                        <Video
-                            ref={videoRef}
-                            style={[styles.fullMedia, dynamicHeight ? { height: dynamicHeight } : {}]}
-                            source={{ uri: hd }}
-                            resizeMode={ResizeMode.COVER}
-                            isLooping isMuted={isMuted} shouldPlay={isVisible && !showPreview}
-                            onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-                        />
-                    )}
-                    {isLoading && isVisible && (
-                        <View style={styles.mediaLoading}>
-                            <ActivityIndicator size="large" color="#ffffff" />
-                        </View>
-                    )}
-                    <Pressable
-                        onPress={(e) => { e.stopPropagation(); setIsMuted(prev => !prev); }}
-                        style={styles.muteButton}
-                    >
-                        {isMuted
-                            ? <VolumeX size={20} color="white" />
-                            : <Volume2 size={20} color="white" />
-                        }
-                    </Pressable>
-                </>
-            ) : (
-                <Image
-                    source={{ uri: item.media_url }}
-                    style={styles.mediaImage}
-                    contentFit={isLumaEvent ? "contain" : "cover"}
-                    onLoad={(e) => {
-                        if (isLumaEvent && onMediaSize) {
-                            const { width, height } = e.source;
-                            if (width > 0) onMediaSize(width, height);
-                        }
-                    }}
-                />
-            )}
+            <Image
+                source={{ uri: preview }}
+                style={styles.mediaImage}
+                contentFit={isLumaEvent ? "contain" : "cover"}
+                onLoad={(e) => {
+                    if (isLumaEvent && onMediaSize) {
+                        const { width, height } = e.source;
+                        if (width > 0) onMediaSize(width, height);
+                    }
+                }}
+            />
             {/* Dim overlay on image tap */}
-            {!isVideoMedia && (
-                <Animated.View
-                    pointerEvents="none"
-                    style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                        borderRadius: 8,
-                        backgroundColor: 'rgba(0, 0, 0, 0.35)',
-                        opacity: dimAnim,
-                    }}
-                />
-            )}
+            <Animated.View
+                pointerEvents="none"
+                style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    borderRadius: 8,
+                    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+                    opacity: dimAnim,
+                }}
+            />
             {showHeart && (
                 <Animated.View
                     style={[styles.heartOverlay, { transform: [{ scale: heartAnim }], opacity: heartAnim }]}

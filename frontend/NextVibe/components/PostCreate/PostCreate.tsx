@@ -5,7 +5,7 @@ import {
     KeyboardAvoidingView, Platform, Animated, Easing, ScrollView, StatusBar, Vibration
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import createPost from '@/src/api/create.post';
 import { getLocationName } from '@/src/api/mapbox/get.coords.name';
@@ -95,23 +95,6 @@ function LocatingDots({ color }: { color: string }) {
     );
 }
 
-function VideoPlayer({ uri }: { uri: string }) {
-    const video = useRef<Video>(null);
-    const [status, setStatus] = useState<AVPlaybackStatus>();
-    return (
-        <View style={{ flex: 1 }}>
-            {!status?.isLoaded && (
-                <ActivityIndicator size="large" color="#fff" style={StyleSheet.absoluteFillObject} />
-            )}
-            <Video
-                ref={video} style={{ width: '100%', height: '100%' }}
-                source={{ uri }} resizeMode={ResizeMode.COVER}
-                isLooping shouldPlay isMuted={false}
-                onPlaybackStatusUpdate={s => setStatus(() => s)}
-            />
-        </View>
-    );
-}
 
 export default function PostCreate() {
     const router = useRouter();
@@ -171,7 +154,6 @@ export default function PostCreate() {
         Animated.spring(tickScale, { toValue: 1, useNativeDriver: true, damping: 10, stiffness: 200 }).start();
     };
 
-    const isVideo = (uri: string) => /\.(mp4|mov|mkv|webm|ogg)$/i.test(uri);
 
     const fixedUri = mediaUrl
         ? (mediaUrl.startsWith('file://') || mediaUrl.startsWith('https://') ? mediaUrl : `file://${mediaUrl}`)
@@ -282,15 +264,11 @@ export default function PostCreate() {
                     <View style={{ height: PHOTO_H, width, overflow: 'hidden', borderRadius: 24 }}>
                         {fixedUri ? (
                             <>
-                                {isVideo(mediaUrl!) ? (
-                                    <VideoPlayer uri={fixedUri} />
-                                ) : (
-                                    <Image
-                                        source={{ uri: fixedUri }}
-                                        style={StyleSheet.absoluteFillObject}
-                                        contentFit="cover"
-                                    />
-                                )}
+                                <Image
+                                    source={{ uri: fixedUri }}
+                                    style={StyleSheet.absoluteFillObject}
+                                    contentFit="cover"
+                                />
                                 <LinearGradient
                                     colors={c.photoTopOverlay}
                                     style={[s.photoGrad, { top: 0, bottom: undefined, height: '15%' }]}
