@@ -25,10 +25,6 @@ export default function IOSTabsLayout() {
                     <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
                 </NativeTabs.Trigger>
 
-                <NativeTabs.Trigger name="camera">
-                    <NativeTabs.Trigger.Icon sf={{ default: "plus.circle", selected: "plus.circle.fill" }} />
-                    <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
-                </NativeTabs.Trigger>
 
                 <NativeTabs.Trigger name="profile">
                     <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
