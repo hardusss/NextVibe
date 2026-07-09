@@ -12,7 +12,7 @@ User = get_user_model()
 
 class GoogleRegister(serializers.ModelSerializer):
     token = serializers.SerializerMethodField()
-    avatar_url = serializers.URLField(write_only=True, required=False)
+    avatar_url = serializers.URLField(write_only=True, required=False, allow_null=True)
     from_invite_code = serializers.CharField(
         required=False,
         allow_null=True,
