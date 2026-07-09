@@ -5,6 +5,7 @@ from jwt.algorithms import RSAAlgorithm
 
 APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys"
 APPLE_ISSUER = "https://appleid.apple.com"
+APPLE_BUNDLE_ID = "com.nextvibe.app"
 
 
 def _fetch_apple_public_keys():
@@ -17,10 +18,10 @@ def _fetch_apple_public_keys():
         return []
 
 
-def validate(identity_token: str, bundle_id: str = None):
+def validate(identity_token: str):
     """
     Validate an Apple Sign-In identity token (JWT).
-    
+
     Returns a dict with at least 'email' and 'sub' (Apple user ID) on success,
     or None on failure.
     """
@@ -49,20 +50,18 @@ def validate(identity_token: str, bundle_id: str = None):
         # Convert JWK to PEM
         public_key = RSAAlgorithm.from_jwk(matching_key)
 
-        # Decode and verify the token
-        decode_options = {
-            "verify_exp": True,
-            "verify_iss": True,
-            "verify_aud": bundle_id is not None,
-        }
-
+        # Decode and verify the token — always verify audience against our bundle ID
         payload = jwt.decode(
             identity_token,
             key=public_key,
             algorithms=["RS256"],
             issuer=APPLE_ISSUER,
-            audience=bundle_id,
-            options=decode_options,
+            audience=APPLE_BUNDLE_ID,
+            options={
+                "verify_exp": True,
+                "verify_iss": True,
+                "verify_aud": True,
+            },
         )
 
         return payload

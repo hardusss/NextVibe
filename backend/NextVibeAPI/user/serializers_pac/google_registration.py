@@ -47,7 +47,7 @@ class GoogleRegister(serializers.ModelSerializer):
             defaults={
                 "username": validated_data["username"],
                 "from_invite_code": invite_obj,
-                "auth_provider": "google",
+                "auth_provider": validated_data.get("auth_provider", "google"),
             },
         )
 
