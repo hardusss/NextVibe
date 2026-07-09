@@ -69,8 +69,16 @@ export function setupAxiosInterceptor() {
         (response) => response,
         async (error) => {
             const original = error.config;
+            const isAuthEndpoint = original.url && (
+                original.url.includes('/users/login/') ||
+                original.url.includes('/users/register/') ||
+                original.url.includes('/users/wallet-sign-in/') ||
+                original.url.includes('/users/google-sign-in/') ||
+                original.url.includes('/users/apple-sign-in/') ||
+                original.url.includes('/users/token/')
+            );
 
-            if (error.response?.status === 401 && !original._retry) {
+            if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
                 original._retry = true;
 
                 try {
