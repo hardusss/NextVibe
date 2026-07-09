@@ -1,38 +1,98 @@
-import { TouchableOpacity, View, Text, Platform } from "react-native";
+import { TouchableOpacity, View, Text, Platform, StyleSheet } from "react-native";
 import { useState, useCallback } from "react";
 import { useColorScheme } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
-import { Bell } from "lucide-react-native";
+import { Bell, Plus } from "lucide-react-native";
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
 
 const GlassViewComponent = Platform.OS === 'ios' ? require('expo-glass-effect').GlassView : View;
+
+// ─── Компоненти ПОЗА функцією — не ремаунтяться на кожен рендер ───────────────
+
+type BtnProps = { isDark: boolean; onPress: () => void; badge?: React.ReactNode };
+
+function CameraBtn({ isDark, onPress }: BtnProps) {
+    if (Platform.OS === 'ios') {
+        return (
+            <TouchableOpacity
+                activeOpacity={0.7}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                onPress={onPress}
+                style={{ width: 40, height: 40 }}
+            >
+                <GlassViewComponent
+                    style={styles.glassBtn}
+                    glassEffectStyle="regular"
+                    colorScheme={isDark ? "dark" : "light"}
+                >
+                    <Plus size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
+                </GlassViewComponent>
+            </TouchableOpacity>
+        );
+    }
+    return (
+        <TouchableOpacity
+            activeOpacity={0.7}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            onPress={onPress}
+            style={[styles.roundBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)' }]}
+        >
+            <Plus size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
+        </TouchableOpacity>
+    );
+}
+
+function BellBtn({ isDark, onPress, badge }: BtnProps) {
+    if (Platform.OS === 'ios') {
+        return (
+            <TouchableOpacity
+                activeOpacity={0.7}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                onPress={onPress}
+                style={{ position: 'relative', width: 40, height: 40 }}
+            >
+                <GlassViewComponent
+                    style={styles.glassBtn}
+                    glassEffectStyle="regular"
+                    colorScheme={isDark ? "dark" : "light"}
+                >
+                    <Bell size={22} color={isDark ? "#fafafa" : "#1A1225"} />
+                </GlassViewComponent>
+                {badge}
+            </TouchableOpacity>
+        );
+    }
+    return (
+        <TouchableOpacity
+            activeOpacity={0.7}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            onPress={onPress}
+            style={{ position: "relative", justifyContent: "center", alignItems: "center", height: 40, width: 40 }}
+        >
+            <Bell size={24} color={isDark ? "#fafafa" : "#1A1225"} />
+            {badge}
+        </TouchableOpacity>
+    );
+}
+
+// ─── Головний компонент ────────────────────────────────────────────────────────
 
 export default function HomeHeaderTitle() {
     const isDark = useColorScheme() === "dark";
     const router = useRouter();
     const [notificationsCount, setNotificationsCount] = useState(0);
 
-    const displayCount = (): string => {
-        return (
-            notificationsCount > 999
-                ? '999+'
-                : notificationsCount > 99
-                    ? '99+'
-                    : notificationsCount > 9
-                        ? '9+'
-                        : notificationsCount.toString()
-        );
-    };
-
     let rightPosition = -4;
-    if (notificationsCount > 9 && notificationsCount <= 99) {
-        rightPosition = -6;
-    } else if (notificationsCount <= 9) {
-        rightPosition = -4;
-    } else {
-        rightPosition = -8;
-    }
+    if (notificationsCount > 9 && notificationsCount <= 99) rightPosition = -6;
+    else if (notificationsCount > 99) rightPosition = -8;
+
+    const displayCount = (): string => {
+        if (notificationsCount > 999) return '999+';
+        if (notificationsCount > 99) return '99+';
+        if (notificationsCount > 9) return '9+';
+        return notificationsCount.toString();
+    };
 
     const fetchCount = async () => {
         const count = await getCountUnreadNotifications();
@@ -47,64 +107,95 @@ export default function HomeHeaderTitle() {
         }, [])
     );
 
-    const badge = notificationsCount > 0 && (
-        <View style={{
-            position: "absolute",
-            top: 2,
-            right: rightPosition,
-            backgroundColor: "#A855F7",
-            paddingHorizontal: 4,
-            height: 16,
-            minWidth: 16,
-            borderRadius: 8,
-            borderWidth: 1.5,
-            borderColor: isDark ? '#0A0410' : '#fff',
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-        }}>
-            <Text style={{ color: "#fff", fontSize: notificationsCount > 999 ? 7 : 8, fontFamily: "Dank Mono Bold", textAlign: "center" }}>
+    const badge = notificationsCount > 0 ? (
+        <View style={[styles.badge, { right: rightPosition, borderColor: isDark ? '#0A0410' : '#fff' }]}>
+            <Text style={[styles.badgeText, { fontSize: notificationsCount > 999 ? 7 : 8 }]}>
                 {displayCount()}
             </Text>
         </View>
-    );
+    ) : undefined;
 
     return (
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", paddingRight: 16 }}>
-            <Text style={{ fontFamily: "Dank Mono Bold", fontSize: 26, color: isDark ? "#F3EEFF" : "#1A1225", letterSpacing: -0.75 }}>
+        <View style={styles.row}>
+            {/* Camera button (iOS only) */}
+            {Platform.OS === 'ios'
+                ? <CameraBtn isDark={isDark} onPress={() => router.push("/(shared)/camera")} />
+                : <View style={{ width: 40 }} />
+            }
+
+            {/* Title */}
+            <Text style={[styles.title, { color: isDark ? "#F3EEFF" : "#1A1225" }]} numberOfLines={1}>
                 NextVibe
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 15 }}>
-                {Platform.OS === 'ios' ? (
-                    <TouchableOpacity
-                        activeOpacity={0.7}
-                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                        onPress={() => router.push("/notifications")}
-                        style={{ position: 'relative', width: 40, height: 40 }}
-                    >
-                        <GlassViewComponent
-                            style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                justifyContent: "center",
-                                alignItems: "center",
-                            }}
-                            glassEffectStyle="regular"
-                            colorScheme={isDark ? "dark" : "light"}
-                        >
-                            <Bell size={22} color={isDark ? "#fafafa" : "#1A1225"} />
-                        </GlassViewComponent>
-                        {badge}
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity activeOpacity={0.7} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.push("/notifications")} style={{ position: "relative", justifyContent: "center", alignItems: "center", height: 40, width: 40 }}>
-                        <Bell size={24} color={isDark ? "#fafafa" : "#1A1225"} />
-                        {badge}
-                    </TouchableOpacity>
-                )}
-                <Image source={require("@/assets/logo.png")} style={{ width: 32, height: 32 }} contentFit="contain" />
+
+            {/* Right side — bell + logo */}
+            <View style={styles.rightGroup}>
+                <BellBtn isDark={isDark} onPress={() => router.push("/notifications")} badge={badge} />
+                <Image source={require("@/assets/logo.png")} style={styles.logo} contentFit="contain" />
             </View>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    row: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+        paddingRight: 16,
+        paddingLeft: 4,
+    },
+    title: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: 26,
+        letterSpacing: -0.75,
+        includeFontPadding: false,
+        position: "absolute",
+        left: 0,
+        right: 0,
+        textAlign: "center",
+        pointerEvents: "none",
+    },
+    rightGroup: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+    },
+    glassBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    roundBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    badge: {
+        position: "absolute",
+        top: 2,
+        backgroundColor: "#A855F7",
+        paddingHorizontal: 4,
+        height: 16,
+        minWidth: 16,
+        borderRadius: 8,
+        borderWidth: 1.5,
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 9999,
+    },
+    badgeText: {
+        color: "#fff",
+        fontFamily: "Dank Mono Bold",
+        textAlign: "center",
+    },
+    logo: {
+        width: 32,
+        height: 32,
+    },
+});
