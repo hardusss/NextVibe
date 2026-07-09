@@ -5,18 +5,12 @@ module.exports = function withVexoAnalyticsFix(config) {
     let contents = podfile.modResults.contents;
 
     const vexoFix = `
-  # === Force VexoAnalytics to be static (fixes static xcframework + dynamic frameworks conflict) ===
   installer.pod_targets.each do |pod_target|
-    if pod_target.name == 'VexoAnalytics' || pod_target.name == 'RNVexoAnalytics'
-      pod_target.instance_variable_set(:@build_type, Pod::BuildType.static_framework)
-    end
-  end
-
-  installer.pods_project.targets.each do |target|
-    target.build_configurations.each do |config|
-      if target.name == 'VexoAnalytics' || target.name == 'RNVexoAnalytics'
-        config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
+    if pod_target.name == 'VexoAnalytics' || pod_target.name.include?('Vexo')
+      pod_target.build_configurations.each do |config|
         config.build_settings['MACH_O_TYPE'] = 'staticlib'
+        config.build_settings['OTHER_LDFLAGS'] = '$(inherited) -framework VexoAnalytics'
+        config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
       end
     end
   end
