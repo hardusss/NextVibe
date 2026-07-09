@@ -313,9 +313,10 @@ const ProfileView = () => {
     );
 
     const bg = isDark ? '#0A0410' : '#ffffff';
+    const bgTransparent = isDark ? 'rgba(10, 4, 16, 0)' : 'rgba(255, 255, 255, 0)';
 
     return (
-        <View style={profileStyle.container}>
+        <View style={[profileStyle.container, { paddingHorizontal: 0 }]}>
             <StatusBar style="light" />
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{ flex: 1, justifyContent: "center", alignItems: "center" }} />
@@ -387,38 +388,39 @@ const ProfileView = () => {
                                 <>
                                     <Image
                                         source={{ uri: userData.avatar_url }}
-                                        style={[st.headerImage, { opacity: 0.38 }]}
+                                        style={[st.headerImage, { opacity: isDark ? 0.45 : 0.65 }]}
                                         contentFit="cover"
+                                        blurRadius={40}
                                     />
                                     <View style={[StyleSheet.absoluteFill, {
                                         backgroundColor: isDark
-                                            ? 'rgba(6, 3, 16, 0.72)'
-                                            : 'rgba(245, 240, 255, 0.72)'
+                                            ? 'rgba(10, 4, 16, 0.72)'
+                                            : 'rgba(255, 255, 255, 0.35)'
                                     }]} />
                                 </>
                             )}
                             {/* Bottom fade */}
                             <LinearGradient
-                                colors={['transparent', bg]}
+                                colors={[bgTransparent, bg]}
                                 locations={[0.2, 1]}
                                 style={st.headerFadeBottom}
                             />
                             {/* Top fade */}
                             <LinearGradient
-                                colors={[bg, 'transparent']}
+                                colors={[bg, bgTransparent]}
                                 locations={[0, 0.5]}
                                 style={st.headerFadeTop}
                             />
                             {/* Left fade */}
                             <LinearGradient
-                                colors={[bg, 'transparent']}
+                                colors={[bg, bgTransparent]}
                                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                 locations={[0, 0.4]}
                                 style={st.headerFadeLeft}
                             />
                             {/* Right fade */}
                             <LinearGradient
-                                colors={['transparent', bg]}
+                                colors={[bgTransparent, bg]}
                                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                 locations={[0.6, 1]}
                                 style={st.headerFadeRight}
@@ -433,8 +435,10 @@ const ProfileView = () => {
                         </View>
                     </FadeIn>
 
-                    {/* ── Avatar centered, overlapping header ── */}
-                    <TouchableOpacity
+                    {/* ── Profile content wrapper (restores 16px horizontal padding below the header) ── */}
+                    <View style={{ paddingHorizontal: 16 }}>
+                        {/* ── Avatar centered, overlapping header ── */}
+                        <TouchableOpacity
                         onPress={() => { if (userData.avatar_url) setVisible(true); }}
                         activeOpacity={0.85}
                         style={st.avatarWrap}
@@ -594,7 +598,8 @@ const ProfileView = () => {
                             )}
                         </AnimatedReanimated.View>
                     </View>
-                </ScrollView>
+                </View>
+            </ScrollView>
             )}
 
             {/* Bottom sheets */}
@@ -609,13 +614,9 @@ const ProfileView = () => {
 const st = StyleSheet.create({
     headerContainer: {
         height: HEADER_HEIGHT,
-        width: SCREEN_WIDTH,
-        marginLeft: -16,
-        marginTop: 10,
-        overflow: 'hidden',
+        width: '100%',
         position: 'relative',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        overflow: 'hidden',
     },
     headerImage: {
         width: '100%',
@@ -627,28 +628,28 @@ const st = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        height: '65%',
+        height: '40%',
     },
     headerFadeTop: {
         position: 'absolute',
         left: 0,
         right: 0,
         top: 0,
-        height: '40%',
+        height: '25%',
     },
     headerFadeLeft: {
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
-        width: '25%',
+        width: '15%',
     },
     headerFadeRight: {
         position: 'absolute',
         right: 0,
         top: 0,
         bottom: 0,
-        width: '25%',
+        width: '15%',
     },
     topBar: {
         position: 'absolute',
