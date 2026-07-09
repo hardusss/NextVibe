@@ -93,7 +93,12 @@ const MODAL_SCREENS = new Set([
     "result-transaction", "post-details", "event-checkin",
 ]);
 
+const FULLSCREEN_SCREENS = new Set(["camera", "create-post"]);
+
 function screenOptionsFor(name: string) {
+    if (FULLSCREEN_SCREENS.has(name)) {
+        return { presentation: "fullScreenModal" as const, animation: "slide_from_bottom" as const };
+    }
     if (MODAL_SCREENS.has(name)) {
         return { presentation: "modal" as const, animation: "slide_from_bottom" as const };
     }
@@ -107,7 +112,7 @@ const SHARED_SCREENS = [
     "chats", "follows-screen", "notifications", "user-banned", "wallet-init",
     "wallet-dash", "wallet-select", "swap", "event-checkin", "post-details",
     "all-tokens", "eas-update", "events", "event-nfc-share", "event-nfc-receive",
-    "u/[id]"
+    "camera", "u/[id]"
 ];
 
 export default function RootLayout() {
