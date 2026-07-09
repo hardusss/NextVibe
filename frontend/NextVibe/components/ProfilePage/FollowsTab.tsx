@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, StatusBar, Animated, FlatList, Dimensions, RefreshControl, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, StatusBar, Animated, FlatList, Dimensions, RefreshControl, ActivityIndicator, Platform } from "react-native";
 import { Ghost, Telescope, ArrowLeft } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import getFollows from '@/src/api/get.follows';
 import getReaders from '@/src/api/get.readers';
@@ -17,6 +18,7 @@ type UserData = {
 export default function FollowsScreen() {
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     // Get params from route
     const { activeTab, userId, username } = useLocalSearchParams();
@@ -405,7 +407,7 @@ export default function FollowsScreen() {
                 backgroundColor={isDark ? '#0A0410' : '#F5F5F7'}
                 barStyle={isDark ? "light-content" : "dark-content"}
             />
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top + 20 : 20 }]}>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.backButton} onPress={() => router.back()}>
                     <ArrowLeft size={28} color={isDark ? '#FFFFFF' : '#000'} />
                 </TouchableOpacity>
