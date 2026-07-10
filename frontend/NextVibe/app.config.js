@@ -22,7 +22,10 @@ export default {
                 NSMicrophoneUsageDescription: "NextVibe needs access to your Microphone.",
                 ITSAppUsesNonExemptEncryption: false,
                 NSLocationWhenInUseUsageDescription: "NextVibe needs your location to show you on the VibeMap and find nearby drops.",
-                NSLocationAlwaysAndWhenInUseUsageDescription: "NextVibe needs your location to notify you about Vibe Zones nearby."
+                NSLocationAlwaysAndWhenInUseUsageDescription: "NextVibe needs your location to notify you about Vibe Zones nearby.",
+                NSBluetoothAlwaysUsageDescription: "NextVibe uses Bluetooth to share profiles and connect with nearby vibers.",
+                NSBluetoothPeripheralUsageDescription: "NextVibe uses Bluetooth to broadcast your profile to nearby phones.",
+                UIBackgroundModes: ["bluetooth-peripheral", "bluetooth-central"]
             },
             associatedDomains: ["applinks:nextvibe.io"]
         },

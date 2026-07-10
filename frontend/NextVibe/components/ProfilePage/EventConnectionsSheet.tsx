@@ -202,8 +202,8 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                     </View>
                                 </View>
 
-                                {/* NFC Networking Button — not available on iOS */}
-                                {item.is_active && Platform.OS !== 'ios' && (
+                                {/* Networking Button — NFC on Android, BLE on iOS */}
+                                {item.is_active && (
                                     <TouchableOpacity
                                         style={[styles.nfcBtn, { backgroundColor: accent }]}
                                         activeOpacity={0.8}
@@ -213,7 +213,9 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                         }}
                                     >
                                         <Radio size={16} color="#ffffff" />
-                                        <Text style={styles.nfcBtnTxt}>Network via NFC</Text>
+                                        <Text style={styles.nfcBtnTxt}>
+                                            {Platform.OS === 'ios' ? 'Network via BLE' : 'Network via NFC'}
+                                        </Text>
                                     </TouchableOpacity>
                                 )}
 
