@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
-import { View, Text, StyleSheet, Animated, Pressable } from "react-native";
+import { View, Text, StyleSheet, Animated, Pressable, Platform } from "react-native";
 import { Image } from "expo-image";
+import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { TokenAsset } from "@/hooks/usePortfolio.types";
 import { MOTION } from "@/constants/motion";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react-native";
@@ -108,12 +109,13 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
             <Animated.View
                 style={[
                     styles.container,
-                    {
+                    Platform.OS === 'ios' && { borderWidth: 0 },
+                    Platform.OS !== 'ios' && {
                         backgroundColor: cardBg,
                         borderColor: cardBorder,
-                        marginBottom: isLast ? 0 : 5,
                     },
                     {
+                        marginBottom: isLast ? 0 : 5,
                         opacity: fadeAnim,
                         transform: [
                             { translateY: slideAnim },
@@ -122,56 +124,67 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                     },
                 ]}
             >
-                <View style={styles.logoContainer}>
-                    {token.logoURI ? (
-                        <Image
-                            source={{ uri: token.logoURI }}
-                            style={styles.logo}
-                            contentFit="cover"
-                        />
-                    ) : (
-                        <View style={[styles.logo, { backgroundColor: logoBg }]}>
-                            <Text style={[styles.logoFallback, { color: symbolColor }]}>
-                                {token.symbol.charAt(0)}
-                            </Text>
-                        </View>
-                    )}
-                </View>
+                {Platform.OS === 'ios' && (
+                    <GlassSurface
+                        style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
+                        glassEffectStyle="regular"
+                        colorScheme={isDarkMode ? "dark" : "light"}
+                        tintColor={isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
+                    />
+                )}
 
-                {/* Info column */}
-                <View style={styles.info}>
-                    <View style={styles.nameRow}>
-                        <Text style={[styles.name, { color: mainColor }]} numberOfLines={1}>
-                            {token.name}
-                        </Text>
-                        <Text style={[styles.symbol, { color: symbolColor }]}>
-                            {token.symbol}
-                        </Text>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
+                    <View style={styles.logoContainer}>
+                        {token.logoURI ? (
+                            <Image
+                                source={{ uri: token.logoURI }}
+                                style={styles.logo}
+                                contentFit="cover"
+                            />
+                        ) : (
+                            <View style={[styles.logo, { backgroundColor: logoBg }]}>
+                                <Text style={[styles.logoFallback, { color: symbolColor }]}>
+                                    {token.symbol.charAt(0)}
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
-                    <View style={styles.priceRow}>
-                        <Text style={[styles.price, { color: mutedColor }]}>
-                            ${token.price >= 1 ? token.price.toFixed(2) : token.price.toFixed(4)}
-                        </Text>
-
-                        {/* Change pill */}
-                        <View style={[styles.changePill, { backgroundColor: changeBg }]}>
-                            <ChangeIcon size={9} color={changeColor} strokeWidth={2} />
-                            <Text style={[styles.changeText, { color: changeColor }]}>
-                                {isBalanceHidden ? "••" : `${changeSign}${token.change24h.toFixed(2)}%`}
+                    {/* Info column */}
+                    <View style={styles.info}>
+                        <View style={styles.nameRow}>
+                            <Text style={[styles.name, { color: mainColor }]} numberOfLines={1}>
+                                {token.name}
+                            </Text>
+                            <Text style={[styles.symbol, { color: symbolColor }]}>
+                                {token.symbol}
                             </Text>
                         </View>
-                    </View>
-                </View>
 
-                {/* Value column */}
-                <View style={styles.right}>
-                    <Text style={[styles.value, { color: mainColor }]}>
-                        {isBalanceHidden ? "••••" : formatValue(token.valueUsd)}
-                    </Text>
-                    <Text style={[styles.amount, { color: mutedColor }]}>
-                        {isBalanceHidden ? "••" : `${formatAmount(token.amount)} ${token.symbol}`}
-                    </Text>
+                        <View style={styles.priceRow}>
+                            <Text style={[styles.price, { color: mutedColor }]}>
+                                ${token.price >= 1 ? token.price.toFixed(2) : token.price.toFixed(4)}
+                            </Text>
+
+                            {/* Change pill */}
+                            <View style={[styles.changePill, { backgroundColor: changeBg }]}>
+                                <ChangeIcon size={9} color={changeColor} strokeWidth={2} />
+                                <Text style={[styles.changeText, { color: changeColor }]}>
+                                    {isBalanceHidden ? "••" : `${changeSign}${token.change24h.toFixed(2)}%`}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Value column */}
+                    <View style={styles.right}>
+                        <Text style={[styles.value, { color: mainColor }]}>
+                            {isBalanceHidden ? "••••" : formatValue(token.valueUsd)}
+                        </Text>
+                        <Text style={[styles.amount, { color: mutedColor }]}>
+                            {isBalanceHidden ? "••" : `${formatAmount(token.amount)} ${token.symbol}`}
+                        </Text>
+                    </View>
                 </View>
             </Animated.View>
             </Pressable>

@@ -93,11 +93,11 @@ function resolveNotificationUrl(data: Record<string, any>): { internal?: string;
 }
 
 const MODAL_SCREENS = new Set([
-    "swap", "deposit", "select-token", "transaction-detail",
+    "swap", "deposit", "transaction-detail",
     "result-transaction", "post-details", "event-checkin",
 ]);
 
-const FULLSCREEN_SCREENS = new Set(["camera", "create-post"]);
+const FULLSCREEN_SCREENS = new Set(["camera", "create-post", "select-token", "transaction"]);
 
 function screenOptionsFor(name: string) {
     if (FULLSCREEN_SCREENS.has(name)) {

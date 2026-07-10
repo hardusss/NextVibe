@@ -4,6 +4,7 @@ import { View, Text, Pressable, StyleSheet, Animated as RNAnimated, Platform } f
 import { ArrowDown, ArrowUp, ArrowLeftRight, Nfc } from "lucide-react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { MOTION } from "@/constants/motion";
+import { GlassSurface } from "@/components/Shared/GlassSurface";
 
 interface QuickActionsProps {
     isDarkMode: boolean;
@@ -80,9 +81,29 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-            <Animated.View style={[styles.button, animStyle, { backgroundColor: bg, borderColor: border }]}>
-                <action.Icon size={22} color={iconColor} strokeWidth={1.5} />
-                {action.pulse && <PulseDot isDarkMode={isDarkMode} />}
+            <Animated.View style={[
+                styles.button,
+                animStyle,
+                Platform.OS === 'ios' && { borderWidth: 0 },
+                Platform.OS !== 'ios' && { backgroundColor: bg, borderColor: border }
+            ]}>
+                {Platform.OS === 'ios' ? (
+                    <GlassSurface
+                        style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: RADIUS }]}
+                        glassEffectStyle="regular"
+                        colorScheme={isDarkMode ? "dark" : "light"}
+                        isInteractive
+                        tintColor={isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)"}
+                    >
+                        <action.Icon size={22} color={iconColor} strokeWidth={1.5} />
+                        {action.pulse && <PulseDot isDarkMode={isDarkMode} />}
+                    </GlassSurface>
+                ) : (
+                    <>
+                        <action.Icon size={22} color={iconColor} strokeWidth={1.5} />
+                        {action.pulse && <PulseDot isDarkMode={isDarkMode} />}
+                    </>
+                )}
             </Animated.View>
         </Pressable>
     );

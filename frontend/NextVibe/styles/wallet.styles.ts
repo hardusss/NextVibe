@@ -47,7 +47,7 @@ export const createWalletStyles = (isDarkMode: boolean) =>
     /** Dashboard column: top sections + portfolio pinned to bottom */
     dashboardBody: {
       flex: 1,
-      justifyContent: "space-between",
+      justifyContent: "flex-start",
     },
 
     dashboardTop: {
@@ -55,7 +55,7 @@ export const createWalletStyles = (isDarkMode: boolean) =>
     },
 
     portfolioBottom: {
-      flexShrink: 0,
+      flex: 1,
     },
 
     // ========================================

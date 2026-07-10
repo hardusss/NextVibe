@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { GlassSurface } from '@/components/Shared/GlassSurface';
 
 interface TokenRowProps {
     item: { name: string; symbol: string; icon: string };
@@ -21,23 +22,37 @@ export const TokenRow = ({ item, onPress, isDark, index }: TokenRowProps) => {
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.65}
-            style={[styles.row, { backgroundColor: bg, borderColor: border }]}
+            style={[
+                styles.row,
+                Platform.OS === 'ios' && { borderWidth: 0 },
+                Platform.OS !== 'ios' && { backgroundColor: bg, borderColor: border }
+            ]}
         >
-            {/* Logo */}
-            <Image
-                source={{ uri: item.icon }}
-                style={styles.logo}
-                contentFit="cover"
-            />
+            {Platform.OS === 'ios' && (
+                <GlassSurface
+                    style={[StyleSheet.absoluteFillObject, { borderRadius: 18 }]}
+                    glassEffectStyle="regular"
+                    colorScheme={isDark ? "dark" : "light"}
+                    tintColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
+                />
+            )}
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
+                {/* Logo */}
+                <Image
+                    source={{ uri: item.icon }}
+                    style={styles.logo}
+                    contentFit="cover"
+                />
 
-            {/* Text */}
-            <View style={styles.info}>
-                <Text style={[styles.symbol, { color: mainColor }]}>{item.symbol}</Text>
-                <Text style={[styles.name, { color: mutedColor }]}>{item.name}</Text>
+                {/* Text */}
+                <View style={styles.info}>
+                    <Text style={[styles.symbol, { color: mainColor }]}>{item.symbol}</Text>
+                    <Text style={[styles.name, { color: mutedColor }]}>{item.name}</Text>
+                </View>
+
+                {/* Arrow */}
+                <ArrowRight size={16} color={arrowColor} strokeWidth={1.5} />
             </View>
-
-            {/* Arrow */}
-            <ArrowRight size={16} color={arrowColor} strokeWidth={1.5} />
         </TouchableOpacity>
     );
 };
@@ -48,11 +63,25 @@ export const TokenSkeleton = ({ isDark }: { isDark: boolean }) => {
     const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
 
     return (
-        <View style={[styles.row, { backgroundColor: bg, borderColor: border }]}>
-            <View style={[styles.logo, { backgroundColor: sk }]} />
-            <View style={styles.info}>
-                <View style={[styles.skLine, { width: 48, height: 13, backgroundColor: sk }]} />
-                <View style={[styles.skLine, { width: 90, height: 10, backgroundColor: sk, marginTop: 6 }]} />
+        <View style={[
+            styles.row,
+            Platform.OS === 'ios' && { borderWidth: 0 },
+            Platform.OS !== 'ios' && { backgroundColor: bg, borderColor: border }
+        ]}>
+            {Platform.OS === 'ios' && (
+                <GlassSurface
+                    style={[StyleSheet.absoluteFillObject, { borderRadius: 18 }]}
+                    glassEffectStyle="regular"
+                    colorScheme={isDark ? "dark" : "light"}
+                    tintColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
+                />
+            )}
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
+                <View style={[styles.logo, { backgroundColor: sk }]} />
+                <View style={styles.info}>
+                    <View style={[styles.skLine, { width: 48, height: 13, backgroundColor: sk }]} />
+                    <View style={[styles.skLine, { width: 90, height: 10, backgroundColor: sk, marginTop: 6 }]} />
+                </View>
             </View>
         </View>
     );
