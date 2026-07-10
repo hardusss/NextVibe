@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    Animated, StatusBar, useColorScheme, Share, Dimensions, ScrollView, Image
+    Animated, StatusBar, useColorScheme, Share, Dimensions, ScrollView, Image, Platform
 } from 'react-native';
+import { GlassSurface } from '@/components/Shared/GlassSurface';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
@@ -15,6 +16,8 @@ import { TOKENS } from '@/constants/Tokens';
 
 const { width } = Dimensions.get('window');
 
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+
 export default function DepositScreen() {
     const isDark = useColorScheme() === 'dark';
     const { address } = useWalletAddress();
@@ -25,6 +28,37 @@ export default function DepositScreen() {
     const slideAnim = useRef(new Animated.Value(40)).current;
     const qrScale = useRef(new Animated.Value(0.9)).current;
     const [copied, setCopied] = useState(false);
+
+    const transX = useRef(new Animated.Value(0)).current;
+    const transY = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (Platform.OS === 'ios') {
+            const createAnim = (val: Animated.Value, toValue: number, duration: number) => {
+                return Animated.sequence([
+                    Animated.timing(val, {
+                        toValue,
+                        duration,
+                        useNativeDriver: true,
+                        isInteraction: false,
+                    }),
+                    Animated.timing(val, {
+                        toValue: 0,
+                        duration,
+                        useNativeDriver: true,
+                        isInteraction: false,
+                    })
+                ]);
+            };
+
+            Animated.loop(
+                Animated.parallel([
+                    createAnim(transX, 15, 12000),
+                    createAnim(transY, 10, 15000)
+                ])
+            ).start();
+        }
+    }, []);
 
     useEffect(() => {
         Animated.parallel([
@@ -79,11 +113,21 @@ export default function DepositScreen() {
     const accentBg = isDark ? 'rgba(167,139,250,0.15)' : 'rgba(124,58,237,0.1)';
 
     return (
-        <LinearGradient
-            colors={mainBg}
-            locations={[0, 0.3, 0.65, 1]}
-            style={styles.container}
-        >
+        <View style={styles.container}>
+            <AnimatedLinearGradient
+                colors={mainBg}
+                locations={[0, 0.3, 0.65, 1]}
+                style={[
+                    StyleSheet.absoluteFillObject,
+                    Platform.OS === 'ios' ? {
+                        transform: [
+                            { scale: 1.15 },
+                            { translateX: transX },
+                            { translateY: transY }
+                        ]
+                    } : null
+                ]}
+            />
             <StatusBar backgroundColor={mainBg[0]} barStyle={isDark ? "light-content" : "dark-content"} />
 
             <WalletHeader title="Receive Assets" isDark={isDark} />
@@ -94,51 +138,80 @@ export default function DepositScreen() {
                     { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
                 ]}>
                     {/* Glass Card */}
-                    <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-                        <BlurView intensity={isDark ? 20 : 50} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+                    <View style={[
+                        styles.card,
+                        Platform.OS === 'ios' && { borderWidth: 0, overflow: 'hidden' },
+                        Platform.OS !== 'ios' && { backgroundColor: cardBg, borderColor: cardBorder }
+                    ]}>
+                        {Platform.OS === 'ios' ? (
+                            <GlassSurface
+                                style={StyleSheet.absoluteFillObject}
+                                glassEffectStyle="regular"
+                                colorScheme={isDark ? "dark" : "light"}
+                                tintColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
+                            />
+                        ) : (
+                            <BlurView intensity={isDark ? 20 : 50} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+                        )}
                         
-                        <Animated.View style={[styles.qrWrapper, { transform: [{ scale: qrScale }] }]}>
-                            {/* QR Glow */}
-                            <View style={[styles.qrGlow, { shadowColor: accent }]} />
+                        <View style={[Platform.OS === 'ios' && { zIndex: 1, alignItems: 'center', width: '100%' }]}>
+                            <Animated.View style={[styles.qrWrapper, { transform: [{ scale: qrScale }] }]}>
+                                {/* QR Glow */}
+                                <View style={[styles.qrGlow, { shadowColor: accent }]} />
+                                
+                                <View style={styles.qrInner}>
+                                    <QRCode
+                                        value={safeAddress}
+                                        size={width * 0.55}
+                                        color="#000000"
+                                        backgroundColor="#FFFFFF"
+                                        logo={require('@/assets/images/icon.png')}
+                                        logoSize={40}
+                                        logoBackgroundColor="#fff"
+                                        logoBorderRadius={10}
+                                        logoMargin={2}
+                                    />
+                                </View>
+                            </Animated.View>
+
+                            <View style={[styles.warningBadge, { backgroundColor: accentBg, borderColor: isDark ? 'rgba(167,139,250,0.3)' : 'rgba(124,58,237,0.2)' }]}>
+                                <AlertCircle size={14} color={accent} strokeWidth={2} />
+                                <Text style={[styles.warningText, { color: accent }]}>Send only Solana & SPL tokens</Text>
+                            </View>
+
+                            <Text style={[styles.addressLabel, { color: mutedText }]}>Wallet Address</Text>
                             
-                            <View style={styles.qrInner}>
-                                <QRCode
-                                    value={safeAddress}
-                                    size={width * 0.55}
-                                    color="#000000"
-                                    backgroundColor="#FFFFFF"
-                                    logo={require('@/assets/images/icon.png')}
-                                    logoSize={40}
-                                    logoBackgroundColor="#fff"
-                                    logoBorderRadius={10}
-                                    logoMargin={2}
-                                />
-                            </View>
-                        </Animated.View>
-
-                        <View style={[styles.warningBadge, { backgroundColor: accentBg, borderColor: isDark ? 'rgba(167,139,250,0.3)' : 'rgba(124,58,237,0.2)' }]}>
-                            <AlertCircle size={14} color={accent} strokeWidth={2} />
-                            <Text style={[styles.warningText, { color: accent }]}>Send only Solana & SPL tokens</Text>
-                        </View>
-
-                        <Text style={[styles.addressLabel, { color: mutedText }]}>Wallet Address</Text>
-                        
-                        <TouchableOpacity
-                            onPress={handleCopy}
-                            activeOpacity={0.7}
-                            style={[styles.addressBox, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.6)', borderColor: cardBorder }]}
-                        >
-                            <Text style={[styles.addressText, { color: textColor }]} numberOfLines={1} ellipsizeMode="middle">
-                                {safeAddress}
-                            </Text>
-                            <View style={[styles.copyBtn, { backgroundColor: copied ? '#10B981' : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') }]}>
-                                {copied ? (
-                                    <Check size={16} color="#FFF" strokeWidth={2.5} />
-                                ) : (
-                                    <Copy size={16} color={textColor} strokeWidth={2} />
+                            <TouchableOpacity
+                                onPress={handleCopy}
+                                activeOpacity={0.7}
+                                style={[
+                                    styles.addressBox,
+                                    Platform.OS === 'ios' && { borderWidth: 0 },
+                                    Platform.OS !== 'ios' && { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.6)', borderColor: cardBorder }
+                                ]}
+                            >
+                                {Platform.OS === 'ios' && (
+                                    <GlassSurface
+                                        style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
+                                        glassEffectStyle="regular"
+                                        colorScheme={isDark ? "dark" : "light"}
+                                        tintColor={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)"}
+                                    />
                                 )}
-                            </View>
-                        </TouchableOpacity>
+                                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
+                                    <Text style={[styles.addressText, { color: textColor }]} numberOfLines={1} ellipsizeMode="middle">
+                                        {safeAddress}
+                                    </Text>
+                                    <View style={[styles.copyBtn, { backgroundColor: copied ? '#10B981' : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') }]}>
+                                        {copied ? (
+                                            <Check size={16} color="#FFF" strokeWidth={2.5} />
+                                        ) : (
+                                            <Copy size={16} color={textColor} strokeWidth={2} />
+                                        )}
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </Animated.View>
 
@@ -151,9 +224,26 @@ export default function DepositScreen() {
                         contentContainerStyle={styles.tokensScroll}
                     >
                         {supportedTokens.map((token) => (
-                            <View key={token.symbol} style={[styles.tokenChip, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-                                <Image source={{ uri: token.logoURL }} style={styles.tokenIcon} />
-                                <Text style={[styles.tokenSymbol, { color: textColor }]}>{token.symbol}</Text>
+                            <View
+                                key={token.symbol}
+                                style={[
+                                    styles.tokenChip,
+                                    Platform.OS === 'ios' && { borderWidth: 0, overflow: 'hidden' },
+                                    Platform.OS !== 'ios' && { backgroundColor: cardBg, borderColor: cardBorder }
+                                ]}
+                            >
+                                {Platform.OS === 'ios' && (
+                                    <GlassSurface
+                                        style={StyleSheet.absoluteFillObject}
+                                        glassEffectStyle="regular"
+                                        colorScheme={isDark ? "dark" : "light"}
+                                        tintColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
+                                    />
+                                )}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
+                                    <Image source={{ uri: token.logoURL }} style={styles.tokenIcon} />
+                                    <Text style={[styles.tokenSymbol, { color: textColor }]}>{token.symbol}</Text>
+                                </View>
                             </View>
                         ))}
                     </ScrollView>
@@ -178,7 +268,7 @@ export default function DepositScreen() {
                     </LinearGradient>
                 </TouchableOpacity>
             </Animated.View>
-        </LinearGradient>
+        </View>
     );
 }
 

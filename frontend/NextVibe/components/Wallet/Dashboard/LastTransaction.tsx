@@ -1,8 +1,9 @@
 import React, { memo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { Image } from "expo-image";
 import { ShimmerSkeleton } from "@/components/Shared/motion";
 import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft } from "lucide-react-native";
+import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { FormattedTransaction } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
 import timeAgo from "@/src/utils/formatTime";
@@ -312,16 +313,30 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
     return (
         <View style={styles.container}>
             <TouchableOpacity
-                style={[styles.card, { backgroundColor: bg, borderColor: border }]}
+                style={[
+                    styles.card,
+                    Platform.OS === 'ios' && { borderWidth: 0 },
+                    Platform.OS !== 'ios' && { backgroundColor: bg, borderColor: border }
+                ]}
                 onPress={onPress}
                 disabled={isDisabled}
                 activeOpacity={0.65}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-                {/* Left accent bar — thin stripe that shows tx direction */}
-                <View style={[styles.accentBar, { backgroundColor: accentBarColor }]} />
+                {Platform.OS === 'ios' && (
+                    <GlassSurface
+                        style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
+                        glassEffectStyle="regular"
+                        colorScheme={isDarkMode ? "dark" : "light"}
+                        isInteractive
+                        tintColor={isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
+                    />
+                )}
 
-                <View style={styles.inner}>
+                {/* Left accent bar — thin stripe that shows tx direction */}
+                <View style={[styles.accentBar, { backgroundColor: accentBarColor }, Platform.OS === 'ios' && { zIndex: 1 }]} />
+
+                <View style={[styles.inner, Platform.OS === 'ios' && { zIndex: 1 }]}>
                     {isLoading && <LoadingSkeleton isDarkMode={isDarkMode} />}
                     {!isLoading && error && <ErrorState isDarkMode={isDarkMode} />}
                     {!isLoading && !error && !transaction && <EmptyState isDarkMode={isDarkMode} />}

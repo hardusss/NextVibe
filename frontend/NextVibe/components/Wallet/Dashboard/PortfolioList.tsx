@@ -5,10 +5,13 @@ import {
     StyleSheet,
     Animated,
     TouchableOpacity,
+    Platform,
 } from "react-native";
+import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { Wallet, BriefcaseBusiness, ArrowRight, Sparkles } from "lucide-react-native";
 import { TokenAsset } from "@/hooks/usePortfolio.types";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TokenItem from "./TokenItem";
 
 
@@ -113,6 +116,7 @@ function PortfolioList({
     isLoading,
 }: PortfolioListProps) {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     // Entrance animation
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -171,7 +175,18 @@ function PortfolioList({
     const count = !isLoading ? nonZeroTokens.length : null;
 
     return (
-        <View style={[styles.sheet, { backgroundColor: sheetBg, borderColor: border }]}>
+        <GlassSurface
+            style={[
+                styles.sheet,
+                Platform.OS === 'ios' && { borderWidth: 0 },
+                Platform.OS !== 'ios' && { backgroundColor: sheetBg, borderColor: border },
+                { paddingBottom: insets.bottom + 16 },
+                { flex: 1 }
+            ]}
+            glassEffectStyle="regular"
+            colorScheme={isDarkMode ? "dark" : "light"}
+            tintColor={isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)"}
+        >
             {/* Drag handle */}
             <View style={styles.handleArea}>
                 <View style={[styles.handle, { backgroundColor: handleColor }]} />
@@ -227,7 +242,8 @@ function PortfolioList({
                         <TouchableOpacity
                             style={[
                                 styles.viewAllButton,
-                                {
+                                Platform.OS === 'ios' && { borderWidth: 0 },
+                                Platform.OS !== 'ios' && {
                                     borderColor: sectionDivider,
                                     backgroundColor: isDarkMode
                                         ? "rgba(196,167,255,0.04)"
@@ -237,35 +253,72 @@ function PortfolioList({
                             activeOpacity={0.65}
                             onPress={() => router.push("/all-tokens")}
                         >
-                            <View style={styles.viewAllLeft}>
-                                <Sparkles
-                                    size={13}
-                                    color={isDarkMode ? "rgba(196,167,255,0.6)" : "rgba(109,40,217,0.55)"}
-                                    strokeWidth={1.5}
-                                />
-                                <Text
-                                    style={[
-                                        styles.viewAllText,
-                                        {
-                                            color: isDarkMode
-                                                ? "rgba(196,167,255,0.85)"
-                                                : "rgba(109,40,217,0.8)",
-                                        },
-                                    ]}
+                            {Platform.OS === 'ios' ? (
+                                <GlassSurface
+                                    style={[StyleSheet.absoluteFillObject, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, borderRadius: 16 }]}
+                                    glassEffectStyle="regular"
+                                    colorScheme={isDarkMode ? "dark" : "light"}
+                                    isInteractive
+                                    tintColor={isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)"}
                                 >
-                                    Show all tokens
-                                </Text>
-                            </View>
-                            <ArrowRight
-                                size={14}
-                                color={isDarkMode ? "rgba(196,167,255,0.5)" : "rgba(109,40,217,0.45)"}
-                                strokeWidth={1.8}
-                            />
+                                    <View style={styles.viewAllLeft}>
+                                        <Sparkles
+                                            size={13}
+                                            color={isDarkMode ? "rgba(196,167,255,0.6)" : "rgba(109,40,217,0.55)"}
+                                            strokeWidth={1.5}
+                                        />
+                                        <Text
+                                            style={[
+                                                styles.viewAllText,
+                                                {
+                                                    color: isDarkMode
+                                                        ? "rgba(196,167,255,0.85)"
+                                                        : "rgba(109,40,217,0.8)",
+                                                },
+                                            ]}
+                                        >
+                                            Show all tokens
+                                        </Text>
+                                    </View>
+                                    <ArrowRight
+                                        size={14}
+                                        color={isDarkMode ? "rgba(196,167,255,0.5)" : "rgba(109,40,217,0.45)"}
+                                        strokeWidth={1.8}
+                                    />
+                                </GlassSurface>
+                            ) : (
+                                <>
+                                    <View style={styles.viewAllLeft}>
+                                        <Sparkles
+                                            size={13}
+                                            color={isDarkMode ? "rgba(196,167,255,0.6)" : "rgba(109,40,217,0.55)"}
+                                            strokeWidth={1.5}
+                                        />
+                                        <Text
+                                            style={[
+                                                styles.viewAllText,
+                                                {
+                                                    color: isDarkMode
+                                                        ? "rgba(196,167,255,0.85)"
+                                                        : "rgba(109,40,217,0.8)",
+                                                },
+                                            ]}
+                                        >
+                                            Show all tokens
+                                        </Text>
+                                    </View>
+                                    <ArrowRight
+                                        size={14}
+                                        color={isDarkMode ? "rgba(196,167,255,0.5)" : "rgba(109,40,217,0.45)"}
+                                        strokeWidth={1.8}
+                                    />
+                                </>
+                            )}
                         </TouchableOpacity>
                     </View>
                 )}
             </Animated.View>
-        </View>
+        </GlassSurface>
     );
 }
 
