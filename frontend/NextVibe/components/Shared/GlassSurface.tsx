@@ -14,6 +14,14 @@ type GlassSurfaceProps = {
     fallbackBackgroundColor?: string;
 };
 
+function makeMoreTransparent(color: string | undefined): string | undefined {
+    if (!color || typeof color !== 'string') return color;
+    return color.replace(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*(0?\.\d+)\)/g, (match, r, g, b, a) => {
+        const newAlpha = Math.max(0, parseFloat(a) * 0.4);
+        return `rgba(${r}, ${g}, ${b}, ${newAlpha.toFixed(3)})`;
+    });
+}
+
 /**
  * iOS liquid glass surface. On Android renders a plain View with an optional fallback background.
  */
@@ -32,7 +40,7 @@ export function GlassSurface({
                 style={style}
                 glassEffectStyle={glassEffectStyle}
                 colorScheme={colorScheme}
-                tintColor={tintColor}
+                tintColor={makeMoreTransparent(tintColor)}
                 isInteractive={isInteractive}
             >
                 {children}
