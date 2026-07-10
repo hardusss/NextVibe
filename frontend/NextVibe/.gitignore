@@ -10,8 +10,8 @@ web-build/
 expo-env.d.ts
 
 # Native folders
-android/
-ios/
+/android/
+/ios/
 
 # Native
 *.orig.*
@@ -40,3 +40,4 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+**/build/

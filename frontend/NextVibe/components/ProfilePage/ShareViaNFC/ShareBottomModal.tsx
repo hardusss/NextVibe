@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, forwardRef, useImperativeHandle, useState, useEffect } from 'react';
 import {
     Text, StyleSheet, View, useColorScheme,
-    TouchableOpacity, Animated, StatusBar, Modal
+    TouchableOpacity, Animated, StatusBar, Modal, Platform
 } from 'react-native';
 import {
     BottomSheetModal,
@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Wifi, WifiOff, Users, CheckCircle } from 'lucide-react-native';
 
 import { startSharing, stopSharing, addNfcReadListener } from '../../../modules/nfc-send';
+import { startBroadcasting, stopBroadcasting, addBleReadListener } from '../../../modules/ble-share';
 
 export interface ShareModalRef {
     present: () => void;
@@ -203,25 +204,41 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         try {
             const urlToShare = props.profileUrl || "https://nextvibe.io/u/39";
 
-            removeListenerRef.current = addNfcReadListener(() => {
-                const now = Date.now();
-                if (now - lastReadTimestamp.current > 2000) {
-                    if (__DEV__) console.log("\u2705 Valid read! Incrementing vibes.");
-                    setVibes(prev => prev + 1);
-                    lastReadTimestamp.current = now;
-                    triggerNeonGlow();
-                } else {
-                    if (__DEV__) console.log("\u26a0\ufe0f Debounced duplicate read (ignored)");
-                }
-            });
-
-            // Call our native func
-            startSharing(urlToShare);
+            if (Platform.OS === 'ios') {
+                // iOS: Use BLE proximity broadcasting
+                removeListenerRef.current = addBleReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        if (__DEV__) console.log("✅ BLE read! Incrementing vibes.");
+                        setVibes(prev => prev + 1);
+                        lastReadTimestamp.current = now;
+                        triggerNeonGlow();
+                    } else {
+                        if (__DEV__) console.log("⚠️ Debounced duplicate BLE read (ignored)");
+                    }
+                });
+                startBroadcasting(urlToShare);
+                if (__DEV__) console.log("✅ BLE Broadcasting started with URL:", urlToShare);
+            } else {
+                // Android: Use NFC HCE
+                removeListenerRef.current = addNfcReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        if (__DEV__) console.log("✅ Valid read! Incrementing vibes.");
+                        setVibes(prev => prev + 1);
+                        lastReadTimestamp.current = now;
+                        triggerNeonGlow();
+                    } else {
+                        if (__DEV__) console.log("⚠️ Debounced duplicate read (ignored)");
+                    }
+                });
+                startSharing(urlToShare);
+                if (__DEV__) console.log("✅ Custom Native HCE Broadcasting started with URL:", urlToShare);
+            }
 
             setIsBroadcasting(true);
-            if (__DEV__) console.log("\u2705 Custom Native HCE Broadcasting started with URL:", urlToShare);
         } catch (error) {
-            console.error("❌ Failed to start custom HCE:", error);
+            console.error("❌ Failed to start broadcasting:", error);
         }
     };
 
@@ -232,11 +249,15 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                 removeListenerRef.current = null;
             }
 
-            // Our native func for stop nfc
-            stopSharing();
-            if (__DEV__) console.log("\ud83d\uded1 Custom Native HCE Broadcasting stopped.");
+            if (Platform.OS === 'ios') {
+                stopBroadcasting();
+                if (__DEV__) console.log("🛑 BLE Broadcasting stopped.");
+            } else {
+                stopSharing();
+                if (__DEV__) console.log("🛑 Custom Native HCE Broadcasting stopped.");
+            }
         } catch (error) {
-            console.warn("Error stopping custom HCE:", error);
+            console.warn("Error stopping broadcasting:", error);
         } finally {
             setIsBroadcasting(false);
         }
