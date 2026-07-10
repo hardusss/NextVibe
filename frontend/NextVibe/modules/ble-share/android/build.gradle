@@ -1,0 +1,22 @@
+apply plugin: 'com.android.library'
+
+group = 'expo.modules.bleshare'
+version = '1.0.0'
+
+android {
+    namespace "expo.modules.bleshare"
+    compileSdkVersion safeExtGet("compileSdkVersion", 34)
+
+    defaultConfig {
+        minSdkVersion safeExtGet("minSdkVersion", 21)
+        targetSdkVersion safeExtGet("targetSdkVersion", 34)
+    }
+}
+
+dependencies {
+    implementation project(':expo-modules-core')
+}
+
+def safeExtGet(prop, fallback) {
+    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}

@@ -5,6 +5,7 @@ import { ChevronLeft, Radio } from 'lucide-react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { startSharing, stopSharing } from '@/modules/nfc-send';
+import { startBroadcasting, stopBroadcasting } from '@/modules/ble-share';
 import { storage } from '@/src/utils/storage';
 
 export default function EventNFCShareScreen() {
@@ -22,26 +23,19 @@ export default function EventNFCShareScreen() {
 
     useEffect(() => {
         const init = async () => {
-            if (Platform.OS === 'ios') {
-                // HCE broadcasting is not supported on iOS (Apple platform limitation).
-                // Do not call startSharing() here.
-                try {
-                    const storedId = await storage.getItem('id');
-                    if (storedId) {
-                        setUserId(storedId);
-                    }
-                } catch (e) {
-                    console.error('Failed to get user details:', e);
-                }
-                return;
-            }
             try {
                 const storedId = await storage.getItem('id');
                 if (storedId) {
                     setUserId(storedId);
-
                     const shareUrl = `https://nextvibe.io/event-nfc-receive?eventId=${eventId}&userId=${storedId}`;
-                    startSharing(shareUrl);
+
+                    if (Platform.OS === 'ios') {
+                        // iOS: Use BLE proximity broadcasting
+                        startBroadcasting(shareUrl);
+                    } else {
+                        // Android: Use NFC HCE
+                        startSharing(shareUrl);
+                    }
                 } else {
                     console.error('No user ID found in storage');
                 }
@@ -55,7 +49,9 @@ export default function EventNFCShareScreen() {
         }
 
         return () => {
-            if (Platform.OS !== 'ios') {
+            if (Platform.OS === 'ios') {
+                stopBroadcasting();
+            } else {
                 stopSharing();
             }
         };
@@ -69,6 +65,8 @@ export default function EventNFCShareScreen() {
         );
     }
 
+    const broadcastLabel = Platform.OS === 'ios' ? 'Bluetooth' : 'NFC';
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
             <View style={styles.header}>
@@ -79,36 +77,15 @@ export default function EventNFCShareScreen() {
                 >
                     <ChevronLeft size={22} color={main} strokeWidth={2} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: main }]}>NFC Networking</Text>
+                <Text style={[styles.headerTitle, { color: main }]}>
+                    {Platform.OS === 'ios' ? 'BLE Networking' : 'NFC Networking'}
+                </Text>
                 <View style={{ width: 44 }} />
             </View>
 
             <View style={styles.main}>
                 {!userId ? (
                     <ActivityIndicator size="large" color={accent} />
-                ) : Platform.OS === 'ios' ? (
-                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
-                        <Animated.View entering={FadeInDown.delay(200)}>
-                            <View style={styles.animationContainer}>
-                                <View style={[styles.iconCircle, { backgroundColor: '#EF4444' }]}>
-                                    <Radio size={32} color="#ffffff" />
-                                </View>
-                            </View>
-                        </Animated.View>
-
-                        <Text style={[styles.heading, { color: main }]}>
-                            Not Available on iPhone Yet
-                        </Text>
-                        <Text style={[styles.description, { color: muted }]}>
-                            NFC sharing isn't available on iPhone yet because iOS doesn't support Host Card Emulation (HCE).
-                        </Text>
-
-                        <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-                            <Text style={[styles.infoCardText, { color: muted }]}>
-                                To connect, please have the other attendee share their NFC card or use Android.
-                            </Text>
-                        </View>
-                    </Animated.View>
                 ) : (
                     <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
                         <Animated.View entering={FadeInDown.delay(200)}>
@@ -129,12 +106,15 @@ export default function EventNFCShareScreen() {
                             Ready to Network
                         </Text>
                         <Text style={[styles.description, { color: muted }]}>
-                            Hold the top of your phone near another attendee's phone to connect and share reputation!
+                            Hold your phone near another attendee's phone to connect and share reputation via {broadcastLabel}!
                         </Text>
 
                         <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
                             <Text style={[styles.infoCardText, { color: muted }]}>
-                                Make sure the other person's screen is unlocked.
+                                {Platform.OS === 'ios'
+                                    ? "Broadcasting via Bluetooth. Make sure the other person's app is open."
+                                    : "Make sure the other person's screen is unlocked."
+                                }
                             </Text>
                         </View>
                     </Animated.View>

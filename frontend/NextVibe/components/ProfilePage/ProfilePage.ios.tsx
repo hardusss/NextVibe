@@ -497,11 +497,9 @@ const ProfileView = () => {
 
                     {/* ── Action buttons ── */}
                     <View style={st.actionsRow}>
-                        {Platform.OS !== 'ios' && (
-                            <View style={{ flex: 1.2 }}>
-                                <ShareViaNFC handlePress={handleOpenModal} />
-                            </View>
-                        )}
+                        <View style={{ flex: 1.2 }}>
+                            <ShareViaNFC handlePress={handleOpenModal} />
+                        </View>
                         <View style={{ flex: 0.9 }}>
                             <InviteSecondaryButton handlePress={() => inviteSheetRef.current?.present()} />
                         </View>

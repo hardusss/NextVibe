@@ -22,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { getCheckinList } from "@/src/api/event.checkin";
 import { startSharing, stopSharing, addNfcReadListener } from "@/modules/nfc-send";
+import { startBroadcasting, stopBroadcasting, addBleReadListener } from "@/modules/ble-share";
 
 export interface NfcCheckinSheetRef {
     presentForPost: (postId: number, eventTitle?: string) => void;
@@ -104,26 +105,38 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     }, []);
 
     const startNfcBroadcast = useCallback((pid: number) => {
-        if (isBroadcasting || Platform.OS !== 'android') return;
+        if (isBroadcasting) return;
         try {
             const url = `https://nextvibe.io/event-checkin?postId=${pid}`;
 
-            removeListenerRef.current = addNfcReadListener(() => {
-                const now = Date.now();
-                if (now - lastReadTimestamp.current > 2000) {
-                    lastReadTimestamp.current = now;
-                    setTapCount(prev => prev + 1);
-                    Vibration.vibrate([0, 80, 60, 80]);
-                    // Immediate poll after a tap
-                    fetchCheckins(pid);
-                }
-            });
-
-            startSharing(url);
+            if (Platform.OS === 'ios') {
+                // iOS: Use BLE proximity broadcasting
+                removeListenerRef.current = addBleReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        lastReadTimestamp.current = now;
+                        setTapCount(prev => prev + 1);
+                        Vibration.vibrate([0, 80, 60, 80]);
+                        fetchCheckins(pid);
+                    }
+                });
+                startBroadcasting(url);
+            } else {
+                // Android: Use NFC HCE
+                removeListenerRef.current = addNfcReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        lastReadTimestamp.current = now;
+                        setTapCount(prev => prev + 1);
+                        Vibration.vibrate([0, 80, 60, 80]);
+                        fetchCheckins(pid);
+                    }
+                });
+                startSharing(url);
+            }
             setIsBroadcasting(true);
         } catch (error) {
-            // NFC not supported or HCE unavailable — silently ignore
-            console.warn("NFC not available:", error);
+            console.warn("Broadcasting not available:", error);
             setIsBroadcasting(false);
         }
     }, [isBroadcasting, fetchCheckins]);
@@ -134,9 +147,13 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                 removeListenerRef.current.remove();
                 removeListenerRef.current = null;
             }
-            stopSharing();
+            if (Platform.OS === 'ios') {
+                stopBroadcasting();
+            } else {
+                stopSharing();
+            }
         } catch (e) {
-            console.warn("Error stopping NFC:", e);
+            console.warn("Error stopping broadcast:", e);
         } finally {
             setIsBroadcasting(false);
         }
