@@ -4,7 +4,7 @@ const BleShare = requireNativeModule('BleShare');
 
 const emitter = new EventEmitter<{
   onBleRead: () => void;
-  onBleDiscovered: { url: string };
+  onBleDiscovered: (event: { url: string }) => void;
 }>(BleShare as any);
 
 // ── Broadcaster (Peripheral) API ──

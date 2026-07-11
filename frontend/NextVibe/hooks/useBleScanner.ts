@@ -1,8 +1,57 @@
 import { useEffect, useRef } from "react";
-import { AppState, Platform, Vibration } from "react-native";
+import { AppState, Platform, Vibration, PermissionsAndroid } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { startScanning, stopScanning, addBleDiscoveredListener } from "@/modules/ble-share";
+
+async function requestAndroidPermissions(): Promise<boolean> {
+    if (Platform.OS !== "android") return true;
+
+    try {
+        const apiLevel = Number(Platform.Version);
+        if (apiLevel >= 31) {
+            const scanGranted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+                {
+                    title: "Bluetooth Scan Permission",
+                    message: "NextVibe needs access to scan for nearby devices.",
+                    buttonNeutral: "Ask Later",
+                    buttonNegative: "Cancel",
+                    buttonPositive: "OK",
+                }
+            );
+            const connectGranted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+                {
+                    title: "Bluetooth Connect Permission",
+                    message: "NextVibe needs access to connect to nearby devices.",
+                    buttonNeutral: "Ask Later",
+                    buttonNegative: "Cancel",
+                    buttonPositive: "OK",
+                }
+            );
+            return (
+                scanGranted === PermissionsAndroid.RESULTS.GRANTED &&
+                connectGranted === PermissionsAndroid.RESULTS.GRANTED
+            );
+        } else {
+            const locationGranted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                {
+                    title: "Location Permission",
+                    message: "NextVibe needs access to your location to scan for nearby devices.",
+                    buttonNeutral: "Ask Later",
+                    buttonNegative: "Cancel",
+                    buttonPositive: "OK",
+                }
+            );
+            return locationGranted === PermissionsAndroid.RESULTS.GRANTED;
+        }
+    } catch (err) {
+        console.warn("[useBleScanner] Permission request error:", err);
+        return false;
+    }
+}
 
 export function useBleScanner() {
     const router = useRouter();
@@ -10,12 +59,19 @@ export function useBleScanner() {
     const lastScannedTimeRef = useRef<number>(0);
 
     useEffect(() => {
-        if (Platform.OS !== "ios") return;
+        if (Platform.OS !== "ios" && Platform.OS !== "android") return;
 
         let isScanning = false;
 
-        const startScanner = () => {
+        const startScanner = async () => {
             if (!isScanning) {
+                if (Platform.OS === "android") {
+                    const hasPermission = await requestAndroidPermissions();
+                    if (!hasPermission) {
+                        if (__DEV__) console.log("[useBleScanner] Android permissions not granted, cannot scan.");
+                        return;
+                    }
+                }
                 try {
                     startScanning();
                     isScanning = true;
