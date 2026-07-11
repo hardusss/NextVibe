@@ -62,7 +62,7 @@ const BalanceSection: React.FC<BalanceSectionProps> = ({
 const styles = StyleSheet.create({
     container: {
         alignItems: "center",
-        marginBottom: 24,
+        marginBottom: 16,
         paddingHorizontal: 20,
     },
     label: {

@@ -26,6 +26,7 @@ import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
 import { StatusBar } from "expo-status-bar";
 import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
+import { useBleScanner } from "@/hooks/useBleScanner";
 
 setupAxiosInterceptor();
 
@@ -120,6 +121,9 @@ const SHARED_SCREENS = [
 ];
 
 export default function RootLayout() {
+    // Enable background-style foreground BLE scanning on iOS
+    useBleScanner();
+
     const [fontsLoaded, fontError] = useFonts({
         'Dank Mono': require('@/assets/fonts/PlusJakartaSans-VariableFont_wght.ttf'),
         'Dank Mono Bold': require('@/assets/fonts/PlusJakartaSans-Bold.ttf'),

@@ -44,10 +44,10 @@ const Header: React.FC<HeaderProps> = ({
                 {Platform.OS === 'ios' ? (
                     <GlassSurface
                         style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: 20 }]}
-                        glassEffectStyle="regular"
+                        glassEffectStyle="clear"
                         colorScheme={isDarkMode ? "dark" : "light"}
                         isInteractive
-                        tintColor={isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)"}
+                        tintColor={isDarkMode ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.005)"}
                     >
                         <ArrowLeft size={20} color={iconColor} strokeWidth={1.5} />
                     </GlassSurface>
@@ -71,10 +71,10 @@ const Header: React.FC<HeaderProps> = ({
                     {Platform.OS === 'ios' ? (
                         <GlassSurface
                             style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: 20 }]}
-                            glassEffectStyle="regular"
+                            glassEffectStyle="clear"
                             colorScheme={isDarkMode ? "dark" : "light"}
                             isInteractive
-                            tintColor={isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)"}
+                            tintColor={isDarkMode ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.005)"}
                         >
                             {isBalanceHidden
                                 ? <EyeOff size={20} color={iconColor} strokeWidth={1.5} />
@@ -102,10 +102,10 @@ const Header: React.FC<HeaderProps> = ({
                     {Platform.OS === 'ios' ? (
                         <GlassSurface
                             style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: 20 }]}
-                            glassEffectStyle="regular"
+                            glassEffectStyle="clear"
                             colorScheme={isDarkMode ? "dark" : "light"}
                             isInteractive
-                            tintColor={isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)"}
+                            tintColor={isDarkMode ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.005)"}
                         >
                             <ScrollText size={20} color={iconColor} strokeWidth={1.5} />
                         </GlassSurface>
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: 20,
-        marginBottom: 30,
+        marginBottom: 20,
     },
     rightGroup: {
         flexDirection: "row",

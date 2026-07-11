@@ -36,23 +36,23 @@ export function buildMintPaymentInstructions(
     ownerAddress: string,
     priceSOL: number,
 ): TransactionInstruction[] {
-    const payerPubkey  = new PublicKey(payer);
-    const ownerPubkey  = new PublicKey(ownerAddress);
+    const payerPubkey = new PublicKey(payer);
+    const ownerPubkey = new PublicKey(ownerAddress);
     const totalLamports = Math.floor(priceSOL * LAMPORTS_PER_SOL);
 
-    const ownerLamports    = Math.floor(totalLamports * 0.95);
+    const ownerLamports = Math.floor(totalLamports * 0.95);
     const platformLamports = totalLamports - ownerLamports; // remaining = 5%
 
     const toOwner = SystemProgram.transfer({
         fromPubkey: payerPubkey,
-        toPubkey:   ownerPubkey,
-        lamports:   ownerLamports,
+        toPubkey: ownerPubkey,
+        lamports: ownerLamports,
     });
 
     const toPlatform = SystemProgram.transfer({
         fromPubkey: payerPubkey,
-        toPubkey:   PLATFORM_ADDRESS,
-        lamports:   platformLamports,
+        toPubkey: PLATFORM_ADDRESS,
+        lamports: platformLamports,
     });
 
     return [toOwner, toPlatform];
