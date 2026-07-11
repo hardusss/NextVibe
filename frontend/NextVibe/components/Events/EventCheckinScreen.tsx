@@ -23,6 +23,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { checkinEvent, claimEventNft } from "@/src/api/event.checkin";
+import * as Location from "expo-location";
 
 type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error" | "claiming" | "claim_success" | "claim_failed";
 
@@ -80,7 +81,26 @@ export default function EventCheckinScreen() {
 
         setState("loading");
         try {
-            const result = await checkinEvent(postId);
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setState("error");
+                setMessage("Location permission is required to check in to this event.");
+                Vibration.vibrate([0, 200]);
+                return;
+            }
+
+            const locData = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            if (locData.mocked) {
+                setState("error");
+                setMessage("Fake GPS detected. Real moments only.");
+                Vibration.vibrate([0, 200]);
+                return;
+            }
+
+            const result = await checkinEvent(postId, {
+                lat: locData.coords.latitude,
+                lng: locData.coords.longitude
+            });
             if (result.verified) {
                 if (result.post_image) {
                     setPostImage(result.post_image.startsWith("http") ? result.post_image : `https://nextvibe.s3.amazonaws.com/${result.post_image}`);
@@ -102,7 +122,7 @@ export default function EventCheckinScreen() {
             } else if (error.response?.status === 404) {
                 setMessage("Event not found.");
             } else {
-                setMessage("Something went wrong. Please try again.");
+                setMessage(error.response?.data?.error || "Something went wrong. Please try again.");
             }
             Vibration.vibrate([0, 200]);
         }
@@ -112,7 +132,26 @@ export default function EventCheckinScreen() {
         if (!postId) return;
         setState("claiming");
         try {
-            const result = await claimEventNft(postId);
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setState("claim_failed");
+                setMessage("Location permission is required to check in to this event.");
+                Vibration.vibrate([0, 200]);
+                return;
+            }
+
+            const locData = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            if (locData.mocked) {
+                setState("claim_failed");
+                setMessage("Fake GPS detected. Real moments only.");
+                Vibration.vibrate([0, 200]);
+                return;
+            }
+
+            const result = await claimEventNft(postId, {
+                lat: locData.coords.latitude,
+                lng: locData.coords.longitude
+            });
             if (result.success) {
                 setEarnedPoints(result.earned_points || 0);
                 setState("claim_success");

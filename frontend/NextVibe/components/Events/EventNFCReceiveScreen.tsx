@@ -74,12 +74,27 @@ export default function EventNFCReceiveScreen() {
         setState("locating");
         let location = null;
         try {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === 'granted') {
-                location = await Location.getCurrentPositionAsync({});
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setState("error");
+                setMessage("Location permission is required to connect with other attendees.");
+                Vibration.vibrate([0, 200]);
+                return;
+            }
+
+            location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            if (location.mocked) {
+                setState("error");
+                setMessage("Fake GPS detected. Real moments only.");
+                Vibration.vibrate([0, 200]);
+                return;
             }
         } catch (e) {
             console.warn("Location error:", e);
+            setState("error");
+            setMessage("Failed to get location coordinates.");
+            Vibration.vibrate([0, 200]);
+            return;
         }
 
         setState("connecting");
@@ -88,8 +103,8 @@ export default function EventNFCReceiveScreen() {
             const response = await axios.post(`${GetApiUrl()}/posts/event-nfc-connect/`, {
                 event_id: eventId,
                 scanned_user_id: scannedUserId,
-                latitude: location?.coords.latitude || 0,
-                longitude: location?.coords.longitude || 0,
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
