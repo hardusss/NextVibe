@@ -52,7 +52,11 @@ export default {
                 "android.permission.MODIFY_AUDIO_SETTINGS",
                 "android.permission.VIBRATE",
                 "android.permission.ACCESS_COARSE_LOCATION",
-                "android.permission.ACCESS_FINE_LOCATION"
+                "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.BLUETOOTH",
+                "android.permission.BLUETOOTH_ADMIN",
+                "android.permission.BLUETOOTH_SCAN",
+                "android.permission.BLUETOOTH_CONNECT"
             ],
             intentFilters: [
                 {
