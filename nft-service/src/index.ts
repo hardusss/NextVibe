@@ -29,7 +29,7 @@ const keypair = Keypair.fromSecretKey(bs58.decode(process.env.SOLANA_PRIVATE_KEY
 /**
  * Umi instance connected to the Helius RPC.
  */
-const umi = createUmi(process.env.HELIUS_RPC_URL!)
+const umi = createUmi(process.env.HELIUS_RPC_URL!, 'confirmed')
     .use(mplBubblegum())
     .use(mplTokenMetadata())
     .use(keypairIdentity(fromWeb3JsKeypair(keypair)))
@@ -91,12 +91,13 @@ new Elysia()
          * to index the transaction logs. We retry parsing to avoid race conditions.
          */
         let assetId = null;
-        let retries = 3;
+        let retries = 6;
+        let delayMs = 500;
 
         while (retries > 0) {
             try {
-                // Wait 1.5 seconds before attempting to parse the transaction logs
-                await delay(1500);
+                // Wait before attempting to parse the transaction logs
+                await delay(delayMs);
 
                 const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, signature);
                 assetId = leaf.id;
@@ -105,8 +106,9 @@ new Elysia()
                 break;
             } catch (error) {
                 retries--;
+                delayMs = 1500; // Increase delay for subsequent retries
                 if (retries === 0) {
-                    console.error("Failed to parse leaf from transaction after 3 attempts.", error);
+                    console.error("Failed to parse leaf from transaction after all attempts.", error);
                 }
             }
         }
@@ -165,12 +167,13 @@ new Elysia()
         });
 
         let assetId = null;
-        let retries = 3;
+        let retries = 6;
+        let delayMs = 500;
 
         while (retries > 0) {
             try {
-                // Wait 1.5 seconds before attempting to parse the transaction logs
-                await delay(1500);
+                // Wait before attempting to parse the transaction logs
+                await delay(delayMs);
 
                 const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, signature);
                 assetId = leaf.id;
@@ -179,8 +182,9 @@ new Elysia()
                 break;
             } catch (error) {
                 retries--;
+                delayMs = 1500; // Increase delay for subsequent retries
                 if (retries === 0) {
-                    console.error("Failed to parse leaf from transaction after 3 attempts.", error);
+                    console.error("Failed to parse leaf from transaction after all attempts.", error);
                 }
             }
         }
