@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { View, ScrollView, RefreshControl, StatusBar, Animated, Platform, StyleSheet } from "react-native";
+import { View, StatusBar, Animated, Platform, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -172,23 +172,11 @@ export default function WalletDashboardScreen() {
             />
             <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"} />
 
-            <ScrollView
-                style={styles.container}
-                contentContainerStyle={styles.scrollContent}
-                contentInset={Platform.OS === 'ios' ? { top: insets.top } : undefined}
-                contentOffset={Platform.OS === 'ios' ? { x: 0, y: -insets.top } : undefined}
-                automaticallyAdjustContentInsets={false}
-                contentInsetAdjustmentBehavior="never"
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing || isRefreshing}
-                        onRefresh={handleRefresh}
-                        tintColor={isDarkMode ? "#fff" : "#000"}
-                        progressViewOffset={Platform.OS === 'android' ? insets.top + 10 : undefined}
-                    />
-                }
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
+            <View
+                style={[
+                    styles.container,
+                    { paddingTop: insets.top }
+                ]}
             >
                 <View style={styles.dashboardBody}>
                     <View style={styles.dashboardTop}>
@@ -256,11 +244,13 @@ export default function WalletDashboardScreen() {
                                 isBalanceHidden={isBalanceHidden}
                                 tokens={data.tokens}
                                 isLoading={showPortfolioSkeleton}
+                                onRefresh={handleRefresh}
+                                refreshing={refreshing || isRefreshing}
                             />
                         </FadeIn>
                     </View>
                 </View>
-            </ScrollView>
+            </View>
             <DepositBottomSheet ref={depositSheetRef} />
         </View>
     );

@@ -90,10 +90,10 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
                 {Platform.OS === 'ios' ? (
                     <GlassSurface
                         style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: RADIUS }]}
-                        glassEffectStyle="regular"
+                        glassEffectStyle="clear"
                         colorScheme={isDarkMode ? "dark" : "light"}
                         isInteractive
-                        tintColor={isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)"}
+                        tintColor={isDarkMode ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.005)"}
                     >
                         <action.Icon size={22} color={iconColor} strokeWidth={1.5} />
                         {action.pulse && <PulseDot isDarkMode={isDarkMode} />}
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-around",
         paddingHorizontal: 8,
-        marginBottom: 30,
+        marginBottom: 20,
         alignItems: "flex-start",
     },
     wrapper: {

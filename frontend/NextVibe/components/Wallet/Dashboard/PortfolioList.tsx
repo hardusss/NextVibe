@@ -6,6 +6,8 @@ import {
     Animated,
     TouchableOpacity,
     Platform,
+    ScrollView,
+    RefreshControl,
 } from "react-native";
 import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { Wallet, BriefcaseBusiness, ArrowRight, Sparkles } from "lucide-react-native";
@@ -20,6 +22,8 @@ interface PortfolioListProps {
     isBalanceHidden: boolean;
     tokens: TokenAsset[];
     isLoading: boolean;
+    onRefresh?: () => void;
+    refreshing?: boolean;
 }
 
 // ─── Animated Skeleton ────────────────────────────────────────────────────────
@@ -114,6 +118,8 @@ function PortfolioList({
     isBalanceHidden,
     tokens,
     isLoading,
+    onRefresh,
+    refreshing,
 }: PortfolioListProps) {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -180,12 +186,12 @@ function PortfolioList({
                 styles.sheet,
                 Platform.OS === 'ios' && { borderWidth: 0 },
                 Platform.OS !== 'ios' && { backgroundColor: sheetBg, borderColor: border },
-                { paddingBottom: insets.bottom + 16 },
+                { paddingBottom: 16 },
                 { flex: 1 }
             ]}
-            glassEffectStyle="regular"
+            glassEffectStyle="clear"
             colorScheme={isDarkMode ? "dark" : "light"}
-            tintColor={isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)"}
+            tintColor={isDarkMode ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.005)"}
         >
             {/* Drag handle */}
             <View style={styles.handleArea}>
@@ -227,93 +233,66 @@ function PortfolioList({
                 ) : displayTokens.length === 0 ? (
                     <EmptyState isDarkMode={isDarkMode} />
                 ) : (
-                    <View style={styles.tokenList}>
-                        {displayTokens.map((token, i) => (
-                            <TokenItem
-                                key={token.symbol}
-                                token={token}
-                                isDarkMode={isDarkMode}
-                                isBalanceHidden={isBalanceHidden}
-                                isLast={i === displayTokens.length - 1}
-                                index={i}
-                            />
-                        ))}
+                    <View style={{ flex: 1, justifyContent: "space-between" }}>
+                        <ScrollView
+                            style={styles.tokenList}
+                            contentContainerStyle={{ flexGrow: 1 }}
+                            showsVerticalScrollIndicator={false}
+                            refreshControl={
+                                onRefresh ? (
+                                    <RefreshControl
+                                        refreshing={refreshing || false}
+                                        onRefresh={onRefresh}
+                                        tintColor={isDarkMode ? "#fff" : "#000"}
+                                    />
+                                ) : undefined
+                            }
+                        >
+                            {displayTokens.map((token, i) => (
+                                <TokenItem
+                                    key={token.symbol}
+                                    token={token}
+                                    isDarkMode={isDarkMode}
+                                    isBalanceHidden={isBalanceHidden}
+                                    isLast={i === displayTokens.length - 1}
+                                    index={i}
+                                />
+                            ))}
+                        </ScrollView>
 
                         <TouchableOpacity
                             style={[
                                 styles.viewAllButton,
-                                Platform.OS === 'ios' && { borderWidth: 0 },
-                                Platform.OS !== 'ios' && {
-                                    borderColor: sectionDivider,
-                                    backgroundColor: isDarkMode
-                                        ? "rgba(196,167,255,0.04)"
-                                        : "rgba(109,40,217,0.03)",
+                                {
+                                    backgroundColor: isDarkMode ? "#8B5CF6" : "#7c3aed",
+                                    borderWidth: 0,
                                 },
                             ]}
-                            activeOpacity={0.65}
+                            activeOpacity={0.8}
                             onPress={() => router.push("/all-tokens")}
                         >
-                            {Platform.OS === 'ios' ? (
-                                <GlassSurface
-                                    style={[StyleSheet.absoluteFillObject, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, borderRadius: 16 }]}
-                                    glassEffectStyle="regular"
-                                    colorScheme={isDarkMode ? "dark" : "light"}
-                                    isInteractive
-                                    tintColor={isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)"}
+                            <View style={styles.viewAllLeft}>
+                                <Sparkles
+                                    size={14}
+                                    color="#FFFFFF"
+                                    strokeWidth={2}
+                                />
+                                <Text
+                                    style={[
+                                        styles.viewAllText,
+                                        {
+                                            color: "#FFFFFF",
+                                        },
+                                    ]}
                                 >
-                                    <View style={styles.viewAllLeft}>
-                                        <Sparkles
-                                            size={13}
-                                            color={isDarkMode ? "rgba(196,167,255,0.6)" : "rgba(109,40,217,0.55)"}
-                                            strokeWidth={1.5}
-                                        />
-                                        <Text
-                                            style={[
-                                                styles.viewAllText,
-                                                {
-                                                    color: isDarkMode
-                                                        ? "rgba(196,167,255,0.85)"
-                                                        : "rgba(109,40,217,0.8)",
-                                                },
-                                            ]}
-                                        >
-                                            Show all tokens
-                                        </Text>
-                                    </View>
-                                    <ArrowRight
-                                        size={14}
-                                        color={isDarkMode ? "rgba(196,167,255,0.5)" : "rgba(109,40,217,0.45)"}
-                                        strokeWidth={1.8}
-                                    />
-                                </GlassSurface>
-                            ) : (
-                                <>
-                                    <View style={styles.viewAllLeft}>
-                                        <Sparkles
-                                            size={13}
-                                            color={isDarkMode ? "rgba(196,167,255,0.6)" : "rgba(109,40,217,0.55)"}
-                                            strokeWidth={1.5}
-                                        />
-                                        <Text
-                                            style={[
-                                                styles.viewAllText,
-                                                {
-                                                    color: isDarkMode
-                                                        ? "rgba(196,167,255,0.85)"
-                                                        : "rgba(109,40,217,0.8)",
-                                                },
-                                            ]}
-                                        >
-                                            Show all tokens
-                                        </Text>
-                                    </View>
-                                    <ArrowRight
-                                        size={14}
-                                        color={isDarkMode ? "rgba(196,167,255,0.5)" : "rgba(109,40,217,0.45)"}
-                                        strokeWidth={1.8}
-                                    />
-                                </>
-                            )}
+                                    Show all tokens
+                                </Text>
+                            </View>
+                            <ArrowRight
+                                size={14}
+                                color="#FFFFFF"
+                                strokeWidth={2}
+                            />
                         </TouchableOpacity>
                     </View>
                 )}
@@ -460,21 +439,22 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 16,
-        borderWidth: StyleSheet.hairlineWidth,
-        marginTop: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 24,
+        marginHorizontal: 48,
+        marginTop: 12,
+        marginBottom: 12,
     },
     viewAllLeft: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 7,
+        gap: 8,
     },
     viewAllText: {
         fontFamily: "Dank Mono Bold",
-        fontSize: 12,
-        letterSpacing: 0.2,
+        fontSize: 13,
+        letterSpacing: 0.3,
         includeFontPadding: false,
     },
 });

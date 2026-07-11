@@ -11,7 +11,7 @@ import {
 import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Wifi, WifiOff, Users, CheckCircle } from 'lucide-react-native';
+import { Wifi, WifiOff, Users, CheckCircle, AlertTriangle } from 'lucide-react-native';
 
 import { startSharing, stopSharing, addNfcReadListener } from '../../../modules/nfc-send';
 import { startBroadcasting, stopBroadcasting, addBleReadListener } from '../../../modules/ble-share';
@@ -361,6 +361,15 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                         </View>
                     </View>
 
+                    {Platform.OS === 'ios' && (
+                        <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.06)', borderColor: 'rgba(168,85,247,0.2)' }]}>
+                            <AlertTriangle size={18} color={colors.accent} />
+                            <Text style={[styles.warningText, { color: colors.textColor }]}>
+                                Ask the other person to enable <Text style={{ fontFamily: "Dank Mono Bold" }}>Bluetooth</Text> and open the <Text style={{ fontFamily: "Dank Mono Bold" }}>NextVibe</Text> app on their phone to receive.
+                            </Text>
+                        </View>
+                    )}
+
                     <View style={{ flex: 1 }} />
 
                     <TouchableOpacity
@@ -490,6 +499,23 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontFamily: "Dank Mono Bold",
         includeFontPadding: false,
+    },
+    warningCard: {
+        width: '100%',
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        gap: 10,
+        marginBottom: 20,
+    },
+    warningText: {
+        flex: 1,
+        fontFamily: 'Dank Mono',
+        fontSize: 12,
+        lineHeight: 18,
     },
 });
 

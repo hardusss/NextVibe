@@ -89,6 +89,8 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
 
         const ChangeIcon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
 
+        const dividerColor = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+
         const onPressIn = () => {
             Animated.spring(pressScale, {
                 toValue: MOTION.press.scale,
@@ -109,7 +111,18 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
             <Animated.View
                 style={[
                     styles.container,
+<<<<<<< HEAD
                     Platform.OS === 'ios' && { borderWidth: 0 },
+=======
+                    Platform.OS === 'ios' && {
+                        borderWidth: 0,
+                        borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                        borderBottomColor: dividerColor,
+                        borderRadius: 0,
+                        paddingVertical: 12,
+                        paddingHorizontal: 12,
+                    },
+>>>>>>> main
                     Platform.OS !== 'ios' && {
                         backgroundColor: cardBg,
                         borderColor: cardBorder,
@@ -124,6 +137,7 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                     },
                 ]}
             >
+<<<<<<< HEAD
                 {Platform.OS === 'ios' && (
                     <GlassSurface
                         style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
@@ -133,6 +147,8 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                     />
                 )}
 
+=======
+>>>>>>> main
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
                     <View style={styles.logoContainer}>
                         {token.logoURI ? (
