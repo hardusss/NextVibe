@@ -57,13 +57,13 @@ export default function TokenInfoCard({
                             onPress={() => router.push("/select-token")}
                             style={[
                                 styles.switchBtn,
-                                Platform.OS === 'ios' && { borderWidth: 0 },
+                                Platform.OS === 'ios' && { borderWidth: 0, paddingHorizontal: 0, paddingVertical: 0 },
                                 Platform.OS !== 'ios' && { backgroundColor: switchBg, borderColor: switchBorder }
                             ]}
                         >
                             {Platform.OS === 'ios' ? (
                                 <GlassSurface
-                                    style={[StyleSheet.absoluteFillObject, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 6 }]}
+                                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 6 }}
                                     glassEffectStyle="regular"
                                     colorScheme={isDark ? "dark" : "light"}
                                     isInteractive
