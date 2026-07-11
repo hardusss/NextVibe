@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
 import {
     useColorScheme, StyleSheet, Text, TextInput,
-    TouchableOpacity, View, Pressable, Vibration
+    TouchableOpacity, View, Pressable, Vibration, Platform
 } from 'react-native';
 import {
     BottomSheetModal,
@@ -9,7 +9,7 @@ import {
     useBottomSheet,
     BottomSheetBackdropProps
 } from '@gorhom/bottom-sheet';
-import { Nfc, CheckCircle2, Check } from "lucide-react-native";
+import { Nfc, Radio, CheckCircle2, Check } from "lucide-react-native";
 import { TOKENS } from "@/constants/Tokens";
 import { Image } from 'expo-image';
 import Animated, {
@@ -21,6 +21,7 @@ import useWalletAddress from '@/hooks/useWalletAddress';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 
 import { startSharing, stopSharing, addNfcReadListener } from '@/modules/nfc-send';
+import { startBroadcasting, stopBroadcasting, addBleReadListener } from '@/modules/ble-share';
 
 export interface DepositSheetRef {
     present: () => void;
@@ -35,7 +36,8 @@ const SOLANA_PAY_MINTS: Record<string, string | null> = Object.fromEntries(
     Object.values(TOKENS).map(t => [t.symbol, t.mint ?? null])
 );
 
-const AnimatedNfc = Animated.createAnimatedComponent(Nfc);
+const DepositIcon = Platform.OS === 'ios' ? Radio : Nfc;
+const AnimatedDepositIcon = Animated.createAnimatedComponent(DepositIcon);
 
 // Backdrop
 export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProps) => {
@@ -105,10 +107,14 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                 removeListenerRef.current.remove();
                 removeListenerRef.current = null;
             }
-            stopSharing();
+            if (Platform.OS === 'ios') {
+                stopBroadcasting();
+            } else {
+                stopSharing();
+            }
             setIsBroadcasting(false);
         } catch (e) {
-            console.error("Failed to stop HCE:", e);
+            console.error("Failed to stop HCE/BLE:", e);
         }
     };
 
@@ -152,23 +158,36 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
             setIsBroadcasting(true);
             const url = buildPayload();
 
-            removeListenerRef.current = addNfcReadListener(() => {
-                const now = Date.now();
-                if (now - lastReadTimestamp.current > 2000) {
-                    lastReadTimestamp.current = now;
-                    Vibration.vibrate([0, 100, 100, 100]);
-                    showToast("NFC details sent successfully!", true);
-                    stopHceTransaction(); 
-                }
-            });
-
-            startSharing(url);
-            console.log("✅ Custom Native HCE started with payload:", url);
+            if (Platform.OS === 'ios') {
+                removeListenerRef.current = addBleReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        lastReadTimestamp.current = now;
+                        Vibration.vibrate([0, 100, 100, 100]);
+                        showToast("Tap details sent successfully!", true);
+                        stopHceTransaction();
+                    }
+                });
+                startBroadcasting(url);
+                console.log("✅ Custom Native BLE started with payload:", url);
+            } else {
+                removeListenerRef.current = addNfcReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        lastReadTimestamp.current = now;
+                        Vibration.vibrate([0, 100, 100, 100]);
+                        showToast("NFC details sent successfully!", true);
+                        stopHceTransaction(); 
+                    }
+                });
+                startSharing(url);
+                console.log("✅ Custom Native HCE started with payload:", url);
+            }
 
         } catch (e: any) {
-            showToast("Failed to start NFC. Please try again.", false);
+            showToast(`Failed to start ${Platform.OS === 'ios' ? 'BLE' : 'NFC'}. Please try again.`, false);
             setIsBroadcasting(false);
-            console.error("❌ Failed to start custom HCE:", e);
+            console.error(`❌ Failed to start custom ${Platform.OS === 'ios' ? 'BLE' : 'HCE'}:`, e);
         }
     };
 
@@ -200,8 +219,10 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <Nfc size={16} color={iconColor} strokeWidth={1.5} />
-                    <Text style={[styles.headerTitle, { color: mainColor }]}>Receive via NFC</Text>
+                    <DepositIcon size={16} color={iconColor} strokeWidth={1.5} />
+                    <Text style={[styles.headerTitle, { color: mainColor }]}>
+                        {Platform.OS === 'ios' ? 'Receive via Tap' : 'Receive via NFC'}
+                    </Text>
                 </View>
 
                 {/* Amount */}
@@ -310,12 +331,12 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                 >
                     {isBroadcasting ? (
                         <>
-                            <AnimatedNfc size={18} color={accentText} strokeWidth={1.5} style={animatedIconStyle} />
+                            <AnimatedDepositIcon size={18} color={accentText} strokeWidth={1.5} style={animatedIconStyle} />
                             <Text style={[styles.readyText, { color: accentText }]}>Waiting for phone…</Text>
                         </>
                     ) : (
                         <>
-                            <Nfc size={18} color={isReady ? accentText : mutedColor} strokeWidth={1.5} />
+                            <DepositIcon size={18} color={isReady ? accentText : mutedColor} strokeWidth={1.5} />
                             <Text style={[styles.readyText, { color: isReady ? accentText : mutedColor }]}>
                                 Ready to Receive
                             </Text>
