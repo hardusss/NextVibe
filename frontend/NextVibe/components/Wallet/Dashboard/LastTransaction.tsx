@@ -1,8 +1,9 @@
 import React, { memo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import FastImage from "react-native-fast-image";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { Image } from "expo-image";
 import { ShimmerSkeleton } from "@/components/Shared/motion";
 import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft } from "lucide-react-native";
+import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { FormattedTransaction } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
 import timeAgo from "@/src/utils/formatTime";
@@ -107,7 +108,7 @@ const SwapContent: React.FC<{
             {/* Dual token icons with overlap */}
             <View style={styles.swapAvatarWrap}>
                 {swap.inputLogoURL ? (
-                    <FastImage source={{ uri: swap.inputLogoURL }} style={styles.swapTokenLeft} />
+                    <Image source={{ uri: swap.inputLogoURL }} style={styles.swapTokenLeft} />
                 ) : (
                     <View style={[styles.swapTokenLeft, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 8, fontFamily: "Dank Mono" }}>
@@ -116,7 +117,7 @@ const SwapContent: React.FC<{
                     </View>
                 )}
                 {swap.outputLogoURL ? (
-                    <FastImage source={{ uri: swap.outputLogoURL }} style={styles.swapTokenRight} />
+                    <Image source={{ uri: swap.outputLogoURL }} style={styles.swapTokenRight} />
                 ) : (
                     <View style={[styles.swapTokenRight, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 8, fontFamily: "Dank Mono" }}>
@@ -198,7 +199,7 @@ const TransactionContent: React.FC<{
             {/* Token image + type icon badge */}
             <View style={styles.avatarWrap}>
                 {tokenInfo?.logoURL ? (
-                    <FastImage source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
+                    <Image source={{ uri: tokenInfo.logoURL }} style={styles.tokenImage} />
                 ) : (
                     <View style={[styles.tokenImage, { backgroundColor: isDarkMode ? '#333' : '#ccc', justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: isDarkMode ? '#fff' : '#000', fontSize: 10, fontFamily: "Dank Mono" }}>
@@ -312,16 +313,30 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
     return (
         <View style={styles.container}>
             <TouchableOpacity
-                style={[styles.card, { backgroundColor: bg, borderColor: border }]}
+                style={[
+                    styles.card,
+                    Platform.OS === 'ios' && { borderWidth: 0 },
+                    Platform.OS !== 'ios' && { backgroundColor: bg, borderColor: border }
+                ]}
                 onPress={onPress}
                 disabled={isDisabled}
                 activeOpacity={0.65}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-                {/* Left accent bar — thin stripe that shows tx direction */}
-                <View style={[styles.accentBar, { backgroundColor: accentBarColor }]} />
+                {Platform.OS === 'ios' && (
+                    <GlassSurface
+                        style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
+                        glassEffectStyle="clear"
+                        colorScheme={isDarkMode ? "dark" : "light"}
+                        isInteractive
+                        tintColor={isDarkMode ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.005)"}
+                    />
+                )}
 
-                <View style={styles.inner}>
+                {/* Left accent bar — thin stripe that shows tx direction */}
+                <View style={[styles.accentBar, { backgroundColor: accentBarColor }, Platform.OS === 'ios' && { zIndex: 1 }]} />
+
+                <View style={[styles.inner, Platform.OS === 'ios' && { zIndex: 1 }]}>
                     {isLoading && <LoadingSkeleton isDarkMode={isDarkMode} />}
                     {!isLoading && error && <ErrorState isDarkMode={isDarkMode} />}
                     {!isLoading && !error && !transaction && <EmptyState isDarkMode={isDarkMode} />}
@@ -351,7 +366,7 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
 const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 20,
-        marginBottom: 30,
+        marginBottom: 20,
     },
     card: {
         borderRadius: 20,

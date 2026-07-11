@@ -2,7 +2,8 @@ import { TouchableOpacity, Text, View, StyleSheet, Animated } from "react-native
 import { useRef, useState, useCallback } from "react";
 import { useColorScheme } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import FastImage from 'react-native-fast-image';
+
+import { Image } from 'expo-image';
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
 import { Bell } from "lucide-react-native"
 
@@ -14,26 +15,26 @@ export default function Header() {
   const height = useRef(new Animated.Value(50)).current;
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
-  const styles = getStyles(isDark);
+  const styles = getStyles(isDark, 0);
   const [notificationsCount, setNotificationsCount] = useState(0)
   let rightPosition = -15;
-    if (notificationsCount > 9 && notificationsCount <= 99) {
-      rightPosition = -6;
-    } else if (notificationsCount <= 9) {
-      rightPosition = -1;
-    } else if (notificationsCount >= 99 && notificationsCount < 999) {
-      rightPosition = -11;
-    }
+  if (notificationsCount > 9 && notificationsCount <= 99) {
+    rightPosition = -6;
+  } else if (notificationsCount <= 9) {
+    rightPosition = -1;
+  } else if (notificationsCount >= 99 && notificationsCount < 999) {
+    rightPosition = -11;
+  }
 
   const displayCount = (): string => {
     return (
-        notificationsCount > 999
-          ? '999+'
-          : notificationsCount > 99
-            ? '99+'
-            : notificationsCount > 9
-              ? '9+'
-              : notificationsCount.toString()
+      notificationsCount > 999
+        ? '999+'
+        : notificationsCount > 99
+          ? '99+'
+          : notificationsCount > 9
+            ? '9+'
+            : notificationsCount.toString()
     )
 
   }
@@ -59,25 +60,25 @@ export default function Header() {
       <View style={styles.headerFixed}>
         <View style={styles.row}>
           <Text style={styles.text}>NextVibe</Text>
-          <View style={{flexDirection: "row", alignItems: "center", gap: 15}}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 15 }}>
             <TouchableOpacity activeOpacity={0.7} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.notifyContainer} onPress={() => router.push("/notifications")}>
               <Bell size={24} color={isDark ? "#fafafa" : "#1A1225"} />
               {notificationsCount > 0 && (
                 <View style={[
                   styles.counterBox,
-                  {right: rightPosition === -15 ? -4 : rightPosition === -6 ? -6 : rightPosition === -1 ? -4 : -8},
+                  { right: rightPosition === -15 ? -4 : rightPosition === -6 ? -6 : rightPosition === -1 ? -4 : -8 },
                 ]}>
-                  <Text style={[styles.counterText, {fontSize: notificationsCount > 999 ? 7 : 8}]}>
+                  <Text style={[styles.counterText, { fontSize: notificationsCount > 999 ? 7 : 8 }]}>
                     {displayCount()}
                   </Text>
                 </View>
               )}
             </TouchableOpacity>
 
-            <FastImage
+            <Image
               source={require('@/assets/logo.png')}
               style={styles.logo}
-              resizeMode={FastImage.resizeMode.contain}
+              contentFit="contain"
             />
           </View>
         </View>
@@ -86,11 +87,12 @@ export default function Header() {
   );
 }
 
-const getStyles = (isDark: boolean) => StyleSheet.create({
+const getStyles = (isDark: boolean, topInset: number) => StyleSheet.create({
   container: {
     zIndex: 100,
     width: '100%',
-    marginTop: -5,
+    paddingTop: 0,
+    backgroundColor: isDark ? '#0A0410' : '#fff',
   },
   notifyContainer: {
     position: "relative",
@@ -164,5 +166,5 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     width: 32,
     height: 32,
   },
-  
+
 });

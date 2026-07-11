@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { ArrowLeftRight, ArrowDownLeft, ArrowUpRight } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
 import { FormattedTransaction } from '@/src/types/solana';
@@ -206,15 +206,15 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                 <View style={styles.transactionItemContent}>
                     {/* Dual overlapping token icons */}
                     <View style={swapStyles.dualIconContainer}>
-                        <FastImage
+                        <Image
                             source={{ uri: swap.inputLogoURL || 'https://via.placeholder.com/34' }}
                             style={[swapStyles.iconLeft, swapStyles.iconBorder, { borderColor }]}
-                            resizeMode={FastImage.resizeMode.cover}
+                            contentFit="cover"
                         />
-                        <FastImage
+                        <Image
                             source={{ uri: swap.outputLogoURL || 'https://via.placeholder.com/34' }}
                             style={[swapStyles.iconRight, swapStyles.iconBorder, { borderColor }]}
-                            resizeMode={FastImage.resizeMode.cover}
+                            contentFit="cover"
                         />
                         {/* Direction badge — on top of both coin icons, fully opaque */}
                         <View style={[styles.directionIndicator, {
@@ -279,10 +279,10 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
             <View style={styles.transactionItemContent}>
                 {/* Icon Section */}
                 <View style={styles.transactionIconContainer}>
-                    <FastImage 
+                    <Image 
                         source={{ uri: tokenInfo.logoURL }} 
                         style={styles.tokenIcon} 
-                        resizeMode={FastImage.resizeMode.cover}
+                        contentFit="cover"
                     />
                     <View style={[styles.directionIndicator, { 
                         backgroundColor: isIncoming ? '#2ECC71' : '#E74C3C',

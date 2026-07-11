@@ -10,9 +10,12 @@ import {
     ScrollView,
     Pressable,
     Linking,
+    Platform,
 } from "react-native";
-import FastImage from "react-native-fast-image";
-import { BlurView } from "@react-native-community/blur";
+import { Image as ExpoImage } from "expo-image";
+import GlassBadge from "@/components/Shared/GlassBadge";
+import GlassPill from "@/components/Shared/GlassPill";
+import GlassModalCard from "@/components/Shared/GlassModalCard";
 import {
     Sparkles,
     MapPin,
@@ -148,21 +151,29 @@ const PostPopup: React.FC<PostPopupProps> = ({
         scale.setValue(OPEN_SCALE_FROM);
         cardOpacity.setValue(0);
         backdropOpacity.setValue(0);
-        Animated.parallel([
+        const animations = [
             Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
             Animated.spring(translateY, { toValue: 0, tension: 70, friction: 12, useNativeDriver: true }),
             Animated.spring(scale, { toValue: 1, tension: 70, friction: 12, useNativeDriver: true }),
-            Animated.timing(cardOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-        ]).start();
+        ];
+        if (Platform.OS !== 'ios') {
+            animations.push(Animated.timing(cardOpacity, { toValue: 1, duration: 220, useNativeDriver: true }));
+        } else {
+            cardOpacity.setValue(1);
+        }
+        Animated.parallel(animations).start();
     };
 
     const runCloseAnimation = (onDone: () => void) => {
-        Animated.parallel([
+        const animations = [
             Animated.timing(backdropOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
             Animated.timing(translateY, { toValue: CLOSE_TRANSLATE_Y, duration: 200, useNativeDriver: true }),
             Animated.timing(scale, { toValue: CLOSE_SCALE_TO, duration: 200, useNativeDriver: true }),
-            Animated.timing(cardOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-        ]).start(onDone);
+        ];
+        if (Platform.OS !== 'ios') {
+            animations.push(Animated.timing(cardOpacity, { toValue: 0, duration: 180, useNativeDriver: true }));
+        }
+        Animated.parallel(animations).start(onDone);
     };
 
     useEffect(() => {
@@ -304,24 +315,21 @@ const PostPopup: React.FC<PostPopupProps> = ({
                 isSuccess={toastConfig.isSuccess}
                 onHide={() => setToastConfig(prev => ({ ...prev, visible: false }))}
             />
-            <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="auto">
+            <Animated.View style={[styles.backdrop, Platform.OS === 'ios' && styles.backdropIOS, { opacity: backdropOpacity }]} pointerEvents="auto">
                 <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
             </Animated.View>
 
             <Animated.View
-                style={[styles.cardWrapper, { opacity: cardOpacity, transform: [{ translateY }, { scale }] }]}
+                style={[
+                    styles.cardWrapper,
+                    Platform.OS === 'ios'
+                        ? { transform: [{ translateY }, { scale }] }
+                        : { opacity: cardOpacity, transform: [{ translateY }, { scale }] },
+                ]}
                 pointerEvents="box-none"
             >
                 <View style={styles.glowWrapper}>
-                    <View style={styles.card}>
-                        <BlurView
-                            style={StyleSheet.absoluteFillObject}
-                            blurType="dark"
-                            blurAmount={12}
-                            reducedTransparencyFallbackColor="#f4ebeb"
-                            pointerEvents="none"
-                        />
-                        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,10,0.5)" }]} pointerEvents="none" />
+                    <GlassModalCard style={styles.card}>
 
                         {/* Header */}
                         <View style={styles.postHeader}>
@@ -373,9 +381,15 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                 </View>
 
                                 <TouchableOpacity onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                                    <View style={styles.closeBtn}>
+                                    <GlassPill
+                                        style={styles.closeBtn}
+                                        colorScheme="dark"
+                                        fallbackBackgroundColor="rgba(255,255,255,0.08)"
+                                        fallbackBorderColor="rgba(255,255,255,0.12)"
+                                        isInteractive
+                                    >
                                         <X size={15} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
-                                    </View>
+                                    </GlassPill>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -400,14 +414,15 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                         ]} 
                                         onPress={handleDoubleTap}
                                     >
-                                        <FastImage
+                                        <ExpoImage
                                             source={{ uri: mediaUrl }}
                                             style={styles.image}
-                                            resizeMode={post.is_luma_event ? FastImage.resizeMode.contain : FastImage.resizeMode.cover}
+                                            contentFit={post.is_luma_event ? "contain" : "cover"}
                                             onLoad={(evt) => {
                                                 if (post.is_luma_event) {
-                                                    const { width, height } = evt.nativeEvent;
-                                                    if (width > 0) {
+                                                    const width = evt.source?.width || (evt as any).nativeEvent?.width;
+                                                    const height = evt.source?.height || (evt as any).nativeEvent?.height;
+                                                    if (width && width > 0 && height) {
                                                         setEventImageHeight((CARD_WIDTH / width) * height);
                                                     }
                                                 }
@@ -426,29 +441,29 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                         )}
                                         <View style={styles.imageBadges}>
                                             {post.is_ai_generated && (
-                                                <View style={styles.badge}>
+                                                <GlassBadge variant="overlay">
                                                     <Sparkles size={11} color="#05f0d8" />
                                                     <Text style={styles.badgeText}>AI Generated</Text>
-                                                </View>
+                                                </GlassBadge>
                                             )}
                                             {post.is_luma_event && (
-                                                <View style={[styles.badge, { borderColor: "rgba(168,85,247,0.6)", backgroundColor: "rgba(30, 0, 50, 0.85)" }]}>
+                                                <GlassBadge variant="overlay-event">
                                                     <Calendar size={11} color="#d8b4fe" />
                                                     <Text style={[styles.badgeText, { color: "#d8b4fe" }]}>Event</Text>
-                                                </View>
+                                                </GlassBadge>
                                             )}
                                             {post.location && (
-                                                <View style={styles.badge}>
+                                                <GlassBadge variant="overlay">
                                                     <MapPin size={11} color="#fff" />
                                                     <Text style={styles.badgeText}>{post.location}</Text>
-                                                </View>
+                                                </GlassBadge>
                                             )}
                                             {post.is_nft && (
-                                                <View style={[styles.badge, styles.nftBadge]}>
+                                                <GlassBadge variant="overlay-nft">
                                                     <Text style={styles.nftBadgeText}>
                                                         {post.minted_count}/{post.total_supply} minted
                                                     </Text>
-                                                </View>
+                                                </GlassBadge>
                                             )}
                                         </View>
                                     </Pressable>
@@ -589,7 +604,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                 </View>
                             </ScrollView>
                         ) : null}
-                    </View>
+                    </GlassModalCard>
                 </View>
             </Animated.View>
         </Modal>
@@ -601,6 +616,9 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         backgroundColor: "rgba(0,0,0,0.55)",
     },
+    backdropIOS: {
+        backgroundColor: "rgba(0,0,0,0.28)",
+    },
     cardWrapper: {
         flex: 1,
         justifyContent: "center",
@@ -610,9 +628,10 @@ const styles = StyleSheet.create({
     glowWrapper: {
         width: CARD_WIDTH,
         borderRadius: 24,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
-        shadowRadius: 28,
+        shadowColor: "#a855f7",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 24,
         elevation: 20,
     },
     card: {
@@ -646,6 +665,11 @@ const styles = StyleSheet.create({
         fontSize: 15,
         includeFontPadding: false,
         textAlignVertical: "center",
+        ...(Platform.OS === 'ios' ? {
+            textShadowColor: 'rgba(0,0,0,0.45)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 3,
+        } : {}),
     },
     badgeWrapper: {
         width: 15,
@@ -662,11 +686,9 @@ const styles = StyleSheet.create({
         width: 30,
         height: 30,
         borderRadius: 15,
-        backgroundColor: "rgba(255,255,255,0.08)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.12)",
         justifyContent: "center",
         alignItems: "center",
+        overflow: "hidden",
     },
     imageWrapper: {
         width: "100%",
@@ -746,6 +768,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 21,
         letterSpacing: 0.1,
+        ...(Platform.OS === 'ios' ? {
+            textShadowColor: 'rgba(0,0,0,0.5)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 4,
+        } : {}),
     },
     divider: {
         height: 1,

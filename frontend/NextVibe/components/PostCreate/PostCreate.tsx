@@ -4,12 +4,13 @@ import {
     Switch, useColorScheme, Dimensions, ActivityIndicator,
     KeyboardAvoidingView, Platform, Animated, Easing, ScrollView, StatusBar, Vibration
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import createPost from '@/src/api/create.post';
 import { getLocationName } from '@/src/api/mapbox/get.coords.name';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import * as Location from 'expo-location';
@@ -95,28 +96,12 @@ function LocatingDots({ color }: { color: string }) {
     );
 }
 
-function VideoPlayer({ uri }: { uri: string }) {
-    const video = useRef<Video>(null);
-    const [status, setStatus] = useState<AVPlaybackStatus>();
-    return (
-        <View style={{ flex: 1 }}>
-            {!status?.isLoaded && (
-                <ActivityIndicator size="large" color="#fff" style={StyleSheet.absoluteFillObject} />
-            )}
-            <Video
-                ref={video} style={{ width: '100%', height: '100%' }}
-                source={{ uri }} resizeMode={ResizeMode.COVER}
-                isLooping shouldPlay isMuted={false}
-                onPlaybackStatusUpdate={s => setStatus(() => s)}
-            />
-        </View>
-    );
-}
 
 export default function PostCreate() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const scheme = useColorScheme();
+    const insets = useSafeAreaInsets();
     const c = scheme === 'dark' ? dark : light;
 
     const rawUrl = (() => {
@@ -171,7 +156,6 @@ export default function PostCreate() {
         Animated.spring(tickScale, { toValue: 1, useNativeDriver: true, damping: 10, stiffness: 200 }).start();
     };
 
-    const isVideo = (uri: string) => /\.(mp4|mov|mkv|webm|ogg)$/i.test(uri);
 
     const fixedUri = mediaUrl
         ? (mediaUrl.startsWith('file://') || mediaUrl.startsWith('https://') ? mediaUrl : `file://${mediaUrl}`)
@@ -238,7 +222,7 @@ export default function PostCreate() {
                 confirmLabel="Discard"
                 confirmGradient={['#F87171', '#EF4444']} />
 
-            <View style={[s.header, { borderBottomColor: c.sep }]}>
+            <View style={[s.header, { borderBottomColor: c.sep, paddingTop: Platform.OS === 'ios' ? insets.top + 14 : 18 }]}>
                 <TouchableOpacity onPress={handleLeave}
                     style={[s.backBtn, { backgroundColor: c.sep }]}
                     hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
@@ -282,15 +266,11 @@ export default function PostCreate() {
                     <View style={{ height: PHOTO_H, width, overflow: 'hidden', borderRadius: 24 }}>
                         {fixedUri ? (
                             <>
-                                {isVideo(mediaUrl!) ? (
-                                    <VideoPlayer uri={fixedUri} />
-                                ) : (
-                                    <FastImage
-                                        source={{ uri: fixedUri, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable }}
-                                        style={StyleSheet.absoluteFillObject}
-                                        resizeMode={FastImage.resizeMode.cover}
-                                    />
-                                )}
+                                <Image
+                                    source={{ uri: fixedUri }}
+                                    style={StyleSheet.absoluteFillObject}
+                                    contentFit="cover"
+                                />
                                 <LinearGradient
                                     colors={c.photoTopOverlay}
                                     style={[s.photoGrad, { top: 0, bottom: undefined, height: '15%' }]}

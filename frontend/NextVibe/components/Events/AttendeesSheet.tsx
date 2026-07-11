@@ -8,7 +8,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "@react-native-community/blur";
 import { Users, Check } from "lucide-react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { getEventAttendees } from "@/src/api/event.requests";
 
@@ -73,7 +73,7 @@ const AttendeesSheet = forwardRef<AttendeesSheetRef>((_, ref) => {
                 style={[styles.attendeeRow, { backgroundColor: cardBg, borderColor: border }]}
             >
                 {avatarUrl ? (
-                    <FastImage source={{ uri: avatarUrl }} style={styles.avatar} />
+                    <Image source={{ uri: avatarUrl }} style={styles.avatar} />
                 ) : (
                     <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: border }]}>
                         <Users size={16} color={muted} />

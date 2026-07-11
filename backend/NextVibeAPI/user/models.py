@@ -60,7 +60,6 @@ class User(AbstractBaseUser):
     expo_push_token = models.CharField(max_length=100, blank=True, null=True)
     from_invite_code = models.ForeignKey("InviteUser", on_delete=models.SET_NULL, null=True, blank=True, related_name="invited_users")
     auth_provider = models.CharField(max_length=20, null=True, blank=True, default="email")
-    apple_user_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

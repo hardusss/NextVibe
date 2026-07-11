@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { ChevronDown } from 'lucide-react-native';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import type { TokenAsset } from '@/hooks/usePortfolio';
 import type { SwapColors } from '@/src/types/swap';
 import CustomActivityIndicator from '@/components/CustomActivityIndicator';
@@ -127,7 +127,7 @@ export default function SwapCard({
                         ]}
                     >
                         {token?.logoURI ? (
-                            <FastImage 
+                            <Image 
                                 source={{ uri: token.logoURI }} 
                                 style={styles.tokenLogo} 
                             />

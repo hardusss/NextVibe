@@ -24,6 +24,7 @@ import SwapSwipeButton from './SwapSwipeButton';
 import SwapTokenPicker from './SwapTokenPicker';
 import SwapInfoRows from './SwapInfoRows';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
+import GlassSurface from '@/components/Shared/GlassSurface';
 import type { SwapColors } from '@/src/types/swap';
 import useJupiterSwap from '@/hooks/useJupiterSwap';
 
@@ -530,34 +531,46 @@ export default function SwapScreen() {
                 <View style={styles.header}>
                     <TouchableOpacity
                         onPress={() => router.back()}
-                        style={[
-                            styles.iconBtn,
-                            {
-                                borderColor: colors.cardBorder,
-                                backgroundColor: colors.chip,
-                            },
-                        ]}
+                        activeOpacity={0.8}
+                        style={Platform.OS === 'ios' ? styles.iconBtnGlassWrap : undefined}
                     >
-                        <ArrowLeft size={18} color={colors.text} strokeWidth={1.8} />
+                        <GlassSurface
+                            style={[
+                                styles.iconBtn,
+                                Platform.OS !== 'ios' && {
+                                    borderColor: colors.cardBorder,
+                                    backgroundColor: colors.chip,
+                                },
+                            ]}
+                            glassEffectStyle="regular"
+                            colorScheme={colors.isDark ? 'dark' : 'light'}
+                            isInteractive={Platform.OS === 'ios'}
+                            fallbackBackgroundColor={colors.chip}
+                        >
+                            <ArrowLeft size={18} color={colors.text} strokeWidth={1.8} />
+                        </GlassSurface>
                     </TouchableOpacity>
 
                     <Text style={[styles.title, { color: colors.text }]}>
                         Swap Tokens
                     </Text>
 
-                    <View
+                    <GlassSurface
                         style={[
                             styles.slippagePill,
-                            {
+                            Platform.OS !== 'ios' && {
                                 borderColor: colors.chipBorder,
                                 backgroundColor: colors.chip,
                             },
                         ]}
+                        glassEffectStyle="regular"
+                        colorScheme={colors.isDark ? 'dark' : 'light'}
+                        fallbackBackgroundColor={colors.chip}
                     >
                         <Text style={[styles.slippageText, { color: colors.muted }]}>
                             ⚙ 0.5%
                         </Text>
-                    </View>
+                    </GlassSurface>
                 </View>
 
                 <SwapCard
@@ -675,9 +688,14 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 14,
-        borderWidth: 1,
+        borderWidth: Platform.OS === 'ios' ? 0 : 1,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
+    },
+    iconBtnGlassWrap: {
+        borderRadius: 14,
+        overflow: 'hidden',
     },
     title: {
         fontFamily: 'Dank Mono Bold',
@@ -688,7 +706,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 12,
-        borderWidth: 1,
+        borderWidth: Platform.OS === 'ios' ? 0 : 1,
+        overflow: 'hidden',
     },
     slippageText: {
         fontFamily: 'Dank Mono',

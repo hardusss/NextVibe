@@ -25,7 +25,7 @@ import { BlurView } from 'expo-blur';
 
 const SearchBar = React.memo(({ placeholder, value, onChangeText, isDark }: any) => {
   const styles = useMemo(() => getSearchStyles(isDark), [isDark]);
-  
+
   return (
     <View style={styles.searchContainer}>
       <BlurView
@@ -103,7 +103,7 @@ export default function ChatsList() {
   const handleDeleteChat = async (chatId: number): Promise<boolean> => {
     try {
       const result = await deleteChat(chatId);
-      
+
       if (result) {
         setChats(prevChats => prevChats.filter(chat => chat.chat_id !== chatId));
         return true;
@@ -126,8 +126,8 @@ export default function ChatsList() {
       searchQuery.trim() === ''
         ? chats
         : chats.filter((chat) =>
-            chat.other_user.username.toLowerCase().includes(searchQuery.toLowerCase())
-          )
+          chat.other_user.username.toLowerCase().includes(searchQuery.toLowerCase())
+        )
     );
   }, [searchQuery, chats]);
 
@@ -181,8 +181,8 @@ export default function ChatsList() {
         data={chatLoading ? [] : filteredChats}
         keyExtractor={(item) => item.chat_id.toString()}
         renderItem={({ item }) => (
-          <ChatItem 
-            chat={item} 
+          <ChatItem
+            chat={item}
             onDelete={handleDeleteChat}
           />
         )}
@@ -229,7 +229,7 @@ const getStyles = (isDark: boolean) =>
     emptyText: {
       fontSize: 18,
       fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+      includeFontPadding: false,
       marginBottom: 8,
     },
     emptySubText: {

@@ -1,3 +1,8 @@
+// TODO: HCE broadcasting is not implemented on iOS.
+// Apple does not permit third-party Host Card Emulation (HCE) on iOS.
+// This feature requires a product redesign for iOS (e.g., CoreNFC tag-write flow,
+// QR code fallback, or Bluetooth-based alternative) rather than a straight port from Android.
+
 import ExpoModulesCore
 
 public class NfcSendModule: Module {
