@@ -15,6 +15,7 @@ import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
 import { StaggeredItem } from "@/components/Shared/motion";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const darkColors = {
     background: '#0A0410',
@@ -174,8 +175,17 @@ export default function SearchPage() {
         </StaggeredItem>
     );
 
+    const insets = useSafeAreaInsets();
+
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[
+            styles.container,
+            {
+                backgroundColor: colors.background,
+                paddingTop: insets.top + 16,
+                paddingBottom: insets.bottom > 0 ? insets.bottom + 100 : 110
+            }
+        ]}>
             <StatusBar barStyle={colorScheme === "dark" ? "light-content" : "dark-content"} backgroundColor={colorScheme === "dark" ? "#0A0410" : "white"} />
 
             {/* Search Input */}

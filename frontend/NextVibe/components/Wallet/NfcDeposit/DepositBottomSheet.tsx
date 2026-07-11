@@ -16,7 +16,7 @@ import Animated, {
     interpolate, Extrapolation, useAnimatedStyle,
     useSharedValue, withRepeat, withSequence, withTiming
 } from 'react-native-reanimated';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 import useWalletAddress from '@/hooks/useWalletAddress';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 
@@ -51,7 +51,7 @@ export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProp
     return (
         <Animated.View style={[StyleSheet.absoluteFill, style, animatedStyle]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => close()}>
-                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={2} />
+                <BlurView style={StyleSheet.absoluteFill} tint={isDark ? "dark" : "light"} intensity={40} experimentalBlurMethod="dimezisBlurView" />
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.2)' }]} />
             </Pressable>
         </Animated.View>

@@ -18,7 +18,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 import { Clock, ArrowRight, KeyRound, Wallet, ChevronDown } from 'lucide-react-native';
 
 export type WalletType = 'mwa' | 'lazorkit';
@@ -237,20 +237,12 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
 
 const CardBackground: React.FC<{ isDark: boolean; accentStart: string }> = ({ isDark, accentStart }) => (
   <>
-    {Platform.OS === 'ios' ? (
-      <BlurView
-        style={StyleSheet.absoluteFill}
-        blurType={isDark ? 'dark' : 'light'}
-        blurAmount={18}
-      />
-    ) : (
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: isDark ? 'rgba(10,4,16,0.92)' : 'rgba(255,255,255,0.92)' },
-        ]}
-      />
-    )}
+    <BlurView
+      style={StyleSheet.absoluteFill}
+      tint={isDark ? 'dark' : 'light'}
+      intensity={65}
+      experimentalBlurMethod="dimezisBlurView"
+    />
     <View
       style={[
         StyleSheet.absoluteFill,

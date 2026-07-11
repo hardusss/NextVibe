@@ -407,7 +407,7 @@ export default function FollowsScreen() {
                 backgroundColor={isDark ? '#0A0410' : '#F5F5F7'}
                 barStyle={isDark ? "light-content" : "dark-content"}
             />
-            <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top + 20 : 20 }]}>
+            <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.backButton} onPress={() => router.back()}>
                     <ArrowLeft size={28} color={isDark ? '#FFFFFF' : '#000'} />
                 </TouchableOpacity>

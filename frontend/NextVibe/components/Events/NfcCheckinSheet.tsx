@@ -9,7 +9,7 @@ import {
     BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { BlurView } from "@react-native-community/blur";
+import { BlurView } from "expo-blur";
 import { Nfc, Users, Check, X, Radio, AlertTriangle } from "lucide-react-native";
 import { Image } from "expo-image";
 import Animated, {
@@ -196,7 +196,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const backdrop = useCallback(
         (props: BottomSheetBackdropProps) => (
             <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close">
-                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={3} />
+                <BlurView style={StyleSheet.absoluteFill} tint={isDark ? "dark" : "light"} intensity={40} experimentalBlurMethod="dimezisBlurView" />
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.2)" }]} />
             </BottomSheetBackdrop>
         ),

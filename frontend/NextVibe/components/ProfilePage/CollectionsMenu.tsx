@@ -14,7 +14,7 @@ import getCollectionsMenu from "@/src/api/get.collections.menu";
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useIsFocused } from "@react-navigation/native";
 import { Image as ExpoImage } from 'expo-image';
-import { BlurView } from "@react-native-community/blur";
+import { BlurView } from "expo-blur";
 import { GlassView } from 'expo-glass-effect';
 import GlassPill from "@/components/Shared/GlassPill";
 import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2, Calendar } from "lucide-react-native";
@@ -378,7 +378,7 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                                                     {Platform.OS === 'ios' ? (
                                                         <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
                                                     ) : (
-                                                        <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                                                        <BlurView tint="dark" intensity={50} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} pointerEvents="none" />
                                                     )}
                                                 </>
                                             )}
@@ -396,7 +396,7 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                                                     {Platform.OS === 'ios' ? (
                                                         <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
                                                     ) : (
-                                                        <BlurView blurType="dark" blurAmount={20} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                                                        <BlurView tint="dark" intensity={50} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} pointerEvents="none" />
                                                     )}
                                                 </>
                                             )}

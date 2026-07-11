@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform, View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 
 interface GlassModalCardProps {
@@ -31,11 +31,10 @@ export function GlassModalCard({ children, style }: GlassModalCardProps) {
     return (
         <View style={[styles.shell, style]}>
             <BlurView
+                intensity={60}
+                tint="dark"
+                experimentalBlurMethod="dimezisBlurView"
                 style={StyleSheet.absoluteFillObject}
-                blurType="dark"
-                blurAmount={12}
-                reducedTransparencyFallbackColor="#f4ebeb"
-                pointerEvents="none"
             />
             <View style={[StyleSheet.absoluteFillObject, styles.androidScrim]} pointerEvents="none" />
             {children}
@@ -55,3 +54,4 @@ const styles = StyleSheet.create({
 });
 
 export default GlassModalCard;
+

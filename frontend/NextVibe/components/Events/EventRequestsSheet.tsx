@@ -13,7 +13,7 @@ import {
     BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { BlurView } from "@react-native-community/blur";
+import { BlurView } from "expo-blur";
 import { Users, Check, X, Calendar, Clock } from "lucide-react-native";
 import { actionEventRequest } from "@/src/api/event.requests";
 import { Image } from "expo-image";
@@ -238,7 +238,7 @@ const EventRequestsSheet = forwardRef<EventRequestsSheetRef, Props>(({ requests,
     const backdrop = useCallback(
         (props: BottomSheetBackdropProps) => (
             <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close">
-                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={3} />
+                <BlurView style={StyleSheet.absoluteFill} tint={isDark ? "dark" : "light"} intensity={40} experimentalBlurMethod="dimezisBlurView" />
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.2)" }]} />
             </BottomSheetBackdrop>
         ),
