@@ -47,7 +47,7 @@ export default function WalletHeader({
                 >
                     {Platform.OS === 'ios' ? (
                         <GlassSurface
-                            style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: 14 }]}
+                            style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', borderRadius: 14 }}
                             glassEffectStyle="regular"
                             colorScheme={isDark ? "dark" : "light"}
                             isInteractive
