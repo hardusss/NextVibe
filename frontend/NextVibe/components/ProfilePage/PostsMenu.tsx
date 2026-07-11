@@ -14,7 +14,7 @@ import { ActivityIndicator } from "../CustomActivityIndicator";
 import getMenuPosts from "@/src/api/menu.posts";
 import { useIsFocused } from "@react-navigation/native";
 
-import { BlurView } from "@react-native-community/blur";
+import { BlurView } from "expo-blur";
 import { GlassView } from 'expo-glass-effect';
 import GlassBadge from "@/components/Shared/GlassBadge";
 import { Image } from 'expo-image';
@@ -386,8 +386,9 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                                         ) : (
                                             <BlurView
                                                 style={StyleSheet.absoluteFill}
-                                                blurType="dark"
-                                                blurAmount={14}
+                                                tint="dark"
+                                                intensity={60}
+                                                experimentalBlurMethod="dimezisBlurView"
                                                 pointerEvents="none"
                                             />
                                         )}

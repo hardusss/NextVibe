@@ -1,5 +1,5 @@
 import React from 'react';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 import {
     Modal, View, Text, TouchableOpacity, TextInput,
     ScrollView, StyleSheet, Vibration, Platform,
@@ -63,16 +63,12 @@ export default function SwapTokenPicker({
                         backgroundColor: colors.isDark ? 'rgba(20, 10, 35, 0.4)' : 'rgba(255, 255, 255, 0.4)'
                     }
                 ]}>
-                    {Platform.OS === 'ios' ? (
-                        <BlurView
-                            style={StyleSheet.absoluteFill}
-                            blurType={colors.isDark ? 'dark' : 'light'}
-                            blurAmount={25}
-                            reducedTransparencyFallbackColor={colors.isDark ? '#120820' : '#f5f0ff'}
-                        />
-                    ) : (
-                        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.isDark ? 'rgba(18,8,34,0.95)' : 'rgba(245,240,255,0.95)' }]} />
-                    )}
+                    <BlurView
+                        style={StyleSheet.absoluteFill}
+                        tint={colors.isDark ? 'dark' : 'light'}
+                        intensity={colors.isDark ? 80 : 90}
+                        experimentalBlurMethod="dimezisBlurView"
+                    />
 
                     {/* Simulates directional light reflection on the top edges of the modal sheet */}
                     <View style={[StyleSheet.absoluteFill, styles.glassHighlight, {

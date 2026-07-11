@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
@@ -509,9 +509,9 @@ export default function SwapScreen() {
 
                     <BlurView
                         style={StyleSheet.absoluteFill}
-                        blurType={isDark ? 'dark' : 'light'}
-                        blurAmount={90}
-                        reducedTransparencyFallbackColor={isDark ? '#0A0410' : '#FFFFFF'}
+                        tint={isDark ? 'dark' : 'light'}
+                        intensity={90}
+                        experimentalBlurMethod="dimezisBlurView"
                     />
                 </View>
             )}

@@ -14,7 +14,7 @@ export default function Header({ title, leftIcon, onLeftPress }: HeaderProps) {
   const insets = useSafeAreaInsets();
   
   return (
-    <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top + 20 : 20 }]}>
+    <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
       {leftIcon && (
         <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={onLeftPress} style={styles.leftButton}>
           {leftIcon === 'arrow-back' ? (

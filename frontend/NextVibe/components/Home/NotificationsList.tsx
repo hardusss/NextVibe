@@ -625,7 +625,7 @@ export default function NotificationsListPage() {
     >
       <StatusBar backgroundColor={isDarkTheme ? "#0A0410" : "#FFFFFF"} />
 
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top + 16 : 16 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.titleWrapper}>
           <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()}>
             <ArrowLeft

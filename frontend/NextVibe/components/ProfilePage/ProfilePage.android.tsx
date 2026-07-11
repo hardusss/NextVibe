@@ -349,7 +349,7 @@ const ProfileView = () => {
                 </View>
             ) : (
                 <ScrollView
-                    contentContainerStyle={{ paddingBottom: 20 }}
+                    contentContainerStyle={{ paddingBottom: insets.bottom > 0 ? insets.bottom + 100 : 110 }}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                     refreshControl={
@@ -430,7 +430,7 @@ const ProfileView = () => {
                             />
 
                             {/* Top bar overlaid on header */}
-                            <View style={st.topBar}>
+                            <View style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
                                 <ButtonSettings />
                                 <View style={{ flex: 1 }} />
                                 <ButtonWallet />

@@ -203,7 +203,7 @@ export default function EventsScreen() {
     return (
         <View style={[styles.container, { backgroundColor: t.bg }]} >
             <StatusBar style="light" />
-            <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top + 6 : 6, marginTop: Platform.OS === 'ios' ? 0 : 6 }]}>
+            <View style={[styles.header, { paddingTop: insets.top + 6, marginTop: 0 }]}>
                 <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={styles.backBtn}>
                     <ChevronLeft size={22} color={t.text} strokeWidth={2} />
                 </TouchableOpacity>

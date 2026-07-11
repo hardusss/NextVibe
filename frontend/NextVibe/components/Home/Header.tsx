@@ -2,6 +2,7 @@ import { TouchableOpacity, Text, View, StyleSheet, Animated } from "react-native
 import { useRef, useState, useCallback } from "react";
 import { useColorScheme } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Image } from 'expo-image';
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
@@ -15,7 +16,8 @@ export default function Header() {
   const height = useRef(new Animated.Value(50)).current;
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
-  const styles = getStyles(isDark, 0);
+  const insets = useSafeAreaInsets();
+  const styles = getStyles(isDark, insets.top);
   const [notificationsCount, setNotificationsCount] = useState(0)
   let rightPosition = -15;
   if (notificationsCount > 9 && notificationsCount <= 99) {
@@ -91,7 +93,7 @@ const getStyles = (isDark: boolean, topInset: number) => StyleSheet.create({
   container: {
     zIndex: 100,
     width: '100%',
-    paddingTop: 0,
+    paddingTop: topInset,
     backgroundColor: isDark ? '#0A0410' : '#fff',
   },
   notifyContainer: {

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, forwardRef, useState, useImperativeHandle 
 import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 import VerifyBadge from "../VerifyBadge";
 import { Star, Layers, Users, ChevronDown, ShieldCheck, Radio } from 'lucide-react-native';
 import axios from 'axios';
@@ -157,7 +157,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                 {item.event_image ? (
                                     <View style={styles.heroWrap}>
                                         <Image source={{ uri: item.event_image }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                                        <BlurView blurType={isDark ? 'dark' : 'light'} blurAmount={18} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                                        <BlurView tint={isDark ? 'dark' : 'light'} intensity={45} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} pointerEvents="none" />
                                         <Image source={{ uri: item.event_image }} style={styles.heroImg} contentFit="contain" />
 
                                         <View style={styles.heroBadgeRow}>
