@@ -1,7 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { View, Text, StyleSheet, Animated, Pressable, Platform } from "react-native";
 import { Image } from "expo-image";
-import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { TokenAsset } from "@/hooks/usePortfolio.types";
 import { MOTION } from "@/constants/motion";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react-native";
@@ -111,9 +110,6 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
             <Animated.View
                 style={[
                     styles.container,
-<<<<<<< HEAD
-                    Platform.OS === 'ios' && { borderWidth: 0 },
-=======
                     Platform.OS === 'ios' && {
                         borderWidth: 0,
                         borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
@@ -122,7 +118,6 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                         paddingVertical: 12,
                         paddingHorizontal: 12,
                     },
->>>>>>> main
                     Platform.OS !== 'ios' && {
                         backgroundColor: cardBg,
                         borderColor: cardBorder,
@@ -137,18 +132,6 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                     },
                 ]}
             >
-<<<<<<< HEAD
-                {Platform.OS === 'ios' && (
-                    <GlassSurface
-                        style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
-                        glassEffectStyle="regular"
-                        colorScheme={isDarkMode ? "dark" : "light"}
-                        tintColor={isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
-                    />
-                )}
-
-=======
->>>>>>> main
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
                     <View style={styles.logoContainer}>
                         {token.logoURI ? (
