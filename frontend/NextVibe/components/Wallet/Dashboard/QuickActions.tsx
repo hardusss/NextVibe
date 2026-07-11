@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import { View, Text, Pressable, StyleSheet, Animated as RNAnimated, Platform } from "react-native";
-import { ArrowDown, ArrowUp, ArrowLeftRight, Nfc } from "lucide-react-native";
+import { ArrowDown, ArrowUp, ArrowLeftRight, Nfc, Radio } from "lucide-react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { MOTION } from "@/constants/motion";
 import { GlassSurface } from "@/components/Shared/GlassSurface";
@@ -40,9 +40,9 @@ const ALL_ACTIONS = [
     { id: "nfc", Icon: Nfc, label: "NFC Deposit", pulse: true },
 ];
 
-// NFC HCE sharing is not supported on iOS — hide the NFC Deposit action
+// NFC HCE sharing is not supported on iOS — customize as BLE "via Tap" deposit
 const ACTIONS = Platform.OS === 'ios'
-    ? ALL_ACTIONS.filter(a => a.id !== 'nfc')
+    ? ALL_ACTIONS.map(a => a.id === 'nfc' ? { ...a, label: "via Tap", Icon: Radio } : a)
     : ALL_ACTIONS;
 
 interface QuickActionButtonProps {

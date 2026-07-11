@@ -8,6 +8,7 @@ import {
     useColorScheme,
     ActivityIndicator,
     Vibration,
+    Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, ShieldX, Radio, Users, Star } from "lucide-react-native";
@@ -67,7 +68,7 @@ export default function EventNFCReceiveScreen() {
     const handleConnect = async () => {
         if (!eventId || !scannedUserId) {
             setState("error");
-            setMessage("Invalid NFC data.");
+            setMessage(Platform.OS === 'ios' ? "Invalid BLE data." : "Invalid NFC data.");
             return;
         }
 
@@ -248,7 +249,9 @@ export default function EventNFCReceiveScreen() {
                 >
                     <ChevronLeft size={22} color={main} strokeWidth={2} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: main }]}>NFC Networking</Text>
+                <Text style={[styles.headerTitle, { color: main }]}>
+                    {Platform.OS === 'ios' ? 'BLE Networking' : 'NFC Networking'}
+                </Text>
                 <View style={{ width: 44 }} />
             </View>
 
