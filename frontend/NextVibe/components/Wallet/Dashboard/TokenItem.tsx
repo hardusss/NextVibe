@@ -1,7 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { View, Text, StyleSheet, Animated, Pressable, Platform } from "react-native";
 import { Image } from "expo-image";
-import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { TokenAsset } from "@/hooks/usePortfolio.types";
 import { MOTION } from "@/constants/motion";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react-native";
@@ -122,9 +121,9 @@ const TokenItem: React.FC<TokenItemProps> = React.memo(
                     Platform.OS !== 'ios' && {
                         backgroundColor: cardBg,
                         borderColor: cardBorder,
-                        marginBottom: isLast ? 0 : 5,
                     },
                     {
+                        marginBottom: isLast ? 0 : 5,
                         opacity: fadeAnim,
                         transform: [
                             { translateY: slideAnim },
