@@ -12,7 +12,7 @@ User = get_user_model()
 
 class GoogleRegister(serializers.ModelSerializer):
     token = serializers.SerializerMethodField()
-    avatar_url = serializers.URLField(write_only=True, required=False, allow_null=True)
+    avatar_url = serializers.URLField(write_only=True, required=False)
     from_invite_code = serializers.CharField(
         required=False,
         allow_null=True,
@@ -47,7 +47,7 @@ class GoogleRegister(serializers.ModelSerializer):
             defaults={
                 "username": validated_data["username"],
                 "from_invite_code": invite_obj,
-                "auth_provider": validated_data.get("auth_provider", "google"),
+                "auth_provider": "google",
             },
         )
 

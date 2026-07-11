@@ -14,7 +14,7 @@ import Reanimated, {
     Extrapolation,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ImageIcon, CheckCircle, AlertCircle, X, ChevronRight, Tag, Coins } from 'lucide-react-native';
 import ButtonWallet from '../ProfilePage/ButtonWallet';
@@ -362,7 +362,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                         {/* Post preview */}
                         <View style={[styles.previewCard, { backgroundColor: c.card }]}>
                             {props.imageUrl ? (
-                                <FastImage source={{ uri: props.imageUrl }} style={styles.postThumb} resizeMode={FastImage.resizeMode.cover} />
+                                <Image source={{ uri: props.imageUrl }} style={styles.postThumb} contentFit="cover" />
                             ) : (
                                 <View style={[styles.postThumb, { backgroundColor: c.accentDim, justifyContent: 'center', alignItems: 'center' }]}>
                                     <ImageIcon size={22} color={c.accent} />

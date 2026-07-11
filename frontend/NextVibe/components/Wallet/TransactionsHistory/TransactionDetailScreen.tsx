@@ -3,7 +3,7 @@ import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
 import { ArrowLeftRight, Copy, ExternalLink, CheckCircle2 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useRef, useCallback, useState } from 'react';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -353,7 +353,7 @@ export default function TransactionDetailScreen() {
             ]}>
                 {/* Dual token icons with arrow */}
                 <View style={styles.swapIconsRow}>
-                    <FastImage
+                    <Image
                         source={{ uri: (swap_input_logo as string) || 'https://via.placeholder.com/56' }}
                         style={styles.swapTokenIcon}
                     />
@@ -363,7 +363,7 @@ export default function TransactionDetailScreen() {
                             color={isDark ? '#60A5FA' : '#3B82F6'}
                         />
                     </View>
-                    <FastImage
+                    <Image
                         source={{ uri: (swap_output_logo as string) || 'https://via.placeholder.com/56' }}
                         style={styles.swapTokenIcon}
                     />
@@ -372,7 +372,7 @@ export default function TransactionDetailScreen() {
                 {/* Colour-coded amounts */}
                 <View style={styles.swapAmountsContainer}>
                     <View style={styles.swapAmountRow}>
-                        <FastImage
+                        <Image
                             source={{ uri: (swap_input_logo as string) || 'https://via.placeholder.com/22' }}
                             style={styles.swapAmountIcon}
                         />
@@ -382,7 +382,7 @@ export default function TransactionDetailScreen() {
                     </View>
                     <View style={styles.swapDivider} />
                     <View style={styles.swapAmountRow}>
-                        <FastImage
+                        <Image
                             source={{ uri: (swap_output_logo as string) || 'https://via.placeholder.com/22' }}
                             style={styles.swapAmountIcon}
                         />
@@ -408,7 +408,7 @@ export default function TransactionDetailScreen() {
                 { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
             ]}>
                 <View style={styles.statusIconContainer}>
-                    <FastImage 
+                    <Image 
                         source={{ uri: icon as string }} 
                         style={{width: 44, height: 44, borderRadius: 22}} 
                     />

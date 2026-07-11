@@ -1,8 +1,7 @@
 import React, { useRef, useState } from "react";
-import { Animated, Dimensions, Pressable, StyleSheet, TouchableOpacity } from "react-native";
-import { Video, ResizeMode } from "expo-av";
-import FastImage from "react-native-fast-image";
-import { Heart, Volume2, VolumeX } from "lucide-react-native";
+import { Animated, Dimensions, StyleSheet, TouchableOpacity } from "react-native";
+import { Image } from "expo-image";
+import { Heart } from "lucide-react-native";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -12,14 +11,10 @@ export interface PostMedia {
     media_preview?: string | null;
 }
 
-const isVideo = (url: string) =>
-    url.includes("/video/") ||
-    [".mp4", ".mov", ".avi", ".mkv", ".webm"].some((e) => url.toLowerCase().endsWith(e));
-
-export const getMediaUrls = (item: PostMedia) => {
-    if (!isVideo(item.media_url)) return { hd: item.media_url, isVideo: false };
-    return { hd: item.media_url, isVideo: true };
-};
+export const getMediaUrls = (item: PostMedia) => ({
+    hd: item.media_url,
+    isVideo: false,
+});
 
 interface Props {
     item: PostMedia;
@@ -35,8 +30,7 @@ interface Props {
  * - If the timeout fires with counter === 1 → single-tap → open full-screen (images only).
  */
 const PostMediaItem: React.FC<Props> = ({ item, isLiked, onLike, onOpenPhoto }) => {
-    const { hd, isVideo: video } = getMediaUrls(item);
-    const [isMuted, setIsMuted] = useState(true);
+    const { hd } = getMediaUrls(item);
     const [showHeart, setShowHeart] = useState(false);
     const heartAnim = useRef(new Animated.Value(0)).current;
     const tapCount = useRef(0);
@@ -61,7 +55,7 @@ const PostMediaItem: React.FC<Props> = ({ item, isLiked, onLike, onOpenPhoto }) 
             tapCount.current = 0;
         } else {
             tapTimer.current = setTimeout(() => {
-                if (tapCount.current === 1 && !video) onOpenPhoto();
+                if (tapCount.current === 1) onOpenPhoto();
                 tapCount.current = 0;
             }, 250);
         }
@@ -69,30 +63,11 @@ const PostMediaItem: React.FC<Props> = ({ item, isLiked, onLike, onOpenPhoto }) 
 
     return (
         <TouchableOpacity onPress={handlePress} style={styles.container} activeOpacity={0.6}>
-            {video ? (
-                <>
-                    <Video
-                        source={{ uri: hd }}
-                        style={styles.media}
-                        resizeMode={ResizeMode.COVER}
-                        isLooping
-                        isMuted={isMuted}
-                        shouldPlay
-                    />
-                    <Pressable
-                        onPress={(e) => { e.stopPropagation(); setIsMuted((m) => !m); }}
-                        style={styles.muteBtn}
-                    >
-                        {isMuted ? <VolumeX size={18} color="#fff" /> : <Volume2 size={18} color="#fff" />}
-                    </Pressable>
-                </>
-            ) : (
-                <FastImage
-                    source={{ uri: item.media_url, priority: FastImage.priority.high }}
-                    style={styles.media}
-                    resizeMode={FastImage.resizeMode.cover}
-                />
-            )}
+            <Image
+                source={{ uri: hd }}
+                style={styles.media}
+                contentFit="cover"
+            />
 
             {showHeart && (
                 <Animated.View
@@ -116,15 +91,6 @@ const styles = StyleSheet.create({
     media: { 
         width: "100%", 
         height: "100%" 
-    },
-    muteBtn: {
-        position: "absolute", 
-        bottom: 14, 
-        right: 14, 
-        zIndex: 20,
-        backgroundColor: "rgba(0,0,0,0.55)", 
-        padding: 7, 
-        borderRadius: 18,
     },
     heartOverlay: {
         position: "absolute", 

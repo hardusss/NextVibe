@@ -1,6 +1,8 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Nfc } from "lucide-react-native"
+import { Nfc, Bluetooth } from "lucide-react-native"
+
+const isIOS = Platform.OS === 'ios';
 
 export function ShareViaNFC({
     handlePress 
@@ -16,8 +18,8 @@ export function ShareViaNFC({
                 end={{ x: 1, y: 0 }}
                 >   
                     <View style={{flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5}}>
-                        <Text style={styles.buttonText}>Share via NFC</Text>
-                        <Nfc color={"white"} size={16}/>
+                        <Text style={styles.buttonText}>{isIOS ? "Share via BLE" : "Share via NFC"}</Text>
+                        {isIOS ? <Bluetooth color={"white"} size={16}/> : <Nfc color={"white"} size={16}/>}
                     </View>
                     
             </LinearGradient>

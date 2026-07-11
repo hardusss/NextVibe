@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import timeAgo from '@/src/utils/formatTime';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -168,7 +168,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
               activeOpacity={0.7}
             >
               <View style={styles.avatarContainer}>
-                <FastImage
+                <Image
                   source={{ uri: `${chat.other_user.avatar}` }}
                   style={styles.avatar}
                 />

@@ -1,19 +1,20 @@
 import React, { useCallback, useMemo, useRef, forwardRef, useImperativeHandle, useState, useEffect } from 'react';
 import {
     Text, StyleSheet, View, useColorScheme,
-    TouchableOpacity, Animated, StatusBar, Modal
+    TouchableOpacity, Animated, StatusBar, Modal, Platform
 } from 'react-native';
 import {
     BottomSheetModal,
     BottomSheetView,
     BottomSheetBackdrop
 } from '@gorhom/bottom-sheet';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Wifi, WifiOff, Users, CheckCircle } from 'lucide-react-native';
+import { Wifi, WifiOff, Users, CheckCircle, AlertTriangle } from 'lucide-react-native';
 
 import { startSharing, stopSharing, addNfcReadListener } from '../../../modules/nfc-send';
+import { startBroadcasting, stopBroadcasting, addBleReadListener } from '../../../modules/ble-share';
 
 export interface ShareModalRef {
     present: () => void;
@@ -203,25 +204,41 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         try {
             const urlToShare = props.profileUrl || "https://nextvibe.io/u/39";
 
-            removeListenerRef.current = addNfcReadListener(() => {
-                const now = Date.now();
-                if (now - lastReadTimestamp.current > 2000) {
-                    if (__DEV__) console.log("\u2705 Valid read! Incrementing vibes.");
-                    setVibes(prev => prev + 1);
-                    lastReadTimestamp.current = now;
-                    triggerNeonGlow();
-                } else {
-                    if (__DEV__) console.log("\u26a0\ufe0f Debounced duplicate read (ignored)");
-                }
-            });
-
-            // Call our native func
-            startSharing(urlToShare);
+            if (Platform.OS === 'ios') {
+                // iOS: Use BLE proximity broadcasting
+                removeListenerRef.current = addBleReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        if (__DEV__) console.log("✅ BLE read! Incrementing vibes.");
+                        setVibes(prev => prev + 1);
+                        lastReadTimestamp.current = now;
+                        triggerNeonGlow();
+                    } else {
+                        if (__DEV__) console.log("⚠️ Debounced duplicate BLE read (ignored)");
+                    }
+                });
+                startBroadcasting(urlToShare);
+                if (__DEV__) console.log("✅ BLE Broadcasting started with URL:", urlToShare);
+            } else {
+                // Android: Use NFC HCE
+                removeListenerRef.current = addNfcReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        if (__DEV__) console.log("✅ Valid read! Incrementing vibes.");
+                        setVibes(prev => prev + 1);
+                        lastReadTimestamp.current = now;
+                        triggerNeonGlow();
+                    } else {
+                        if (__DEV__) console.log("⚠️ Debounced duplicate read (ignored)");
+                    }
+                });
+                startSharing(urlToShare);
+                if (__DEV__) console.log("✅ Custom Native HCE Broadcasting started with URL:", urlToShare);
+            }
 
             setIsBroadcasting(true);
-            if (__DEV__) console.log("\u2705 Custom Native HCE Broadcasting started with URL:", urlToShare);
         } catch (error) {
-            console.error("❌ Failed to start custom HCE:", error);
+            console.error("❌ Failed to start broadcasting:", error);
         }
     };
 
@@ -232,11 +249,15 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                 removeListenerRef.current = null;
             }
 
-            // Our native func for stop nfc
-            stopSharing();
-            if (__DEV__) console.log("\ud83d\uded1 Custom Native HCE Broadcasting stopped.");
+            if (Platform.OS === 'ios') {
+                stopBroadcasting();
+                if (__DEV__) console.log("🛑 BLE Broadcasting stopped.");
+            } else {
+                stopSharing();
+                if (__DEV__) console.log("🛑 Custom Native HCE Broadcasting stopped.");
+            }
         } catch (error) {
-            console.warn("Error stopping custom HCE:", error);
+            console.warn("Error stopping broadcasting:", error);
         } finally {
             setIsBroadcasting(false);
         }
@@ -315,10 +336,10 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                                 />
                             )}
                             {props.avatarUrl && (
-                                <FastImage
+                                <Image
                                     source={{ uri: props.avatarUrl }}
                                     style={styles.avatar}
-                                    resizeMode={FastImage.resizeMode.cover}
+                                    contentFit="cover"
                                 />
                             )}
                         </View>
@@ -339,6 +360,15 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                             </View>
                         </View>
                     </View>
+
+                    {Platform.OS === 'ios' && (
+                        <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.06)', borderColor: 'rgba(168,85,247,0.2)' }]}>
+                            <AlertTriangle size={18} color={colors.accent} />
+                            <Text style={[styles.warningText, { color: colors.textColor }]}>
+                                Ask the other person to enable <Text style={{ fontFamily: "Dank Mono Bold" }}>Bluetooth</Text> and open the <Text style={{ fontFamily: "Dank Mono Bold" }}>NextVibe</Text> app on their phone to receive.
+                            </Text>
+                        </View>
+                    )}
 
                     <View style={{ flex: 1 }} />
 
@@ -469,6 +499,23 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontFamily: "Dank Mono Bold",
         includeFontPadding: false,
+    },
+    warningCard: {
+        width: '100%',
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        gap: 10,
+        marginBottom: 20,
+    },
+    warningText: {
+        flex: 1,
+        fontFamily: 'Dank Mono',
+        fontSize: 12,
+        lineHeight: 18,
     },
 });
 

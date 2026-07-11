@@ -6,25 +6,9 @@
       "distribution": "internal",
       "cache": {
         "disabled": true
-      }
-    },
-    "preview": {
-      "channel": "preview",
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease",
-        "distribution": "internal"
       },
       "env": {
-        "EXPO_PUBLIC_NEXTVIBE_PUBKEY": "EaKpyd7H9iZQSzUNSa8W5ykntH55y49C3EMVd1YjgDKm",
-        "EXPO_PUBLIC_VEXO_API_KEY": "93f6e34f-8d85-4b17-a2b1-7f974e6d929e"
-      }
-    },
-    "production": {
-      "channel": "production",
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
+        "EXPO_USE_PRECOMPILED_MODULES": "0"
       }
     },
     "development-simulator": {
@@ -34,9 +18,44 @@
         "simulator": true
       },
       "environment": "development"
+    },
+    "preview": {
+      "channel": "preview",
+      "ios": {
+        "simulator": false,
+        "distribution": "internal"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease",
+        "distribution": "internal"
+      },
+      "env": {
+        "EXPO_USE_PRECOMPILED_MODULES": "0",
+        "EXPO_PUBLIC_NEXTVIBE_PUBKEY": "EaKpyd7H9iZQSzUNSa8W5ykntH55y49C3EMVd1YjgDKm",
+        "EXPO_PUBLIC_VEXO_API_KEY": "93f6e34f-8d85-4b17-a2b1-7f974e6d929e"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "ios": {
+        "distribution": "store",
+        "autoIncrement": true,
+        "image": "macos-sequoia-15.6-xcode-26.2"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "EXPO_USE_PRECOMPILED_MODULES": "0",
+        "EXPO_PUBLIC_NEXTVIBE_PUBKEY": "EaKpyd7H9iZQSzUNSa8W5ykntH55y49C3EMVd1YjgDKm",
+        "EXPO_PUBLIC_VEXO_API_KEY": "93f6e34f-8d85-4b17-a2b1-7f974e6d929e"
+      }
     }
   },
   "cli": {
-    "requireCommit": true
+    "requireCommit": true,
+    "appVersionSource": "remote"
   }
 }

@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleProp, ViewStyle } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, FadeIn as ReanimatedFadeIn } from 'react-native-reanimated';
+import { StyleProp, ViewStyle, Platform } from 'react-native';
+import Animated, { FadeInDown, FadeInUp, FadeIn as ReanimatedFadeIn, Keyframe } from 'react-native-reanimated';
 import { MOTION } from '@/constants/motion';
 
 type FadeInProps = {
@@ -11,6 +11,24 @@ type FadeInProps = {
     style?: StyleProp<ViewStyle>;
 };
 
+const iosEnteringBottom = (delay: number, duration: number) => new Keyframe({
+    from: {
+        transform: [{ translateY: 30 }],
+    },
+    to: {
+        transform: [{ translateY: 0 }],
+    },
+}).duration(duration).delay(delay);
+
+const iosEnteringTop = (delay: number, duration: number) => new Keyframe({
+    from: {
+        transform: [{ translateY: -30 }],
+    },
+    to: {
+        transform: [{ translateY: 0 }],
+    },
+}).duration(duration).delay(delay);
+
 export default function FadeIn({
     children,
     delay = 0,
@@ -19,7 +37,13 @@ export default function FadeIn({
     style,
 }: FadeInProps) {
     const entering =
-        from === 'bottom'
+        Platform.OS === 'ios'
+            ? from === 'bottom'
+                ? iosEnteringBottom(delay, duration)
+                : from === 'top'
+                ? iosEnteringTop(delay, duration)
+                : undefined
+            : from === 'bottom'
             ? FadeInDown.duration(duration).delay(delay).springify().damping(18)
             : from === 'top'
             ? FadeInUp.duration(duration).delay(delay).springify().damping(18)

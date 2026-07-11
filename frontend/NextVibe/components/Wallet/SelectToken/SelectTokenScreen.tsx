@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, TextInput, StyleSheet,
-    ScrollView, TouchableOpacity, StatusBar, Keyboard,
+    ScrollView, TouchableOpacity, StatusBar, Keyboard, Platform, Animated
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -10,6 +10,9 @@ import { Search, X } from 'lucide-react-native';
 import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
 import { TOKENS } from '@/constants/Tokens';
 import { TokenRow, TokenSkeleton } from '@/components/Wallet/SelectToken/TokenRow';
+import { GlassSurface } from '@/components/Shared/GlassSurface';
+
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 interface Token {
     name: string;
@@ -20,6 +23,37 @@ interface Token {
 export default function SelectTokenScreen() {
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
+
+    const transX = useRef(new Animated.Value(0)).current;
+    const transY = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (Platform.OS === 'ios') {
+            const createAnim = (val: Animated.Value, toValue: number, duration: number) => {
+                return Animated.sequence([
+                    Animated.timing(val, {
+                        toValue,
+                        duration,
+                        useNativeDriver: true,
+                        isInteraction: false,
+                    }),
+                    Animated.timing(val, {
+                        toValue: 0,
+                        duration,
+                        useNativeDriver: true,
+                        isInteraction: false,
+                    })
+                ]);
+            };
+
+            Animated.loop(
+                Animated.parallel([
+                    createAnim(transX, 15, 12000),
+                    createAnim(transY, 10, 15000)
+                ])
+            ).start();
+        }
+    }, []);
 
     const [tokens, setTokens] = useState<Token[]>([]);
     const [search, setSearch] = useState('');
@@ -58,12 +92,22 @@ export default function SelectTokenScreen() {
     };
 
     return (
-        <LinearGradient
-            colors={isDark
-                ? ['#0A0410', '#1a0a2e', '#0A0410']
-                : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']}
-            style={styles.root}
-        >
+        <View style={styles.root}>
+            <AnimatedLinearGradient
+                colors={isDark
+                    ? ['#0A0410', '#1a0a2e', '#0A0410']
+                    : ['#FFFFFF', '#dbd4fbff', '#d7cdf2ff']}
+                style={[
+                    StyleSheet.absoluteFillObject,
+                    Platform.OS === 'ios' ? {
+                        transform: [
+                            { scale: 1.15 },
+                            { translateX: transX },
+                            { translateY: transY }
+                        ]
+                    } : null
+                ]}
+            />
             <StatusBar
                 backgroundColor={isDark ? '#0A0410' : '#fff'}
                 barStyle={isDark ? 'light-content' : 'dark-content'}
@@ -77,22 +121,36 @@ export default function SelectTokenScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 {/* Search */}
-                <View style={[styles.searchWrap, { backgroundColor: inputBg, borderColor: inputBorder }]}>
-                    <Search size={16} color={placeholderColor} strokeWidth={1.5} />
-                    <TextInput
-                        style={[styles.searchInput, { color: mainColor }]}
-                        placeholder="Search token..."
-                        placeholderTextColor={placeholderColor}
-                        value={search}
-                        onChangeText={setSearch}
-                        autoCorrect={false}
-                        autoCapitalize="none"
-                    />
-                    {search.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                            <X size={14} color={placeholderColor} strokeWidth={1.5} />
-                        </TouchableOpacity>
+                <View style={[
+                    styles.searchWrap,
+                    Platform.OS === 'ios' && { borderWidth: 0 },
+                    Platform.OS !== 'ios' && { backgroundColor: inputBg, borderColor: inputBorder }
+                ]}>
+                    {Platform.OS === 'ios' && (
+                        <GlassSurface
+                            style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
+                            glassEffectStyle="regular"
+                            colorScheme={isDark ? "dark" : "light"}
+                            tintColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
+                        />
                     )}
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
+                        <Search size={16} color={placeholderColor} strokeWidth={1.5} />
+                        <TextInput
+                            style={[styles.searchInput, { color: mainColor }]}
+                            placeholder="Search token..."
+                            placeholderTextColor={placeholderColor}
+                            value={search}
+                            onChangeText={setSearch}
+                            autoCorrect={false}
+                            autoCapitalize="none"
+                        />
+                        {search.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <X size={14} color={placeholderColor} strokeWidth={1.5} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
                 {/* Count hint */}
@@ -129,7 +187,7 @@ export default function SelectTokenScreen() {
                     </View>
                 )}
             </ScrollView>
-        </LinearGradient>
+        </View>
     );
 }
 

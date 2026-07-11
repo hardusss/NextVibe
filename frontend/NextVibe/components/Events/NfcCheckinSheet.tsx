@@ -10,8 +10,8 @@ import {
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "@react-native-community/blur";
-import { Nfc, Users, Check, X, Radio } from "lucide-react-native";
-import FastImage from "react-native-fast-image";
+import { Nfc, Users, Check, X, Radio, AlertTriangle } from "lucide-react-native";
+import { Image } from "expo-image";
 import Animated, {
     FadeInDown,
     useSharedValue,
@@ -22,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { getCheckinList } from "@/src/api/event.checkin";
 import { startSharing, stopSharing, addNfcReadListener } from "@/modules/nfc-send";
+import { startBroadcasting, stopBroadcasting, addBleReadListener } from "@/modules/ble-share";
 
 export interface NfcCheckinSheetRef {
     presentForPost: (postId: number, eventTitle?: string) => void;
@@ -104,26 +105,38 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     }, []);
 
     const startNfcBroadcast = useCallback((pid: number) => {
-        if (isBroadcasting || Platform.OS !== 'android') return;
+        if (isBroadcasting) return;
         try {
             const url = `https://nextvibe.io/event-checkin?postId=${pid}`;
 
-            removeListenerRef.current = addNfcReadListener(() => {
-                const now = Date.now();
-                if (now - lastReadTimestamp.current > 2000) {
-                    lastReadTimestamp.current = now;
-                    setTapCount(prev => prev + 1);
-                    Vibration.vibrate([0, 80, 60, 80]);
-                    // Immediate poll after a tap
-                    fetchCheckins(pid);
-                }
-            });
-
-            startSharing(url);
+            if (Platform.OS === 'ios') {
+                // iOS: Use BLE proximity broadcasting
+                removeListenerRef.current = addBleReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        lastReadTimestamp.current = now;
+                        setTapCount(prev => prev + 1);
+                        Vibration.vibrate([0, 80, 60, 80]);
+                        fetchCheckins(pid);
+                    }
+                });
+                startBroadcasting(url);
+            } else {
+                // Android: Use NFC HCE
+                removeListenerRef.current = addNfcReadListener(() => {
+                    const now = Date.now();
+                    if (now - lastReadTimestamp.current > 2000) {
+                        lastReadTimestamp.current = now;
+                        setTapCount(prev => prev + 1);
+                        Vibration.vibrate([0, 80, 60, 80]);
+                        fetchCheckins(pid);
+                    }
+                });
+                startSharing(url);
+            }
             setIsBroadcasting(true);
         } catch (error) {
-            // NFC not supported or HCE unavailable — silently ignore
-            console.warn("NFC not available:", error);
+            console.warn("Broadcasting not available:", error);
             setIsBroadcasting(false);
         }
     }, [isBroadcasting, fetchCheckins]);
@@ -134,9 +147,13 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                 removeListenerRef.current.remove();
                 removeListenerRef.current = null;
             }
-            stopSharing();
+            if (Platform.OS === 'ios') {
+                stopBroadcasting();
+            } else {
+                stopSharing();
+            }
         } catch (e) {
-            console.warn("Error stopping NFC:", e);
+            console.warn("Error stopping broadcast:", e);
         } finally {
             setIsBroadcasting(false);
         }
@@ -205,7 +222,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                 style={[styles.checkinRow, { backgroundColor: cardBg, borderColor: border }]}
             >
                 {avatarUrl ? (
-                    <FastImage source={{ uri: avatarUrl }} style={styles.avatar} />
+                    <Image source={{ uri: avatarUrl }} style={styles.avatar} />
                 ) : (
                     <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: border }]}>
                         <Users size={16} color={muted} />
@@ -295,6 +312,15 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                         }
                     </Text>
                 </View>
+
+                {Platform.OS === 'ios' && isBroadcasting && (
+                    <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.05)', borderColor: 'rgba(168,85,247,0.2)' }]}>
+                        <AlertTriangle size={16} color={accentText} />
+                        <Text style={[styles.warningText, { color: main }]}>
+                            Ask attendees to enable <Text style={{ fontFamily: "Dank Mono Bold", color: main }}>Bluetooth</Text> and open the <Text style={{ fontFamily: "Dank Mono Bold", color: main }}>NextVibe</Text> app on their phones to check in.
+                        </Text>
+                    </View>
+                )}
 
                 {/* Stats Row */}
                 {checkins.length > 0 && (
@@ -496,6 +522,23 @@ const styles = StyleSheet.create({
         fontFamily: "Dank Mono Bold",
         fontSize: 11,
         color: "#f87171",
+        includeFontPadding: false,
+    },
+    warningCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 12,
+    },
+    warningText: {
+        flex: 1,
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        lineHeight: 16,
         includeFontPadding: false,
     },
     // Empty / Loader

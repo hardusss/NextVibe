@@ -1,0 +1,30 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	url = https://github.com/hardusss/NextVibe.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+	vscode-merge-base = origin/main
+	gk-last-accessed = 2026-02-07T07:39:44.036Z
+	gk-last-modified = 2026-01-29T20:49:32.162Z
+[branch "feature/lazorkit-wallet"]
+	remote = origin
+	merge = refs/heads/feature/lazorkit-wallet
+	vscode-merge-base = origin/feature/lazorkit-wallet
+	gk-last-accessed = 2026-01-25T16:55:08.399Z
+	gk-last-modified = 2026-01-14T23:43:43.106Z
+[pull]
+	rebase = false
+[branch "feat/nextvibe-collections"]
+	vscode-merge-base = origin/main
+	remote = origin
+	merge = refs/heads/feat/nextvibe-collections
+[branch "agents/lazorkit-wallet-connect-issue"]
+	vscode-merge-base = origin/main
+[branch "ios-dev"]
+	vscode-merge-base = origin/main

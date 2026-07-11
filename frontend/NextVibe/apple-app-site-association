@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appID": "<YOUR_APPLE_TEAM_ID>.com.nextvibe.app",
+        "appID": "9Q3FG4UXC5.com.nextvibe.app",
         "paths": [
           "*",
           "/u/*",

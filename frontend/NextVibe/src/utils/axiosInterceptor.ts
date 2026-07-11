@@ -1,9 +1,24 @@
 import axios from "axios";
 import { storage } from "./storage";
 import GetApiUrl from "./url_api";
+import { router } from "expo-router";
 
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
+let lastRedirectTime = 0;
+const REDIRECT_THROTTLE_MS = 2000;
+
+async function handleAuthError(error: any) {
+    if (Date.now() - lastRedirectTime > REDIRECT_THROTTLE_MS) {
+        lastRedirectTime = Date.now();
+        try {
+            await storage.clearAll();
+        } catch (e) {
+            console.error("Failed to clear storage on auth error:", e);
+        }
+        router.replace("/register");
+    }
+}
 
 async function getAccess() {
     return await storage.getItem("access");
@@ -69,14 +84,23 @@ export function setupAxiosInterceptor() {
         (response) => response,
         async (error) => {
             const original = error.config;
+            const isAuthEndpoint = original.url && (
+                original.url.includes('/users/login/') ||
+                original.url.includes('/users/register/') ||
+                original.url.includes('/users/wallet-sign-in/') ||
+                original.url.includes('/users/google-sign-in/') ||
+                original.url.includes('/users/apple-sign-in/') ||
+                original.url.includes('/users/token/')
+            );
 
-            if (error.response?.status === 401 && !original._retry) {
+            if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
                 original._retry = true;
 
                 try {
                     const newAccess = await refreshToken();
 
                     if (!newAccess) {
+                        await handleAuthError(error);
                         return Promise.reject(error);
                     }
 
@@ -85,6 +109,7 @@ export function setupAxiosInterceptor() {
 
                 } catch (e) {
                     console.log("Refresh failed after 401");
+                    await handleAuthError(e);
                     return Promise.reject(e);
                 }
             }

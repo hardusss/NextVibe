@@ -1,0 +1,45 @@
+[33mcommit 9a9f5c75446d34286412408bb5aaa04db67528c8[m
+Merge: 3b3a40f0 d5c2eb39
+Author: Danylo <150669333+hardusss@users.noreply.github.com>
+Date:   Thu Oct 9 23:36:02 2025 +0300
+
+    Merge pull request #7 from hardusss/main
+    
+    Update
+
+ backend/NextVibeAPI/Media/qrcodes/newacc@gmail.com_qrcode.png        | Bin [31m990[m -> [32m0[m bytes
+ backend/NextVibeAPI/NextVibeAPI/__pycache__/settings.cpython-311.pyc | Bin [31m4316[m -> [32m4364[m bytes
+ backend/NextVibeAPI/NextVibeAPI/middleware.py                        |  30 [32m++++++[m
+ backend/NextVibeAPI/NextVibeAPI/settings.py                          |   1 [32m+[m
+ backend/NextVibeAPI/btc-addresses-balance.log                        | 303 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ backend/NextVibeAPI/btc-addresses-generator.log                      |  27 [32m+++++[m
+ backend/NextVibeAPI/posts/tasks.py                                   |   1 [32m+[m
+ backend/NextVibeAPI/posts/view_pac/moderation_callback.py            |   2 [32m+[m[31m-[m
+ backend/NextVibeAPI/posts/view_pac/posts_menu.py                     |  19 [32m+++[m[31m-[m
+ backend/NextVibeAPI/user/src/two_fa.py                               |   2 [32m+[m[31m-[m
+ backend/NextVibeAPI/wallet/src/get_tokens_price.py                   |  38 [32m++++[m[31m---[m
+ backend/NextVibeAPI/wallet/src/wallet_encryption.py                  | 150 [32m++++++++++++++++++++++++++++[m
+ backend/NextVibeAPI/wallet/view/create_wallet.py                     |  13 [32m++[m[31m-[m
+ backend/NextVibeAPI/wallet/view/get_balance.py                       | 132 [32m++++++++++++++[m[31m----------[m
+ backend/NextVibeAPI/wallet/view/transaction.py                       |  26 [32m++++[m[31m-[m
+ frontend/NextVibe/app/(tabs)/_layout.tsx                             |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/2FA/Connect.tsx                         | 513 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m------------------------[m
+ frontend/NextVibe/components/Chat/ChatBubble.tsx                     |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/Chat/ChatScreen.tsx                     |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/Chat/ChatsList.tsx                      |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/PostCreate/PostCreate.tsx               |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/ProfilePage/PostsList.tsx               |  46 [32m++[m[31m-------[m
+ frontend/NextVibe/components/ProfilePage/PostsMenu.tsx               |  24 [32m+++[m[31m--[m
+ frontend/NextVibe/components/ProfilePage/UserProfilePage.tsx         |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/Settings/PageSettings.tsx               |   4 [32m+[m[31m-[m
+ frontend/NextVibe/components/SplashScreen.tsx                        |   4 [32m+[m[31m-[m
+ frontend/NextVibe/components/Wallet/CreateTransactionPage.tsx        |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/Wallet/CreateWallet.tsx                 |   6 [32m+[m[31m-[m
+ frontend/NextVibe/components/Wallet/DepositPage.tsx                  |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/Wallet/MainPage.tsx                     |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/Wallet/SelectToken.tsx                  |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/Wallet/TransactionDetail.tsx            |   2 [32m+[m[31m-[m
+ frontend/NextVibe/components/Wallet/Transactions.tsx                 |   2 [32m+[m[31m-[m
+ frontend/NextVibe/src/api/menu.posts.ts                              |   6 [32m+[m[31m-[m
+ moderation_service/moderation.log                                    | 242 [32m++++++++++++++++++++++++++++++++++++++++++++[m
+ 35 files changed, 1341 insertions(+), 272 deletions(-)

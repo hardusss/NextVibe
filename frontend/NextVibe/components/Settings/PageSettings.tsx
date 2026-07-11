@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
     ScrollView, View, Text, StatusBar, StyleSheet, useColorScheme,
-    Animated, TouchableWithoutFeedback, TouchableOpacity, TextInput, RefreshControl
+    Animated, TouchableWithoutFeedback, TouchableOpacity, TextInput, RefreshControl, Platform
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import { Switch } from "react-native-paper";
@@ -81,8 +82,9 @@ function PageSettingsContent() {
 
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
+    const insets = useSafeAreaInsets();
     const colors = isDark ? darkColors : lightColors;
-    const styles = getStyles(colors);
+    const styles = getStyles(colors, insets);
     const { showPopup } = usePopup();
     
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -438,7 +440,7 @@ export default function PageSettings() {
     );
 }
 
-const getStyles = (colors: any) => {
+const getStyles = (colors: any, insets: any) => {
     return StyleSheet.create({
         container: {
             backgroundColor: colors.background,
@@ -449,7 +451,8 @@ const getStyles = (colors: any) => {
             alignItems: "center",
             justifyContent: "space-between",
             paddingHorizontal: 24,
-            paddingVertical: 16,
+            paddingTop: Platform.OS === 'ios' ? insets.top + 16 : 16,
+            paddingBottom: 16,
             backgroundColor: colors.background,
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
