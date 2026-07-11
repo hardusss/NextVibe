@@ -138,6 +138,21 @@ class EventNFCConnectView(APIView):
         except (Post.DoesNotExist, User.DoesNotExist):
             return Response({"error": "Invalid event or user."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Geolocation check
+        if post.h3_geo:
+            if latitude is None or longitude is None:
+                return Response({"error": "Location coordinates are required for networking at this event."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                lat = float(latitude)
+                lng = float(longitude)
+                event_res = h3.get_resolution(post.h3_geo)
+                user_cell = h3.latlng_to_cell(lat, lng, event_res)
+                if h3.grid_distance(user_cell, post.h3_geo) > 1:
+                    return Response({"error": "You must be physically present at the event zone to network."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                print(f"Error checking networking geolocation: {e}")
+                return Response({"error": "Invalid location coordinates provided."}, status=status.HTTP_400_BAD_REQUEST)
+
         # Check if the scanning user is registered/checked-in
         is_registered = EventCheckin.objects.filter(user=request.user, post=post, is_registered=True).exists()
         if not is_registered:

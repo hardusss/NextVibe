@@ -12,6 +12,23 @@ class EventCheckinView(APIView):
     def post(self, request, post_id):
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
 
+        # Geolocation check
+        coords = request.data.get("coords")
+        if post.h3_geo:
+            if not coords:
+                return Response({"error": "Location coordinates are required to check in."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                lat = float(coords.get("lat"))
+                lng = float(coords.get("lng"))
+                import h3
+                event_res = h3.get_resolution(post.h3_geo)
+                user_cell = h3.latlng_to_cell(lat, lng, event_res)
+                if h3.grid_distance(user_cell, post.h3_geo) > 1:
+                    return Response({"error": "You must be physically present at the event zone to check in."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                print(f"Error checking check-in geolocation: {e}")
+                return Response({"error": "Invalid location coordinates provided."}, status=status.HTTP_400_BAD_REQUEST)
+
         is_registered = EventRequest.objects.filter(
             user=request.user,
             post=post,
@@ -48,6 +65,23 @@ class ClaimEventNftView(APIView):
         from ..models import UserCollection, Reputation
 
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
+
+        # Geolocation check
+        coords = request.data.get("coords")
+        if post.h3_geo:
+            if not coords:
+                return Response({"error": "Location coordinates are required to claim cNFT."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                lat = float(coords.get("lat"))
+                lng = float(coords.get("lng"))
+                import h3
+                event_res = h3.get_resolution(post.h3_geo)
+                user_cell = h3.latlng_to_cell(lat, lng, event_res)
+                if h3.grid_distance(user_cell, post.h3_geo) > 1:
+                    return Response({"error": "You must be physically present at the event zone to check in and claim cNFT."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                print(f"Error checking check-in geolocation: {e}")
+                return Response({"error": "Invalid location coordinates provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         is_registered = EventRequest.objects.filter(
             user=request.user,
@@ -105,6 +139,14 @@ class ClaimEventNftView(APIView):
                     user=request.user, event=post, is_checkin=True
                 ).first()
 
+                user_h3_geo = None
+                if coords:
+                    try:
+                        import h3
+                        user_h3_geo = h3.latlng_to_cell(float(coords.get("lat")), float(coords.get("lng")), res=15)
+                    except Exception as e:
+                        print("Error generating resolution 15 h3 for reputation:", e)
+
                 if existing_rep:
                     earned_points = existing_rep.points
                 else:
@@ -115,6 +157,7 @@ class ClaimEventNftView(APIView):
                         points=earned_points,
                         is_checkin=True,
                         event=post,
+                        h3_geo=user_h3_geo,
                     )
 
                 return Response({
