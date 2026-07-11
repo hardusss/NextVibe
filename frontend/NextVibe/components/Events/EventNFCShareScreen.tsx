@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, useColorScheme, ActivityIndicator, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Radio } from 'lucide-react-native';
+import { ChevronLeft, Radio, AlertTriangle } from 'lucide-react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { startSharing, stopSharing } from '@/modules/nfc-send';
@@ -109,14 +109,21 @@ export default function EventNFCShareScreen() {
                             Hold your phone near another attendee's phone to connect and share reputation via {broadcastLabel}!
                         </Text>
 
-                        <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-                            <Text style={[styles.infoCardText, { color: muted }]}>
-                                {Platform.OS === 'ios'
-                                    ? "Broadcasting via Bluetooth. Make sure the other person's app is open."
-                                    : "Make sure the other person's screen is unlocked."
-                                }
-                            </Text>
-                        </View>
+                        {Platform.OS === 'ios' ? (
+                            <View style={[styles.warningCard, { backgroundColor: 'rgba(168,85,247,0.1)', borderColor: 'rgba(168,85,247,0.2)' }]}>
+                                <AlertTriangle size={18} color="#A855F7" style={{ marginBottom: 2 }} />
+                                <Text style={[styles.warningTitle, { color: main }]}>iOS Proximity Requirements</Text>
+                                <Text style={[styles.warningText, { color: muted }]}>
+                                    Please ask the other person to enable <Text style={{ fontFamily: 'Dank Mono Bold', color: main }}>Bluetooth</Text> and open the <Text style={{ fontFamily: 'Dank Mono Bold', color: main }}>NextVibe</Text> app on their phone to receive.
+                                </Text>
+                            </View>
+                        ) : (
+                            <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                                <Text style={[styles.infoCardText, { color: muted }]}>
+                                    Make sure the other person's screen is unlocked.
+                                </Text>
+                            </View>
+                        )}
                     </Animated.View>
                 )}
             </View>
@@ -212,5 +219,28 @@ const styles = StyleSheet.create({
         fontFamily: 'Dank Mono',
         fontSize: 13,
         textAlign: 'center',
+    },
+    warningCard: {
+        marginTop: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        width: '100%',
+        alignItems: 'center',
+        gap: 6,
+    },
+    warningTitle: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 13,
+        textAlign: 'center',
+        includeFontPadding: false,
+    },
+    warningText: {
+        fontFamily: 'Dank Mono',
+        fontSize: 12,
+        textAlign: 'center',
+        lineHeight: 18,
+        includeFontPadding: false,
     }
 });

@@ -10,7 +10,7 @@ import {
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "@react-native-community/blur";
-import { Nfc, Users, Check, X, Radio } from "lucide-react-native";
+import { Nfc, Users, Check, X, Radio, AlertTriangle } from "lucide-react-native";
 import { Image } from "expo-image";
 import Animated, {
     FadeInDown,
@@ -313,6 +313,15 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                     </Text>
                 </View>
 
+                {Platform.OS === 'ios' && isBroadcasting && (
+                    <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.05)', borderColor: 'rgba(168,85,247,0.2)' }]}>
+                        <AlertTriangle size={16} color={accentText} />
+                        <Text style={[styles.warningText, { color: main }]}>
+                            Ask attendees to enable <Text style={{ fontFamily: "Dank Mono Bold", color: main }}>Bluetooth</Text> and open the <Text style={{ fontFamily: "Dank Mono Bold", color: main }}>NextVibe</Text> app on their phones to check in.
+                        </Text>
+                    </View>
+                )}
+
                 {/* Stats Row */}
                 {checkins.length > 0 && (
                     <View style={styles.statsRow}>
@@ -513,6 +522,23 @@ const styles = StyleSheet.create({
         fontFamily: "Dank Mono Bold",
         fontSize: 11,
         color: "#f87171",
+        includeFontPadding: false,
+    },
+    warningCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 12,
+    },
+    warningText: {
+        flex: 1,
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        lineHeight: 16,
         includeFontPadding: false,
     },
     // Empty / Loader

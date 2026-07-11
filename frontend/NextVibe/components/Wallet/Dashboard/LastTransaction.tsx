@@ -326,10 +326,10 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
                 {Platform.OS === 'ios' && (
                     <GlassSurface
                         style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
-                        glassEffectStyle="regular"
+                        glassEffectStyle="clear"
                         colorScheme={isDarkMode ? "dark" : "light"}
                         isInteractive
-                        tintColor={isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.01)"}
+                        tintColor={isDarkMode ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.005)"}
                     />
                 )}
 
@@ -366,7 +366,7 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
 const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 20,
-        marginBottom: 30,
+        marginBottom: 20,
     },
     card: {
         borderRadius: 20,
