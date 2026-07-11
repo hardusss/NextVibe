@@ -23,6 +23,7 @@ import GaslessIndicator from '@/components/Shared/GaslessIndicator';
 import AccountFundingPrompt from '@/components/Shared/AccountFundingPrompt';
 import { isAccountCreationError } from '@/src/utils/solana/paymasterErrors';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
@@ -30,6 +31,7 @@ export default function CreateTransactionScreen() {
     const { token, symbol, address, amount: queryAmount } = useLocalSearchParams();
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     const transX = useRef(new Animated.Value(0)).current;
     const transY = useRef(new Animated.Value(0)).current;
@@ -270,7 +272,7 @@ export default function CreateTransactionScreen() {
                     <TouchableOpacity style={styles.modalCloseArea} onPress={() => setTokenPickerVisible(false)} />
                     <View style={[
                         styles.modalContent,
-                        Platform.OS === 'ios' && { borderWidth: 0, overflow: 'hidden' },
+                        Platform.OS === 'ios' && { borderWidth: 0, overflow: 'hidden', paddingBottom: insets.bottom + 24 },
                         Platform.OS !== 'ios' && { backgroundColor: modalBg, borderColor: pillBorder }
                     ]}>
                         {Platform.OS === 'ios' && (
@@ -281,7 +283,7 @@ export default function CreateTransactionScreen() {
                                 tintColor={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)"}
                             />
                         )}
-                        <View style={[Platform.OS === 'ios' && { zIndex: 1, flex: 1 }]}>
+                        <View style={[Platform.OS === 'ios' && { zIndex: 1, flexShrink: 1 }]}>
                             <View style={styles.modalHeader}>
                                 <Text style={[styles.modalTitle, { color: mainColor }]}>Select Token</Text>
                                 <TouchableOpacity onPress={() => setTokenPickerVisible(false)}>
@@ -295,28 +297,38 @@ export default function CreateTransactionScreen() {
                                         onPress={() => handleTokenSelect(t.symbol)}
                                         style={[
                                             styles.tokenOption,
-                                            Platform.OS === 'ios' && t.symbol === selectedTokenSymbol && { overflow: 'hidden' },
+                                            Platform.OS === 'ios' && t.symbol === selectedTokenSymbol && { overflow: 'hidden', paddingHorizontal: 0, paddingVertical: 0 },
                                             Platform.OS !== 'ios' && t.symbol === selectedTokenSymbol && { backgroundColor: pillBg }
                                         ]}
                                     >
-                                        {Platform.OS === 'ios' && t.symbol === selectedTokenSymbol && (
+                                        {Platform.OS === 'ios' && t.symbol === selectedTokenSymbol ? (
                                             <GlassSurface
-                                                style={StyleSheet.absoluteFillObject}
+                                                style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12, borderRadius: 16 }}
                                                 glassEffectStyle="regular"
                                                 colorScheme={isDark ? "dark" : "light"}
                                                 tintColor={isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)"}
-                                            />
+                                            >
+                                                <View style={styles.tokenOptionInfo}>
+                                                    <Text style={[styles.tokenOptionSymbol, { color: mainColor }]}>{t.symbol}</Text>
+                                                    <Text style={[styles.tokenOptionName, { color: mutedColor }]}>{t.name}</Text>
+                                                </View>
+                                                <View style={styles.tokenOptionBalance}>
+                                                    <Text style={[styles.tokenOptionAmt, { color: mainColor }]}>{t.amount.toFixed(4)}</Text>
+                                                    <Text style={[styles.tokenOptionUsd, { color: mutedColor }]}>${t.valueUsd.toFixed(2)}</Text>
+                                                </View>
+                                            </GlassSurface>
+                                        ) : (
+                                            <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
+                                                <View style={styles.tokenOptionInfo}>
+                                                    <Text style={[styles.tokenOptionSymbol, { color: mainColor }]}>{t.symbol}</Text>
+                                                    <Text style={[styles.tokenOptionName, { color: mutedColor }]}>{t.name}</Text>
+                                                </View>
+                                                <View style={styles.tokenOptionBalance}>
+                                                    <Text style={[styles.tokenOptionAmt, { color: mainColor }]}>{t.amount.toFixed(4)}</Text>
+                                                    <Text style={[styles.tokenOptionUsd, { color: mutedColor }]}>${t.valueUsd.toFixed(2)}</Text>
+                                                </View>
+                                            </View>
                                         )}
-                                        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: Platform.OS === 'ios' ? 1 : undefined }}>
-                                            <View style={styles.tokenOptionInfo}>
-                                                <Text style={[styles.tokenOptionSymbol, { color: mainColor }]}>{t.symbol}</Text>
-                                                <Text style={[styles.tokenOptionName, { color: mutedColor }]}>{t.name}</Text>
-                                            </View>
-                                            <View style={styles.tokenOptionBalance}>
-                                                <Text style={[styles.tokenOptionAmt, { color: mainColor }]}>{t.amount.toFixed(4)}</Text>
-                                                <Text style={[styles.tokenOptionUsd, { color: mutedColor }]}>${t.valueUsd.toFixed(2)}</Text>
-                                            </View>
-                                        </View>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
@@ -332,13 +344,13 @@ export default function CreateTransactionScreen() {
                         onPress={() => setTokenPickerVisible(true)}
                         style={[
                             styles.tokenPill,
-                            Platform.OS === 'ios' && { borderWidth: 0 },
+                            Platform.OS === 'ios' && { borderWidth: 0, paddingHorizontal: 0, paddingVertical: 0 },
                             Platform.OS !== 'ios' && { backgroundColor: pillBg, borderColor: pillBorder }
                         ]}
                     >
                         {Platform.OS === 'ios' ? (
                             <GlassSurface
-                                style={[StyleSheet.absoluteFillObject, { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }]}
+                                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }}
                                 glassEffectStyle="regular"
                                 colorScheme={isDark ? "dark" : "light"}
                                 isInteractive
@@ -395,14 +407,14 @@ export default function CreateTransactionScreen() {
                                     key={pct}
                                     style={[
                                         styles.percentBtn,
-                                        Platform.OS === 'ios' && { borderWidth: 0 },
+                                        Platform.OS === 'ios' && { borderWidth: 0, paddingHorizontal: 0, paddingVertical: 0 },
                                         Platform.OS !== 'ios' && { backgroundColor: pillBg, borderColor: pillBorder }
                                     ]}
                                     onPress={() => handlePercentage(pct)}
                                 >
                                     {Platform.OS === 'ios' ? (
                                         <GlassSurface
-                                            style={[StyleSheet.absoluteFillObject, { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }]}
+                                            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}
                                             glassEffectStyle="regular"
                                             colorScheme={isDark ? "dark" : "light"}
                                             isInteractive
@@ -544,7 +556,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Dank Mono',
         fontSize: 72,
         minHeight: 100,
-        lineHeight: Platform.OS === 'ios' ? 0 : 85,
+        lineHeight: Platform.OS === 'ios' ? undefined : 85,
         paddingTop: 10,
         paddingBottom: 5,
         textAlign: 'center',
