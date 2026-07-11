@@ -1,22 +1,19 @@
-apply plugin: 'com.android.library'
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
 
 group = 'expo.modules.bleshare'
 version = '1.0.0'
 
 android {
-    namespace "expo.modules.bleshare"
-    compileSdkVersion safeExtGet("compileSdkVersion", 34)
-
-    defaultConfig {
-        minSdkVersion safeExtGet("minSdkVersion", 21)
-        targetSdkVersion safeExtGet("targetSdkVersion", 34)
-    }
+  namespace "expo.modules.bleshare"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
 }
 
-dependencies {
-    implementation project(':expo-modules-core')
-}
-
-def safeExtGet(prop, fallback) {
-    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
-}
