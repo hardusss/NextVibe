@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import Header from "./Header";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
@@ -90,10 +91,10 @@ const lightTheme = {
     shadowColor: "rgba(124, 58, 237, 0.06)"
 };
 
-const getStyles = (theme: typeof darkTheme) => {
+const getStyles = (theme: typeof darkTheme, bottomInset: number = 50) => {
     return StyleSheet.create({
         container: { flex: 1, backgroundColor: theme.background },
-        listContainer: { backgroundColor: theme.background, paddingBottom: 50 },
+        listContainer: { backgroundColor: theme.background, paddingBottom: bottomInset },
         postContainer: {
             borderRadius: 22,
             padding: 18,
@@ -767,7 +768,8 @@ export default function MainPage() {
     const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
-    const styles = getStyles(theme);
+    const insets = useSafeAreaInsets();
+    const styles = getStyles(theme, insets.bottom > 0 ? insets.bottom + 100 : 110);
     const [refreshing, setRefreshing] = useState(false);
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");

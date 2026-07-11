@@ -560,7 +560,7 @@ const getStyles = (isDark: boolean, insets: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? insets.top + 16 : 16,
+    paddingTop: insets.top + 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',

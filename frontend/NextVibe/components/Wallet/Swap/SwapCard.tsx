@@ -8,7 +8,7 @@ import {
     Platform,
     StyleSheet,
 } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 import { ChevronDown } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import type { TokenAsset } from '@/hooks/usePortfolio';
@@ -78,24 +78,12 @@ export default function SwapCard({
                 }
             ]}
         >
-            {Platform.OS === 'ios' ? (
-                <BlurView
-                    style={StyleSheet.absoluteFill}
-                    blurType={colors.isDark ? 'dark' : 'light'}
-                    blurAmount={15}
-                    reducedTransparencyFallbackColor="transparent"
-                />
-            ) : (
-                <View 
-                    style={[
-                        StyleSheet.absoluteFill, 
-                        styles.androidBlurFallback, 
-                        {
-                            backgroundColor: colors.isDark ? 'rgba(18, 8, 30, 0.4)' : 'rgba(245, 240, 255, 0.5)',
-                        }
-                    ]} 
-                />
-            )}
+            <BlurView
+                style={StyleSheet.absoluteFill}
+                tint={colors.isDark ? 'dark' : 'light'}
+                intensity={colors.isDark ? 55 : 65}
+                experimentalBlurMethod="dimezisBlurView"
+            />
 
             <View 
                 style={[

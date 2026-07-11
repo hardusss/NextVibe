@@ -451,7 +451,7 @@ const getStyles = (colors: any, insets: any) => {
             alignItems: "center",
             justifyContent: "space-between",
             paddingHorizontal: 24,
-            paddingTop: Platform.OS === 'ios' ? insets.top + 16 : 16,
+            paddingTop: insets.top + 16,
             paddingBottom: 16,
             backgroundColor: colors.background,
             borderBottomWidth: 1,

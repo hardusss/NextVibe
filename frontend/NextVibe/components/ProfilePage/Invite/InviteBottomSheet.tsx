@@ -13,7 +13,7 @@ import { Users, Copy, CheckCircle2, Gift, Map, Crown } from "lucide-react-native
 import Animated, {
     interpolate, Extrapolation, useAnimatedStyle
 } from 'react-native-reanimated';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 import * as Clipboard from 'expo-clipboard';
 import getInviteInfo from "@/src/api/get.invite.info";
@@ -45,7 +45,7 @@ export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProp
     return (
         <Animated.View style={[StyleSheet.absoluteFill, style, animatedStyle]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => close()}>
-                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={2} pointerEvents="none" />
+                <BlurView style={StyleSheet.absoluteFill} tint={isDark ? "dark" : "light"} intensity={40} experimentalBlurMethod="dimezisBlurView" pointerEvents="none" />
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.2)' }]} />
             </Pressable>
         </Animated.View>

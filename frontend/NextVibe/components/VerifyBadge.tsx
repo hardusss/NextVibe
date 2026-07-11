@@ -1,4 +1,4 @@
-import { Pressable, View, Text, StyleSheet, useColorScheme } from "react-native";
+import { Pressable, View, Text, StyleSheet, useColorScheme, Platform } from "react-native";
 import LottieView from "lottie-react-native";
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from "react";
 import {
@@ -10,7 +10,7 @@ import {
 import Animated, {
     interpolate, Extrapolation, useAnimatedStyle
 } from 'react-native-reanimated';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 
 interface PropsVerifyBadge {
     isLooped: boolean;
@@ -39,7 +39,12 @@ const VerifyBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProps) => {
     return (
         <Animated.View style={[StyleSheet.absoluteFill, style, animatedStyle]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => close()}>
-                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={2} />
+                <BlurView
+                    intensity={30}
+                    tint={isDark ? "dark" : "light"}
+                    experimentalBlurMethod="dimezisBlurView"
+                    style={StyleSheet.absoluteFill}
+                />
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.2)' }]} />
             </Pressable>
         </Animated.View>

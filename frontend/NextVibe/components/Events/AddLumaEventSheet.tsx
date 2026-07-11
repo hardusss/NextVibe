@@ -17,7 +17,7 @@ import {
     BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { BlurView } from "@react-native-community/blur";
+import { BlurView } from "expo-blur";
 import { Calendar, MapPin, Link2 } from "lucide-react-native";
 import { storage } from "@/src/utils/storage";
 import { previewLumaEvent, verifyLumaEvent, LumaEventPreview } from "@/src/api/luma.event";
@@ -105,7 +105,7 @@ const AddLumaEventSheet = forwardRef<AddLumaEventSheetRef, Props>(({ onSaved }, 
                 disappearsOnIndex={-1}
                 pressBehavior="close"
             >
-                <BlurView style={StyleSheet.absoluteFill} blurType={isDark ? "dark" : "light"} blurAmount={2} />
+                <BlurView style={StyleSheet.absoluteFill} tint={isDark ? "dark" : "light"} intensity={40} experimentalBlurMethod="dimezisBlurView" />
                 <View
                     style={[
                         StyleSheet.absoluteFill,
