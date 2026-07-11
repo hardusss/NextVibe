@@ -24,7 +24,7 @@ import getUserDetail from '@/src/api/user.detail';
 import createComment from '@/src/api/create.comment';
 import createCommentReply from '@/src/api/comment.reply';
 import commentLike from '@/src/api/comment.like';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import VerifyBadge from '../VerifyBadge';
 import { AvatarWithFrame } from '@/components/ProfilePage/AvatarWithFrame';
@@ -439,7 +439,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
 
                     {isCommentsEnabled && (
                         <View style={styles.inputRow}>
-                            <FastImage source={{ uri: user?.avatar ?? undefined }} style={styles.inputAvatar} />
+                            <Image source={{ uri: user?.avatar ?? undefined }} style={styles.inputAvatar} />
                             <View style={styles.inputWrap}>
                                 <TextInput
                                     value={commentText}

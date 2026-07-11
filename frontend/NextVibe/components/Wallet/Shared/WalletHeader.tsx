@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { GlassSurface } from '@/components/Shared/GlassSurface';
 
 export interface WalletHeaderProps {
     title?: string;
@@ -37,10 +38,26 @@ export default function WalletHeader({
                 <TouchableOpacity
                     onPress={handleBack}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    style={[styles.backBtn, { backgroundColor: btnBg, borderColor: btnBorder }]}
+                    style={[
+                        styles.backBtn,
+                        Platform.OS === 'ios' && { borderWidth: 0 },
+                        Platform.OS !== 'ios' && { backgroundColor: btnBg, borderColor: btnBorder }
+                    ]}
                     activeOpacity={0.7}
                 >
-                    <ArrowLeft size={18} color={textColor} strokeWidth={1.8} />
+                    {Platform.OS === 'ios' ? (
+                        <GlassSurface
+                            style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: 14 }]}
+                            glassEffectStyle="regular"
+                            colorScheme={isDark ? "dark" : "light"}
+                            isInteractive
+                            tintColor={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)"}
+                        >
+                            <ArrowLeft size={18} color={textColor} strokeWidth={1.8} />
+                        </GlassSurface>
+                    ) : (
+                        <ArrowLeft size={18} color={textColor} strokeWidth={1.8} />
+                    )}
                 </TouchableOpacity>
             </View>
 

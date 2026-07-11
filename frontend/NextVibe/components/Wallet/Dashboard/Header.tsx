@@ -1,7 +1,8 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { ArrowLeft, Eye, EyeOff, ScrollText } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { GlassSurface } from "@/components/Shared/GlassSurface";
 
 interface HeaderProps {
     isDarkMode: boolean;
@@ -24,38 +25,93 @@ const Header: React.FC<HeaderProps> = ({
     const border = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+        <View style={[
+            styles.container,
+            { paddingTop: Platform.OS === 'ios' ? 12 : insets.top + 12 }
+        ]}>
             {/* Back Button — wider pill */}
             <TouchableOpacity
                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                style={[styles.button, styles.backButton, { backgroundColor: bg, borderColor: border }]}
+                style={[
+                    styles.button,
+                    styles.backButton,
+                    Platform.OS === 'ios' && { borderWidth: 0 },
+                    Platform.OS !== 'ios' && { backgroundColor: bg, borderColor: border }
+                ]}
                 onPress={onNavigateBack}
                 activeOpacity={0.6}
             >
-                <ArrowLeft size={20} color={iconColor} strokeWidth={1.5} />
+                {Platform.OS === 'ios' ? (
+                    <GlassSurface
+                        style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: 20 }]}
+                        glassEffectStyle="clear"
+                        colorScheme={isDarkMode ? "dark" : "light"}
+                        isInteractive
+                        tintColor={isDarkMode ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.005)"}
+                    >
+                        <ArrowLeft size={20} color={iconColor} strokeWidth={1.5} />
+                    </GlassSurface>
+                ) : (
+                    <ArrowLeft size={20} color={iconColor} strokeWidth={1.5} />
+                )}
             </TouchableOpacity>
 
             {/* Right group */}
             <View style={styles.rightGroup}>
                 <TouchableOpacity
                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                    style={[styles.button, { backgroundColor: bg, borderColor: border }]}
+                    style={[
+                        styles.button,
+                        Platform.OS === 'ios' && { borderWidth: 0 },
+                        Platform.OS !== 'ios' && { backgroundColor: bg, borderColor: border }
+                    ]}
                     onPress={onToggleBalance}
                     activeOpacity={0.6}
                 >
-                    {isBalanceHidden
-                        ? <EyeOff size={20} color={iconColor} strokeWidth={1.5} />
-                        : <Eye size={20} color={iconColor} strokeWidth={1.5} />
-                    }
+                    {Platform.OS === 'ios' ? (
+                        <GlassSurface
+                            style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: 20 }]}
+                            glassEffectStyle="clear"
+                            colorScheme={isDarkMode ? "dark" : "light"}
+                            isInteractive
+                            tintColor={isDarkMode ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.005)"}
+                        >
+                            {isBalanceHidden
+                                ? <EyeOff size={20} color={iconColor} strokeWidth={1.5} />
+                                : <Eye size={20} color={iconColor} strokeWidth={1.5} />
+                            }
+                        </GlassSurface>
+                    ) : (
+                        isBalanceHidden
+                            ? <EyeOff size={20} color={iconColor} strokeWidth={1.5} />
+                            : <Eye size={20} color={iconColor} strokeWidth={1.5} />
+                    )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                    style={[styles.button, styles.rightGap, { backgroundColor: bg, borderColor: border }]}
+                    style={[
+                        styles.button,
+                        styles.rightGap,
+                        Platform.OS === 'ios' && { borderWidth: 0 },
+                        Platform.OS !== 'ios' && { backgroundColor: bg, borderColor: border }
+                    ]}
                     onPress={onNavigateToTransactions}
                     activeOpacity={0.6}
                 >
-                    <ScrollText size={20} color={iconColor} strokeWidth={1.5} />
+                    {Platform.OS === 'ios' ? (
+                        <GlassSurface
+                            style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', borderRadius: 20 }]}
+                            glassEffectStyle="clear"
+                            colorScheme={isDarkMode ? "dark" : "light"}
+                            isInteractive
+                            tintColor={isDarkMode ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.005)"}
+                        >
+                            <ScrollText size={20} color={iconColor} strokeWidth={1.5} />
+                        </GlassSurface>
+                    ) : (
+                        <ScrollText size={20} color={iconColor} strokeWidth={1.5} />
+                    )}
                 </TouchableOpacity>
             </View>
         </View>
@@ -68,7 +124,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: 20,
-        marginBottom: 30,
+        marginBottom: 20,
     },
     rightGroup: {
         flexDirection: "row",

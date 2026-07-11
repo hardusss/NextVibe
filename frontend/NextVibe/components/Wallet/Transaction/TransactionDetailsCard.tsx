@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Linking } from "react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import { ExternalLink } from "lucide-react-native";
 
 interface TransactionDetailsCardProps {
@@ -48,7 +48,7 @@ export const TransactionDetailsCard: React.FC<TransactionDetailsCardProps> = ({
             {/* Amount + icon */}
             <View style={styles.amountRow}>
                 {icon ? (
-                    <FastImage source={{ uri: icon }} style={styles.logo} resizeMode={FastImage.resizeMode.cover} />
+                    <Image source={{ uri: icon }} style={styles.logo} contentFit="cover" />
                 ) : (
                     <View style={[styles.logo, { backgroundColor: border, justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: mainColor, fontFamily: 'Dank Mono Bold', fontSize: 13 }}>{symbol[0]}</Text>

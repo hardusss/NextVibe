@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from "react";
-import { View, ScrollView, RefreshControl, StatusBar } from "react-native";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { View, StatusBar, Animated, Platform, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -20,8 +20,9 @@ import { createWalletStyles } from "@/styles/wallet.styles";
 import { FadeIn } from "@/components/Shared/motion";
 import { MOTION } from "@/constants/motion";
 
-import { useRef } from 'react';
 import { DepositBottomSheet, DepositSheetRef } from '@/components/Wallet/NfcDeposit/DepositBottomSheet';
+
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 
 /**
@@ -69,6 +70,37 @@ export default function WalletDashboardScreen() {
 
     // Bottom Sheet Ref
     const depositSheetRef = useRef<DepositSheetRef>(null);
+
+    const transX = useRef(new Animated.Value(0)).current;
+    const transY = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (Platform.OS === 'ios') {
+            const createAnim = (val: Animated.Value, toValue: number, duration: number) => {
+                return Animated.sequence([
+                    Animated.timing(val, {
+                        toValue,
+                        duration,
+                        useNativeDriver: true,
+                        isInteraction: false,
+                    }),
+                    Animated.timing(val, {
+                        toValue: 0,
+                        duration,
+                        useNativeDriver: true,
+                        isInteraction: false,
+                    })
+                ]);
+            };
+
+            Animated.loop(
+                Animated.parallel([
+                    createAnim(transX, 15, 12000),
+                    createAnim(transY, 10, 15000)
+                ])
+            ).start();
+        }
+    }, []);
 
     /**
      * Handles pull-to-refresh gesture
@@ -120,28 +152,31 @@ export default function WalletDashboardScreen() {
     const showPortfolioSkeleton = isLoading && data.tokens.length === 0;
 
     return (
-        <LinearGradient
-            colors={
-                isDarkMode
-                    ? ["#0A0410", "#1a0a2e", "#0A0410"]
-                    : ["#FFFFFF", "#dbd4fbff", "#d7cdf2ff"]
-            }
-            style={styles.container}
-        >
+        <View style={styles.container}>
+            <AnimatedLinearGradient
+                colors={
+                    isDarkMode
+                        ? ["#0A0410", "#1a0a2e", "#0A0410"]
+                        : ["#FFFFFF", "#dbd4fbff", "#d7cdf2ff"]
+                }
+                style={[
+                    StyleSheet.absoluteFillObject,
+                    Platform.OS === 'ios' ? {
+                        transform: [
+                            { scale: 1.15 },
+                            { translateX: transX },
+                            { translateY: transY }
+                        ]
+                    } : null
+                ]}
+            />
             <StatusBar backgroundColor={isDarkMode ? "#0A0410" : "#fff"} />
 
-            <ScrollView
-                style={styles.container}
-                contentContainerStyle={styles.scrollContent}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing || isRefreshing}
-                        onRefresh={handleRefresh}
-                        tintColor={isDarkMode ? "#fff" : "#000"}
-                    />
-                }
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
+            <View
+                style={[
+                    styles.container,
+                    { paddingTop: insets.top }
+                ]}
             >
                 <View style={styles.dashboardBody}>
                     <View style={styles.dashboardTop}>
@@ -202,19 +237,21 @@ export default function WalletDashboardScreen() {
                         </FadeIn>
                     </View>
 
-                    <View style={[styles.portfolioBottom, { paddingBottom: insets.bottom }]}>
-                        <FadeIn delay={MOTION.stagger.step * 4} from="bottom">
+                    <View style={styles.portfolioBottom}>
+                        <FadeIn delay={MOTION.stagger.step * 4} from="bottom" style={{ flex: 1 }}>
                             <PortfolioList
                                 isDarkMode={isDarkMode}
                                 isBalanceHidden={isBalanceHidden}
                                 tokens={data.tokens}
                                 isLoading={showPortfolioSkeleton}
+                                onRefresh={handleRefresh}
+                                refreshing={refreshing || isRefreshing}
                             />
                         </FadeIn>
                     </View>
                 </View>
-            </ScrollView>
+            </View>
             <DepositBottomSheet ref={depositSheetRef} />
-        </LinearGradient>
+        </View>
     );
 }

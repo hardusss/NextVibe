@@ -1,4 +1,4 @@
-import { BackHandler, StyleSheet } from 'react-native';
+import { BackHandler, StyleSheet, Platform } from 'react-native';
 
 
 const colors = {
@@ -73,7 +73,7 @@ includeFontPadding:false,
     registerButton: {
         backgroundColor: '#A855F7',
         borderRadius: 20,
-        paddingVertical: 16,
+        paddingVertical: Platform.OS === 'ios' ? 12 : 16,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#A855F7',

@@ -4,25 +4,28 @@ export default {
     expo: {
         name: "NextVibe",
         slug: "NextVibe",
-        version: "1.0.4",
+        version: "1.0.5",
         orientation: "portrait",
         icon: "./assets/new_icon.png",
         scheme: "nextvibe",
         userInterfaceStyle: "automatic",
-        newArchEnabled: false,
+        newArchEnabled: true,
         jsEngine: "hermes",
         ios: {
             jsEngine: "hermes",
             supportsTablet: true,
             bundleIdentifier: "com.nextvibe.app",
+            googleServicesFile: "./GoogleService-Info.plist",
             usesAppleSignIn: true,
             infoPlist: {
                 NSCameraUsageDescription: "NextVibe needs access to your Camera.",
                 NSMicrophoneUsageDescription: "NextVibe needs access to your Microphone.",
-                NFCReaderUsageDescription: "NextVibe needs NFC to connect you with friends.",
                 ITSAppUsesNonExemptEncryption: false,
                 NSLocationWhenInUseUsageDescription: "NextVibe needs your location to show you on the VibeMap and find nearby drops.",
-                NSLocationAlwaysAndWhenInUseUsageDescription: "NextVibe needs your location to notify you about Vibe Zones nearby."
+                NSLocationAlwaysAndWhenInUseUsageDescription: "NextVibe needs your location to notify you about Vibe Zones nearby.",
+                NSBluetoothAlwaysUsageDescription: "NextVibe uses Bluetooth to share profiles and connect with nearby vibers.",
+                NSBluetoothPeripheralUsageDescription: "NextVibe uses Bluetooth to broadcast your profile to nearby phones.",
+                UIBackgroundModes: ["bluetooth-peripheral", "bluetooth-central"]
             },
             associatedDomains: ["applinks:nextvibe.io"]
         },
@@ -35,8 +38,8 @@ export default {
                 backgroundColor: "#0A0410"
             },
             notification: {
-                icon: "./assets/push_icon.png",  
-                color: "#A855F7",                                   
+                icon: "./assets/push_icon.png",
+                color: "#A855F7",
                 androidMode: "default",
             },
             package: "com.nextvibe.app",
@@ -90,10 +93,32 @@ export default {
             favicon: "./assets/images/favicon.png"
         },
         plugins: [
+            "@react-native-firebase/app",
             "expo-router",
+            "expo-image",
+            "expo-web-browser",
             [
                 "expo-build-properties",
                 {
+                    ios: {
+                        "useFrameworks": "static",
+                        "newArchEnabled": true,
+                        "forceStaticLinking": ["RNFBApp", "RNFBAuth"],
+                        "extraPods": [
+                            {
+                                "name": "FirebaseAuth",
+                                "modular_headers": true
+                            },
+                            {
+                                "name": "FirebaseCore",
+                                "modular_headers": true
+                            },
+                            {
+                                "name": "GoogleUtilities",
+                                "modular_headers": true
+                            }
+                        ]
+                    },
                     android: {
                         usesCleartextTraffic: true,
                         enableProguardInReleaseBuilds: true,
@@ -118,12 +143,6 @@ export default {
                     cameraPermissionText: "NextVibe needs access to your Camera.",
                     enableMicrophonePermission: true,
                     microphonePermissionText: "NextVibe needs access to your Microphone."
-                }
-            ],
-            [
-                "react-native-nfc-manager",
-                {
-                    nfcPermission: "NextVibe needs NFC to connect you with friends."
                 }
             ],
             "expo-image-picker",
@@ -159,7 +178,7 @@ export default {
             [
                 "@react-native-google-signin/google-signin",
                 {
-                    iosUrlScheme: "com.googleusercontent.apps.603386649315-vp4revvrcgrcjme51ebuhbkbspl048l9"
+                    iosUrlScheme: "com.googleusercontent.apps.1063264156706-9of910einuhchb1pef6g482vu8b91nh4"
                 }
             ]
         ],
@@ -175,7 +194,7 @@ export default {
             }
         },
         owner: "nextvibe",
-        runtimeVersion: "0.0.1-collections",
+        runtimeVersion: "0.0.1-ios",
         updates: {
             url: "https://u.expo.dev/4c7d8842-f989-419d-b3ec-49ceece00b6e"
         }

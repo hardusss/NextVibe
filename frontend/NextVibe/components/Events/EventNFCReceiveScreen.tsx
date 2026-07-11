@@ -12,7 +12,7 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, ShieldX, Radio, Users, Star } from "lucide-react-native";
 import Animated, { FadeInDown, FadeInUp, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, withSpring } from "react-native-reanimated";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
@@ -182,7 +182,7 @@ export default function EventNFCReceiveScreen() {
                         <Animated.View entering={FadeInDown.delay(200).springify()}>
                             <View style={styles.avatarsRow}>
                                 {scannedUser?.avatar ? (
-                                    <FastImage source={{ uri: scannedUser.avatar }} style={styles.scannedAvatar} />
+                                    <Image source={{ uri: scannedUser.avatar }} style={styles.scannedAvatar} />
                                 ) : (
                                     <View style={[styles.scannedAvatar, { backgroundColor: 'rgba(168,85,247,0.2)', alignItems: 'center', justifyContent: 'center' }]}>
                                         <Users size={32} color={accent} />
@@ -194,7 +194,7 @@ export default function EventNFCReceiveScreen() {
                         <Animated.Text entering={FadeInDown.delay(400)} style={[styles.heading, { color: main, fontSize: 24, marginTop: 16 }]}>
                             Connected with {scannedUser?.username}
                         </Animated.Text>
-                        
+
                         <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>
                             <Star size={24} color="#fbbf24" fill="#fbbf24" />
                             <Text style={styles.repPointsText}>+{displayPoints} Rep</Text>

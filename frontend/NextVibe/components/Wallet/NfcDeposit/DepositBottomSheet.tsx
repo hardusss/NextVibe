@@ -11,7 +11,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { Nfc, CheckCircle2, Check } from "lucide-react-native";
 import { TOKENS } from "@/constants/Tokens";
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
 import Animated, {
     interpolate, Extrapolation, useAnimatedStyle,
     useSharedValue, withRepeat, withSequence, withTiming
@@ -248,7 +248,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                                     },
                                 ]}
                             >
-                                <FastImage source={{ uri: token.logoURL }} style={styles.tokenIcon} />
+                                <Image source={{ uri: token.logoURL }} style={styles.tokenIcon} />
                                 <Text style={[styles.tokenSymbol, { color: isSelected ? accentText : mutedColor }]}>
                                     {token.symbol}
                                 </Text>

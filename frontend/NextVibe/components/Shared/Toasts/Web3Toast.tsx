@@ -1,5 +1,6 @@
 import { useColorScheme, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, Info, X } from 'lucide-react-native';
 import Animated, {
@@ -20,6 +21,7 @@ type Web3ToastProps = {
 
 export default function Web3Toast({ message, visible, onHide, isSuccess }: Web3ToastProps) {
     const isDark = useColorScheme() === 'dark';
+    const insets = useSafeAreaInsets();
     const translateY = useSharedValue(-100);
     const opacity = useSharedValue(0);
     const progress = useSharedValue(1);
@@ -68,6 +70,7 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: Web3T
                 {
                     backgroundColor: isDark ? 'rgba(15, 8, 25, 0.98)' : 'rgba(255, 255, 255, 0.98)',
                     shadowColor: '#8B5CF6',
+                    top: Math.max(insets.top, 10) + 10,
                 },
             ]}
         >

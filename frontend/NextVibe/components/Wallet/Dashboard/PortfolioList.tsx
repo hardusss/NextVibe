@@ -5,10 +5,15 @@ import {
     StyleSheet,
     Animated,
     TouchableOpacity,
+    Platform,
+    ScrollView,
+    RefreshControl,
 } from "react-native";
+import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { Wallet, BriefcaseBusiness, ArrowRight, Sparkles } from "lucide-react-native";
 import { TokenAsset } from "@/hooks/usePortfolio.types";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TokenItem from "./TokenItem";
 
 
@@ -17,6 +22,8 @@ interface PortfolioListProps {
     isBalanceHidden: boolean;
     tokens: TokenAsset[];
     isLoading: boolean;
+    onRefresh?: () => void;
+    refreshing?: boolean;
 }
 
 // ─── Animated Skeleton ────────────────────────────────────────────────────────
@@ -111,8 +118,11 @@ function PortfolioList({
     isBalanceHidden,
     tokens,
     isLoading,
+    onRefresh,
+    refreshing,
 }: PortfolioListProps) {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     // Entrance animation
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -171,7 +181,18 @@ function PortfolioList({
     const count = !isLoading ? nonZeroTokens.length : null;
 
     return (
-        <View style={[styles.sheet, { backgroundColor: sheetBg, borderColor: border }]}>
+        <GlassSurface
+            style={[
+                styles.sheet,
+                Platform.OS === 'ios' && { borderWidth: 0 },
+                Platform.OS !== 'ios' && { backgroundColor: sheetBg, borderColor: border },
+                { paddingBottom: 16 },
+                { flex: 1 }
+            ]}
+            glassEffectStyle="clear"
+            colorScheme={isDarkMode ? "dark" : "light"}
+            tintColor={isDarkMode ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.005)"}
+        >
             {/* Drag handle */}
             <View style={styles.handleArea}>
                 <View style={[styles.handle, { backgroundColor: handleColor }]} />
@@ -212,44 +233,55 @@ function PortfolioList({
                 ) : displayTokens.length === 0 ? (
                     <EmptyState isDarkMode={isDarkMode} />
                 ) : (
-                    <View style={styles.tokenList}>
-                        {displayTokens.map((token, i) => (
-                            <TokenItem
-                                key={token.symbol}
-                                token={token}
-                                isDarkMode={isDarkMode}
-                                isBalanceHidden={isBalanceHidden}
-                                isLast={i === displayTokens.length - 1}
-                                index={i}
-                            />
-                        ))}
+                    <View style={{ flex: 1, justifyContent: "space-between" }}>
+                        <ScrollView
+                            style={styles.tokenList}
+                            contentContainerStyle={{ flexGrow: 1 }}
+                            showsVerticalScrollIndicator={false}
+                            refreshControl={
+                                onRefresh ? (
+                                    <RefreshControl
+                                        refreshing={refreshing || false}
+                                        onRefresh={onRefresh}
+                                        tintColor={isDarkMode ? "#fff" : "#000"}
+                                    />
+                                ) : undefined
+                            }
+                        >
+                            {displayTokens.map((token, i) => (
+                                <TokenItem
+                                    key={token.symbol}
+                                    token={token}
+                                    isDarkMode={isDarkMode}
+                                    isBalanceHidden={isBalanceHidden}
+                                    isLast={i === displayTokens.length - 1}
+                                    index={i}
+                                />
+                            ))}
+                        </ScrollView>
 
                         <TouchableOpacity
                             style={[
                                 styles.viewAllButton,
                                 {
-                                    borderColor: sectionDivider,
-                                    backgroundColor: isDarkMode
-                                        ? "rgba(196,167,255,0.04)"
-                                        : "rgba(109,40,217,0.03)",
+                                    backgroundColor: isDarkMode ? "#8B5CF6" : "#7c3aed",
+                                    borderWidth: 0,
                                 },
                             ]}
-                            activeOpacity={0.65}
+                            activeOpacity={0.8}
                             onPress={() => router.push("/all-tokens")}
                         >
                             <View style={styles.viewAllLeft}>
                                 <Sparkles
-                                    size={13}
-                                    color={isDarkMode ? "rgba(196,167,255,0.6)" : "rgba(109,40,217,0.55)"}
-                                    strokeWidth={1.5}
+                                    size={14}
+                                    color="#FFFFFF"
+                                    strokeWidth={2}
                                 />
                                 <Text
                                     style={[
                                         styles.viewAllText,
                                         {
-                                            color: isDarkMode
-                                                ? "rgba(196,167,255,0.85)"
-                                                : "rgba(109,40,217,0.8)",
+                                            color: "#FFFFFF",
                                         },
                                     ]}
                                 >
@@ -258,14 +290,14 @@ function PortfolioList({
                             </View>
                             <ArrowRight
                                 size={14}
-                                color={isDarkMode ? "rgba(196,167,255,0.5)" : "rgba(109,40,217,0.45)"}
-                                strokeWidth={1.8}
+                                color="#FFFFFF"
+                                strokeWidth={2}
                             />
                         </TouchableOpacity>
                     </View>
                 )}
             </Animated.View>
-        </View>
+        </GlassSurface>
     );
 }
 
@@ -407,21 +439,22 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 16,
-        borderWidth: StyleSheet.hairlineWidth,
-        marginTop: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 24,
+        marginHorizontal: 48,
+        marginTop: 12,
+        marginBottom: 12,
     },
     viewAllLeft: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 7,
+        gap: 8,
     },
     viewAllText: {
         fontFamily: "Dank Mono Bold",
-        fontSize: 12,
-        letterSpacing: 0.2,
+        fontSize: 13,
+        letterSpacing: 0.3,
         includeFontPadding: false,
     },
 });

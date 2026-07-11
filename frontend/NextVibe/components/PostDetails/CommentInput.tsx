@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { X, ArrowUp } from "lucide-react-native";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import { EdgeInsets } from "react-native-safe-area-context";
 import { Comment, Reply } from "./CommentThread";
 
@@ -64,7 +64,7 @@ const CommentInput: React.FC<Props> = ({
                     paddingBottom: Math.max(insets.bottom, 12),
                 },
             ]}>
-                <FastImage source={{ uri: avatarUrl ?? undefined }} style={s.avatar} />
+                <Image source={{ uri: avatarUrl ?? undefined }} style={s.avatar} />
 
                 <View style={[s.inputWrap, { backgroundColor: theme.inputBg }]}>
                     <TextInput

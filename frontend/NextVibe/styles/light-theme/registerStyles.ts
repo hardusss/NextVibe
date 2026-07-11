@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 const colors = {
     background: '#FAFAFC',
@@ -72,10 +72,10 @@ includeFontPadding:false,
     registerButton: {
         backgroundColor: colors.primary,
         borderRadius: 20,
-        paddingVertical: 16,
+        paddingVertical: Platform.OS === 'ios' ? 12 : 16,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 20,
+        marginTop: Platform.OS === 'ios' ? 10 : 20,
         shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
