@@ -26,6 +26,7 @@ public class BleShareModule: Module {
     // ── Central (Scanner) state ──
     private var centralManager: CBCentralManager?
     private var centralDelegate: CentralDelegate?
+    fileprivate var isScanningRequested = false
 
     public func definition() -> ModuleDefinition {
         Name("BleShare")
@@ -46,10 +47,12 @@ public class BleShareModule: Module {
         // ── Scanner API ──
 
         Function("startScanning") {
+            self.isScanningRequested = true
             self.startCentral()
         }
 
         Function("stopScanning") {
+            self.isScanningRequested = false
             self.stopCentral()
         }
     }
@@ -111,23 +114,28 @@ public class BleShareModule: Module {
     // ═══════════════════════════════════════
 
     private func startCentral() {
-        stopCentral()
-
-        let delegate = CentralDelegate()
-        delegate.onDiscovered = { [weak self] url in
-            self?.sendEvent("onBleDiscovered", ["url": url])
+        if self.centralManager == nil {
+            let delegate = CentralDelegate()
+            delegate.module = self
+            delegate.onDiscovered = { [weak self] url in
+                self?.sendEvent("onBleDiscovered", ["url": url])
+            }
+            self.centralDelegate = delegate
+            self.centralManager = CBCentralManager(delegate: delegate, queue: .main)
+        } else {
+            if let cm = centralManager, cm.state == .poweredOn {
+                cm.scanForPeripherals(
+                    withServices: [kServiceUUID],
+                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+                )
+            }
         }
-
-        self.centralDelegate = delegate
-        self.centralManager = CBCentralManager(delegate: delegate, queue: .main)
     }
 
     private func stopCentral() {
         if let cm = centralManager, cm.state == .poweredOn {
             cm.stopScan()
         }
-        centralManager = nil
-        centralDelegate = nil
     }
 }
 
@@ -176,6 +184,7 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
 // ═══════════════════════════════════════
 
 private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
+    weak var module: BleShareModule?
     var onDiscovered: ((String) -> Void)?
 
     // RSSI moving average buffer per device
@@ -189,11 +198,13 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
-            // Scan specifically for our service UUID
-            central.scanForPeripherals(
-                withServices: [kServiceUUID],
-                options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
-            )
+            if module?.isScanningRequested == true {
+                // Scan specifically for our service UUID
+                central.scanForPeripherals(
+                    withServices: [kServiceUUID],
+                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+                )
+            }
         }
     }
 

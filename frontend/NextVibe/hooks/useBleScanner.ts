@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AppState, Platform, Vibration, PermissionsAndroid } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { startScanning, stopScanning, addBleDiscoveredListener } from "@/modules/ble-share";
@@ -65,6 +66,17 @@ export function useBleScanner() {
 
         const startScanner = async () => {
             if (!isScanning) {
+                // Check user preference
+                try {
+                    const bluetoothSetting = await AsyncStorage.getItem("bluetooth_scan_enabled");
+                    if (bluetoothSetting === "false") {
+                        if (__DEV__) console.log("[useBleScanner] Background scanning disabled in settings");
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("[useBleScanner] Failed to read settings:", e);
+                }
+
                 if (Platform.OS === "android") {
                     const hasPermission = await requestAndroidPermissions();
                     if (!hasPermission) {
