@@ -24,6 +24,7 @@ import Web3Toast from "../Shared/Toasts/Web3Toast";
 import validationUsername from "@/src/validation/username-update-validator";
 import { clearFeedCache } from "../Home/MainPage";
 import { clearProfileCache } from "../ProfilePage/ProfilePage";
+import { startScanning, stopScanning } from "@/modules/ble-share";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
 import GaslessIndicator from "@/components/Shared/GaslessIndicator";
@@ -78,6 +79,7 @@ function PageSettingsContent() {
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
     const [toastSuccess, setToastSuccess] = useState(true);
+    const [isBluetoothEnabled, setIsBluetoothEnabled] = useState<boolean>(true);
     const { address, disconnect } = useWalletAddress();
 
     const router = useRouter();
@@ -88,6 +90,41 @@ function PageSettingsContent() {
     const { showPopup } = usePopup();
     
     const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    // Load initial Bluetooth scan setting
+    useEffect(() => {
+        const loadBluetoothSetting = async () => {
+            try {
+                const value = await AsyncStorage.getItem("bluetooth_scan_enabled");
+                if (value === "false") {
+                    setIsBluetoothEnabled(false);
+                } else {
+                    setIsBluetoothEnabled(true);
+                }
+            } catch (e) {
+                console.warn("Failed to load Bluetooth setting:", e);
+            }
+        };
+        loadBluetoothSetting();
+    }, []);
+
+    const handleToggleBluetooth = async (newValue: boolean) => {
+        setIsBluetoothEnabled(newValue);
+        try {
+            await AsyncStorage.setItem("bluetooth_scan_enabled", newValue ? "true" : "false");
+            if (newValue) {
+                if (Platform.OS === 'ios' || Platform.OS === 'android') {
+                    startScanning();
+                }
+            } else {
+                if (Platform.OS === 'ios' || Platform.OS === 'android') {
+                    stopScanning();
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to save Bluetooth setting:", e);
+        }
+    };
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -395,6 +432,21 @@ function PageSettingsContent() {
                         <Text style={styles.sectionHeader}>GASLESS TRANSACTIONS</Text>
                         <GaslessIndicator />
 
+                        <Text style={styles.sectionHeader}>BLUETOOTH SETTINGS</Text>
+                        <View style={styles.row}>
+                            <View style={{ flex: 1, paddingRight: 16 }}>
+                                <Text style={styles.rowText}>Background Scanning</Text>
+                                <Text style={styles.rowDescription}>
+                                    Scan for nearby devices to receive vibes in the background
+                                </Text>
+                            </View>
+                            <Switch
+                                value={isBluetoothEnabled}
+                                onValueChange={handleToggleBluetooth}
+                                color={colors.accent}
+                            />
+                        </View>
+
                         <Text style={styles.sectionHeader}>SECURITY & ACCOUNT</Text>
 
                         <TouchableOpacity 
@@ -538,6 +590,12 @@ const getStyles = (colors: any, insets: any) => {
         rowText: {
             fontSize: 16,
             color: colors.textPrimary,
+            fontWeight: "400",
+        },
+        rowDescription: {
+            fontSize: 12,
+            color: colors.textSecondary,
+            marginTop: 4,
             fontWeight: "400",
         },
         linkTextMain: {
