@@ -11,10 +11,11 @@ import {
   Animated,
   ActivityIndicator,
   Pressable,
-  Linking
+  Linking,
+  Share
 } from "react-native";
 
-import { VolumeX, Volume2, Heart, Sparkles, MoreVertical, MessageSquare, ChevronLeft, Frown } from 'lucide-react-native';
+import { VolumeX, Volume2, Heart, Sparkles, MoreVertical, MessageSquare, ChevronLeft, Frown, Share2 } from 'lucide-react-native';
 import getMenuPosts from "@/src/api/menu.posts";
 import timeAgo from "@/src/utils/formatTime";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -448,6 +449,16 @@ const UserPosts = () => {
     setHasMore(true);
   }, []);
 
+  const handleSharePost = async (postId: number) => {
+    try {
+      await Share.share({
+        message: `https://nextvibe.io/u/post/${postId}`,
+      });
+    } catch (error) {
+      console.error("Error sharing post:", error);
+    }
+  };
+
   const handlePostDeleted = (postId: number) => {
     setToastMessage("Post successfully deleted")
     setToastSuccess(true)
@@ -774,6 +785,9 @@ const UserPosts = () => {
             setShowPopup(true);
           }}>
             <MessageSquare size={20} color={theme.textPrimary} style={{ marginTop: -3 }} />
+          </TouchableOpacity>
+          <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => handleSharePost(item.post_id)} style={styles.likesContainer}>
+            <Share2 size={22} color={theme.textPrimary} />
           </TouchableOpacity>
         </View>
         <Text style={styles.postDate}>
