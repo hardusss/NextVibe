@@ -1,3 +1,11 @@
 // @ts-ignore
 import MapScreen from "@/components/VibeMap/Map";
-export default MapScreen;
+import { SwipeBackWrapper } from "@/components/Shared/SwipeBackWrapper";
+
+export default function VibeMapScreen() {
+    return (
+        <SwipeBackWrapper>
+            <MapScreen />
+        </SwipeBackWrapper>
+    );
+}
