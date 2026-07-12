@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import {
     View,
     FlatList,
+    FlatListProps,
     TouchableOpacity,
     StyleSheet,
     Dimensions,
@@ -32,6 +33,8 @@ import mintNFT from "@/src/api/mint.nft";
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
 const imageSize = (screenWidth - padding * 2) / 3;
+const ROW_HEIGHT = imageSize + 4;
+const POSTS_PER_PAGE = 9;
 
 interface PostMedia {
     media_url: string;
@@ -55,6 +58,14 @@ type MediaCheck =
 interface PostGalleryProps {
     id: number;
     previous: string;
+    ListHeaderComponent?: FlatListProps<Post>["ListHeaderComponent"];
+    ListEmptyComponent?: FlatListProps<Post>["ListEmptyComponent"];
+    refreshControl?: FlatListProps<Post>["refreshControl"];
+    contentInset?: FlatListProps<Post>["contentInset"];
+    contentOffset?: FlatListProps<Post>["contentOffset"];
+    contentInsetAdjustmentBehavior?: FlatListProps<Post>["contentInsetAdjustmentBehavior"];
+    automaticallyAdjustContentInsets?: FlatListProps<Post>["automaticallyAdjustContentInsets"];
+    ownsScroll?: boolean;
 }
 
 // ── Module-level cache to survive tab-switch remounts ──
@@ -65,6 +76,26 @@ const fetchedProfiles = new Set<number>();
 export const clearPostsCache = () => {
     postsCache.clear();
     fetchedProfiles.clear();
+};
+
+const isVideo = (url: string): MediaCheck => {
+    if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+    if (videoExtensions.some(ext => url.endsWith(ext))) return { storage: "r2", is_video: true };
+    return false;
+};
+
+const getPreviewUrl = (url: string, item: any): string => {
+    const videoCheck = isVideo(url);
+    if (videoCheck) {
+        if (videoCheck.storage === "cloudinary") {
+            return url.replace("/video/upload/", "/video/upload/so_0,du_1,q_10,f_jpg/");
+        }
+        if (videoCheck.storage === "r2") {
+            return item?.media[0]?.media_preview || item?.preview || url;
+        }
+    }
+    return url;
 };
 
 function ModerationDot({ delay }: { delay: number }) {
@@ -106,7 +137,152 @@ function ModerationDot({ delay }: { delay: number }) {
     );
 }
 
-const PostGallery = ({ id, previous }: PostGalleryProps) => {
+interface PostGridCellProps {
+    item: Post;
+    isFocused: boolean;
+    currentUserId: number | null;
+    onPress: (item: Post) => void;
+}
+
+const PostGridCell = memo(({ item, isFocused, currentUserId, onPress }: PostGridCellProps) => {
+    const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
+    const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
+    const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
+    const isApproved = item.moderation_status === "approved";
+    const isPending = item.moderation_status === "pending" && item.user_id === currentUserId;
+    const hasBadges = item.is_nft || item.is_ai_generated || item.is_luma_event;
+
+    return (
+        <TouchableOpacity
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            style={styles.postContainer}
+            onPress={() => isApproved ? onPress(item) : null}
+            activeOpacity={isApproved ? 0.8 : 1}
+        >
+            {hasMedia ? (
+                isMediaVideo ? (
+                    <View style={styles.videoContainer}>
+                        {item.is_luma_event && (
+                            <>
+                                <Image source={{ uri: getPreviewUrl(mediaUrl!, item) }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
+                            </>
+                        )}
+                        <Image
+                            source={{ uri: getPreviewUrl(mediaUrl!, item) }}
+                            style={styles.media}
+                            contentFit={item.is_luma_event ? "contain" : "cover"}
+                        />
+                    </View>
+                ) : (
+                    <View style={styles.videoContainer}>
+                        {item.is_luma_event && (
+                            <>
+                                <Image source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
+                            </>
+                        )}
+                        <Image
+                            source={{ uri: mediaUrl! }}
+                            style={styles.media}
+                            contentFit={item.is_luma_event ? "contain" : "cover"}
+                        />
+                    </View>
+                )
+            ) : (
+                <View style={styles.placeholderContainer}>
+                    <LinearGradient
+                        colors={["rgba(109,40,217,0.05)", "rgba(20,8,41,0.9)"]}
+                        style={StyleSheet.absoluteFill}
+                    />
+                    <View style={styles.placeholderInner}>
+                        <ImageIcon size={26} color="rgba(167,139,250,0.8)" strokeWidth={1.2} />
+                    </View>
+                    <Text style={styles.placeholderText}>No media</Text>
+                </View>
+            )}
+
+            {hasMedia && isApproved && (isMediaVideo || hasBadges) && (
+                <LinearGradient
+                    colors={["transparent", "rgba(0,0,0,0.55)"]}
+                    style={styles.bottomGradient}
+                    pointerEvents="none"
+                />
+            )}
+
+            {isPending && isFocused && (
+                <View style={styles.moderationOverlay}>
+                    {Platform.OS === 'ios' ? (
+                        <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
+                    ) : (
+                        <BlurView
+                            style={StyleSheet.absoluteFill}
+                            tint="dark"
+                            intensity={60}
+                            experimentalBlurMethod="dimezisBlurView"
+                            pointerEvents="none"
+                        />
+                    )}
+                    <View style={styles.moderationContent}>
+                        <View style={styles.moderationIconWrap}>
+                            <Clock3
+                                size={15}
+                                color="rgba(196,181,253,0.9)"
+                                strokeWidth={1.8}
+                            />
+                        </View>
+                        <Text style={styles.moderationText}>reviewing</Text>
+                        <View style={styles.moderationDots}>
+                            <ModerationDot delay={0} />
+                            <ModerationDot delay={280} />
+                            <ModerationDot delay={560} />
+                        </View>
+                    </View>
+                </View>
+            )}
+
+            {hasMedia && isApproved && (
+                <View style={styles.badgeRow}>
+                    {isMediaVideo && (
+                        <GlassBadge variant="grid" iconOnly>
+                            <Video size={11} color="rgba(255,255,255,0.9)" strokeWidth={2} />
+                        </GlassBadge>
+                    )}
+                    {item.is_nft && (
+                        <GlassBadge variant="grid-nft" iconOnly>
+                            <Gem size={11} color="#c4b5fd" strokeWidth={2} />
+                        </GlassBadge>
+                    )}
+                    {item.is_ai_generated && (
+                        <GlassBadge variant="grid-ai" iconOnly>
+                            <Sparkles size={11} color="#05f0d8" strokeWidth={2} />
+                        </GlassBadge>
+                    )}
+                    {item.is_luma_event && (
+                        <GlassBadge variant="grid-event" iconOnly>
+                            <Calendar size={11} color="#d8b4fe" strokeWidth={2} />
+                        </GlassBadge>
+                    )}
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+});
+
+PostGridCell.displayName = "PostGridCell";
+
+const PostGallery = ({
+    id,
+    previous,
+    ListHeaderComponent,
+    ListEmptyComponent,
+    refreshControl,
+    contentInset,
+    contentOffset,
+    contentInsetAdjustmentBehavior,
+    automaticallyAdjustContentInsets,
+    ownsScroll = true,
+}: PostGalleryProps) => {
     const isFocused = useIsFocused();
     const cached = postsCache.get(id) ?? null;
     const [posts, setPosts] = useState<Post[]>(cached ?? []);
@@ -148,8 +324,6 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         }
     }, [isFocused]);
 
-    const POSTS_PER_PAGE = 9;
-
     const getId = async () => {
         const storedId = await storage.getItem("id");
         const parsedId = Number(storedId);
@@ -157,7 +331,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         return parsedId;
     };
 
-    const fetchPosts = async (shouldLoadMore = false, currentUserID?: number) => {
+    const fetchPosts = useCallback(async (shouldLoadMore = false, currentUserID?: number) => {
         if (isFetchingRef.current || !hasMore) return;
 
         isFetchingRef.current = true;
@@ -202,7 +376,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
             setLoadingMore(false);
             isFetchingRef.current = false;
         }
-    };
+    }, [hasMore, id, userID]);
 
     // Load once on mount — don't re-fetch on every tab focus
     useEffect(() => {
@@ -216,31 +390,11 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         });
     }, []);
 
-    const isVideo = (url: string): MediaCheck => {
-        if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
-        const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
-        if (videoExtensions.some(ext => url.endsWith(ext))) return { storage: "r2", is_video: true };
-        return false;
-    };
-
-    const getPreviewUrl = (url: string, item: any): string => {
-        const videoCheck = isVideo(url);
-        if (videoCheck) {
-            if (videoCheck.storage === "cloudinary") {
-                return url.replace("/video/upload/", "/video/upload/so_0,du_1,q_10,f_jpg/");
-            }
-            if (videoCheck.storage === "r2") {
-                return item?.media[0]?.media_preview || item?.preview || url;
-            }
-        }
-        return url;
-    };
-
-    const handlePostPress = (item: Post) => {
+    const handlePostPress = useCallback((item: Post) => {
         if (item.moderation_status !== "approved") return;
         setSelectedPostId(item.post_id);
         setPopupVisible(true);
-    };
+    }, []);
 
     const handleOpenMint = (
         postId: number,
@@ -283,8 +437,25 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
         setMintSuccessId(postId);
     };
 
-    const hasBadges = (item: Post) =>
-        item.is_nft || item.is_ai_generated || item.is_luma_event;
+    const keyExtractor = useCallback((item: Post, index: number) => item.post_id?.toString() ?? `post-${index}`, []);
+
+    const renderItem = useCallback(({ item }: { item: Post }) => (
+        <PostGridCell
+            item={item}
+            isFocused={isFocused}
+            currentUserId={userID}
+            onPress={handlePostPress}
+        />
+    ), [handlePostPress, isFocused, userID]);
+
+    const handleEndReached = useCallback(() => {
+        fetchPosts(true);
+    }, [fetchPosts]);
+
+    const getItemLayout = useCallback((_data: ArrayLike<Post> | null | undefined, index: number) => {
+        const row = Math.floor(index / 3);
+        return { length: ROW_HEIGHT, offset: ROW_HEIGHT * row, index };
+    }, []);
 
     return (
         <View style={styles.container}>
@@ -321,149 +492,34 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                 isFocused={isFocused}
             />
 
-            {loading ? (
-                <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} />
-            ) : (
-                <FlatList
-                    data={posts}
-                    keyExtractor={(item, index) => item.post_id?.toString() ?? `post-${index}`}
-                    numColumns={3}
-                    nestedScrollEnabled={true}
-                    scrollEnabled={false}
-                    initialNumToRender={3}
-                    contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
-                    renderItem={({ item }) => {
-                        const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
-                        const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
-                        const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
-                        const isApproved = item.moderation_status === "approved";
-                        const isPending = item.moderation_status === "pending" && item.user_id === userID;
-
-                        return (
-                            <TouchableOpacity
-                                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                                style={styles.postContainer}
-                                onPress={() => isApproved ? handlePostPress(item) : null}
-                                activeOpacity={isApproved ? 0.8 : 1}
-                            >
-                                {hasMedia ? (
-                                    isMediaVideo ? (
-                                        <View style={styles.videoContainer}>
-                                            {item.is_luma_event && (
-                                                <>
-                                                    <Image source={{ uri: getPreviewUrl(mediaUrl!, item) }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                                                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
-                                                </>
-                                            )}
-                                            <Image
-                                                source={{ uri: getPreviewUrl(mediaUrl!, item) }}
-                                                style={styles.media}
-                                                contentFit={item.is_luma_event ? "contain" : "cover"}
-                                            />
-                                        </View>
-                                    ) : (
-                                        <View style={styles.videoContainer}>
-                                            {item.is_luma_event && (
-                                                <>
-                                                    <Image source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                                                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
-                                                </>
-                                            )}
-                                            <Image
-                                                source={{ uri: mediaUrl! }}
-                                                style={styles.media}
-                                                contentFit={item.is_luma_event ? "contain" : "cover"}
-                                            />
-                                        </View>
-                                    )
-                                ) : (
-                                    <View style={styles.placeholderContainer}>
-                                        <LinearGradient
-                                            colors={["rgba(109,40,217,0.05)", "rgba(20,8,41,0.9)"]}
-                                            style={StyleSheet.absoluteFill}
-                                        />
-                                        <View style={styles.placeholderInner}>
-                                            <ImageIcon size={26} color="rgba(167,139,250,0.8)" strokeWidth={1.2} />
-                                        </View>
-                                        <Text style={styles.placeholderText}>No media</Text>
-                                    </View>
-                                )}
-
-                                {hasMedia && isApproved && (isMediaVideo || hasBadges(item)) && (
-                                    <LinearGradient
-                                        colors={["transparent", "rgba(0,0,0,0.55)"]}
-                                        style={styles.bottomGradient}
-                                        pointerEvents="none"
-                                    />
-                                )}
-
-                                {isPending && isFocused && (
-                                    <View style={styles.moderationOverlay}>
-                                        {Platform.OS === 'ios' ? (
-                                            <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
-                                        ) : (
-                                            <BlurView
-                                                style={StyleSheet.absoluteFill}
-                                                tint="dark"
-                                                intensity={60}
-                                                experimentalBlurMethod="dimezisBlurView"
-                                                pointerEvents="none"
-                                            />
-                                        )}
-                                        <View style={styles.moderationContent}>
-                                            <View style={styles.moderationIconWrap}>
-                                                <Clock3
-                                                    size={15}
-                                                    color="rgba(196,181,253,0.9)"
-                                                    strokeWidth={1.8}
-                                                />
-                                            </View>
-                                            <Text style={styles.moderationText}>reviewing</Text>
-                                            <View style={styles.moderationDots}>
-                                                <ModerationDot delay={0} />
-                                                <ModerationDot delay={280} />
-                                                <ModerationDot delay={560} />
-                                            </View>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {hasMedia && isApproved && (
-                                    <View style={styles.badgeRow}>
-                                        {isMediaVideo && (
-                                            <GlassBadge variant="grid" iconOnly>
-                                                <Video size={11} color="rgba(255,255,255,0.9)" strokeWidth={2} />
-                                            </GlassBadge>
-                                        )}
-                                        {item.is_nft && (
-                                            <GlassBadge variant="grid-nft" iconOnly>
-                                                <Gem size={11} color="#c4b5fd" strokeWidth={2} />
-                                            </GlassBadge>
-                                        )}
-                                        {item.is_ai_generated && (
-                                            <GlassBadge variant="grid-ai" iconOnly>
-                                                <Sparkles size={11} color="#05f0d8" strokeWidth={2} />
-                                            </GlassBadge>
-                                        )}
-                                        {item.is_luma_event && (
-                                            <GlassBadge variant="grid-event" iconOnly>
-                                                <Calendar size={11} color="#d8b4fe" strokeWidth={2} />
-                                            </GlassBadge>
-                                        )}
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        );
-                    }}
-                    onEndReached={() => fetchPosts(true)}
-                    onEndReachedThreshold={1}
-                    ListFooterComponent={
-                        loadingMore
-                            ? <ActivityIndicator size="small" color="#0000ff" style={{ marginVertical: 10 }} />
-                            : null
-                    }
-                />
-            )}
+            <FlatList
+                data={loading ? [] : posts}
+                keyExtractor={keyExtractor}
+                numColumns={3}
+                scrollEnabled={ownsScroll}
+                initialNumToRender={9}
+                maxToRenderPerBatch={9}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
+                getItemLayout={ListHeaderComponent ? undefined : getItemLayout}
+                contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
+                ListHeaderComponent={ListHeaderComponent}
+                ListEmptyComponent={loading ? <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} /> : ListEmptyComponent}
+                renderItem={renderItem}
+                onEndReached={handleEndReached}
+                onEndReachedThreshold={1}
+                refreshControl={refreshControl}
+                contentInset={contentInset}
+                contentOffset={contentOffset}
+                contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
+                automaticallyAdjustContentInsets={automaticallyAdjustContentInsets}
+                showsVerticalScrollIndicator={false}
+                ListFooterComponent={
+                    loadingMore
+                        ? <ActivityIndicator size="small" color="#0000ff" style={{ marginVertical: 10 }} />
+                        : null
+                }
+            />
         </View>
     );
 };

@@ -1,6 +1,7 @@
 import {
     View,
     FlatList,
+    FlatListProps,
     TouchableOpacity,
     StyleSheet,
     Dimensions,
@@ -11,11 +12,9 @@ import {
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getCollectionsMenu from "@/src/api/get.collections.menu";
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { memo, useCallback, useState, useEffect, useRef } from 'react';
 import { useIsFocused } from "@react-navigation/native";
 import { Image as ExpoImage } from 'expo-image';
-import { BlurView } from "expo-blur";
-import { GlassView } from 'expo-glass-effect';
 import GlassPill from "@/components/Shared/GlassPill";
 import { Image, Video, Sparkles, Gem, Crown, CheckCircle2, UserCircle2, Calendar } from "lucide-react-native";
 import { useColorScheme } from "react-native";
@@ -27,6 +26,8 @@ import { storage } from "@/src/utils/storage";
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
 const imageSize = (screenWidth - padding * 2) / 3;
+const ROW_HEIGHT = imageSize + 4;
+const POSTS_PER_PAGE = 9;
 
 interface PostMedia {
     media_url: string;
@@ -75,6 +76,14 @@ interface CollectionsGalleryProps {
     id: number;
     /** Pass false when rendering another user's profile to hide the "Set as Avatar" button */
     isOwnProfile?: boolean;
+    ListHeaderComponent?: FlatListProps<CollectionItem>["ListHeaderComponent"];
+    ListEmptyComponent?: FlatListProps<CollectionItem>["ListEmptyComponent"];
+    refreshControl?: FlatListProps<CollectionItem>["refreshControl"];
+    contentInset?: FlatListProps<CollectionItem>["contentInset"];
+    contentOffset?: FlatListProps<CollectionItem>["contentOffset"];
+    contentInsetAdjustmentBehavior?: FlatListProps<CollectionItem>["contentInsetAdjustmentBehavior"];
+    automaticallyAdjustContentInsets?: FlatListProps<CollectionItem>["automaticallyAdjustContentInsets"];
+    ownsScroll?: boolean;
 }
 
 // ── Module-level cache to survive tab-switch remounts ──
@@ -86,6 +95,26 @@ export const clearCollectionsCache = () => {
     collectionsCache.clear();
     ogAvatarCache.clear();
     fetchedCollectionsProfiles.clear();
+};
+
+const isVideo = (url: string): MediaCheck => {
+    if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+    if (videoExtensions.some(ext => url.endsWith(ext))) return { storage: "r2", is_video: true };
+    return false;
+};
+
+const getPreviewUrl = (url: string, item: any): string => {
+    const videoCheck = isVideo(url);
+    if (videoCheck) {
+        if (videoCheck.storage === "cloudinary") {
+            return url.replace("/video/upload/", "/video/upload/so_0,du_1,q_10,f_jpg/");
+        }
+        if (videoCheck.storage === "r2") {
+            return item?.media[0]?.media_preview || item?.preview || url;
+        }
+    }
+    return url;
 };
 
 interface OgAvatarCardProps {
@@ -236,7 +265,112 @@ function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatarCardPro
     );
 }
 
-const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProps) => {
+interface CollectionGridCellProps {
+    item: CollectionItem;
+    isFocused: boolean;
+    accentColor: string;
+    onPress: (item: CollectionItem) => void;
+}
+
+const CollectionGridCell = memo(({ item, isFocused, accentColor, onPress }: CollectionGridCellProps) => {
+    const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
+    const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
+    const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
+
+    return (
+        <TouchableOpacity
+            style={styles.postContainer}
+            activeOpacity={0.8}
+            onPress={() => onPress(item)}
+        >
+            {hasMedia ? (
+                isMediaVideo ? (
+                    <View style={styles.videoContainer}>
+                        {item.is_luma_event && isFocused && (
+                            <>
+                                <ExpoImage source={{ uri: getPreviewUrl(mediaUrl!, item as any) }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} pointerEvents="none" />
+                            </>
+                        )}
+                        <ExpoImage
+                            source={{ uri: getPreviewUrl(mediaUrl!, item as any) }}
+                            style={styles.media}
+                            contentFit={item.is_luma_event ? "contain" : "cover"}
+                        />
+                    </View>
+                ) : (
+                    <View style={styles.videoContainer}>
+                        {item.is_luma_event && isFocused && (
+                            <>
+                                <ExpoImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} pointerEvents="none" />
+                            </>
+                        )}
+                        <ExpoImage
+                            source={{ uri: mediaUrl! }}
+                            style={styles.media}
+                            contentFit={item.is_luma_event ? "contain" : "cover"}
+                        />
+                    </View>
+                )
+            ) : (
+                <View style={styles.placeholderContainer}>
+                    <Image size={40} color="#666" />
+                </View>
+            )}
+
+            {hasMedia && (
+                <GlassPill
+                    style={styles.iconContainer}
+                    colorScheme="dark"
+                    fallbackBackgroundColor="rgba(0,0,0,0.6)"
+                >
+                    <View style={styles.iconRow}>
+                        {isMediaVideo
+                            ? <Video size={16} color="white" />
+                            : <Image size={16} color="white" />
+                        }
+                        {(item as any).is_ai_generated && (
+                            <Sparkles size={16} color="#05f0d8" />
+                        )}
+                        {item.is_luma_event && (
+                            <Calendar size={16} color="#d8b4fe" />
+                        )}
+                        {item.is_nft && (
+                            <Gem size={16} color="#a78bfa" />
+                        )}
+                    </View>
+                </GlassPill>
+            )}
+
+            <GlassPill
+                style={styles.editionBadge}
+                colorScheme="dark"
+                tintColor="rgba(168,85,247,0.12)"
+                fallbackBackgroundColor="rgba(0,0,0,0.6)"
+            >
+                <Text style={[styles.editionText, { color: accentColor }]}>
+                    #{item.edition}
+                </Text>
+            </GlassPill>
+        </TouchableOpacity>
+    );
+});
+
+CollectionGridCell.displayName = "CollectionGridCell";
+
+const CollectionsGallery = ({
+    id,
+    isOwnProfile = false,
+    ListHeaderComponent,
+    ListEmptyComponent,
+    refreshControl,
+    contentInset,
+    contentOffset,
+    contentInsetAdjustmentBehavior,
+    automaticallyAdjustContentInsets,
+    ownsScroll = true,
+}: CollectionsGalleryProps) => {
     const isDark = useColorScheme() === "dark";
     const isFocused = useIsFocused();
 
@@ -266,9 +400,7 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
         }
     }, [isFocused]);
 
-    const POSTS_PER_PAGE = 9;
-
-    const fetchItems = async (shouldLoadMore = false) => {
+    const fetchItems = useCallback(async (shouldLoadMore = false) => {
         if (isFetchingRef.current || !hasMore) return;
 
         isFetchingRef.current = true;
@@ -309,7 +441,7 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
             setLoadingMore(false);
             isFetchingRef.current = false;
         }
-    };
+    }, [hasMore, id, index]);
 
     // Load once on mount — don't re-fetch on every tab focus
     useEffect(() => {
@@ -319,160 +451,80 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
         fetchItems(false);
     }, []);
 
-    const handleSetOgAvatar = async () => {
+    const handleSetOgAvatar = useCallback(async () => {
         if (!ogAvatar) throw new Error("No OG avatar data");
         await setAvatar(ogAvatar.image_url);
-    };
-
-    const isVideo = (url: string): MediaCheck => {
-        if (url.includes("/video/")) return { storage: "cloudinary", is_video: true };
-        const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
-        if (videoExtensions.some(ext => url.endsWith(ext))) return { storage: "r2", is_video: true };
-        return false;
-    };
-
-    const getPreviewUrl = (url: string, item: any): string => {
-        const videoCheck = isVideo(url);
-        if (videoCheck) {
-            if (videoCheck.storage === "cloudinary") {
-                return url.replace("/video/upload/", "/video/upload/so_0,du_1,q_10,f_jpg/");
-            }
-            if (videoCheck.storage === "r2") {
-                return item?.media[0]?.media_preview || item?.preview || url;
-            }
-        }
-        return url;
-    };
+    }, [ogAvatar]);
 
     const accentColor = isDark ? '#d8b4fe' : '#7c3aed';
 
+    const handleItemPress = useCallback((item: CollectionItem) => {
+        setSelectedItem(item);
+        setModalVisible(true);
+    }, []);
+
+    const keyExtractor = useCallback((item: CollectionItem, index: number) => item.post_id?.toString() ?? `collection-${index}`, []);
+
+    const renderItem = useCallback(({ item }: { item: CollectionItem }) => (
+        <CollectionGridCell
+            item={item}
+            isFocused={isFocused}
+            accentColor={accentColor}
+            onPress={handleItemPress}
+        />
+    ), [accentColor, handleItemPress, isFocused]);
+
+    const handleEndReached = useCallback(() => {
+        fetchItems(true);
+    }, [fetchItems]);
+
+    const getItemLayout = useCallback((_data: ArrayLike<CollectionItem> | null | undefined, index: number) => {
+        const row = Math.floor(index / 3);
+        return { length: ROW_HEIGHT, offset: ROW_HEIGHT * row, index };
+    }, []);
+
     return (
         <View style={styles.container}>
-            {loading ? (
-                <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} />
-            ) : (
-                <FlatList
-                    data={items}
-                    keyExtractor={(item, index) => item.post_id?.toString() ?? `collection-${index}`}
-                    numColumns={3}
-                    nestedScrollEnabled={true}
-                    scrollEnabled={false}
-                    initialNumToRender={3}
-                    contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
-                    ListHeaderComponent={
-                        ogAvatar ? (
+            <FlatList
+                data={loading ? [] : items}
+                keyExtractor={keyExtractor}
+                numColumns={3}
+                scrollEnabled={ownsScroll}
+                initialNumToRender={9}
+                maxToRenderPerBatch={9}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
+                getItemLayout={ListHeaderComponent || ogAvatar ? undefined : getItemLayout}
+                contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
+                ListHeaderComponent={
+                    <>
+                        {ListHeaderComponent}
+                        {ogAvatar ? (
                             <OgAvatarCard
                                 og={ogAvatar}
                                 isDark={isDark}
                                 isOwnProfile={isOwnProfile}
                                 onSetAvatar={handleSetOgAvatar}
                             />
-                        ) : null
-                    }
-                    renderItem={({ item }) => {
-                        const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
-                        const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
-                        const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
-
-                        return (
-                            <TouchableOpacity
-                                style={styles.postContainer}
-                                activeOpacity={0.8}
-                                onPress={() => {
-                                    setSelectedItem(item);
-                                    setModalVisible(true);
-                                }}
-                            >
-                                {hasMedia ? (
-                                    isMediaVideo ? (
-                                        <View style={styles.videoContainer}>
-                                            {item.is_luma_event && isFocused && (
-                                                <>
-                                                    <ExpoImage source={{ uri: getPreviewUrl(mediaUrl!, item as any) }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                                                    {Platform.OS === 'ios' ? (
-                                                        <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
-                                                    ) : (
-                                                        <BlurView tint="dark" intensity={50} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} pointerEvents="none" />
-                                                    )}
-                                                </>
-                                            )}
-                                            <ExpoImage
-                                                source={{ uri: getPreviewUrl(mediaUrl!, item as any) }}
-                                                style={styles.media}
-                                                contentFit={item.is_luma_event ? "contain" : "cover"}
-                                            />
-                                        </View>
-                                    ) : (
-                                        <View style={styles.videoContainer}>
-                                            {item.is_luma_event && isFocused && (
-                                                <>
-                                                    <ExpoImage source={{ uri: mediaUrl! }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                                                    {Platform.OS === 'ios' ? (
-                                                        <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
-                                                    ) : (
-                                                        <BlurView tint="dark" intensity={50} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} pointerEvents="none" />
-                                                    )}
-                                                </>
-                                            )}
-                                            <ExpoImage
-                                                source={{ uri: mediaUrl! }}
-                                                style={styles.media}
-                                                contentFit={item.is_luma_event ? "contain" : "cover"}
-                                            />
-                                        </View>
-                                    )
-                                ) : (
-                                    <View style={styles.placeholderContainer}>
-                                        <Image size={40} color="#666" />
-                                    </View>
-                                )}
-
-                                {hasMedia && (
-                                    <GlassPill
-                                        style={styles.iconContainer}
-                                        colorScheme="dark"
-                                        fallbackBackgroundColor="rgba(0,0,0,0.6)"
-                                    >
-                                        <View style={styles.iconRow}>
-                                            {isMediaVideo
-                                                ? <Video size={16} color="white" />
-                                                : <Image size={16} color="white" />
-                                            }
-                                            {(item as any).is_ai_generated && (
-                                                <Sparkles size={16} color="#05f0d8" />
-                                            )}
-                                            {item.is_luma_event && (
-                                                <Calendar size={16} color="#d8b4fe" />
-                                            )}
-                                            {item.is_nft && (
-                                                <Gem size={16} color="#a78bfa" />
-                                            )}
-                                        </View>
-                                    </GlassPill>
-                                )}
-
-                                <GlassPill
-                                    style={styles.editionBadge}
-                                    colorScheme="dark"
-                                    tintColor="rgba(168,85,247,0.12)"
-                                    fallbackBackgroundColor="rgba(0,0,0,0.6)"
-                                >
-                                    <Text style={[styles.editionText, { color: accentColor }]}>
-                                        #{item.edition}
-                                    </Text>
-                                </GlassPill>
-                            </TouchableOpacity>
-                        );
-                    }}
-                    onEndReached={() => fetchItems(true)}
-                    onEndReachedThreshold={1}
-                    ListFooterComponent={
-                        loadingMore
-                            ? <ActivityIndicator size="small" color="#0000ff" style={{ marginVertical: 10 }} />
-                            : null
-                    }
-                />
-            )}
+                        ) : null}
+                    </>
+                }
+                ListEmptyComponent={loading ? <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} /> : ListEmptyComponent}
+                renderItem={renderItem}
+                onEndReached={handleEndReached}
+                onEndReachedThreshold={1}
+                refreshControl={refreshControl}
+                contentInset={contentInset}
+                contentOffset={contentOffset}
+                contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
+                automaticallyAdjustContentInsets={automaticallyAdjustContentInsets}
+                showsVerticalScrollIndicator={false}
+                ListFooterComponent={
+                    loadingMore
+                        ? <ActivityIndicator size="small" color="#0000ff" style={{ marginVertical: 10 }} />
+                        : null
+                }
+            />
             <CollectiblesModal
                 visible={modalVisible}
                 item={selectedItem as CollectionItemData | null}
