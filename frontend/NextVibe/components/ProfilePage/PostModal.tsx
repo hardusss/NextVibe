@@ -40,6 +40,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2;
 const IMAGE_HEIGHT = CARD_WIDTH * 1.25;
+const EVENT_IMAGE_HEIGHT = CARD_WIDTH * 0.5625; // 16:9 aspect ratio
 
 const OPEN_TRANSLATE_Y = 60;
 const CLOSE_TRANSLATE_Y = 40;
@@ -133,7 +134,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
     const [dropdownVisible, setDropdownVisible] = useState(false);
     const [showHeart, setShowHeart] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [eventImageHeight, setEventImageHeight] = useState<number | null>(null);
     const [toastConfig, setToastConfig] = useState({ visible: false, message: "", isSuccess: true });
 
     const translateY = useRef(new Animated.Value(OPEN_TRANSLATE_Y)).current;
@@ -192,7 +192,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             setPost(response.data);
                             setLikeCount(response.data.count_likes);
                             setLiked(response.data.liked_posts?.includes(response.data.post_id) ?? false);
-                            setEventImageHeight(null);
                             
                             // Show modal and animate only after data is ready
                             setModalVisible(true);
@@ -409,24 +408,14 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                     <Pressable 
                                         style={[
                                             styles.imageWrapper, 
-                                            eventImageHeight ? { height: eventImageHeight } : {},
-                                            post.is_luma_event ? { borderTopLeftRadius: 16, borderTopRightRadius: 16 } : {}
+                                            post.is_luma_event ? { height: EVENT_IMAGE_HEIGHT, borderTopLeftRadius: 16, borderTopRightRadius: 16 } : {},
                                         ]} 
                                         onPress={handleDoubleTap}
                                     >
                                         <ExpoImage
                                             source={{ uri: mediaUrl }}
                                             style={styles.image}
-                                            contentFit={post.is_luma_event ? "contain" : "cover"}
-                                            onLoad={(evt) => {
-                                                if (post.is_luma_event) {
-                                                    const width = evt.source?.width || (evt as any).nativeEvent?.width;
-                                                    const height = evt.source?.height || (evt as any).nativeEvent?.height;
-                                                    if (width && width > 0 && height) {
-                                                        setEventImageHeight((CARD_WIDTH / width) * height);
-                                                    }
-                                                }
-                                            }}
+                                            contentFit={post.is_luma_event ? "cover" : "cover"}
                                         />
                                         {showHeart && (
                                             <Animated.View

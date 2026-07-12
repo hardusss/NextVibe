@@ -39,6 +39,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2;
 const IMAGE_HEIGHT = CARD_WIDTH;
+const EVENT_IMAGE_HEIGHT = CARD_WIDTH * 0.5625; // 16:9 aspect ratio
 
 const OPEN_TRANSLATE_Y = 60;
 const CLOSE_TRANSLATE_Y = 40;
@@ -157,7 +158,6 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
     onClose,
 }) => {
     const [modalVisible, setModalVisible] = useState(false);
-    const [eventImageHeight, setEventImageHeight] = useState<number | null>(null);
 
     const translateY = useRef(new Animated.Value(OPEN_TRANSLATE_Y)).current;
     const scale = useRef(new Animated.Value(OPEN_SCALE_FROM)).current;
@@ -198,7 +198,6 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
     useEffect(() => {
         if (visible && item) {
             setModalVisible(true);
-            setEventImageHeight(null);
             rAFRef.current = requestAnimationFrame(() => {
                 rAFRef.current = requestAnimationFrame(runOpenAnimation);
             });
@@ -308,26 +307,12 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
                                 {mediaUrl ? (
                                     <View style={[
                                         s.imageWrapper,
-                                        eventImageHeight ? { height: eventImageHeight } : {},
-                                        item.is_luma_event ? { borderTopLeftRadius: 16, borderTopRightRadius: 16 } : {},
+                                        item.is_luma_event ? { height: EVENT_IMAGE_HEIGHT, borderTopLeftRadius: 16, borderTopRightRadius: 16 } : {},
                                     ]}>
                                         <ExpoImage
                                             source={{ uri: mediaUrl }}
                                             style={s.image}
-                                            contentFit={
-                                                item.is_luma_event
-                                                    ? "contain"
-                                                    : "cover"
-                                            }
-                                            onLoad={(evt) => {
-                                                if (item.is_luma_event) {
-                                                    const width = evt.source?.width || (evt as any).nativeEvent?.width;
-                                                    const height = evt.source?.height || (evt as any).nativeEvent?.height;
-                                                    if (width && width > 0 && height) {
-                                                        setEventImageHeight((CARD_WIDTH / width) * height);
-                                                    }
-                                                }
-                                            }}
+                                            contentFit="cover"
                                         />
                                         {/* Badges */}
                                         <View style={s.imageBadges}>
