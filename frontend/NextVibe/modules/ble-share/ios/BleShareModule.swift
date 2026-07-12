@@ -121,8 +121,11 @@ public class BleShareModule: Module {
                 self?.sendEvent("onBleDiscovered", ["url": url])
             }
             self.centralDelegate = delegate
-            self.centralManager = CBCentralManager(delegate: delegate, queue: .main)
+            let manager = CBCentralManager(delegate: delegate, queue: .main)
+            delegate.centralManager = manager
+            self.centralManager = manager
         } else {
+            centralDelegate?.centralManager = centralManager
             if let cm = centralManager, cm.state == .poweredOn {
                 cm.scanForPeripherals(
                     withServices: [kServiceUUID],
@@ -136,6 +139,7 @@ public class BleShareModule: Module {
         if let cm = centralManager, cm.state == .poweredOn {
             cm.stopScan()
         }
+        centralDelegate?.disconnectAndReset()
     }
 }
 
@@ -185,6 +189,7 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
 
 private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     weak var module: BleShareModule?
+    weak var centralManager: CBCentralManager?
     var onDiscovered: ((String) -> Void)?
 
     // RSSI moving average buffer per device
@@ -193,8 +198,27 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
     // Debounce: last time we fired a discovery event per device
     private var lastDiscoveryTime: [UUID: Date] = [:]
 
+    // Devices already read during this scan session.
+    private var readDeviceIds: Set<UUID> = []
+
     // Keep strong references to peripherals we're connecting to
     private var connectingPeripherals: [UUID: CBPeripheral] = [:]
+
+    func resetScanSession() {
+        rssiBuffers.removeAll()
+        lastDiscoveryTime.removeAll()
+        readDeviceIds.removeAll()
+    }
+
+    func disconnectAndReset() {
+        let manager = centralManager
+        for peripheral in connectingPeripherals.values {
+            manager?.cancelPeripheralConnection(peripheral)
+            peripheral.delegate = nil
+        }
+        connectingPeripherals.removeAll()
+        resetScanSession()
+    }
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
@@ -220,6 +244,9 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         guard rssiValue != 127 else { return }
 
         let deviceId = peripheral.identifier
+
+        guard !readDeviceIds.contains(deviceId) else { return }
+        guard connectingPeripherals[deviceId] == nil else { return }
 
         // Update RSSI moving average buffer
         var buffer = rssiBuffers[deviceId] ?? []
@@ -262,6 +289,17 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         didFailToConnect peripheral: CBPeripheral,
         error: Error?
     ) {
+        central.cancelPeripheralConnection(peripheral)
+        peripheral.delegate = nil
+        connectingPeripherals.removeValue(forKey: peripheral.identifier)
+    }
+
+    func centralManager(
+        _ central: CBCentralManager,
+        didDisconnectPeripheral peripheral: CBPeripheral,
+        error: Error?
+    ) {
+        peripheral.delegate = nil
         connectingPeripherals.removeValue(forKey: peripheral.identifier)
     }
 
@@ -271,9 +309,23 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
-        guard let services = peripheral.services else { return }
+        if error != nil {
+            finishConnection(peripheral)
+            return
+        }
+
+        guard let services = peripheral.services else {
+            finishConnection(peripheral)
+            return
+        }
+
+        var foundService = false
         for service in services where service.uuid == kServiceUUID {
+            foundService = true
             peripheral.discoverCharacteristics([kCharacteristicUUID], for: service)
+        }
+        if !foundService {
+            finishConnection(peripheral)
         }
     }
 
@@ -282,9 +334,23 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        guard let chars = service.characteristics else { return }
+        if error != nil {
+            finishConnection(peripheral)
+            return
+        }
+
+        guard let chars = service.characteristics else {
+            finishConnection(peripheral)
+            return
+        }
+
+        var foundCharacteristic = false
         for char in chars where char.uuid == kCharacteristicUUID {
+            foundCharacteristic = true
             peripheral.readValue(for: char)
+        }
+        if !foundCharacteristic {
+            finishConnection(peripheral)
         }
     }
 
@@ -293,17 +359,21 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        if let data = characteristic.value,
+        if error == nil,
+           let data = characteristic.value,
            let url = String(data: data, encoding: .utf8) {
+            readDeviceIds.insert(peripheral.identifier)
             DispatchQueue.main.async { [weak self] in
                 self?.onDiscovered?(url)
             }
         }
 
-        // Disconnect after reading
-        if let cm = peripheral.delegate as? CentralDelegate {
-            // We need the central manager to disconnect — store reference differently
-        }
+        finishConnection(peripheral)
+    }
+
+    private func finishConnection(_ peripheral: CBPeripheral) {
+        centralManager?.cancelPeripheralConnection(peripheral)
+        peripheral.delegate = nil
         connectingPeripherals.removeValue(forKey: peripheral.identifier)
     }
 }
