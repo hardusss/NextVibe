@@ -1,23 +1,22 @@
 import React from 'react';
 import { Platform, View, useColorScheme, type ColorSchemeName, type StyleProp, type ViewStyle } from 'react-native';
-import { isGlassEffectAPIAvailable } from 'expo-glass-effect';
+import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import type { GlassColorScheme, GlassStyle } from 'expo-glass-effect/build/GlassView.types';
-import LiquidGlassView from './LiquidGlassView';
 import { useLiquidGlassEnabled } from '@/src/stores/settingsStore';
 
-type GlassSurfaceProps = {
+type LiquidGlassViewProps = {
     children?: React.ReactNode;
     style?: StyleProp<ViewStyle>;
     glassEffectStyle?: GlassStyle;
     colorScheme?: GlassColorScheme;
     tintColor?: string;
     isInteractive?: boolean;
-    /** Used when liquid glass is unavailable or disabled. */
+    pointerEvents?: 'none' | 'box-none' | 'box-only' | 'auto';
     fallbackBackgroundColor?: string;
 };
 
-function resolveIosFallbackBackground(
-    colorScheme: GlassColorScheme,
+function resolveFallbackBackground(
+    colorScheme: GlassColorScheme | undefined,
     systemScheme: ColorSchemeName | null | undefined,
     override?: string,
 ): string {
@@ -30,65 +29,59 @@ function resolveIosFallbackBackground(
               ? 'light'
               : 'dark';
 
-    return resolved === 'light' ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.1)';
+    return resolved === 'light' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(21, 13, 36, 0.85)';
+}
+
+function makeMoreTransparent(color: string | undefined): string | undefined {
+    if (!color || typeof color !== 'string') return color;
+    return color.replace(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*(0?\.\d+)\)/g, (_match, r, g, b, a) => {
+        const newAlpha = Math.max(0, parseFloat(a) * 0.4);
+        return `rgba(${r}, ${g}, ${b}, ${newAlpha.toFixed(3)})`;
+    });
 }
 
 /**
- * iOS liquid glass surface. On Android renders a plain View with an optional fallback background.
+ * Drop-in replacement for GlassView that respects the global Liquid Glass setting.
+ * Falls back to a plain View with a solid background when disabled.
  */
-export function GlassSurface({
+export function LiquidGlassView({
     children,
     style,
     glassEffectStyle = 'clear',
     colorScheme = 'auto',
     tintColor,
     isInteractive,
+    pointerEvents,
     fallbackBackgroundColor,
-}: GlassSurfaceProps) {
+}: LiquidGlassViewProps) {
     const liquidGlassEnabled = useLiquidGlassEnabled();
     const systemScheme = useColorScheme();
+
     const useNativeGlass =
         liquidGlassEnabled && Platform.OS === 'ios' && isGlassEffectAPIAvailable();
 
     if (useNativeGlass) {
         return (
-            <LiquidGlassView
+            <GlassView
                 style={style}
                 glassEffectStyle={glassEffectStyle}
                 colorScheme={colorScheme}
-                tintColor={tintColor}
+                tintColor={makeMoreTransparent(tintColor)}
                 isInteractive={isInteractive}
-                fallbackBackgroundColor={fallbackBackgroundColor}
+                pointerEvents={pointerEvents}
             >
                 {children}
-            </LiquidGlassView>
+            </GlassView>
         );
     }
 
-    if (Platform.OS === 'ios') {
-        return (
-            <View
-                style={[
-                    style,
-                    {
-                        backgroundColor: resolveIosFallbackBackground(
-                            colorScheme,
-                            systemScheme,
-                            fallbackBackgroundColor,
-                        ),
-                    },
-                ]}
-            >
-                {children}
-            </View>
-        );
-    }
+    const backgroundColor = resolveFallbackBackground(colorScheme, systemScheme, fallbackBackgroundColor);
 
     return (
-        <View style={[style, fallbackBackgroundColor ? { backgroundColor: fallbackBackgroundColor } : null]}>
+        <View style={[style, { backgroundColor }]} pointerEvents={pointerEvents}>
             {children}
         </View>
     );
 }
 
-export default GlassSurface;
+export default LiquidGlassView;

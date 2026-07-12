@@ -17,7 +17,7 @@ import {
     Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
+import FrostedView from "@/components/Shared/FrostedView";
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AvatarWithFrame } from "./AvatarWithFrame";
@@ -514,10 +514,13 @@ const ProfileView = () => {
                                     contentFit="cover"
                                     blurRadius={40}
                                 />
-                                <BlurView
+                                <FrostedView
                                     intensity={75}
                                     tint={isDark ? 'dark' : 'light'}
                                     style={StyleSheet.absoluteFill}
+                                    fallbackBackgroundColor={
+                                        isDark ? 'rgba(10, 4, 16, 0.72)' : 'rgba(255, 255, 255, 0.35)'
+                                    }
                                 />
                                 <View style={[StyleSheet.absoluteFill, {
                                     backgroundColor: isDark

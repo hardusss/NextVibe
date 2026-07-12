@@ -8,7 +8,6 @@ import { setSearchHistory, getSearchHistory, deleteUserFromHistory } from "@/src
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from 'expo-blur';
 import { storage } from "@/src/utils/storage";
 import VerifyBadge from "../VerifyBadge";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";

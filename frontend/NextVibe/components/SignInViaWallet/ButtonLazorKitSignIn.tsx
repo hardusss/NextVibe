@@ -13,7 +13,7 @@ import {
     Platform,
 } from 'react-native';
 import { Wallet } from 'lucide-react-native';
-import { GlassView } from 'expo-glass-effect';
+import LiquidGlassView from '@/components/Shared/LiquidGlassView';
 import { useWallet, useWalletStore } from '@lazorkit/wallet-mobile-adapter';
 import walletSignIn from '@/src/api/wallet.sign.in';
 import saveWallet from '@/src/api/save.wallet';
@@ -226,12 +226,13 @@ export default function ButtonLazorKitSignIn({
                     ]}
                 >
                     {Platform.OS === 'ios' && (
-                        <GlassView
+                        <LiquidGlassView
                             style={StyleSheet.absoluteFill}
                             glassEffectStyle="regular"
                             colorScheme={isDark ? 'dark' : 'light'}
                             tintColor={isDark ? 'rgba(167,139,250,0.15)' : 'rgba(124,58,237,0.1)'}
                             isInteractive
+                            fallbackBackgroundColor={androidBgColor}
                         />
                     )}
                     {isLoading ? (
