@@ -26,6 +26,8 @@ export interface ShareModalProps {
     profileUrl?: string;
 }
 
+const READ_EVENT_DEBOUNCE_MS = 5000;
+
 const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
     const SIDE = 55;
     const BOTTOM = 70;
@@ -162,7 +164,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const resetState = () => {
         setVibes(0);
         setIsBroadcasting(false);
-        lastReadTimestamp.current = 0; 
+        lastReadTimestamp.current = 0;
         setShowGlow(false);
         glowOpacity.setValue(0);
     };
@@ -199,6 +201,18 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         });
     };
 
+    const handleReadEvent = (source: 'BLE' | 'NFC') => {
+        const now = Date.now();
+        if (now - lastReadTimestamp.current > READ_EVENT_DEBOUNCE_MS) {
+            if (__DEV__) console.log(`✅ ${source} read! Incrementing vibes.`);
+            setVibes(prev => prev + 1);
+            lastReadTimestamp.current = now;
+            triggerNeonGlow();
+        } else {
+            if (__DEV__) console.log(`⚠️ Debounced duplicate ${source} read (ignored)`);
+        }
+    };
+
     const startHceBroadcast = async () => {
         if (isBroadcasting) return;
         try {
@@ -206,32 +220,14 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
             if (Platform.OS === 'ios') {
                 // iOS: Use BLE proximity broadcasting
-                removeListenerRef.current = addBleReadListener(() => {
-                    const now = Date.now();
-                    if (now - lastReadTimestamp.current > 2000) {
-                        if (__DEV__) console.log("✅ BLE read! Incrementing vibes.");
-                        setVibes(prev => prev + 1);
-                        lastReadTimestamp.current = now;
-                        triggerNeonGlow();
-                    } else {
-                        if (__DEV__) console.log("⚠️ Debounced duplicate BLE read (ignored)");
-                    }
-                });
+                lastReadTimestamp.current = 0;
+                removeListenerRef.current = addBleReadListener(() => handleReadEvent('BLE'));
                 startBroadcasting(urlToShare);
                 if (__DEV__) console.log("✅ BLE Broadcasting started with URL:", urlToShare);
             } else {
                 // Android: Use NFC HCE
-                removeListenerRef.current = addNfcReadListener(() => {
-                    const now = Date.now();
-                    if (now - lastReadTimestamp.current > 2000) {
-                        if (__DEV__) console.log("✅ Valid read! Incrementing vibes.");
-                        setVibes(prev => prev + 1);
-                        lastReadTimestamp.current = now;
-                        triggerNeonGlow();
-                    } else {
-                        if (__DEV__) console.log("⚠️ Debounced duplicate read (ignored)");
-                    }
-                });
+                lastReadTimestamp.current = 0;
+                removeListenerRef.current = addNfcReadListener(() => handleReadEvent('NFC'));
                 startSharing(urlToShare);
                 if (__DEV__) console.log("✅ Custom Native HCE Broadcasting started with URL:", urlToShare);
             }

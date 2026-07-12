@@ -34,6 +34,7 @@ class BleShareModule : Module() {
     private val rssiBuffers = ConcurrentHashMap<String, MutableList<Int>>()
     private val lastDiscoveryTime = ConcurrentHashMap<String, Long>()
     private val activeGatts = ConcurrentHashMap<String, BluetoothGatt>()
+    private val readAddresses = ConcurrentHashMap.newKeySet<String>()
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var isScanning = false
@@ -47,6 +48,7 @@ class BleShareModule : Module() {
             if (rssi == 127) return
 
             val address = device.address
+            if (readAddresses.contains(address)) return
 
             // Update RSSI buffer
             val buffer = rssiBuffers.getOrPut(address) { mutableListOf() }
@@ -126,6 +128,7 @@ class BleShareModule : Module() {
                     val value = characteristic.value
                     if (value != null) {
                         val url = String(value, Charsets.UTF_8)
+                        readAddresses.add(gatt.device.address)
                         sendDiscoveredEvent(url)
                     }
                 }
@@ -144,6 +147,7 @@ class BleShareModule : Module() {
             try {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     val url = String(value, Charsets.UTF_8)
+                    readAddresses.add(gatt.device.address)
                     sendDiscoveredEvent(url)
                 }
                 gatt.disconnect()
@@ -196,6 +200,7 @@ class BleShareModule : Module() {
 
         rssiBuffers.clear()
         lastDiscoveryTime.clear()
+        readAddresses.clear()
 
         val filter = ScanFilter.Builder()
             .setServiceUuid(ParcelUuid(kServiceUUID))
@@ -216,8 +221,8 @@ class BleShareModule : Module() {
     private fun stopScan() {
         if (!isScanning) return
 
-        val adapter = bluetoothAdapter ?: return
-        val scanner = adapter.bluetoothLeScanner
+        val adapter = bluetoothAdapter
+        val scanner = adapter?.bluetoothLeScanner
         if (scanner != null && adapter.isEnabled) {
             try {
                 scanner.stopScan(scanCallback)
@@ -234,6 +239,9 @@ class BleShareModule : Module() {
             }
         }
         activeGatts.clear()
+        rssiBuffers.clear()
+        lastDiscoveryTime.clear()
+        readAddresses.clear()
         isScanning = false
     }
 }
