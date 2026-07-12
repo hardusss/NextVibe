@@ -50,6 +50,17 @@ import { setFeedFlatListRef } from "@/src/utils/feedScrollRef";
 import * as Haptics from 'expo-haptics';
 import { ShimmerSkeleton } from '@/components/Shared/motion';
 import EmptyState from '@/components/Shared/EmptyState';
+import AnimatedReanimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    useAnimatedScrollHandler,
+    withTiming,
+    withSpring,
+    interpolate,
+    Extrapolate,
+    runOnJS
+} from "react-native-reanimated";
+import HomeHeaderTitle from "@/components/Home/HomeHeaderTitle";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -91,10 +102,14 @@ const lightTheme = {
     shadowColor: "rgba(124, 58, 237, 0.06)"
 };
 
-const getStyles = (theme: typeof darkTheme, bottomInset: number = 50) => {
+const getStyles = (theme: typeof darkTheme, bottomInset: number = 50, headerHeight: number = 0) => {
     return StyleSheet.create({
         container: { flex: 1, backgroundColor: theme.background },
-        listContainer: { backgroundColor: theme.background, paddingBottom: bottomInset },
+        listContainer: {
+            backgroundColor: theme.background,
+            paddingBottom: bottomInset,
+            paddingTop: headerHeight,
+        },
         postContainer: {
             borderRadius: 22,
             padding: 18,
@@ -756,6 +771,56 @@ const PostItem = memo(({
 
 export default function MainPage() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
+    const headerHeight = insets.top + 46;
+    const translateY = useSharedValue(0);
+    const lastScrollY = useSharedValue(0);
+
+    const updateCache = (y: number) => {
+        cachedScrollOffset = Math.max(0, y);
+    };
+
+    const scrollHandler = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            const currentY = event.contentOffset.y;
+            const diff = currentY - lastScrollY.value;
+
+            if (currentY <= 0) {
+                translateY.value = withTiming(0, { duration: 100 });
+            } else {
+                const nextVal = translateY.value - diff;
+                translateY.value = Math.max(-headerHeight, Math.min(0, nextVal));
+            }
+            lastScrollY.value = currentY;
+            runOnJS(updateCache)(currentY);
+        },
+        onEndDrag: (event) => {
+            const currentY = event.contentOffset.y;
+            if (currentY > headerHeight) {
+                if (translateY.value < -headerHeight / 2) {
+                    translateY.value = withSpring(-headerHeight, { damping: 20, stiffness: 120 });
+                } else {
+                    translateY.value = withSpring(0, { damping: 20, stiffness: 120 });
+                }
+            } else {
+                translateY.value = withSpring(0, { damping: 20, stiffness: 120 });
+            }
+        }
+    });
+
+    const animatedHeaderStyle = useAnimatedStyle(() => {
+        const opacity = interpolate(
+            translateY.value,
+            [-headerHeight, 0],
+            [0, 1],
+            Extrapolate.CLAMP
+        );
+        return {
+            transform: [{ translateY: translateY.value }],
+            opacity,
+        };
+    });
+
     const hasCached = cachedPosts !== null && cachedPosts.length > 0;
     const [posts, setPosts] = useState<Post[]>(cachedPosts ?? []);
     const [loading, setLoading] = useState(!hasCached);
@@ -768,8 +833,7 @@ export default function MainPage() {
     const [visiblePostId, setVisiblePostId] = useState<number | null>(null);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
-    const insets = useSafeAreaInsets();
-    const styles = getStyles(theme, insets.bottom > 0 ? insets.bottom + 100 : 110);
+    const styles = getStyles(theme, insets.bottom > 0 ? insets.bottom + 100 : 110, headerHeight);
     const [refreshing, setRefreshing] = useState(false);
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
@@ -1035,7 +1099,6 @@ export default function MainPage() {
                 onHide={() => setIsToastVisible(false)}
                 isSuccess={toastSuccess}
             />
-            <Header />
             <PhotoModal
                 visible={photoModalVisible}
                 images={photoModalMedia}
@@ -1062,15 +1125,13 @@ export default function MainPage() {
                 page="home"
             />
 
-            <FlatList
+            <AnimatedReanimated.FlatList
                 ref={(ref) => {
                     (flatListRef as any).current = ref;
-                    setFeedFlatListRef(ref);
+                    setFeedFlatListRef(ref as any);
                 }}
                 data={dataToRender}
-                onScroll={(e) => {
-                    cachedScrollOffset = Math.max(0, e.nativeEvent.contentOffset.y);
-                }}
+                onScroll={scrollHandler}
                 onContentSizeChange={(_w, contentHeight) => {
                     // Restore scroll once enough content has been rendered
                     if (pendingScrollRestore.current && contentHeight >= cachedScrollOffset) {
@@ -1102,9 +1163,32 @@ export default function MainPage() {
                 showsVerticalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChangedRef.current}
                 viewabilityConfig={viewabilityConfig}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        progressViewOffset={headerHeight}
+                    />
+                }
                 ListFooterComponent={!loading ? renderFooter : null}
             />
+
+            <AnimatedReanimated.View style={[
+                {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 100,
+                    height: headerHeight,
+                    paddingTop: insets.top,
+                    paddingLeft: 16,
+                    backgroundColor: "transparent",
+                },
+                animatedHeaderStyle
+            ]}>
+                <HomeHeaderTitle />
+            </AnimatedReanimated.View>
         </View>
     );
 }

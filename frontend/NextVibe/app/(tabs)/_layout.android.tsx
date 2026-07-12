@@ -116,15 +116,19 @@ export default function AndroidTabsLayout() {
 
     return (
         <Tabs
+            backBehavior="history"
             tabBar={({ state, navigation }) => {
                 const activeRouteName = state.routes[state.index].name;
+                if (activeRouteName === "camera") {
+                    return null;
+                }
 
                 const handlePress = (name: string) => {
                     Haptics.selectionAsync();
                     if (name === "camera") {
                         router.push("/camera");
                     } else {
-                        navigation.navigate({ name, merge: true });
+                        (navigation.navigate as any)({ name, merge: true });
                     }
                 };
 

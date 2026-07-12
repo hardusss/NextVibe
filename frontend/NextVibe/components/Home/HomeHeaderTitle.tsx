@@ -113,13 +113,24 @@ export default function HomeHeaderTitle() {
     return (
         <View style={styles.row}>
             {/* Camera button (iOS only) */}
-            {Platform.OS === 'ios'
-                ? <CameraBtn isDark={isDark} onPress={() => router.push("/(shared)/camera")} />
-                : <View style={{ width: 40 }} />
-            }
+            {Platform.OS === 'ios' && (
+                <CameraBtn isDark={isDark} onPress={() => router.push("/(shared)/camera")} />
+            )}
 
             {/* Title */}
-            <Text style={[styles.title, { color: isDark ? "#F3EEFF" : "#1A1225" }]} numberOfLines={1}>
+            <Text
+                style={[
+                    styles.title,
+                    Platform.OS === "android" && {
+                        position: "relative",
+                        left: 0,
+                        textAlign: "left",
+                        flex: 1,
+                    },
+                    { color: isDark ? "#F3EEFF" : "#1A1225" }
+                ]}
+                numberOfLines={1}
+            >
                 NextVibe
             </Text>
 

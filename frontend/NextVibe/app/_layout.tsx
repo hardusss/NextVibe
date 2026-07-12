@@ -379,7 +379,7 @@ export default function RootLayout() {
                                         isSuccess={false}
                                     />
                                 )}
-                                <Stack screenOptions={{ headerShown: false }}>
+                                <Stack screenOptions={{ headerShown: false, gestureEnabled: true }}>
                                     <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
                                     {SHARED_SCREENS.map((name) => (
                                         <Stack.Screen key={name} name={`(shared)/${name}`} options={screenOptionsFor(name)} />
