@@ -1,9 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { AppState, Platform, Vibration, PermissionsAndroid } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { startScanning, stopScanning, addBleDiscoveredListener } from "@/modules/ble-share";
+import { startScanning, stopScanning, addBleDiscoveredListener, shouldHandleBleDiscovery } from "@/modules/ble-share";
 
 async function requestAndroidPermissions(): Promise<boolean> {
     if (Platform.OS !== "android") return true;
@@ -56,8 +56,6 @@ async function requestAndroidPermissions(): Promise<boolean> {
 
 export function useBleScanner() {
     const router = useRouter();
-    const lastScannedUrlRef = useRef<string | null>(null);
-    const lastScannedTimeRef = useRef<number>(0);
 
     useEffect(() => {
         if (Platform.OS !== "ios" && Platform.OS !== "android") return;
@@ -121,18 +119,10 @@ export function useBleScanner() {
 
         const bleSub = addBleDiscoveredListener((event) => {
             if (!event.url) return;
-
-            const now = Date.now();
-            // Debounce matching URLs for 5 seconds to avoid double routing
-            if (
-                lastScannedUrlRef.current === event.url &&
-                now - lastScannedTimeRef.current < 5000
-            ) {
+            if (!shouldHandleBleDiscovery(event.url)) {
+                if (__DEV__) console.log("[useBleScanner] Ignored duplicate discovery in scan session:", event.url);
                 return;
             }
-
-            lastScannedUrlRef.current = event.url;
-            lastScannedTimeRef.current = now;
 
             // Feedback: double vibration and Success haptic
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});

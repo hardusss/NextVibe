@@ -104,34 +104,34 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
         }
     }, []);
 
+    const handleBleRead = useCallback(() => {
+        setTapCount(prev => prev + 1);
+        Vibration.vibrate([0, 80, 60, 80]);
+        if (postId !== null) fetchCheckins(postId);
+    }, [postId, fetchCheckins]);
+
+    const handleNfcRead = useCallback(() => {
+        const now = Date.now();
+        if (now - lastReadTimestamp.current <= 2000) return;
+        lastReadTimestamp.current = now;
+        setTapCount(prev => prev + 1);
+        Vibration.vibrate([0, 80, 60, 80]);
+        if (postId !== null) fetchCheckins(postId);
+    }, [postId, fetchCheckins]);
+
     const startNfcBroadcast = useCallback((pid: number) => {
         if (isBroadcasting) return;
         try {
             const url = `https://nextvibe.io/event-checkin?postId=${pid}`;
 
             if (Platform.OS === 'ios') {
-                // iOS: Use BLE proximity broadcasting
-                removeListenerRef.current = addBleReadListener(() => {
-                    const now = Date.now();
-                    if (now - lastReadTimestamp.current > 2000) {
-                        lastReadTimestamp.current = now;
-                        setTapCount(prev => prev + 1);
-                        Vibration.vibrate([0, 80, 60, 80]);
-                        fetchCheckins(pid);
-                    }
-                });
+                // iOS: BLE read dedup is per-central per broadcast session (native layer)
+                removeListenerRef.current = addBleReadListener(handleBleRead);
                 startBroadcasting(url);
             } else {
                 // Android: Use NFC HCE
-                removeListenerRef.current = addNfcReadListener(() => {
-                    const now = Date.now();
-                    if (now - lastReadTimestamp.current > 2000) {
-                        lastReadTimestamp.current = now;
-                        setTapCount(prev => prev + 1);
-                        Vibration.vibrate([0, 80, 60, 80]);
-                        fetchCheckins(pid);
-                    }
-                });
+                lastReadTimestamp.current = 0;
+                removeListenerRef.current = addNfcReadListener(handleNfcRead);
                 startSharing(url);
             }
             setIsBroadcasting(true);
@@ -139,7 +139,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             console.warn("Broadcasting not available:", error);
             setIsBroadcasting(false);
         }
-    }, [isBroadcasting, fetchCheckins]);
+    }, [isBroadcasting, handleBleRead, handleNfcRead]);
 
     const stopNfcBroadcast = useCallback(() => {
         try {
