@@ -10,42 +10,42 @@ async function requestAndroidPermissions(): Promise<boolean> {
     try {
         const apiLevel = Number(Platform.Version);
         if (apiLevel >= 31) {
-            const scanGranted = await PermissionsAndroid.request(
+            const results = await PermissionsAndroid.requestMultiple([
                 PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-                {
-                    title: "Bluetooth Scan Permission",
-                    message: "NextVibe needs access to scan for nearby devices.",
-                    buttonNeutral: "Ask Later",
-                    buttonNegative: "Cancel",
-                    buttonPositive: "OK",
-                }
-            );
-            const connectGranted = await PermissionsAndroid.request(
                 PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-                {
-                    title: "Bluetooth Connect Permission",
-                    message: "NextVibe needs access to connect to nearby devices.",
-                    buttonNeutral: "Ask Later",
-                    buttonNegative: "Cancel",
-                    buttonPositive: "OK",
-                }
-            );
-            return (
-                scanGranted === PermissionsAndroid.RESULTS.GRANTED &&
-                connectGranted === PermissionsAndroid.RESULTS.GRANTED
-            );
-        } else {
-            const locationGranted = await PermissionsAndroid.request(
                 PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-                {
-                    title: "Location Permission",
-                    message: "NextVibe needs access to your location to scan for nearby devices.",
-                    buttonNeutral: "Ask Later",
-                    buttonNegative: "Cancel",
-                    buttonPositive: "OK",
-                }
-            );
-            return locationGranted === PermissionsAndroid.RESULTS.GRANTED;
+            ]);
+
+            const scanGranted = results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === PermissionsAndroid.RESULTS.GRANTED;
+            const connectGranted = results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED;
+            const locationGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+
+            if (__DEV__) {
+                console.log("[useBleScanner] Android API >= 31 permissions status:", {
+                    scanGranted,
+                    connectGranted,
+                    locationGranted
+                });
+            }
+
+            return scanGranted && connectGranted && locationGranted;
+        } else {
+            const results = await PermissionsAndroid.requestMultiple([
+                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+            ]);
+
+            const fineGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+            const coarseGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+
+            if (__DEV__) {
+                console.log("[useBleScanner] Android API < 31 permissions status:", {
+                    fineGranted,
+                    coarseGranted
+                });
+            }
+
+            return fineGranted || coarseGranted;
         }
     } catch (err) {
         console.warn("[useBleScanner] Permission request error:", err);
