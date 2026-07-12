@@ -50,6 +50,7 @@ export interface MintBottomSheetProps {
      */
     defaultPrice: string | null;
     page: string;
+    isFocused?: boolean;
 }
 
 type MintStatus = 'idle' | 'minting' | 'success' | 'error';
@@ -327,7 +328,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
     };
 
     return (
-        <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={handleDismiss}>
+        <Modal visible={visible && (props.isFocused ?? true)} transparent animationType="none" statusBarTranslucent onRequestClose={handleDismiss}>
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <Animated.View style={[styles.backdrop, { opacity: backdropOpacity, backgroundColor: c.backdrop }]}>
                     <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleDismiss} activeOpacity={1} />

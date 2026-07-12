@@ -105,6 +105,7 @@ interface PostPopupProps {
     ) => void;
     /** Set to the postId after a successful mint so PostModal updates its button state */
     mintSuccessPostId?: number | null;
+    isFocused?: boolean;
 }
 
 const formatDate = (isoString: string): string => {
@@ -126,6 +127,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     onOpenComments,
     onOpenMint,
     mintSuccessPostId,
+    isFocused,
 }) => {
     const [post, setPost] = useState<PostData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -302,7 +304,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
 
     return (
         <Modal
-            visible={modalVisible}
+            visible={modalVisible && (isFocused ?? true)}
             transparent
             animationType="none"
             statusBarTranslucent={false}
