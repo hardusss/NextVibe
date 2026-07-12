@@ -339,13 +339,13 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused }: P
                         </View>
 
                         {visibleCount > 0 && item.replies && (
-                            <FlatList
-                                data={item.replies.slice(0, visibleCount)}
-                                renderItem={renderReply}
-                                keyExtractor={r => r.reply_id.toString()}
-                                scrollEnabled={false}
-                                nestedScrollEnabled={true}
-                            />
+                            <>
+                                {item.replies.slice(0, visibleCount).map((reply) => (
+                                    <View key={reply.reply_id.toString()}>
+                                        {renderReply({ item: reply })}
+                                    </View>
+                                ))}
+                            </>
                         )}
 
                         {totalReplies > 0 && (
