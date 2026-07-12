@@ -24,6 +24,17 @@ Use on a mid-range Android device and one iPhone after changes to wallet, naviga
 - [ ] Profile grid — stable keys (no random remounts on scroll)
 - [ ] Open post from profile — no layout jump
 
+## Profile grids (Posts / cNFTs)
+
+- [ ] Account with 30+ posts and 30+ cNFTs: switch tabs repeatedly — no growing lag, no frame drops
+- [ ] Scroll a 30+ item grid to the bottom, switch tabs, switch back — scroll position/cache behavior is sane
+- [ ] Pagination ("load more") still works on both tabs
+- [ ] Own profile vs. another user's profile (UserProfilePage) both smooth
+
+## Comments
+
+- [ ] Open a post with replies, expand and hide replies repeatedly — no nested-list warning and no visual regression
+
 ## Toasts
 
 - [ ] Web3Toast — slides in; progress bar animates without jank
