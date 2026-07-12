@@ -5,7 +5,6 @@ import {
     Text,
 
     Modal,
-    ScrollView,
     TouchableOpacity,
     RefreshControl,
     Animated,
@@ -162,7 +161,6 @@ const ProfileView = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [activeTab, setActiveTab] = useState<Tab>("Posts");
-    const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(new Set(["Posts"]));
     const [invitedCount, setInvitedCount] = useState<number>(cachedInvitedCount ?? 0);
     const [visible, setVisible] = useState<boolean>(false);
     const [isVisibleContainer, setIsVisibleContainer] = useState<boolean>(false);
@@ -221,7 +219,6 @@ const ProfileView = () => {
 
     const handleTabPress = (tab: Tab) => {
         if (tab === activeTab) return;
-        setMountedTabs(prev => new Set([...prev, tab]));
         animateTabSwitch(tab);
         setActiveTab(tab);
     };
@@ -295,7 +292,6 @@ const ProfileView = () => {
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         setRefreshKey(prev => prev + 1);
-        setMountedTabs(new Set([activeTab]));
         profileHasFetched = false;
         clearPostsCache();
         clearCollectionsCache();
@@ -317,6 +313,165 @@ const ProfileView = () => {
 
     const bg = isDark ? '#0A0410' : '#ffffff';
     const bgTransparent = isDark ? 'rgba(10, 4, 16, 0)' : 'rgba(255, 255, 255, 0)';
+    const refreshControl = (
+        <RefreshControl
+            refreshing={refreshing} onRefresh={onRefresh}
+            tintColor={isDark ? "#fff" : "#000"}
+            colors={["#58a6ff"]}
+            progressBackgroundColor={isDark ? "#000" : "#fff"}
+        />
+    );
+
+    const profileHeader = (
+        <>
+            {/* Avatar fullscreen modal */}
+            <Modal transparent visible={isVisibleContainer} animationType="fade">
+                <TouchableOpacity
+                    style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.75)" }}
+                    activeOpacity={1} onPress={() => setVisible(false)}
+                >
+                    <Animated.View style={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", width: '100%', transform: [{ scale: scaleAnim }] }}>
+                        {userData.avatar_url && (
+                            <Image
+                                style={{ width: 320, height: 320, borderRadius: 160 }}
+                                source={{ uri: userData.avatar_url as string }}
+                                contentFit="cover"
+                            />
+                        )}
+                    </Animated.View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* Spacer to push profile details down */}
+            <View style={{ height: Math.max(0, HEADER_HEIGHT - insets.top) }} />
+
+            {/* ── Profile content wrapper (restores 16px horizontal padding below the header) ── */}
+            <View style={{ paddingHorizontal: 16 }}>
+                {/* ── Avatar centered, overlapping header ── */}
+                <TouchableOpacity
+                    onPress={() => { if (userData.avatar_url) setVisible(true); }}
+                    activeOpacity={0.85}
+                    style={st.avatarWrap}
+                >
+                    <AvatarWithFrame
+                        avatarUrl={userData.avatar_url}
+                        size={90}
+                        invitedCount={invitedCount}
+                        isOg={userData.isOg}
+                        ogEdition={userData.ogEdition}
+                    />
+                </TouchableOpacity>
+
+                <View style={st.nameRow}>
+                    <Text style={[st.nameText, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
+                        {userData.username}
+                    </Text>
+                    {userData.official && (
+                        <View style={{ marginLeft: 4 }}>
+                            <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={22} />
+                        </View>
+                    )}
+                </View>
+
+                <View style={st.repRow}>
+                    <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => eventConnectionsSheetRef.current?.present(userData.reputation)}
+                        style={[st.repBadge, {
+                            backgroundColor: isDark ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.1)',
+                            borderColor: isDark ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.25)',
+                        }]}
+                    >
+                        <Star size={12} color="#22c55e" fill="#22c55e" />
+                        <Text style={[st.repText, { color: isDark ? '#22c55e' : '#16a34a' }]}>
+                            {formatNumber(userData.reputation)} rep
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {userData.about !== "" && (
+                    <View style={st.bioWrap}>
+                        <Hyperlink
+                            linkStyle={{ color: "#A78BFA", fontWeight: "500" }}
+                            onPress={(url: string) => Linking.openURL(url)}
+                        >
+                            <Text style={[st.bioText, { color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>
+                                {userData.about}
+                            </Text>
+                        </Hyperlink>
+                    </View>
+                )}
+
+                <View style={st.statsRow}>
+                    <StatColumn value={userData.post_count} label="Posts" isDark={isDark} />
+                    <Dot isDark={isDark} />
+                    <StatColumn
+                        value={userData.readers_count} label="Readers" isDark={isDark}
+                        onPress={() => router.push({ pathname: "/follows-screen", params: { last_page: "/profile", userId: id, username: userData.username, activeTab: "Readers" } })}
+                    />
+                    <Dot isDark={isDark} />
+                    <StatColumn
+                        value={userData.follows_count} label="Follows" isDark={isDark}
+                        onPress={() => router.push({ pathname: "/follows-screen", params: { last_page: "/profile", userId: id, username: userData.username, activeTab: "Follows" } })}
+                    />
+                </View>
+
+                <View style={[st.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+
+                <View style={st.actionsRow}>
+                    <View style={{ flex: 1.2 }}>
+                        <ShareViaNFC handlePress={handleOpenModal} />
+                    </View>
+                    <View style={{ flex: 0.9 }}>
+                        <InviteSecondaryButton handlePress={() => inviteSheetRef.current?.present()} />
+                    </View>
+                    <View style={{ flex: 0.9 }}>
+                        <TouchableOpacity
+                            activeOpacity={0.84}
+                            onPress={() => router.push("/events")}
+                            style={[st.eventsBtn, {
+                                borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
+                                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                            }]}
+                        >
+                            <Calendar size={18} color="#A855F7" />
+                            <Text style={st.eventsBtnText}>Events</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <View style={[st.tabBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                    {TABS.map((tab) => {
+                        const isActive = activeTab === tab;
+                        const tabLabel = tab === "Posts" ? `Posts (${userData.post_count})` : `Collectibles (${userData.cnft_count})`;
+                        return (
+                            <TouchableOpacity
+                                key={tab} onPress={() => handleTabPress(tab)}
+                                style={{ flex: 1, borderRadius: 13, overflow: "hidden" }}
+                                activeOpacity={0.8}
+                            >
+                                {isActive ? (
+                                    <LinearGradient
+                                        colors={["rgba(167,139,250,0.25)", "rgba(139,92,246,0.15)"]}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                        style={st.tabActive}
+                                    >
+                                        <Text style={st.tabActiveText}>{tabLabel}</Text>
+                                    </LinearGradient>
+                                ) : (
+                                    <View style={st.tabInactive}>
+                                        <Text style={[st.tabInactiveText, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }]}>
+                                            {tabLabel}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            </View>
+        </>
+    );
 
     return (
         <View style={[profileStyle.container, { paddingHorizontal: 0 }]}>
@@ -379,207 +534,53 @@ const ProfileView = () => {
                         </View>
                     )}
 
-                    <ScrollView
-                        contentContainerStyle={{ paddingBottom: 20 }}
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
-                        contentInsetAdjustmentBehavior="never"
-                        contentInset={{ top: insets.top }}
-                        contentOffset={{ x: 0, y: -insets.top }}
-                        automaticallyAdjustContentInsets={false}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing} onRefresh={onRefresh}
-                                tintColor={isDark ? "#fff" : "#000"}
-                                colors={["#58a6ff"]}
-                                progressBackgroundColor={isDark ? "#000" : "#fff"}
-                            />
-                        }
-                    >
-                        {/* Avatar fullscreen modal */}
-                        <Modal transparent visible={isVisibleContainer} animationType="fade">
-                            <TouchableOpacity
-                                style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.75)" }}
-                                activeOpacity={1} onPress={() => setVisible(false)}
-                            >
-                                <Animated.View style={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", width: '100%', transform: [{ scale: scaleAnim }] }}>
-                                    {userData.avatar_url && (
-                                        <Image
-                                            style={{ width: 320, height: 320, borderRadius: 160 }}
-                                            source={{ uri: userData.avatar_url as string }}
-                                            contentFit="cover"
-                                        />
-                                    )}
-                                </Animated.View>
-                            </TouchableOpacity>
-                        </Modal>
-
-                        {/* Spacer to push profile details down */}
-                        <View style={{ height: Math.max(0, HEADER_HEIGHT - insets.top) }} />
-
-                        {/* ── Profile content wrapper (restores 16px horizontal padding below the header) ── */}
-                        <View style={{ paddingHorizontal: 16 }}>
-                            {/* ── Avatar centered, overlapping header ── */}
-                            <TouchableOpacity
-                        onPress={() => { if (userData.avatar_url) setVisible(true); }}
-                        activeOpacity={0.85}
-                        style={st.avatarWrap}
-                    >
-                        <AvatarWithFrame
-                            avatarUrl={userData.avatar_url}
-                            size={90}
-                            invitedCount={invitedCount}
-                            isOg={userData.isOg}
-                            ogEdition={userData.ogEdition}
-                        />
-                    </TouchableOpacity>
-
-                    {/* ── Name ── */}
-                    <View style={st.nameRow}>
-                        <Text style={[st.nameText, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
-                            {userData.username}
-                        </Text>
-                        {userData.official && (
-                            <View style={{ marginLeft: 4 }}>
-                                <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={22} />
-                            </View>
-                        )}
-                    </View>
-
-                    {/* ── Reputation badge ── */}
-                    <View style={st.repRow}>
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => eventConnectionsSheetRef.current?.present(userData.reputation)}
-                            style={[st.repBadge, {
-                                backgroundColor: isDark ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.1)',
-                                borderColor: isDark ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.25)',
-                            }]}
-                        >
-                            <Star size={12} color="#22c55e" fill="#22c55e" />
-                            <Text style={[st.repText, { color: isDark ? '#22c55e' : '#16a34a' }]}>
-                                {formatNumber(userData.reputation)} rep
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* ── Bio ── */}
-                    {userData.about !== "" && (
-                        <View style={st.bioWrap}>
-                            <Hyperlink
-                                linkStyle={{ color: "#A78BFA", fontWeight: "500" }}
-                                onPress={(url: string) => Linking.openURL(url)}
-                            >
-                                <Text style={[st.bioText, { color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>
-                                    {userData.about}
-                                </Text>
-                            </Hyperlink>
-                        </View>
+                    {activeTab === "Posts" ? (
+                        <AnimatedReanimated.View style={[postsAnimatedStyle, { flex: 1 }]}>
+                            {interactionsFinished ? (
+                                <PostGallery
+                                    key={`posts-${refreshKey}`}
+                                    id={id as number}
+                                    previous="profile"
+                                    ListHeaderComponent={profileHeader}
+                                    ListEmptyComponent={
+                                        <EmptyState Icon={Camera} title="No Posts Yet"
+                                            description="Start sharing your moments to make your profile more engaging."
+                                            colorScheme={isDark ? "dark" : "light"} />
+                                    }
+                                    refreshControl={refreshControl}
+                                    contentInset={{ top: insets.top }}
+                                    contentOffset={{ x: 0, y: -insets.top }}
+                                    contentInsetAdjustmentBehavior="never"
+                                    automaticallyAdjustContentInsets={false}
+                                />
+                            ) : (
+                                <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
+                            )}
+                        </AnimatedReanimated.View>
+                    ) : (
+                        <AnimatedReanimated.View style={[cnftsAnimatedStyle, { flex: 1 }]}>
+                            {interactionsFinished ? (
+                                <CollectionsGallery
+                                    key={`collections-${refreshKey}`}
+                                    id={id as number}
+                                    isOwnProfile={true}
+                                    ListHeaderComponent={profileHeader}
+                                    ListEmptyComponent={
+                                        <EmptyState Icon={Layers} title="No cNFTs Yet"
+                                            description="Your collected and created cNFTs will appear here."
+                                            colorScheme={isDark ? "dark" : "light"} />
+                                    }
+                                    refreshControl={refreshControl}
+                                    contentInset={{ top: insets.top }}
+                                    contentOffset={{ x: 0, y: -insets.top }}
+                                    contentInsetAdjustmentBehavior="never"
+                                    automaticallyAdjustContentInsets={false}
+                                />
+                            ) : (
+                                <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
+                            )}
+                        </AnimatedReanimated.View>
                     )}
-
-                    {/* ── Stats ── */}
-                    <View style={st.statsRow}>
-                        <StatColumn value={userData.post_count} label="Posts" isDark={isDark} />
-                        <Dot isDark={isDark} />
-                        <StatColumn
-                            value={userData.readers_count} label="Readers" isDark={isDark}
-                            onPress={() => router.push({ pathname: "/follows-screen", params: { last_page: "/profile", userId: id, username: userData.username, activeTab: "Readers" } })}
-                        />
-                        <Dot isDark={isDark} />
-                        <StatColumn
-                            value={userData.follows_count} label="Follows" isDark={isDark}
-                            onPress={() => router.push({ pathname: "/follows-screen", params: { last_page: "/profile", userId: id, username: userData.username, activeTab: "Follows" } })}
-                        />
-                    </View>
-
-                    {/* ── Divider ── */}
-                    <View style={[st.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
-
-                    {/* ── Action buttons ── */}
-                    <View style={st.actionsRow}>
-                        <View style={{ flex: 1.2 }}>
-                            <ShareViaNFC handlePress={handleOpenModal} />
-                        </View>
-                        <View style={{ flex: 0.9 }}>
-                            <InviteSecondaryButton handlePress={() => inviteSheetRef.current?.present()} />
-                        </View>
-                        <View style={{ flex: 0.9 }}>
-                            <TouchableOpacity
-                                activeOpacity={0.84}
-                                onPress={() => router.push("/events")}
-                                style={[st.eventsBtn, {
-                                    borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
-                                    backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-                                }]}
-                            >
-                                <Calendar size={18} color="#A855F7" />
-                                <Text style={st.eventsBtnText}>Events</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* ── Tabs ── */}
-                    <View style={[st.tabBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
-                        {TABS.map((tab) => {
-                            const isActive = activeTab === tab;
-                            const tabLabel = tab === "Posts" ? `Posts (${userData.post_count})` : `Collectibles (${userData.cnft_count})`;
-                            return (
-                                <TouchableOpacity
-                                    key={tab} onPress={() => handleTabPress(tab)}
-                                    style={{ flex: 1, borderRadius: 13, overflow: "hidden" }}
-                                    activeOpacity={0.8}
-                                >
-                                    {isActive ? (
-                                        <LinearGradient
-                                            colors={["rgba(167,139,250,0.25)", "rgba(139,92,246,0.15)"]}
-                                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                            style={st.tabActive}
-                                        >
-                                            <Text style={st.tabActiveText}>{tabLabel}</Text>
-                                        </LinearGradient>
-                                    ) : (
-                                        <View style={st.tabInactive}>
-                                            <Text style={[st.tabInactiveText, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }]}>
-                                                {tabLabel}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-
-                    {/* ── Tab Content ── */}
-                    <View style={{ overflow: "hidden" }}>
-                        <AnimatedReanimated.View style={[postsAnimatedStyle, {
-                            display: activeTab === "Posts" ? "flex" : "none",
-                        }]}>
-                            {mountedTabs.has("Posts") && (
-                                userData.post_count === 0 ? (
-                                    <EmptyState Icon={Camera} title="No Posts Yet"
-                                        description="Start sharing your moments to make your profile more engaging."
-                                        colorScheme={colorScheme} />
-                                ) : (
-                                    interactionsFinished ? <PostGallery key={`posts-${refreshKey}`} id={id as number} previous="profile" /> : <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
-                                )
-                            )}
-                        </AnimatedReanimated.View>
-                        <AnimatedReanimated.View style={[cnftsAnimatedStyle, {
-                            display: activeTab === "cNFTs" ? "flex" : "none",
-                        }]}>
-                            {mountedTabs.has("cNFTs") && (
-                                userData.cnft_count === 0 ? (
-                                    <EmptyState Icon={Layers} title="No cNFTs Yet"
-                                        description="Your collected and created cNFTs will appear here."
-                                        colorScheme={colorScheme} />
-                                ) : (
-                                    interactionsFinished ? <CollectionsGallery key={`collections-${refreshKey}`} id={id as number} isOwnProfile={true} /> : <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
-                                )
-                            )}
-                        </AnimatedReanimated.View>
-                    </View>
-                </View>
-            </ScrollView>
 
             {/* Fixed Settings/Wallet Top Bar with safe area top inset */}
             <View style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
