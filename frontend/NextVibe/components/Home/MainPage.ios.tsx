@@ -12,6 +12,7 @@ import {
     ActivityIndicator,
     Pressable,
     Linking,
+    Share,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
@@ -41,7 +42,7 @@ import useTransaction from "@/hooks/useTransaction";
 import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
 import {
     Heart, MessageCircle, MapPin,
-    Sparkles, Clock, Calendar, Link2, MoreVertical
+    Sparkles, Clock, Calendar, Link2, MoreVertical, Share2
 } from "lucide-react-native";
 import PhotoModal from "@/components/PostDetails/PhotoModal";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
@@ -469,6 +470,16 @@ const PostItem = memo(({
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [eventImageHeight, setEventImageHeight] = useState<number | null>(null);
 
+    const handleSharePost = async () => {
+        try {
+            await Share.share({
+                message: `https://nextvibe.io/u/post/${item.id}`,
+            });
+        } catch (error) {
+            console.error("Error sharing post:", error);
+        }
+    };
+
     const handleMediaSize = useCallback((width: number, height: number) => {
         if (width > 0) setEventImageHeight((screenWidth / width) * height);
     }, []);
@@ -744,7 +755,7 @@ const PostItem = memo(({
                 </View>
             )}
 
-            {/* ── Footer: like | comment | spacer | ButtonCollect ── */}
+            {/* ── Footer: like | comment | share | spacer | ButtonCollect ── */}
             <View style={styles.postFooter}>
                 <TouchableOpacity activeOpacity={0.6} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => toggleLike(item.id)} style={styles.likesContainer}>
                     <Heart size={22} color={isLiked ? "#A855F7" : theme.textPrimary} fill={isLiked ? "#A855F7" : "transparent"} />
@@ -752,6 +763,9 @@ const PostItem = memo(({
                 </TouchableOpacity>
                 <TouchableOpacity activeOpacity={0.6} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => openComments(item)} style={styles.likesContainer}>
                     <MessageCircle size={22} color={theme.textPrimary} />
+                </TouchableOpacity>
+                <TouchableOpacity activeOpacity={0.6} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleSharePost} style={styles.likesContainer}>
+                    <Share2 size={22} color={theme.textPrimary} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }} />
             </View>
