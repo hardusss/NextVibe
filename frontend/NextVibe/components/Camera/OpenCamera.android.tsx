@@ -175,9 +175,9 @@ export default function CameraScreen() {
 
     const device = useCameraDevice(cameraSide);
     const format = useCameraFormat(device, [
-        { videoResolution: 'max', photoResolution: 'max' },
-        { videoResolution: { width: 3840, height: 2160 }, photoResolution: 'max' },
         { videoResolution: { width: 1920, height: 1080 }, photoResolution: 'max' },
+        { videoResolution: { width: 3840, height: 2160 }, photoResolution: 'max' },
+        { videoResolution: 'max', photoResolution: 'max' },
         { photoResolution: 'max' },
         { photoResolution: { width: 4032, height: 3024 } },
         { photoResolution: { width: 3024, height: 4032 } },
