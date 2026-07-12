@@ -222,7 +222,7 @@ export default function PostCreate() {
                 confirmLabel="Discard"
                 confirmGradient={['#F87171', '#EF4444']} />
 
-            <View style={[s.header, { borderBottomColor: c.sep, paddingTop: Platform.OS === 'ios' ? insets.top + 14 : 18 }]}>
+            <View style={[s.header, { borderBottomColor: c.sep, paddingTop: insets.top > 0 ? insets.top + 14 : 18 }]}>
                 <TouchableOpacity onPress={handleLeave}
                     style={[s.backBtn, { backgroundColor: c.sep }]}
                     hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
@@ -409,7 +409,7 @@ export default function PostCreate() {
                     <View style={[s.divider, { backgroundColor: c.sep }]} />
                 </Animated.View>
 
-                <View style={{ height: Platform.OS === 'ios' ? 48 : 32 }} />
+                <View style={{ height: insets.bottom > 0 ? insets.bottom + 16 : 32 }} />
 
             </ScrollView>
         </KeyboardAvoidingView>

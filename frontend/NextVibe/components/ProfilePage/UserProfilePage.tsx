@@ -309,7 +309,7 @@ const UserProfileView = () => {
                     )}
 
                     <ScrollView
-                        contentContainerStyle={{ paddingBottom: 20 }}
+                        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
                         showsVerticalScrollIndicator={false}
                         contentInset={Platform.OS === 'ios' ? { top: insets.top } : undefined}
                         contentOffset={Platform.OS === 'ios' ? { x: 0, y: -insets.top } : undefined}
@@ -350,7 +350,7 @@ const UserProfileView = () => {
 
                         {/* ── Blurred avatar header (Android/Web/etc.) ── */}
                         {Platform.OS !== 'ios' && (
-                            <View style={st.headerContainer}>
+                            <View style={[st.headerContainer, { height: HEADER_HEIGHT + insets.top }]}>
                                 {userData.avatar_url && (
                                     <>
                                         <Image
@@ -372,7 +372,7 @@ const UserProfileView = () => {
                                 <LinearGradient colors={[bgTransparent, bg]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} locations={[0.6, 1]} style={st.headerFadeRight} />
 
                                 {/* Back button on header (Android/other) */}
-                                <View style={st.topBar}>
+                                <View style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
                                     <TouchableOpacity
                                         hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                         onPress={() => router.back()}
