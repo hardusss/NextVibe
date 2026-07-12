@@ -11,6 +11,7 @@ import {
     Pressable,
     Linking,
     Platform,
+    Share,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import GlassBadge from "@/components/Shared/GlassBadge";
@@ -26,6 +27,7 @@ import {
     Image as ImageIcon,
     Link2,
     MoreVertical,
+    Share2,
 } from "lucide-react-native";
 import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
@@ -238,6 +240,17 @@ const PostPopup: React.FC<PostPopupProps> = ({
             tapCount.current = 0;
         } else {
             tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 300);
+        }
+    };
+
+    const handleSharePost = async () => {
+        if (!post) return;
+        try {
+            await Share.share({
+                message: `https://nextvibe.io/u/post/${post.post_id}`,
+            });
+        } catch (error) {
+            console.error("Error sharing post:", error);
         }
     };
 
@@ -591,6 +604,14 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                 <Text style={styles.actionCount}>{post.comments_count ?? 0}</Text>
                                             </TouchableOpacity>
                                         )}
+
+                                        <TouchableOpacity
+                                            style={styles.actionButton}
+                                            onPress={handleSharePost}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Share2 size={22} color="#999" />
+                                        </TouchableOpacity>
                                     </View>
                                 </View>
                             </ScrollView>

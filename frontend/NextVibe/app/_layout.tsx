@@ -117,7 +117,7 @@ const SHARED_SCREENS = [
     "chats", "follows-screen", "notifications", "user-banned", "wallet-init",
     "wallet-dash", "wallet-select", "swap", "event-checkin", "post-details",
     "all-tokens", "eas-update", "events", "event-nfc-share", "event-nfc-receive",
-    "camera", "u/[id]"
+    "camera", "u/[id]", "u/post/[id]"
 ];
 
 export default function RootLayout() {

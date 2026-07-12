@@ -13,11 +13,12 @@ import {
     UIManager,
     View,
     useColorScheme,
+    Share,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
-import { Calendar, Clock, Heart, Link2, MapPin, Sparkles, ArrowLeft, MoreVertical, MessageSquareOff, MessageSquare } from "lucide-react-native";
+import { Calendar, Clock, Heart, Link2, MapPin, Sparkles, ArrowLeft, MoreVertical, MessageSquareOff, MessageSquare, Share2 } from "lucide-react-native";
 import Hyperlink from "react-native-hyperlink";
 
 import getPost from "@/src/api/get.post";
@@ -86,8 +87,8 @@ const formatEventDate = (iso: string) =>
         month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
     });
 
-const PostHeader = ({ title, isDark, insets, onBack }: { title: string, isDark: boolean, insets: any, onBack: () => void }) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: insets.top + 10, paddingBottom: 10 }}>
+const PostHeader = ({ title, isDark, insets, onBack, isModal = false }: { title: string, isDark: boolean, insets: any, onBack: () => void, isModal?: boolean }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: isModal ? 10 : (insets.top + 10), paddingBottom: 10 }}>
         <TouchableOpacity onPress={onBack} style={{ padding: 8, marginRight: 12 }}>
             <ArrowLeft size={24} color={isDark ? "#fff" : "#000"} />
         </TouchableOpacity>
@@ -99,7 +100,9 @@ const PostHeader = ({ title, isDark, insets, onBack }: { title: string, isDark: 
 export default function PostDetailsScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const segments = useSegments();
     const { id, commentId, replyId } = useLocalSearchParams();
+    const isModal = Platform.OS === 'ios' && !(segments as string[]).includes("u");
     const highlightedCommentId = commentId ? Number(Array.isArray(commentId) ? commentId[0] : commentId) : null;
     const highlightedReplyId = replyId ? Number(Array.isArray(replyId) ? replyId[0] : replyId) : null;
 
@@ -188,6 +191,16 @@ export default function PostDetailsScreen() {
             replies: u.liked_comment_replies.reduce((a: Record<number, boolean>, id: number) => ({ ...a, [id]: true }), {}),
         });
     };
+
+    const handleSharePost = useCallback(async () => {
+        try {
+            await Share.share({
+                message: `https://nextvibe.io/u/post/${id}`,
+            });
+        } catch (error) {
+            console.error("Error sharing post:", error);
+        }
+    }, [id]);
 
     const toggleLike = useCallback(async () => {
         if (!post || likingRef.current) return;
@@ -320,7 +333,7 @@ export default function PostDetailsScreen() {
     if (loading) {
         return (
             <View style={[s.container, { backgroundColor: theme.background }]}>
-                <PostHeader title="Post" isDark={isDark} insets={insets} onBack={() => router.back()} />
+                <PostHeader title="Post" isDark={isDark} insets={insets} onBack={() => router.back()} isModal={isModal} />
                 <View style={s.loadingContainer}>
                     <CustomActivityIndicator size="large" color={theme.accentColor} />
                 </View>
@@ -344,7 +357,7 @@ export default function PostDetailsScreen() {
         <View style={[s.container, { backgroundColor: theme.background }]}>
             <StatusBar backgroundColor={theme.background} barStyle={isDark ? "light-content" : "dark-content"} />
             <View style={{ paddingLeft: 12 }}>
-                <PostHeader title="Post" isDark={isDark} insets={insets} onBack={() => router.back()} />
+                <PostHeader title="Post" isDark={isDark} insets={insets} onBack={() => router.back()} isModal={isModal} />
             </View>
 
             <Web3Toast
@@ -549,10 +562,13 @@ export default function PostDetailsScreen() {
                         )}
                     </View>
 
-                    {/* Like action */}
-                    <View style={[s.actionsRow, { borderColor: theme.border }]}>
+                    {/* Like & Share actions */}
+                    <View style={[s.actionsRow, { borderColor: theme.border, gap: 16 }]}>
                         <Pressable onPress={toggleLike} style={{ padding: 4 }}>
                             <Heart size={26} color={isLiked ? "#A855F7" : theme.textPrimary} fill={isLiked ? "#A855F7" : "transparent"} />
+                        </Pressable>
+                        <Pressable onPress={handleSharePost} style={{ padding: 4 }}>
+                            <Share2 size={26} color={theme.textPrimary} />
                         </Pressable>
                     </View>
                 </View>
