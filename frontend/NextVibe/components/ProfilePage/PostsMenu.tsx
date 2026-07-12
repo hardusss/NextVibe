@@ -16,7 +16,7 @@ import getMenuPosts from "@/src/api/menu.posts";
 import { useIsFocused } from "@react-navigation/native";
 
 import { BlurView } from "expo-blur";
-import { GlassView } from 'expo-glass-effect';
+import LiquidGlassView from '@/components/Shared/LiquidGlassView';
 import GlassBadge from "@/components/Shared/GlassBadge";
 import { Image } from 'expo-image';
 import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-native";
@@ -213,7 +213,13 @@ const PostGridCell = memo(({ item, isFocused, currentUserId, onPress }: PostGrid
             {isPending && isFocused && (
                 <View style={styles.moderationOverlay}>
                     {Platform.OS === 'ios' ? (
-                        <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" colorScheme="dark" pointerEvents="none" />
+                        <LiquidGlassView
+                            style={StyleSheet.absoluteFill}
+                            glassEffectStyle="regular"
+                            colorScheme="dark"
+                            pointerEvents="none"
+                            fallbackBackgroundColor="rgba(10, 10, 10, 0.7)"
+                        />
                     ) : (
                         <BlurView
                             style={StyleSheet.absoluteFill}

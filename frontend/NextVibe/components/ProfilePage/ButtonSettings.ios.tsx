@@ -39,6 +39,7 @@ const ButtonSettings = () => {
                     glassEffectStyle="regular"
                     colorScheme={isDark ? "dark" : "light"}
                     isInteractive
+                    fallbackBackgroundColor={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)'}
                 >
                     <Menu
                         color={isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)"}

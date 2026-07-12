@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Animated, View, StyleSheet, TouchableOpacity, Easing } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ArrowDownUp } from 'lucide-react-native';
-import { GlassView } from 'expo-glass-effect';
+import LiquidGlassView from '@/components/Shared/LiquidGlassView';
 import type { SwapColors } from '@/src/types/swap';
 
 interface SwapFlipButtonProps {
@@ -40,19 +40,22 @@ export default function SwapFlipButton({ colors, onPress }: SwapFlipButtonProps)
         <View style={styles.wrap}>
             <Animated.View style={{ transform: [{ rotate }] }}>
                 <TouchableOpacity onPress={handlePress} activeOpacity={0.85} style={styles.touchable}>
-                    <GlassView
+                    <LiquidGlassView
                         style={styles.glass}
                         glassEffectStyle="regular"
                         colorScheme={colors.isDark ? 'dark' : 'light'}
                         tintColor={colors.isDark ? 'rgba(168,85,247,0.18)' : 'rgba(124,58,237,0.1)'}
                         isInteractive
+                        fallbackBackgroundColor={
+                            colors.isDark ? 'rgba(168,85,247,0.18)' : 'rgba(124,58,237,0.1)'
+                        }
                     >
                         <ArrowDownUp
                             size={16}
                             color={colors.accent}
                             strokeWidth={2.2}
                         />
-                    </GlassView>
+                    </LiquidGlassView>
                 </TouchableOpacity>
             </Animated.View>
         </View>

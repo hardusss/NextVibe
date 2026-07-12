@@ -7,7 +7,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { Pressable, ActivityIndicator, StyleSheet, View, Animated } from 'react-native';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Svg, { Path } from 'react-native-svg';
-import { GlassView } from 'expo-glass-effect';
+import LiquidGlassView from '@/components/Shared/LiquidGlassView';
 import GoogleSignIn from '@/src/api/google.sign.in';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -159,11 +159,12 @@ export default function GoogleIconButton({ page }: { page: string }) {
                         { opacity: pressed ? 0.88 : 1 },
                     ]}
                 >
-                    <GlassView
+                    <LiquidGlassView
                         style={StyleSheet.absoluteFill}
                         glassEffectStyle="regular"
                         colorScheme="dark"
                         isInteractive
+                        fallbackBackgroundColor="#170F24"
                     />
                     {loading ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />

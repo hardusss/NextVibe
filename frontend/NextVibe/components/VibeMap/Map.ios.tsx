@@ -13,7 +13,7 @@ import EventDetailSheet, { EventDetailSheetRef } from './EventDetailSheet';
 import * as Haptics from 'expo-haptics';
 import { Camera, Calendar, Moon, Map as LucideMap, MapPin, Compass, Info } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GlassView } from 'expo-glass-effect';
+import LiquidGlassView from '@/components/Shared/LiquidGlassView';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -859,15 +859,15 @@ export default function MapScreen() {
 
                         {/* Loading badge */}
                         {isLoading && (
-                            <GlassView glassEffectStyle="regular" colorScheme="dark" style={styles.loadingBadge}>
+                            <LiquidGlassView glassEffectStyle="regular" colorScheme="dark" style={styles.loadingBadge}>
                                 <ActivityIndicator size="small" color="#BCBBFD" />
                                 <Text style={styles.loadingText}>Syncing vibes…</Text>
-                            </GlassView>
+                            </LiquidGlassView>
                         )}
 
                         <View style={styles.pillsRow}>
                             {/* Filter pills */}
-                            <GlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.pillGroup}>
+                            <LiquidGlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.pillGroup}>
                                 <FilterPill
                                     isActive={filterMode === 'posts'}
                                     Icon={Camera}
@@ -882,10 +882,10 @@ export default function MapScreen() {
                                     onPress={() => handleFilterChange('events')}
                                     gradientColors={['rgba(5,240,216,0.4)', 'rgba(0,160,140,0.35)']}
                                 />
-                            </GlassView>
+                            </LiquidGlassView>
 
                             {/* Map style pills */}
-                            <GlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.pillGroup}>
+                            <LiquidGlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.pillGroup}>
                                 <FilterPill
                                     isActive={mapStyle === 'dark'}
                                     Icon={Moon}
@@ -900,7 +900,7 @@ export default function MapScreen() {
                                     onPress={() => handleMapStyleChange('street')}
                                     gradientColors={['rgba(168,85,247,0.5)', 'rgba(100,30,180,0.4)']}
                                 />
-                            </GlassView>
+                            </LiquidGlassView>
                         </View>
                     </View>
 
@@ -912,9 +912,9 @@ export default function MapScreen() {
                             onPress={handleMyLocationPress}
                             style={styles.hudButton}
                         >
-                            <GlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.hudButtonInner}>
+                            <LiquidGlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.hudButtonInner}>
                                 <Compass color="#BCBBFD" size={20} strokeWidth={2} />
-                            </GlassView>
+                            </LiquidGlassView>
                         </TouchableOpacity>
 
                         {/* Reset Camera to North */}
@@ -923,9 +923,9 @@ export default function MapScreen() {
                             onPress={handleResetCameraPress}
                             style={styles.hudButton}
                         >
-                            <GlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.hudButtonInner}>
+                            <LiquidGlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.hudButtonInner}>
                                 <LucideMap color="#BCBBFD" size={18} strokeWidth={2} />
-                            </GlassView>
+                            </LiquidGlassView>
                         </TouchableOpacity>
 
                         {/* Legend Toggle */}
@@ -934,15 +934,15 @@ export default function MapScreen() {
                             onPress={handleToggleLegendPress}
                             style={[styles.hudButton, showLegend && styles.hudButtonActive]}
                         >
-                            <GlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.hudButtonInner}>
+                            <LiquidGlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={styles.hudButtonInner}>
                                 <Info color={showLegend ? "#a855f7" : "#BCBBFD"} size={19} strokeWidth={2} />
-                            </GlassView>
+                            </LiquidGlassView>
                         </TouchableOpacity>
                     </View>
 
                     {/* ── Legend Card ── */}
                     <Animated.View style={[styles.legend, { bottom: insets.bottom + 85 }, legendAnimatedStyle]} pointerEvents={showLegend ? "auto" : "none"}>
-                        <GlassView glassEffectStyle="regular" colorScheme="dark" style={styles.legendInner}>
+                        <LiquidGlassView glassEffectStyle="regular" colorScheme="dark" style={styles.legendInner}>
                             <Text style={styles.legendTitle}>Map Legend</Text>
                             <View style={styles.legendRow}>
                                 <View style={[styles.legendDot, { backgroundColor: '#a855f7' }]} />
@@ -960,7 +960,7 @@ export default function MapScreen() {
                                 <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
                                 <Text style={styles.legendLabel}>Ended Event</Text>
                             </View>
-                        </GlassView>
+                        </LiquidGlassView>
                     </Animated.View>
                 </>
             ) : (

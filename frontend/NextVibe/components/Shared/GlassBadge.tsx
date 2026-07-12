@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import GlassSurface from './GlassSurface';
+import { useLiquidGlassEnabled } from '@/src/stores/settingsStore';
 
 export type GlassBadgeVariant =
     | 'overlay'
@@ -97,7 +98,9 @@ export function GlassBadge({
     style,
     feedLight = false,
 }: GlassBadgeProps) {
+    const liquidGlassEnabled = useLiquidGlassEnabled();
     const config = { ...VARIANTS[variant] };
+    const useFallbackStyle = Platform.OS !== 'ios' || !liquidGlassEnabled;
 
     if (feedLight && variant.startsWith('feed')) {
         config.colorScheme = 'light';
@@ -117,15 +120,17 @@ export function GlassBadge({
         <GlassSurface
             style={[
                 iconOnly ? styles.iconOnly : styles.badge,
-                Platform.OS !== 'ios' && {
+                useFallbackStyle && {
                     backgroundColor: config.fallbackBackgroundColor,
                     borderColor: config.fallbackBorderColor,
+                    borderWidth: iconOnly ? 0.5 : 1,
                 },
                 style,
             ]}
             glassEffectStyle="regular"
             colorScheme={config.colorScheme}
             tintColor={config.tintColor}
+            fallbackBackgroundColor={config.fallbackBackgroundColor}
         >
             {children}
         </GlassSurface>

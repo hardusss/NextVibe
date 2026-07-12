@@ -22,6 +22,7 @@ function CameraBtn({ isDark, onPress }: BtnProps) {
                     style={styles.glassBtn}
                     glassEffectStyle="regular"
                     colorScheme={isDark ? "dark" : "light"}
+                    fallbackBackgroundColor={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)'}
                 >
                     <Plus size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
                 </GlassSurface>
@@ -53,6 +54,7 @@ function BellBtn({ isDark, onPress, badge }: BtnProps) {
                     style={styles.glassBtn}
                     glassEffectStyle="regular"
                     colorScheme={isDark ? "dark" : "light"}
+                    fallbackBackgroundColor={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)'}
                 >
                     <Bell size={22} color={isDark ? "#fafafa" : "#1A1225"} />
                 </GlassSurface>

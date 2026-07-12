@@ -54,6 +54,7 @@ const ButtonWallet = () => {
                     colorScheme={isDark ? "dark" : "light"}
                     isInteractive
                     tintColor="rgba(168,85,247,0.18)"
+                    fallbackBackgroundColor={isDark ? 'rgba(168,85,247,0.18)' : 'rgba(124,58,237,0.1)'}
                 >
                     <View style={styles.content}>
                         <WalletMinimal
