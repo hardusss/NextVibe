@@ -7,7 +7,7 @@ private let kServiceUUID = CBUUID(string: "A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
 private let kCharacteristicUUID = CBUUID(string: "A1B2C3D4-E5F6-7890-ABCD-EF1234567891")
 
 // RSSI threshold for proximity detection (~5-15cm)
-private let kRSSIThreshold: Int = -45
+private let kRSSIThreshold: Int = -35
 
 // Moving average filter window size
 private let kRSSIFilterWindow = 3
