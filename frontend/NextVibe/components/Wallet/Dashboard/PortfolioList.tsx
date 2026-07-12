@@ -6,8 +6,6 @@ import {
     Animated,
     TouchableOpacity,
     Platform,
-    ScrollView,
-    RefreshControl,
 } from "react-native";
 import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { Wallet, BriefcaseBusiness, ArrowRight, Sparkles } from "lucide-react-native";
@@ -22,8 +20,6 @@ interface PortfolioListProps {
     isBalanceHidden: boolean;
     tokens: TokenAsset[];
     isLoading: boolean;
-    onRefresh?: () => void;
-    refreshing?: boolean;
 }
 
 // ─── Animated Skeleton ────────────────────────────────────────────────────────
@@ -118,8 +114,6 @@ function PortfolioList({
     isBalanceHidden,
     tokens,
     isLoading,
-    onRefresh,
-    refreshing,
 }: PortfolioListProps) {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -234,20 +228,7 @@ function PortfolioList({
                     <EmptyState isDarkMode={isDarkMode} />
                 ) : (
                     <View style={{ flex: 1, justifyContent: "space-between" }}>
-                        <ScrollView
-                            style={styles.tokenList}
-                            contentContainerStyle={{ flexGrow: 1 }}
-                            showsVerticalScrollIndicator={false}
-                            refreshControl={
-                                onRefresh ? (
-                                    <RefreshControl
-                                        refreshing={refreshing || false}
-                                        onRefresh={onRefresh}
-                                        tintColor={isDarkMode ? "#fff" : "#000"}
-                                    />
-                                ) : undefined
-                            }
-                        >
+                        <View style={styles.tokenList}>
                             {displayTokens.map((token, i) => (
                                 <TokenItem
                                     key={token.symbol}
@@ -258,7 +239,7 @@ function PortfolioList({
                                     index={i}
                                 />
                             ))}
-                        </ScrollView>
+                        </View>
 
                         <TouchableOpacity
                             style={[

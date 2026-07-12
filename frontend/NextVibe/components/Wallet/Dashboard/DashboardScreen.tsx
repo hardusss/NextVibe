@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { View, StatusBar, Animated, Platform, StyleSheet } from "react-native";
+import { View, StatusBar, Animated, Platform, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -178,78 +178,89 @@ export default function WalletDashboardScreen() {
                     { paddingTop: insets.top }
                 ]}
             >
-                <View style={styles.dashboardBody}>
-                    <View style={styles.dashboardTop}>
-                        <Web3Toast
-                            message="In next update..."
-                            visible={isToastVisible}
-                            onHide={() => setIsToastVisible(false)}
-                            isSuccess={false}
+                <ScrollView
+                    style={styles.container}
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing || isRefreshing}
+                            onRefresh={handleRefresh}
+                            tintColor={isDarkMode ? "#fff" : "#000"}
                         />
-
-                        <FadeIn delay={0}>
-                            <Header
-                                isDarkMode={isDarkMode}
-                                isBalanceHidden={isBalanceHidden}
-                                onToggleBalance={toggleBalanceVisibility}
-                                onNavigateBack={() => {
-                                    router.push("/profile");
-                                }}
-                                onNavigateToTransactions={navigateToTransactions}
+                    }
+                >
+                    <View style={styles.dashboardBody}>
+                        <View style={styles.dashboardTop}>
+                            <Web3Toast
+                                message="In next update..."
+                                visible={isToastVisible}
+                                onHide={() => setIsToastVisible(false)}
+                                isSuccess={false}
                             />
-                        </FadeIn>
 
-                        <FadeIn delay={MOTION.stagger.step}>
-                            <BalanceSection
-                                isDarkMode={isDarkMode}
-                                isBalanceHidden={isBalanceHidden}
-                                totalBalance={data.tokens.reduce((sum, t) => sum + t.valueUsd, 0)}
-                                isLoading={showPortfolioSkeleton}
-                            />
-                        </FadeIn>
+                            <FadeIn delay={0}>
+                                <Header
+                                    isDarkMode={isDarkMode}
+                                    isBalanceHidden={isBalanceHidden}
+                                    onToggleBalance={toggleBalanceVisibility}
+                                    onNavigateBack={() => {
+                                        router.push("/profile");
+                                    }}
+                                    onNavigateToTransactions={navigateToTransactions}
+                                />
+                            </FadeIn>
 
-                        <FadeIn delay={MOTION.stagger.step * 2}>
-                            <QuickActions
-                                isDarkMode={isDarkMode}
-                                onReceive={navigateToDeposit}
-                                onSend={navigateToSend}
-                                onSwap={() => router.push("/swap")}
-                                onNfcDeposit={() => depositSheetRef.current?.present()}
-                            />
-                        </FadeIn>
+                            <FadeIn delay={MOTION.stagger.step}>
+                                <BalanceSection
+                                    isDarkMode={isDarkMode}
+                                    isBalanceHidden={isBalanceHidden}
+                                    totalBalance={data.tokens.reduce((sum, t) => sum + t.valueUsd, 0)}
+                                    isLoading={showPortfolioSkeleton}
+                                />
+                            </FadeIn>
 
-                        <FadeIn delay={MOTION.stagger.step * 3}>
-                            <LastTransaction
-                                isDarkMode={isDarkMode}
-                                isBalanceHidden={isBalanceHidden}
-                                transaction={lastTransaction}
-                                tokenPrice={lastTransactionTokenPrice}
-                                isLoading={isLoadTransaction}
-                                error={activityError}
-                                onPress={() => {
-                                    if (activityError) {
-                                        handleRefresh();
-                                    } else if (lastTransaction) {
-                                        navigateToTransactions();
-                                    }
-                                }}
-                            />
-                        </FadeIn>
+                            <FadeIn delay={MOTION.stagger.step * 2}>
+                                <QuickActions
+                                    isDarkMode={isDarkMode}
+                                    onReceive={navigateToDeposit}
+                                    onSend={navigateToSend}
+                                    onSwap={() => router.push("/swap")}
+                                    onNfcDeposit={() => depositSheetRef.current?.present()}
+                                />
+                            </FadeIn>
+
+                            <FadeIn delay={MOTION.stagger.step * 3}>
+                                <LastTransaction
+                                    isDarkMode={isDarkMode}
+                                    isBalanceHidden={isBalanceHidden}
+                                    transaction={lastTransaction}
+                                    tokenPrice={lastTransactionTokenPrice}
+                                    isLoading={isLoadTransaction}
+                                    error={activityError}
+                                    onPress={() => {
+                                        if (activityError) {
+                                            handleRefresh();
+                                        } else if (lastTransaction) {
+                                            navigateToTransactions();
+                                        }
+                                    }}
+                                />
+                            </FadeIn>
+                        </View>
+
+                        <View style={styles.portfolioBottom}>
+                            <FadeIn delay={MOTION.stagger.step * 4} from="bottom" style={{ flex: 1 }}>
+                                <PortfolioList
+                                    isDarkMode={isDarkMode}
+                                    isBalanceHidden={isBalanceHidden}
+                                    tokens={data.tokens}
+                                    isLoading={showPortfolioSkeleton}
+                                />
+                            </FadeIn>
+                        </View>
                     </View>
-
-                    <View style={styles.portfolioBottom}>
-                        <FadeIn delay={MOTION.stagger.step * 4} from="bottom" style={{ flex: 1 }}>
-                            <PortfolioList
-                                isDarkMode={isDarkMode}
-                                isBalanceHidden={isBalanceHidden}
-                                tokens={data.tokens}
-                                isLoading={showPortfolioSkeleton}
-                                onRefresh={handleRefresh}
-                                refreshing={refreshing || isRefreshing}
-                            />
-                        </FadeIn>
-                    </View>
-                </View>
+                </ScrollView>
             </View>
             <DepositBottomSheet ref={depositSheetRef} />
         </View>
