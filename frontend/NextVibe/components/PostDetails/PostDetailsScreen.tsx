@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
 import { Calendar, Clock, Heart, Link2, MapPin, Sparkles, ArrowLeft, MoreVertical, MessageSquareOff, MessageSquare } from "lucide-react-native";
 import Hyperlink from "react-native-hyperlink";
 
@@ -105,6 +106,7 @@ export default function PostDetailsScreen() {
     const isDark = useColorScheme() === "dark";
     const theme = isDark ? dark : light;
 
+    const isFocused = useIsFocused();
     const [post, setPost] = useState<PostData | null>(null);
     const [loading, setLoading] = useState(true);
     const [userID, setUserID] = useState(0);
@@ -130,6 +132,19 @@ export default function PostDetailsScreen() {
     const likingRef = useRef(false);
     const { address } = useWalletAddress();
     const { sendInstructions } = useTransaction();
+
+    useEffect(() => {
+        if (!isFocused) {
+            const checkLogout = async () => {
+                const storedId = await storage.getItem("id");
+                if (!storedId) {
+                    setDropdownOpen(false);
+                    mintSheetRef.current?.dismiss();
+                }
+            };
+            checkLogout();
+        }
+    }, [isFocused]);
 
     useEffect(() => {
         if (!id) return;
@@ -349,6 +364,7 @@ export default function PostDetailsScreen() {
                 isOwner={post.is_owner}
                 defaultPrice={post.nft_price}
                 page="post_detail"
+                isFocused={isFocused}
             />
 
             <PhotoModal

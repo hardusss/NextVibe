@@ -22,6 +22,7 @@ import { useColorScheme } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import setAvatar from "@/src/api/set.avatar";
 import CollectiblesModal, { CollectionItemData } from "./CollectiblesModal";
+import { storage } from "@/src/utils/storage";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 26;
@@ -252,6 +253,19 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
     const [modalVisible, setModalVisible] = useState(false);
     const isFetchingRef = useRef(false);
 
+    useEffect(() => {
+        if (!isFocused) {
+            const checkLogout = async () => {
+                const storedId = await storage.getItem("id");
+                if (!storedId) {
+                    setModalVisible(false);
+                    setSelectedItem(null);
+                }
+            };
+            checkLogout();
+        }
+    }, [isFocused]);
+
     const POSTS_PER_PAGE = 9;
 
     const fetchItems = async (shouldLoadMore = false) => {
@@ -466,6 +480,7 @@ const CollectionsGallery = ({ id, isOwnProfile = false }: CollectionsGalleryProp
                     setModalVisible(false);
                     setSelectedItem(null);
                 }}
+                isFocused={isFocused}
             />
         </View>
     );

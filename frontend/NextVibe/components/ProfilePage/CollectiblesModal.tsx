@@ -77,6 +77,7 @@ interface CollectiblesModalProps {
     visible: boolean;
     item: CollectionItemData | null;
     onClose: () => void;
+    isFocused?: boolean;
 }
 
 const formatDate = (isoString: string): string => {
@@ -156,6 +157,7 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
     visible,
     item,
     onClose,
+    isFocused,
 }) => {
     const [modalVisible, setModalVisible] = useState(false);
 
@@ -223,7 +225,7 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
 
     return (
         <Modal
-            visible={modalVisible}
+            visible={modalVisible && (isFocused ?? true)}
             transparent
             animationType="none"
             statusBarTranslucent={false}
