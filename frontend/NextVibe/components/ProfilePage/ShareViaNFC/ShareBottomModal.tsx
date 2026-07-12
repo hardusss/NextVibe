@@ -382,7 +382,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                             style={styles.gradientButton}
                         >
                             <Text style={styles.buttonText}>Done</Text>
-                             <CheckCircle
+                            <CheckCircle
                                 size={20}
                                 color="white"
                                 style={{ marginLeft: 8 }}

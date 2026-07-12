@@ -1,5 +1,4 @@
 import { requireNativeModule, EventEmitter, EventSubscription } from 'expo-modules-core';
-import { resetBleScanSession, shouldHandleBleDiscovery } from './session';
 
 const BleShare = requireNativeModule('BleShare');
 
@@ -26,10 +25,7 @@ export function startScanning(): void {
 
 export function stopScanning(): void {
   BleShare.stopScanning();
-  resetBleScanSession();
 }
-
-export { resetBleScanSession, shouldHandleBleDiscovery };
 
 // ── Events ──
 
