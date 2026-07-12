@@ -133,6 +133,21 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
     const { address } = useWalletAddress();
     const [mintSuccessId, setMintSuccessId] = useState<number | null>(null);
 
+    useEffect(() => {
+        if (!isFocused) {
+            const checkLogout = async () => {
+                const storedId = await storage.getItem("id");
+                if (!storedId) {
+                    setPopupVisible(false);
+                    setSelectedPostId(null);
+                    setCommentsPostId(null);
+                    setMintPostId(null);
+                }
+            };
+            checkLogout();
+        }
+    }, [isFocused]);
+
     const POSTS_PER_PAGE = 9;
 
     const getId = async () => {
@@ -281,6 +296,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                 onOpenComments={(id) => setCommentsPostId(id)}
                 onOpenMint={handleOpenMint}
                 mintSuccessPostId={mintSuccessId}
+                isFocused={isFocused}
             />
 
             {commentsPostId !== null && (
@@ -288,6 +304,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                     post_id={commentsPostId}
                     onClose={() => setCommentsPostId(null)}
                     isCommentsEnabled={true}
+                    isFocused={isFocused}
                 />
             )}
 
@@ -301,6 +318,7 @@ const PostGallery = ({ id, previous }: PostGalleryProps) => {
                 isOwner={mintIsOwner}
                 defaultPrice={mintDefaultPrice}
                 page={`user-profile?id=${id}`}
+                isFocused={isFocused}
             />
 
             {loading ? (

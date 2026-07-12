@@ -20,6 +20,7 @@ import { useEffect, useState, useCallback, useRef, memo } from "react";
 import getRecomendatePosts from "@/src/api/get.recomendate.posts";
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
 
@@ -821,6 +822,7 @@ export default function MainPage() {
         };
     });
 
+    const isFocused = useIsFocused();
     const hasCached = cachedPosts !== null && cachedPosts.length > 0;
     const [posts, setPosts] = useState<Post[]>(cachedPosts ?? []);
     const [loading, setLoading] = useState(!hasCached);
@@ -857,6 +859,21 @@ export default function MainPage() {
     const [mintIsOwner, setMintIsOwner] = useState(false);
     const [mintDefaultPrice, setMintDefaultPrice] = useState<string | null>(null);
     const [mintOwnerWallet, setMintOwnerWallet] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isFocused) {
+            const checkLogout = async () => {
+                const storedId = await storage.getItem("id");
+                if (!storedId) {
+                    setShowPopup(false);
+                    setPopupPostId(null);
+                    setMintPostId(0);
+                    mintSheetRef.current?.dismiss();
+                }
+            };
+            checkLogout();
+        }
+    }, [isFocused]);
 
     // Photo Modal
     const [photoModalVisible, setPhotoModalVisible] = useState(false);
@@ -1110,6 +1127,7 @@ export default function MainPage() {
                     post_id={popupPostId as number}
                     onClose={() => setShowPopup(false)}
                     isCommentsEnabled={popupCommentsEnabled}
+                    isFocused={isFocused}
                 />
             )}
 
@@ -1123,6 +1141,7 @@ export default function MainPage() {
                 isOwner={mintIsOwner}
                 defaultPrice={mintDefaultPrice}
                 page="home"
+                isFocused={isFocused}
             />
 
             <AnimatedReanimated.FlatList

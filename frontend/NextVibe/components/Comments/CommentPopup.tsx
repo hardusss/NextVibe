@@ -79,9 +79,10 @@ interface PopupModalProps {
     post_id: number;
     isCommentsEnabled?: boolean;
     onClose: () => void;
+    isFocused?: boolean;
 }
 
-const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalProps) => {
+const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused }: PopupModalProps) => {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === "dark";
     const colors = isDark ? themeColors.dark : themeColors.light;
@@ -375,7 +376,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose }: PopupModalPr
 
     return (
         <Modal
-            visible={true}
+            visible={isFocused ?? true}
             transparent
             animationType="none"
             statusBarTranslucent
