@@ -28,6 +28,14 @@ export function GlassModalCard({ children, style }: GlassModalCardProps) {
         );
     }
 
+    if (Platform.OS === 'android') {
+        return (
+            <View style={[styles.shell, style, { backgroundColor: '#150d24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }]}>
+                {children}
+            </View>
+        );
+    }
+
     return (
         <View style={[styles.shell, style]}>
             <BlurView
