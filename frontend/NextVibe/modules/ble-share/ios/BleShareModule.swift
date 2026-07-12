@@ -102,6 +102,7 @@ public class BleShareModule: Module {
     }
 
     private func stopPeripheral() {
+        peripheralDelegate?.resetBroadcastSession()
         peripheralManager?.stopAdvertising()
         peripheralManager?.removeAllServices()
         peripheralManager = nil
@@ -151,6 +152,13 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
     var onReady: (() -> Void)?
     var onRead: (() -> Void)?
 
+    // Centrals that already triggered a read during this broadcast session.
+    private var readCentralIds: Set<UUID> = []
+
+    func resetBroadcastSession() {
+        readCentralIds.removeAll()
+    }
+
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state == .poweredOn {
             onReady?()
@@ -172,7 +180,11 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
                 request.value = value.subdata(in: offset..<value.count)
                 peripheral.respond(to: request, withResult: .success)
 
-                // Notify JS that someone read our profile
+                // Once per broadcast session per central — ignore duplicate reads
+                let centralId = request.central.identifier
+                guard !readCentralIds.contains(centralId) else { return }
+                readCentralIds.insert(centralId)
+
                 DispatchQueue.main.async { [weak self] in
                     self?.onRead?()
                 }

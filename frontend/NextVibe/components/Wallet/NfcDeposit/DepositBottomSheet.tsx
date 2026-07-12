@@ -153,33 +153,34 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
         return `https://nextvibe.io/u/send?amount=${amount}&token=${selectedToken}&address=${address}`;
     };
 
+    const handleBleRead = () => {
+        Vibration.vibrate([0, 100, 100, 100]);
+        showToast("Tap details sent successfully!", true);
+        stopHceTransaction();
+    };
+
+    const handleNfcRead = () => {
+        const now = Date.now();
+        if (now - lastReadTimestamp.current <= 2000) return;
+        lastReadTimestamp.current = now;
+        Vibration.vibrate([0, 100, 100, 100]);
+        showToast("NFC details sent successfully!", true);
+        stopHceTransaction();
+    };
+
     const startHceTransaction = async () => {
         try {
             setIsBroadcasting(true);
             const url = buildPayload();
 
             if (Platform.OS === 'ios') {
-                removeListenerRef.current = addBleReadListener(() => {
-                    const now = Date.now();
-                    if (now - lastReadTimestamp.current > 2000) {
-                        lastReadTimestamp.current = now;
-                        Vibration.vibrate([0, 100, 100, 100]);
-                        showToast("Tap details sent successfully!", true);
-                        stopHceTransaction();
-                    }
-                });
+                // iOS: BLE read dedup is per-central per broadcast session (native layer)
+                removeListenerRef.current = addBleReadListener(handleBleRead);
                 startBroadcasting(url);
                 console.log("✅ Custom Native BLE started with payload:", url);
             } else {
-                removeListenerRef.current = addNfcReadListener(() => {
-                    const now = Date.now();
-                    if (now - lastReadTimestamp.current > 2000) {
-                        lastReadTimestamp.current = now;
-                        Vibration.vibrate([0, 100, 100, 100]);
-                        showToast("NFC details sent successfully!", true);
-                        stopHceTransaction(); 
-                    }
-                });
+                lastReadTimestamp.current = 0;
+                removeListenerRef.current = addNfcReadListener(handleNfcRead);
                 startSharing(url);
                 console.log("✅ Custom Native HCE started with payload:", url);
             }

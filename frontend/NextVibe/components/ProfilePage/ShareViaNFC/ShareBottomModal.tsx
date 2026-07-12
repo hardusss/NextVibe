@@ -202,15 +202,18 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     };
 
     const handleReadEvent = (source: 'BLE' | 'NFC') => {
-        const now = Date.now();
-        if (now - lastReadTimestamp.current > READ_EVENT_DEBOUNCE_MS) {
-            if (__DEV__) console.log(`✅ ${source} read! Incrementing vibes.`);
-            setVibes(prev => prev + 1);
+        if (source === 'NFC') {
+            const now = Date.now();
+            if (now - lastReadTimestamp.current <= READ_EVENT_DEBOUNCE_MS) {
+                if (__DEV__) console.log(`⚠️ Debounced duplicate ${source} read (ignored)`);
+                return;
+            }
             lastReadTimestamp.current = now;
-            triggerNeonGlow();
-        } else {
-            if (__DEV__) console.log(`⚠️ Debounced duplicate ${source} read (ignored)`);
         }
+
+        if (__DEV__) console.log(`✅ ${source} read! Incrementing vibes.`);
+        setVibes(prev => prev + 1);
+        triggerNeonGlow();
     };
 
     const startHceBroadcast = async () => {
@@ -219,8 +222,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
             const urlToShare = props.profileUrl || "https://nextvibe.io/u/39";
 
             if (Platform.OS === 'ios') {
-                // iOS: Use BLE proximity broadcasting
-                lastReadTimestamp.current = 0;
+                // iOS: BLE read dedup is per-central per broadcast session (native layer)
                 removeListenerRef.current = addBleReadListener(() => handleReadEvent('BLE'));
                 startBroadcasting(urlToShare);
                 if (__DEV__) console.log("✅ BLE Broadcasting started with URL:", urlToShare);

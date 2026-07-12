@@ -198,10 +198,6 @@ class BleShareModule : Module() {
 
         val scanner = adapter.bluetoothLeScanner ?: return
 
-        rssiBuffers.clear()
-        lastDiscoveryTime.clear()
-        readAddresses.clear()
-
         val filter = ScanFilter.Builder()
             .setServiceUuid(ParcelUuid(kServiceUUID))
             .build()
