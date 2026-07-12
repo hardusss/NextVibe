@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Platform, View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import type { GlassColorScheme, GlassStyle } from 'expo-glass-effect/build/GlassView.types';
@@ -34,25 +34,7 @@ export function GlassSurface({
     isInteractive,
     fallbackBackgroundColor,
 }: GlassSurfaceProps) {
-    const [isLayoutDone, setIsLayoutDone] = useState(false);
-
     if (Platform.OS === 'ios' && isGlassEffectAPIAvailable()) {
-        if (!isLayoutDone) {
-            return (
-                <View
-                    style={style}
-                    onLayout={(e) => {
-                        const { width, height } = e.nativeEvent.layout;
-                        if (width > 0 && height > 0) {
-                            setIsLayoutDone(true);
-                        }
-                    }}
-                >
-                    {children}
-                </View>
-            );
-        }
-
         return (
             <GlassView
                 style={style}
