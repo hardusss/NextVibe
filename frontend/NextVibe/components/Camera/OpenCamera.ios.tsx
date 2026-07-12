@@ -8,7 +8,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { X, SwitchCamera, Zap, ZapOff, Timer, Grid3x3 } from "lucide-react-native";
 import { StatusBar } from "expo-status-bar";
-import { GlassView } from 'expo-glass-effect';
+import LiquidGlassView from '@/components/Shared/LiquidGlassView';
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -38,15 +38,16 @@ function CameraGlassButton({
             activeOpacity={0.8}
             style={[styles.glassBtnWrap, active && styles.glassBtnWrapActive]}
         >
-            <GlassView
+            <LiquidGlassView
                 style={styles.iconBtnGlass}
                 glassEffectStyle="regular"
                 colorScheme="dark"
                 isInteractive
                 tintColor={active ? ACCENT_BG : undefined}
+                fallbackBackgroundColor={active ? ACCENT_BG : WHITE_FAINT}
             >
                 {children}
-            </GlassView>
+            </LiquidGlassView>
         </TouchableOpacity>
     );
 }
@@ -441,14 +442,15 @@ export default function CameraScreen() {
                     activeOpacity={0.8}
                     style={styles.flipBtnWrap}
                 >
-                    <GlassView
+                    <LiquidGlassView
                         style={styles.flipBtnGlass}
                         glassEffectStyle="regular"
                         colorScheme="dark"
                         isInteractive
+                        fallbackBackgroundColor={WHITE_FAINT}
                     >
                         <SwitchCamera size={24} color={WHITE} strokeWidth={1.5} />
-                    </GlassView>
+                    </LiquidGlassView>
                 </TouchableOpacity>
             </View>
         </View>

@@ -27,6 +27,7 @@ import { vexo, identifyDevice } from 'vexo-analytics';
 import { StatusBar } from "expo-status-bar";
 import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
 import { useBleScanner } from "@/hooks/useBleScanner";
+import { useSettingsStore } from "@/src/stores/settingsStore";
 
 setupAxiosInterceptor();
 
@@ -130,6 +131,8 @@ export default function RootLayout() {
     });
 
     const theme = useColorScheme();
+    const isSettingsHydrated = useSettingsStore((state) => state.isHydrated);
+    const loadSettings = useSettingsStore((state) => state.loadSettings);
     const router = useRouter();
     const segments = useSegments();
     const pushRegisteredRef = useRef(false);
@@ -138,6 +141,10 @@ export default function RootLayout() {
     const [userID, setUserID] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [visible, setVisible] = useState<boolean>(false);
+
+    useEffect(() => {
+        loadSettings();
+    }, [loadSettings]);
 
     useEffect(() => {
         if (fontsLoaded || fontError) {
@@ -353,7 +360,7 @@ export default function RootLayout() {
         return () => { isMounted = false; };
     }, [userID]);
 
-    if (!fontsLoaded && !fontError) return null;
+    if ((!fontsLoaded && !fontError) || !isSettingsHydrated) return null;
 
     return (
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme === "dark" ? "#0A0410" : "#ffffff" }}>

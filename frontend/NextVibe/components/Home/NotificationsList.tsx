@@ -29,7 +29,7 @@ import { useRouter } from 'expo-router';
 import getNotifications from '@/src/api/get.notifications';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import FrostedView from '@/components/Shared/FrostedView';
 import readNotifications from '@/src/api/read.notifications';
 
 const icons = {
@@ -509,10 +509,11 @@ export default function NotificationsListPage() {
         {Platform.OS === 'android' ? (
           <View style={[styles.blurViewAbsolute, { backgroundColor: isDarkTheme ? 'rgba(10, 4, 16, 0.7)' : 'rgba(255, 255, 255, 0.85)' }]} />
         ) : (
-          <BlurView
+          <FrostedView
             intensity={isDarkTheme ? 30 : 90}
             tint={isDarkTheme ? 'dark' : 'light'}
             style={styles.blurViewAbsolute}
+            fallbackBackgroundColor={isDarkTheme ? 'rgba(10, 4, 16, 0.7)' : 'rgba(255, 255, 255, 0.85)'}
           />
         )}
         <View style={styles.notificationContent}>

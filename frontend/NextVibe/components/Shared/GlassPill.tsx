@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, type StyleProp, type ViewStyle } from 'react-native';
 import GlassSurface from './GlassSurface';
+import { useLiquidGlassEnabled } from '@/src/stores/settingsStore';
 
 interface GlassPillProps {
     children: React.ReactNode;
@@ -21,11 +22,14 @@ export function GlassPill({
     fallbackBorderColor,
     isInteractive,
 }: GlassPillProps) {
+    const liquidGlassEnabled = useLiquidGlassEnabled();
+    const useFallbackStyle = Platform.OS !== 'ios' || !liquidGlassEnabled;
+
     return (
         <GlassSurface
             style={[
                 style,
-                Platform.OS !== 'ios' && {
+                useFallbackStyle && {
                     backgroundColor: fallbackBackgroundColor,
                     ...(fallbackBorderColor ? { borderColor: fallbackBorderColor, borderWidth: 1 } : null),
                 },

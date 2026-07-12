@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { ArrowLeftRight, ArrowDownLeft, ArrowUpRight } from 'lucide-react-native';
-import { BlurView } from 'expo-blur';
+import FrostedView from '@/components/Shared/FrostedView';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
@@ -197,10 +197,11 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                 {Platform.OS === 'android' ? (
                     <View style={[styles.blurViewAbsolute, { backgroundColor: isDark ? 'rgba(15, 2, 28, 0.7)' : 'rgba(255, 255, 255, 0.85)' }]} />
                 ) : (
-                    <BlurView
+                    <FrostedView
                         intensity={isDark ? 30 : 90}
                         tint={isDark ? 'dark' : 'light'}
                         style={styles.blurViewAbsolute}
+                        fallbackBackgroundColor={isDark ? 'rgba(15, 2, 28, 0.7)' : 'rgba(255, 255, 255, 0.85)'}
                     />
                 )}
                 <View style={styles.transactionItemContent}>
@@ -270,10 +271,11 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
             {Platform.OS === 'android' ? (
                 <View style={[styles.blurViewAbsolute, { backgroundColor: isDark ? 'rgba(15, 2, 28, 0.7)' : 'rgba(255, 255, 255, 0.85)' }]} />
             ) : (
-                <BlurView
+                <FrostedView
                     intensity={isDark ? 30 : 90}
                     tint={isDark ? 'dark' : 'light'}
                     style={styles.blurViewAbsolute}
+                    fallbackBackgroundColor={isDark ? 'rgba(15, 2, 28, 0.7)' : 'rgba(255, 255, 255, 0.85)'}
                 />
             )}
             <View style={styles.transactionItemContent}>

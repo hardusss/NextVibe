@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Svg, { Path } from 'react-native-svg';
-import { GlassView } from 'expo-glass-effect';
+import LiquidGlassView from '@/components/Shared/LiquidGlassView';
 import AppleSignIn from '@/src/api/apple.sign.in';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -153,11 +153,12 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
                         { opacity: pressed ? 0.88 : 1 },
                     ]}
                 >
-                    <GlassView
+                    <LiquidGlassView
                         style={StyleSheet.absoluteFill}
                         glassEffectStyle="regular"
                         colorScheme="dark"
                         isInteractive
+                        fallbackBackgroundColor="#170F24"
                     />
                     {loading ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />

@@ -28,6 +28,7 @@ import { startScanning, stopScanning } from "@/modules/ble-share";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
 import GaslessIndicator from "@/components/Shared/GaslessIndicator";
+import { useSettingsStore, type ThemePreference } from "@/src/stores/settingsStore";
 
 interface User {
     username: string;
@@ -65,6 +66,12 @@ const lightColors = {
     saveInactive: "#e5e5e5"
 };
 
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+    { value: 'system', label: 'System' },
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+];
+
 function PageSettingsContent() {
     const [isVisibleAvatar, setIsVisableAvatar] = useState<boolean>(false);
     const [isVisibleLogoutConfirmation, setIsVisibleLogoutConfirmation] = useState<boolean>(false);
@@ -80,6 +87,10 @@ function PageSettingsContent() {
     const [toastMessage, setToastMessage] = useState("");
     const [toastSuccess, setToastSuccess] = useState(true);
     const [isBluetoothEnabled, setIsBluetoothEnabled] = useState<boolean>(true);
+    const themePreference = useSettingsStore((state) => state.themePreference);
+    const liquidGlassEnabled = useSettingsStore((state) => state.liquidGlassEnabled);
+    const setThemePreference = useSettingsStore((state) => state.setThemePreference);
+    const setLiquidGlassEnabled = useSettingsStore((state) => state.setLiquidGlassEnabled);
     const { address, disconnect } = useWalletAddress();
 
     const router = useRouter();
@@ -429,6 +440,53 @@ function PageSettingsContent() {
                             />
                         </View>
 
+                        <Text style={styles.sectionHeader}>APPEARANCE</Text>
+
+                        <View style={styles.themeSection}>
+                            <Text style={styles.rowText}>Theme</Text>
+                            <View style={styles.themePicker}>
+                                {THEME_OPTIONS.map((option) => {
+                                    const isSelected = themePreference === option.value;
+                                    return (
+                                        <TouchableOpacity
+                                            key={option.value}
+                                            style={[
+                                                styles.themeOption,
+                                                isSelected && styles.themeOptionSelected,
+                                            ]}
+                                            onPress={() => setThemePreference(option.value)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.themeOptionText,
+                                                    isSelected && styles.themeOptionTextSelected,
+                                                ]}
+                                            >
+                                                {option.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        {Platform.OS === 'ios' && (
+                            <View style={styles.row}>
+                                <View style={{ flex: 1, paddingRight: 16 }}>
+                                    <Text style={styles.rowText}>Liquid Glass</Text>
+                                    <Text style={styles.rowDescription}>
+                                        Use the native iOS liquid glass visual effect
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={liquidGlassEnabled}
+                                    onValueChange={setLiquidGlassEnabled}
+                                    color={colors.accent}
+                                />
+                            </View>
+                        )}
+
                         <Text style={styles.sectionHeader}>GASLESS TRANSACTIONS</Text>
                         <GaslessIndicator />
 
@@ -607,6 +665,37 @@ const getStyles = (colors: any, insets: any) => {
             fontSize: 16,
             color: colors.danger,
             fontWeight: "400",
+        },
+        themeSection: {
+            paddingVertical: 20,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        themePicker: {
+            flexDirection: 'row',
+            marginTop: 12,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: 'hidden',
+        },
+        themeOption: {
+            flex: 1,
+            paddingVertical: 10,
+            alignItems: 'center',
+            backgroundColor: colors.background,
+        },
+        themeOptionSelected: {
+            backgroundColor: colors.accent,
+        },
+        themeOptionText: {
+            fontSize: 14,
+            fontWeight: '500',
+            color: colors.textSecondary,
+        },
+        themeOptionTextSelected: {
+            color: colors.background,
+            fontWeight: '600',
         },
     });
 };
