@@ -31,7 +31,7 @@ import useTransaction from "@/hooks/useTransaction";
 import mintNFT from "@/src/api/mint.nft";
 
 const screenWidth = Dimensions.get("window").width;
-const padding = 26;
+const padding = 20;
 const imageSize = (screenWidth - padding * 2) / 3;
 const ROW_HEIGHT = imageSize + 4;
 const POSTS_PER_PAGE = 9;
@@ -509,6 +509,7 @@ const PostGallery = ({
                 removeClippedSubviews={Platform.OS === 'android'}
                 getItemLayout={ListHeaderComponent ? undefined : getItemLayout}
                 contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
+                columnWrapperStyle={{ paddingHorizontal: 14 }}
                 ListHeaderComponent={ListHeaderComponent}
                 ListEmptyComponent={loading ? <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} /> : ListEmptyComponent}
                 renderItem={renderItem}
