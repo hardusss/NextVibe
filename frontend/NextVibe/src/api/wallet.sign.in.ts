@@ -6,6 +6,7 @@ interface WalletSignInData {
     signature: Uint8Array;
     message: string;
     username: string;
+    isLazorkit?: boolean;
 }
 
 export default async function walletSignIn(payload: WalletSignInData, inviteCode?: string) {
@@ -18,6 +19,7 @@ export default async function walletSignIn(payload: WalletSignInData, inviteCode
         signature: signatureArray,
         message: payload.message,
         username: payload.username,
+        ...(payload.isLazorkit ? { is_lazorkit: true } : {}),
     };
 
     if (inviteCode !== undefined) {

@@ -83,6 +83,7 @@ export default function ButtonLazorKitSignIn({
                 signature: new Uint8Array(64),
                 message: `Sign in to NextVibe via LazorKit.\nAddress: ${address}`,
                 username: `vibe_${address.slice(0, 6)}.lzr`,
+                isLazorkit: true,
             });
 
             if (backendResponse?.token) {
@@ -177,6 +178,7 @@ export default function ButtonLazorKitSignIn({
                     signature: new Uint8Array(64),
                     message: `Sign in to NextVibe via LazorKit.\nAddress: ${address}`,
                     username: `vibe_${address.slice(0, 6)}.lzr`,
+                    isLazorkit: true,
                 },
                 inviteCode
             );
