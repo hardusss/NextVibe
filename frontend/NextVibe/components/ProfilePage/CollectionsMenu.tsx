@@ -24,7 +24,7 @@ import CollectiblesModal, { CollectionItemData } from "./CollectiblesModal";
 import { storage } from "@/src/utils/storage";
 
 const screenWidth = Dimensions.get("window").width;
-const padding = 26;
+const padding = 20;
 const imageSize = (screenWidth - padding * 2) / 3;
 const ROW_HEIGHT = imageSize + 4;
 const POSTS_PER_PAGE = 9;
@@ -496,6 +496,7 @@ const CollectionsGallery = ({
                 removeClippedSubviews={Platform.OS === 'android'}
                 getItemLayout={ListHeaderComponent || ogAvatar ? undefined : getItemLayout}
                 contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
+                columnWrapperStyle={{ paddingHorizontal: 14 }}
                 ListHeaderComponent={
                     <>
                         {ListHeaderComponent}
@@ -546,7 +547,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 16,
-        marginHorizontal: 20,
+        marginHorizontal: 16,
         marginBottom: 16,
         padding: 14,
         borderRadius: 20,
