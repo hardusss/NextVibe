@@ -11,23 +11,25 @@ from rest_framework_simplejwt.tokens import RefreshToken
 class WalletSignInView(APIView):
     def post(self, request):
         wallet_address = request.data.get('wallet_address')
-        signature_list = request.data.get('signature') 
+        signature_list = request.data.get('signature')
         message = request.data.get('message')
         username = request.data.get('username')
+        is_lazorkit = request.data.get('is_lazorkit', False)
 
-        try:
-            pubkey_bytes = base58.b58decode(wallet_address)
-            verify_key = VerifyKey(pubkey_bytes)
+        if not is_lazorkit:
+            try:
+                pubkey_bytes = base58.b58decode(wallet_address)
+                verify_key = VerifyKey(pubkey_bytes)
 
-            signature_bytes = bytes(signature_list)
+                signature_bytes = bytes(signature_list)
 
-            verify_key.verify(message.encode('utf-8'), signature_bytes)
-            
-        except (BadSignatureError, ValueError, TypeError):
-            return Response(
-                {"error": "Invalid cryptographic signature. Nice try, hacker!"}, 
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+                verify_key.verify(message.encode('utf-8'), signature_bytes)
+
+            except (BadSignatureError, ValueError, TypeError):
+                return Response(
+                    {"error": "Invalid cryptographic signature. Nice try, hacker!"},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
 
 
         User = get_user_model()
