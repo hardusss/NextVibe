@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -10,6 +9,7 @@ import {
     Vibration,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronLeft, ShieldCheck, ShieldX, Nfc, Loader2 } from "lucide-react-native";
 import Animated, {
     FadeInDown,
@@ -29,6 +29,7 @@ type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error"
 
 export default function EventCheckinScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const isDark = useColorScheme() === "dark";
     const params = useLocalSearchParams<{ postId: string }>();
     const postId = params.postId ? parseInt(params.postId, 10) : null;
@@ -450,7 +451,7 @@ export default function EventCheckinScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+        <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
@@ -468,7 +469,7 @@ export default function EventCheckinScreen() {
             <View style={styles.main}>
                 {renderContent()}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
