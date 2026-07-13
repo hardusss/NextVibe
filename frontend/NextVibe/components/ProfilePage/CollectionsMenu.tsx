@@ -496,7 +496,6 @@ const CollectionsGallery = ({
                 removeClippedSubviews={Platform.OS === 'android'}
                 getItemLayout={ListHeaderComponent || ogAvatar ? undefined : getItemLayout}
                 contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
-                columnWrapperStyle={{ justifyContent: 'center' }}
                 ListHeaderComponent={
                     <>
                         {ListHeaderComponent}
