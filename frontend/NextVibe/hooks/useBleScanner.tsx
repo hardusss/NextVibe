@@ -273,9 +273,9 @@ export function useBleScanner() {
         if (!modalVisible) return null;
 
         // Custom titles and buttons
-        let modalTitle = "Знайдено посилання";
-        let message = "Бажаєте перейти за посиланням?";
-        let confirmLabel = "Перейти";
+        let modalTitle = "Link Found";
+        let message = "Would you like to open this link?";
+        let confirmLabel = "Open";
         let detailName = "";
         let avatarUrl: string | null = null;
         let isOfficial = false;
@@ -284,26 +284,26 @@ export function useBleScanner() {
 
         if (details) {
             if (details.type === 'profile') {
-                modalTitle = "Знайдено профіль";
+                modalTitle = "Profile Found";
                 detailName = details.data?.username ? `@${details.data.username}` : "";
                 avatarUrl = details.data?.avatar || details.data?.avatar_url || null;
                 isOfficial = !!details.data?.official;
-                message = "Бажаєте відвідати профіль користувача?";
-                confirmLabel = "Перейти";
+                message = "Would you like to visit this user's profile?";
+                confirmLabel = "Visit";
             } else if (details.type === 'checkin') {
-                modalTitle = "Реєстрація на подію";
-                detailName = details.data?.about || "Подія NextVibe";
-                message = "Бажаєте зареєструватися та відмітитися на події?";
-                confirmLabel = "Відмітитися";
+                modalTitle = "Event Check-in";
+                detailName = details.data?.about || "NextVibe Event";
+                message = "Would you like to register and check in to this event?";
+                confirmLabel = "Check In";
             } else if (details.type === 'networking') {
-                modalTitle = "Обмін контактами";
+                modalTitle = "Contact Exchange";
                 detailName = details.data?.username ? `@${details.data.username}` : "";
                 avatarUrl = details.data?.avatar || details.data?.avatar_url || null;
                 isOfficial = !!details.data?.official;
-                message = "Бажаєте підключитися та розпочати обмін контактами?";
-                confirmLabel = "З'єднатися";
+                message = "Would you like to connect and start exchanging contacts?";
+                confirmLabel = "Connect";
             } else if (details.type === 'error') {
-                message = "Не вдалося завантажити деталі. Бажаєте все одно перейти за посиланням?";
+                message = "Failed to load details. Would you like to open the link anyway?";
             }
         }
 
@@ -372,7 +372,7 @@ export function useBleScanner() {
                             {loadingDetail ? (
                                 <View style={styles.loadingContainer}>
                                     <ActivityIndicator size="small" color="#A855F7" />
-                                    <Text style={[styles.loadingText, subTextStyle]}>Завантаження деталей...</Text>
+                                    <Text style={[styles.loadingText, subTextStyle]}>Loading details...</Text>
                                 </View>
                             ) : (
                                 <View style={styles.detailContainer}>
@@ -403,7 +403,7 @@ export function useBleScanner() {
                                     onPress={handleDecline}
                                     activeOpacity={0.7}
                                 >
-                                    <Text style={[styles.cancelLabel, isDark ? styles.cancelLabelDark : styles.cancelLabelLight]}>Скасувати</Text>
+                                    <Text style={[styles.cancelLabel, isDark ? styles.cancelLabelDark : styles.cancelLabelLight]}>Cancel</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
