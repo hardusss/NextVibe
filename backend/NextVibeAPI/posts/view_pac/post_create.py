@@ -77,8 +77,8 @@ class PostViewSet(viewsets.ModelViewSet):
                         event_res = h3.get_resolution(event.h3_geo)
                         post_cell_at_event_res = h3.latlng_to_cell(lat, lng, event_res)
                         
-                        # Verify geolocation: post cell is same or adjacent to the event cell (grid distance <= 1)
-                        if h3.grid_distance(post_cell_at_event_res, event.h3_geo) <= 1:
+                        # Verify geolocation: post cell is same or adjacent to the event cell (grid distance <= 2 for GPS margin)
+                        if h3.grid_distance(post_cell_at_event_res, event.h3_geo) <= 2:
                             rep_points = 10
                             
                             # Mark post as created during the event and store reputation earned

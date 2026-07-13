@@ -15,7 +15,7 @@ import {
     BottomSheetBackdrop,
     BottomSheetBackdropProps,
     BottomSheetModal,
-    BottomSheetView,
+    BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "expo-blur";
 import { Calendar, MapPin, Link2 } from "lucide-react-native";
@@ -82,6 +82,7 @@ function formatLocation(location: LumaEventPreview["location"]): string | null {
 const AddLumaEventSheet = forwardRef<AddLumaEventSheetRef, Props>(({ onSaved }, ref) => {
     const isDark = useColorScheme() === "dark";
     const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const urlInputRef = useRef<TextInput>(null);
     const [link, setLink] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -291,6 +292,8 @@ const AddLumaEventSheet = forwardRef<AddLumaEventSheetRef, Props>(({ onSaved }, 
                 backgroundColor: isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.16)",
                 width: 36,
             }}
+            keyboardBehavior="interactive"
+            keyboardBlurBehavior="restore"
             onDismiss={() => {
                 setError(null);
                 setPreview(null);
@@ -301,51 +304,56 @@ const AddLumaEventSheet = forwardRef<AddLumaEventSheetRef, Props>(({ onSaved }, 
                 setEditedDescription("");
             }}
         >
-            <BottomSheetView style={[styles.container, { backgroundColor: bg }]}>
+            <BottomSheetScrollView
+                contentContainerStyle={{ flexGrow: 1, backgroundColor: bg }}
+                keyboardShouldPersistTaps="handled"
+            >
+                <Pressable onPress={Keyboard.dismiss} style={[styles.container, { flex: 1 }]}>
 
-                {/* ── Header ── */}
-                <View style={styles.header}>
-                    <View style={[styles.iconBadge, {
-                        backgroundColor: isDark ? "rgba(168,85,247,0.14)" : "rgba(168,85,247,0.12)",
-                        borderColor: border,
-                    }]}>
-                        <Link2 size={18} color={accent} strokeWidth={1.8} />
+                    {/* ── Header ── */}
+                    <View style={styles.header}>
+                        <View style={[styles.iconBadge, {
+                            backgroundColor: isDark ? "rgba(168,85,247,0.14)" : "rgba(168,85,247,0.12)",
+                            borderColor: border,
+                        }]}>
+                            <Link2 size={18} color={accent} strokeWidth={1.8} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.title, { color: main }]}>Add Luma event</Text>
+                            <Text style={[styles.subtitle, { color: muted }]}>
+                                Paste a link to your active Luma event.
+                            </Text>
+                        </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.title, { color: main }]}>Add Luma event</Text>
-                        <Text style={[styles.subtitle, { color: muted }]}>
-                            Paste a link to your active Luma event.
-                        </Text>
-                    </View>
-                </View>
 
-                {/* ── URL Input ── */}
-                <Pressable onPress={() => Keyboard.dismiss()}>
-                    <View style={[styles.inputWrap, { backgroundColor: inputBg, borderColor: border }]}>
-                        <TextInput
-                            value={link}
-                            onChangeText={(t) => {
-                                if (code) return;
-                                setLink(t);
-                                if (error) setError(null);
-                                setPreview(null);
-                                setCode(null);
-                                setVerified(null);
-                                setDescExpanded(false);
-                                setImageHeight(null);
-                                setEditedDescription("");
-                            }}
-                            placeholder="https://luma.com/your-event"
-                            placeholderTextColor={isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)"}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            keyboardType="url"
-                            returnKeyType="done"
-                            onSubmitEditing={loadPreview}
-                            style={[styles.input, { color: main }]}
-                        />
-                    </View>
-                </Pressable>
+                    {/* ── URL Input ── */}
+                    <Pressable onPress={() => urlInputRef.current?.focus()}>
+                        <View style={[styles.inputWrap, { backgroundColor: inputBg, borderColor: border }]}>
+                            <TextInput
+                                ref={urlInputRef}
+                                value={link}
+                                onChangeText={(t) => {
+                                    if (code) return;
+                                    setLink(t);
+                                    if (error) setError(null);
+                                    setPreview(null);
+                                    setCode(null);
+                                    setVerified(null);
+                                    setDescExpanded(false);
+                                    setImageHeight(null);
+                                    setEditedDescription("");
+                                }}
+                                placeholder="https://luma.com/your-event"
+                                placeholderTextColor={isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)"}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                keyboardType="url"
+                                returnKeyType="done"
+                                onSubmitEditing={loadPreview}
+                                style={[styles.input, { color: main }]}
+                            />
+                        </View>
+                    </Pressable>
 
                 {code ? (
                     <TouchableOpacity
@@ -534,7 +542,8 @@ const AddLumaEventSheet = forwardRef<AddLumaEventSheetRef, Props>(({ onSaved }, 
                         </Text>
                     </TouchableOpacity>
                 )}
-            </BottomSheetView>
+                </Pressable>
+            </BottomSheetScrollView>
         </BottomSheetModal>
     );
 });
