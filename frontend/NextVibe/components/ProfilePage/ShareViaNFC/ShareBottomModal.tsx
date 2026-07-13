@@ -141,6 +141,8 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
     const removeListenerRef = useRef<{ remove: () => void } | null>(null);
     const lastReadTimestamp = useRef<number>(0);
+    // Always holds the latest handleReadEvent — fixes stale closure in BLE listener
+    const handleReadEventRef = useRef<(source: 'BLE' | 'NFC') => void>(() => {});
 
     const glowAnimRef = useRef<Animated.CompositeAnimation | null>(null);
     const glowOpacity = useRef(new Animated.Value(0)).current;
@@ -211,10 +213,16 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
             lastReadTimestamp.current = now;
         }
 
-        if (__DEV__) console.log(`✅ ${source} read! Incrementing vibes.`);
-        setVibes(prev => prev + 1);
+        console.log(`[ShareModal] ${source} read — incrementing vibes counter`);
+        setVibes(prev => {
+            console.log(`[ShareModal] vibes: ${prev} -> ${prev + 1}`);
+            return prev + 1;
+        });
         triggerNeonGlow();
     };
+
+    // Sync ref on every render so the listener never captures a stale closure
+    handleReadEventRef.current = handleReadEvent;
 
     const startHceBroadcast = async () => {
         if (isBroadcasting) return;
@@ -222,10 +230,13 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
             const urlToShare = props.profileUrl || "https://nextvibe.io/u/39";
 
             if (Platform.OS === 'ios') {
-                // iOS: BLE read dedup is per-central per broadcast session (native layer)
-                removeListenerRef.current = addBleReadListener(() => handleReadEvent('BLE'));
+                // Listener always calls ref.current — never stale even after re-renders
+                removeListenerRef.current = addBleReadListener(() => {
+                    console.log('[ShareModal] RAW onBleRead event fired from native');
+                    handleReadEventRef.current('BLE');
+                });
                 startBroadcasting(urlToShare);
-                if (__DEV__) console.log("✅ BLE Broadcasting started with URL:", urlToShare);
+                if (__DEV__) console.log("✅ BLE Broadcasting started:", urlToShare);
             } else {
                 // Android: Use NFC HCE
                 lastReadTimestamp.current = 0;
