@@ -1,6 +1,6 @@
 import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export interface LumaEvent {
     is_luma_event: boolean;

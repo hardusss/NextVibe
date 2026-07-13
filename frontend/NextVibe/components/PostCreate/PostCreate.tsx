@@ -194,6 +194,7 @@ export default function PostCreate() {
         if (!mediaUrl) { Vibration.vibrate(FAIL_VIB); showToast('Add a photo to continue', false); return; }
         Vibration.vibrate(SUCCESS_VIB);
         createPost(caption, [mediaUrl], location, coords, resolution, false, comments);
+        router.dismissAll();
         router.replace('/profile');
     };
 
