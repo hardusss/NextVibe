@@ -147,7 +147,7 @@ class EventNFCConnectView(APIView):
                 lng = float(longitude)
                 event_res = h3.get_resolution(post.h3_geo)
                 user_cell = h3.latlng_to_cell(lat, lng, event_res)
-                if h3.grid_distance(user_cell, post.h3_geo) > 1:
+                if h3.grid_distance(user_cell, post.h3_geo) > 2:
                     return Response({"error": "You must be physically present at the event zone to network."}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 print(f"Error checking networking geolocation: {e}")
