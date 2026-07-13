@@ -152,11 +152,11 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
     var onReady: (() -> Void)?
     var onRead: (() -> Void)?
 
-    // Centrals that already triggered a read during this broadcast session.
-    private var readCentralIds: Set<UUID> = []
+    // Last read time per central UUID during this broadcast session
+    private var lastReadTimes: [UUID: Date] = [:]
 
     func resetBroadcastSession() {
-        readCentralIds.removeAll()
+        lastReadTimes.removeAll()
     }
 
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
@@ -180,10 +180,13 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
                 request.value = value.subdata(in: offset..<value.count)
                 peripheral.respond(to: request, withResult: .success)
 
-                // Once per broadcast session per central — ignore duplicate reads
+                // Permit reads from the same central identifier if at least 3 seconds have passed since its last read
                 let centralId = request.central.identifier
-                guard !readCentralIds.contains(centralId) else { return }
-                readCentralIds.insert(centralId)
+                let now = Date()
+                if let lastReadTime = lastReadTimes[centralId], now.timeIntervalSince(lastReadTime) < 3.0 {
+                    return
+                }
+                lastReadTimes[centralId] = now
 
                 DispatchQueue.main.async { [weak self] in
                     self?.onRead?()

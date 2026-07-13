@@ -123,7 +123,7 @@ const SHARED_SCREENS = [
 
 export default function RootLayout() {
     // Enable background-style foreground BLE scanning on iOS
-    useBleScanner();
+    const { renderBleScanModal } = useBleScanner();
 
     const [fontsLoaded, fontError] = useFonts({
         'Dank Mono': require('@/assets/fonts/PlusJakartaSans-VariableFont_wght.ttf'),
@@ -393,6 +393,7 @@ export default function RootLayout() {
                                     ))}
                                 </Stack>
                                 <PromoBanner />
+                                {renderBleScanModal()}
                             </WebSocketProvider>
                         </ErrorBoundary>
                     </LazorKitProvider>
