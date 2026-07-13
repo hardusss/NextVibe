@@ -485,45 +485,42 @@ const UserProfileView = () => {
                         </View>
                     )}
 
-                    {activeTab === "Posts" ? (
-                        <Animated.View style={{ flex: 1, opacity: postsOpacity, transform: [{ translateX: postsTranslate }] }}>
-                            <PostGallery
-                                key={`posts-${refreshKey}`}
-                                id={+id}
-                                previous={"user-profile"}
-                                ListHeaderComponent={profileHeader}
-                                ListEmptyComponent={
-                                    <EmptyState iconType="posts" title="No Posts Yet"
-                                        description="This user hasn't shared any moments yet."
-                                        colorScheme={isDark ? "dark" : "light"} />
-                                }
-                                refreshControl={refreshControl}
-                                contentInset={Platform.OS === 'ios' ? { top: insets.top } : undefined}
-                                contentOffset={Platform.OS === 'ios' ? { x: 0, y: -insets.top } : undefined}
-                                automaticallyAdjustContentInsets={false}
-                                contentInsetAdjustmentBehavior="never"
-                            />
-                        </Animated.View>
-                    ) : (
-                        <Animated.View style={{ flex: 1, opacity: cnftsOpacity, transform: [{ translateX: cnftsTranslate }] }}>
-                            <CollectionsGallery
-                                key={`collections-${refreshKey}`}
-                                id={+id}
-                                isOwnProfile={false}
-                                ListHeaderComponent={profileHeader}
-                                ListEmptyComponent={
-                                    <EmptyState iconType="cnfts" title="No cNFTs Yet"
-                                        description="This user hasn't collected or created any cNFTs yet."
-                                        colorScheme={isDark ? "dark" : "light"} />
-                                }
-                                refreshControl={refreshControl}
-                                contentInset={Platform.OS === 'ios' ? { top: insets.top } : undefined}
-                                contentOffset={Platform.OS === 'ios' ? { x: 0, y: -insets.top } : undefined}
-                                automaticallyAdjustContentInsets={false}
-                                contentInsetAdjustmentBehavior="never"
-                            />
-                        </Animated.View>
-                    )}
+                    <Animated.View style={{ flex: 1, opacity: postsOpacity, transform: [{ translateX: postsTranslate }], display: activeTab === 'Posts' ? 'flex' : 'none' }}>
+                        <PostGallery
+                            key={`posts-${refreshKey}`}
+                            id={+id}
+                            previous={"user-profile"}
+                            ListHeaderComponent={profileHeader}
+                            ListEmptyComponent={
+                                <EmptyState iconType="posts" title="No Posts Yet"
+                                    description="This user hasn't shared any moments yet."
+                                    colorScheme={isDark ? "dark" : "light"} />
+                            }
+                            refreshControl={refreshControl}
+                            contentInset={Platform.OS === 'ios' ? { top: insets.top } : undefined}
+                            contentOffset={Platform.OS === 'ios' ? { x: 0, y: -insets.top } : undefined}
+                            automaticallyAdjustContentInsets={false}
+                            contentInsetAdjustmentBehavior="never"
+                        />
+                    </Animated.View>
+                    <Animated.View style={{ flex: 1, opacity: cnftsOpacity, transform: [{ translateX: cnftsTranslate }], display: activeTab === 'cNFTs' ? 'flex' : 'none' }}>
+                        <CollectionsGallery
+                            key={`collections-${refreshKey}`}
+                            id={+id}
+                            isOwnProfile={false}
+                            ListHeaderComponent={profileHeader}
+                            ListEmptyComponent={
+                                <EmptyState iconType="cnfts" title="No cNFTs Yet"
+                                    description="This user hasn't collected or created any cNFTs yet."
+                                    colorScheme={isDark ? "dark" : "light"} />
+                            }
+                            refreshControl={refreshControl}
+                            contentInset={Platform.OS === 'ios' ? { top: insets.top } : undefined}
+                            contentOffset={Platform.OS === 'ios' ? { x: 0, y: -insets.top } : undefined}
+                            automaticallyAdjustContentInsets={false}
+                            contentInsetAdjustmentBehavior="never"
+                        />
+                    </Animated.View>
 
             {/* Fixed iOS Top Bar with safe area top inset */}
             {Platform.OS === 'ios' && (
