@@ -24,13 +24,7 @@ import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import { Star, Camera, Layers, Calendar } from "lucide-react-native";
-import AnimatedReanimated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
-    withSpring,
-} from 'react-native-reanimated';
-import { FadeIn } from '@/components/Shared/motion';
+
 import getUserDetail from "@/src/api/user.detail";
 import { storage } from '@/src/utils/storage';
 import formatNumber from "@/src/utils/formatNumber";
@@ -180,10 +174,10 @@ const ProfileView = () => {
         });
     }, []);
 
-    const postsOpacity = useSharedValue(1);
-    const postsTranslate = useSharedValue(0);
-    const cnftsOpacity = useSharedValue(0);
-    const cnftsTranslate = useSharedValue(40);
+    const postsOpacity = useRef(new Animated.Value(1)).current;
+    const postsTranslateX = useRef(new Animated.Value(0)).current;
+    const cnftsOpacity = useRef(new Animated.Value(0)).current;
+    const cnftsTranslateX = useRef(new Animated.Value(40)).current;
     const prevTabRef = useRef<Tab>("Posts");
 
     const colorScheme = useColorScheme();
@@ -198,21 +192,27 @@ const ProfileView = () => {
         const goingRight = to === "cNFTs";
 
         if (goingRight) {
-            postsOpacity.value = withTiming(0, { duration: 160 });
-            postsTranslate.value = withTiming(-40, { duration: 160 });
-
-            cnftsTranslate.value = 40;
-            cnftsOpacity.value = 0;
-            cnftsOpacity.value = withTiming(1, { duration: 220 });
-            cnftsTranslate.value = withSpring(0, { damping: 15, stiffness: 100 });
+            Animated.parallel([
+                Animated.timing(postsOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+                Animated.timing(postsTranslateX, { toValue: -40, duration: 160, useNativeDriver: true }),
+            ]).start();
+            cnftsTranslateX.setValue(40);
+            cnftsOpacity.setValue(0);
+            Animated.parallel([
+                Animated.timing(cnftsOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+                Animated.spring(cnftsTranslateX, { toValue: 0, damping: 15, stiffness: 100, useNativeDriver: true }),
+            ]).start();
         } else {
-            cnftsOpacity.value = withTiming(0, { duration: 160 });
-            cnftsTranslate.value = withTiming(40, { duration: 160 });
-
-            postsTranslate.value = -40;
-            postsOpacity.value = 0;
-            postsOpacity.value = withTiming(1, { duration: 220 });
-            postsTranslate.value = withSpring(0, { damping: 15, stiffness: 100 });
+            Animated.parallel([
+                Animated.timing(cnftsOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+                Animated.timing(cnftsTranslateX, { toValue: 40, duration: 160, useNativeDriver: true }),
+            ]).start();
+            postsTranslateX.setValue(-40);
+            postsOpacity.setValue(0);
+            Animated.parallel([
+                Animated.timing(postsOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+                Animated.spring(postsTranslateX, { toValue: 0, damping: 15, stiffness: 100, useNativeDriver: true }),
+            ]).start();
         }
     };
 
@@ -222,15 +222,15 @@ const ProfileView = () => {
         setActiveTab(tab);
     };
 
-    const postsAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: postsOpacity.value,
-        transform: [{ translateX: postsTranslate.value }],
-    }));
+    const postsAnimatedStyle = {
+        opacity: postsOpacity,
+        transform: [{ translateX: postsTranslateX }],
+    };
 
-    const cnftsAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: cnftsOpacity.value,
-        transform: [{ translateX: cnftsTranslate.value }],
-    }));
+    const cnftsAnimatedStyle = {
+        opacity: cnftsOpacity,
+        transform: [{ translateX: cnftsTranslateX }],
+    };
 
     useEffect(() => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -341,8 +341,7 @@ const ProfileView = () => {
                 </TouchableOpacity>
             </Modal>
 
-            <FadeIn from="top" duration={400} delay={50}>
-                <View style={st.headerContainer}>
+            <View style={st.headerContainer}>
                     {userData.avatar_url && (
                         <>
                             <Image
@@ -369,7 +368,6 @@ const ProfileView = () => {
                         <ButtonWallet />
                     </View>
                 </View>
-            </FadeIn>
 
             <View style={{ paddingHorizontal: 16 }}>
                 <TouchableOpacity
@@ -527,44 +525,45 @@ const ProfileView = () => {
                         <Text style={{ color: '#fff', fontFamily: 'Dank Mono Bold', fontSize: 14 }}>Tap to Retry</Text>
                     </TouchableOpacity>
                 </View>
-            ) : activeTab === "Posts" ? (
-                <AnimatedReanimated.View style={[postsAnimatedStyle, { flex: 1 }]}>
-                    {interactionsFinished ? (
-                        <PostGallery
-                            key={`posts-${refreshKey}`}
-                            id={id as number}
-                            previous="profile"
-                            ListHeaderComponent={profileHeader}
-                            ListEmptyComponent={
-                                <EmptyState Icon={Camera} title="No Posts Yet"
-                                    description="Start sharing your moments to make your profile more engaging."
-                                    colorScheme={isDark ? "dark" : "light"} />
-                            }
-                            refreshControl={refreshControl}
-                        />
-                    ) : (
-                        <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
-                    )}
-                </AnimatedReanimated.View>
             ) : (
-                <AnimatedReanimated.View style={[cnftsAnimatedStyle, { flex: 1 }]}>
-                    {interactionsFinished ? (
-                        <CollectionsGallery
-                            key={`collections-${refreshKey}`}
-                            id={id as number}
-                            isOwnProfile={true}
-                            ListHeaderComponent={profileHeader}
-                            ListEmptyComponent={
-                                <EmptyState Icon={Layers} title="No cNFTs Yet"
-                                    description="Your collected and created cNFTs will appear here."
-                                    colorScheme={isDark ? "dark" : "light"} />
-                            }
-                            refreshControl={refreshControl}
-                        />
-                    ) : (
-                        <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
-                    )}
-                </AnimatedReanimated.View>
+                <>
+                    <Animated.View style={[postsAnimatedStyle, { flex: 1, display: activeTab === 'Posts' ? 'flex' : 'none' }]}>
+                        {interactionsFinished ? (
+                            <PostGallery
+                                key={`posts-${refreshKey}`}
+                                id={id as number}
+                                previous="profile"
+                                ListHeaderComponent={profileHeader}
+                                ListEmptyComponent={
+                                    <EmptyState Icon={Camera} title="No Posts Yet"
+                                        description="Start sharing your moments to make your profile more engaging."
+                                        colorScheme={isDark ? "dark" : "light"} />
+                                }
+                                refreshControl={refreshControl}
+                            />
+                        ) : (
+                            <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
+                        )}
+                    </Animated.View>
+                    <Animated.View style={[cnftsAnimatedStyle, { flex: 1, display: activeTab === 'cNFTs' ? 'flex' : 'none' }]}>
+                        {interactionsFinished ? (
+                            <CollectionsGallery
+                                key={`collections-${refreshKey}`}
+                                id={id as number}
+                                isOwnProfile={true}
+                                ListHeaderComponent={profileHeader}
+                                ListEmptyComponent={
+                                    <EmptyState Icon={Layers} title="No cNFTs Yet"
+                                        description="Your collected and created cNFTs will appear here."
+                                        colorScheme={isDark ? "dark" : "light"} />
+                                }
+                                refreshControl={refreshControl}
+                            />
+                        ) : (
+                            <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
+                        )}
+                    </Animated.View>
+                </>
             )}
 
             {/* Bottom sheets */}

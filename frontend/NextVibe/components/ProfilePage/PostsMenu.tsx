@@ -509,6 +509,7 @@ const PostGallery = ({
                 removeClippedSubviews={Platform.OS === 'android'}
                 getItemLayout={ListHeaderComponent ? undefined : getItemLayout}
                 contentContainerStyle={{ flexGrow: 1, paddingBottom: 250 }}
+                columnWrapperStyle={{ justifyContent: 'center' }}
                 ListHeaderComponent={ListHeaderComponent}
                 ListEmptyComponent={loading ? <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} /> : ListEmptyComponent}
                 renderItem={renderItem}
