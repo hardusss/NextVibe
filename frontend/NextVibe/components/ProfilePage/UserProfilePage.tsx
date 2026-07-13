@@ -688,6 +688,7 @@ const st = StyleSheet.create({
         includeFontPadding: false,
     },
     tabBar: {
+        marginTop: 20,
         marginBottom: 20,
         flexDirection: 'row',
         borderRadius: 16,
