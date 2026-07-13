@@ -236,7 +236,7 @@ export default function EventCheckinScreen() {
                             <Image
                                 source={{ uri: postImage }}
                                 style={styles.eventPhoto}
-                                contentFit="cover"
+                                contentFit="contain"
                             />
                         ) : (
                             <View style={[styles.iconCircle, {
