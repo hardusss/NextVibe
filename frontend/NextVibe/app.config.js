@@ -127,7 +127,7 @@ export default {
                         usesCleartextTraffic: true,
                         enableProguardInReleaseBuilds: true,
                         enableShrinkResourcesInReleaseBuilds: true,
-                        extraProguardRules: "-dontwarn javazoom.jl.**\n-dontwarn java.applet.**\n-keep class com.swmansion.rnscreens.** { *; }\n-keepclassmembers class com.swmansion.rnscreens.** { *; }"
+                        extraProguardRules: "-dontwarn javazoom.jl.**\n-dontwarn java.applet.**\n-keep class com.swmansion.rnscreens.** { *; }\n-keepclassmembers class com.swmansion.rnscreens.** { *; }\n-dontwarn com.google.firebase.ktx.**\n-dontwarn com.google.firebase.**.ktx.**"
                     }
                 }
             ],
