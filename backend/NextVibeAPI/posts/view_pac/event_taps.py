@@ -77,7 +77,7 @@ class EventTapsView(APIView):
                 })
 
         # 2. Process Networking (group mutual scanner/scanned pairs to avoid duplicate map markers)
-        networking_reps = [r for r in reps if not r.is_checkin]
+        networking_reps = [r for r in reps if not r.is_checkin and not r.post_id]
         net_groups = {}
         for rep in networking_reps:
             # Create a unique key for the user pair

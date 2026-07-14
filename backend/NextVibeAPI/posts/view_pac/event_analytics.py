@@ -37,7 +37,7 @@ class EventAnalyticsView(APIView):
             nfc_checkins = EventCheckin.objects.filter(post=post, is_registered=True).count()
 
             # 3. Total IRL taps (NFC Networking)
-            networking_records_count = Reputation.objects.filter(event=post, is_checkin=False).count()
+            networking_records_count = Reputation.objects.filter(event=post, is_checkin=False, post__isnull=True).count()
             total_irl_taps = networking_records_count // 2
 
             # 4. Total reputation earned at this event
@@ -99,7 +99,7 @@ class EventAnalyticsView(APIView):
                 if rep.is_checkin:
                     hourly_map[hour_str]["checkins"] += 1
                     hourly_map[hour_str]["total"] += 1
-                else:
+                elif not rep.post_id:
                     # Guard against missing given_by in legacy data
                     if rep.user_id and rep.given_by_id:
                         user_ids = sorted([rep.user_id, rep.given_by_id])
@@ -224,7 +224,7 @@ class EventSocialGraphView(APIView):
 
             for rep in reps:
                 user_rep[rep.user.user_id] += rep.points
-                if not rep.is_checkin:
+                if not rep.is_checkin and not rep.post_id:
                     # Guard against missing foreign keys
                     if rep.user_id and rep.given_by_id:
                         u1 = min(rep.user.user_id, rep.given_by_id)
