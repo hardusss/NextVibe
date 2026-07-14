@@ -12,7 +12,8 @@ from .view_pac import (
     LumaEventPreviewView, LumaEventVerifyView,
     EventRequestCreateView, EventRequestListView, EventRequestActionView, EventAttendeesView,
     EventCheckinView, EventCheckinListView, UserEventConnectionsView, ClaimEventNftView, EventNFCConnectView,
-    EventAnalyticsView, EventTopUsersView, EventUpdateView, EventTapsView, EventSocialGraphView, EventBroadcastView
+    EventAnalyticsView, EventTopUsersView, EventUpdateView, EventTapsView, EventSocialGraphView, EventBroadcastView,
+    EventPostsView
     )
 from rest_framework.routers import DefaultRouter
 
@@ -59,5 +60,6 @@ urlpatterns = [
     path("event-taps/<int:post_id>/", EventTapsView.as_view(), name="event_taps"),
     path("event-social-graph/<int:post_id>/", EventSocialGraphView.as_view(), name="event_social_graph"),
     path("event-broadcast/<int:post_id>/", EventBroadcastView.as_view(), name="event_broadcast"),
+    path("event-posts/<int:post_id>/", EventPostsView.as_view(), name="event_posts"),
 ]
 
