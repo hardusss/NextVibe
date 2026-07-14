@@ -243,14 +243,14 @@ class EventSocialGraphView(APIView):
                     else:
                         avatar_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{raw}"
 
-                connections_count = len(user_connections[user.user_id])
                 nodes.append({
                     "id": user.user_id,
                     "label": user.username,
                     "avatar": avatar_url,
                     "connections_count": connections_count,
                     "reputation_earned": user_rep[user.user_id],
-                    "is_super_connector": connections_count >= 3
+                    "is_super_connector": connections_count >= 3,
+                    "is_organizer": user.user_id == post.owner_id
                 })
 
             edges = []
