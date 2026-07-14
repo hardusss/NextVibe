@@ -42,6 +42,7 @@ class UserEventConnectionsView(APIView):
             peer_reps = Reputation.objects.filter(
                 event=post,
                 is_checkin=False,
+                post__isnull=True
             ).filter(
                 Q(user=target_user) | Q(given_by=target_user)
             ).select_related('user', 'given_by')
