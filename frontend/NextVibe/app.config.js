@@ -30,7 +30,7 @@ export default {
             associatedDomains: ["applinks:nextvibe.io"]
         },
         android: {
-            versionCode: 4,
+            versionCode: 5,
             jsEngine: "hermes",
             softwareKeyboardLayoutMode: "resize",
             adaptiveIcon: {
