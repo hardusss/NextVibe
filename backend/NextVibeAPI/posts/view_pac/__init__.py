@@ -26,5 +26,6 @@ from .event_connections import UserEventConnectionsView, EventNFCConnectView
 from .event_analytics import EventAnalyticsView, EventTopUsersView, EventSocialGraphView, EventBroadcastView
 from .event_update import EventUpdateView
 from .event_taps import EventTapsView
+from .event_posts import EventPostsView
 
 
