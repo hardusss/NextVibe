@@ -132,3 +132,47 @@ class DeleteChatView(APIView):
             return Response({'message': 'Chat deleted successfully'}, status=200)
         except Chat.DoesNotExist:
             return Response({'error': 'Chat not found'}, status=404)
+
+class CherryEmbedTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import jwt
+        import uuid
+        import datetime
+        from django.conf import settings
+
+        try:
+            wallet_address = request.data.get('walletAddress')
+            if not wallet_address:
+                return Response({'error': 'walletAddress is required'}, status=400)
+
+            # Authenticate: only issue a token for the logged-in user's wallet
+            user_wallet = request.user.wallet_address
+            if not user_wallet or user_wallet.lower() != wallet_address.lower():
+                return Response({'error': 'Unauthorized wallet address'}, status=403)
+
+            app_id = getattr(settings, 'CHERRY_APP_ID', '16e14376-0fce-4536-8891-754fd8fb5748')
+            app_secret = getattr(settings, 'CHERRY_APP_SECRET', None)
+
+            if not app_secret:
+                logger.error("CHERRY_APP_SECRET is not configured on the backend settings.")
+                return Response({'error': 'Server configuration error'}, status=500)
+
+            now = datetime.datetime.utcnow()
+            payload = {
+                'sub': wallet_address,
+                'app_id': app_id,
+                'exp': now + datetime.timedelta(minutes=5),
+                'jti': str(uuid.uuid4())
+            }
+            token = jwt.encode(payload, app_secret, algorithm='HS256')
+
+            if isinstance(token, bytes):
+                token = token.decode('utf-8')
+
+            return Response({'token': token}, status=200)
+        except Exception as e:
+            logger.error(f"Error in CherryEmbedTokenView: {str(e)}")
+            return Response({'error': str(e)}, status=500)
+
