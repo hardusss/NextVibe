@@ -306,3 +306,8 @@ HELIUS_API_KEY = os.getenv("HELIUS_API_KEY", "")
 # Transaction indexer microservice
 INDEXER_URL = os.getenv("INDEXER_URL", "http://localhost:3000")
 INDEXER_INTERNAL_SECRET = os.getenv("INDEXER_INTERNAL_SECRET", "")
+
+# Cherry Chat
+CHERRY_APP_ID = os.getenv("CHERRY_APP_ID", "16e14376-0fce-4536-8891-754fd8fb5748")
+CHERRY_APP_SECRET = os.getenv("CHERRY_APP_SECRET", "")
+
