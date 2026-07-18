@@ -239,6 +239,29 @@ const UserProfileView = () => {
         }));
     };
 
+    const handleMessagePress = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        try {
+            const res = await CreateChat(+id);
+            if (res?.chat_id) {
+                router.push({
+                    pathname: "/chat-room",
+                    params: { id: res.chat_id, userId: id }
+                });
+            }
+        } catch (error: any) {
+            const existingChatId = error?.response?.data?.existing_chat_id;
+            if (existingChatId) {
+                router.push({
+                    pathname: "/chat-room",
+                    params: { id: existingChatId, userId: id }
+                });
+            } else {
+                console.error("Failed to start chat:", error);
+            }
+        }
+    };
+
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         clearPostsCache();
@@ -410,11 +433,25 @@ const UserProfileView = () => {
 
                 <View style={[st.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
 
-                <View style={{ marginBottom: 12 }}>
-                    <ButtonSubscribe
-                        isSubscribed={userData.is_subscribed}
-                        onPress={handleSubscribe}
-                    />
+                <View style={st.actionRow}>
+                    <View style={{ flex: 1 }}>
+                        <ButtonSubscribe
+                            isSubscribed={userData.is_subscribed}
+                            onPress={handleSubscribe}
+                        />
+                    </View>
+                    <TouchableOpacity
+                        activeOpacity={0.84}
+                        style={[st.messageBtn, {
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                        }]}
+                        onPress={handleMessagePress}
+                    >
+                        <Text style={[st.messageBtnText, { color: isDark ? '#fff' : '#000' }]}>
+                            Message
+                        </Text>
+                    </TouchableOpacity>
                 </View>
 
                 <RecommendedUsers key={`recommended-${refreshKey}`} />
@@ -674,6 +711,24 @@ const st = StyleSheet.create({
         height: 1,
         marginHorizontal: 40,
         marginBottom: 16,
+    },
+    actionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 12,
+    },
+    messageBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        alignItems: 'center',
+    },
+    messageBtnText: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 14,
+        includeFontPadding: false,
     },
     subscribeBtn: {
         paddingVertical: 12,
