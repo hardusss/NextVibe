@@ -168,11 +168,11 @@ class CherryEmbedTokenView(APIView):
                 logger.error("CHERRY_APP_SECRET is not configured on the backend settings.")
                 return Response({'error': 'Server configuration error'}, status=500)
 
-            now = datetime.datetime.utcnow()
+            import time
             payload = {
                 'sub': wallet_address,
                 'app_id': app_id,
-                'exp': now + datetime.timedelta(minutes=5),
+                'exp': int(time.time()) + 300,
                 'jti': str(uuid.uuid4())
             }
             token = jwt.encode(payload, app_secret, algorithm='HS256')
