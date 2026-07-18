@@ -1,591 +1,265 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
-  FlatList,
-  TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  useColorScheme,
-  StyleSheet,
-  Image,
   ActivityIndicator,
   Text,
-  ScrollView,
-  StatusBar
+  StyleSheet,
+  StatusBar,
+  Platform,
+  useColorScheme
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, X, Camera, Send } from 'lucide-react-native';
-import { Image as ExpoImage } from 'expo-image';
-import EmptyState from '../Shared/EmptyState';
-import * as ImagePicker from 'expo-image-picker';
-import ChatBubble from './ChatBubble';
+import { ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getMessages, sendWebSocketMessage, notifyEnterChat } from '@/src/api/chat';
-import WebSocketService from '@/src/services/WebSocketService';
-import getUserDetail from '@/src/api/user.detail';
-import MediaPickerModal from './MediaPickerModal';
+import useWalletAddress from '@/hooks/useWalletAddress';
+import { CherryChatWebView } from './CherryChatWebView';
+import { buildCherryHostHtml } from './cherryHostHtml';
+import axios from 'axios';
 import { storage } from '@/src/utils/storage';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import VerifyBadge from '../VerifyBadge';
+import GetApiUrl from '@/src/utils/url_api';
 
-interface MediaAttachment {
-  id: number;
-  file_url: string | null;
+// Dynamically load useMobileWallet to avoid static import issues on iOS
+let useMobileWallet: any;
+try {
+  if (Platform.OS === 'android') {
+    useMobileWallet = require('@wallet-ui/react-native-web3js/dist/index.native.mjs').useMobileWallet;
+  }
+} catch (e) {
+  console.warn("Failed to load useMobileWallet dynamically:", e);
 }
 
-interface Message {
-  message_id: number | string;
-  content: string;
-  sender_id: number;
-  created_at: string;
-  is_read: boolean;
-  media: MediaAttachment[];
-}
-
-interface UserDetails {
-  user_id: number;
-  username: string;
-  avatar: string;
-  created_at: string;
-  readers_count: number;
-  post_count: number;
-  official: boolean;
-}
+const formatToUuid = (id: string | number | undefined): string => {
+  if (!id) return '68a27a2f-f26b-4a84-b8d6-55be5cb86122';
+  const strId = String(id);
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(strId)) {
+    return strId;
+  }
+  const num = parseInt(strId, 10);
+  if (isNaN(num)) {
+    return '68a27a2f-f26b-4a84-b8d6-55be5cb86122';
+  }
+  const hex = num.toString(16);
+  const padded = hex.padStart(12, '0');
+  return `00000000-0000-0000-0000-${padded}`;
+};
 
 export default function ChatScreen() {
-  const { id, userId } = useLocalSearchParams();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [selectedMedia, setSelectedMedia] = useState<any[]>([]);
-  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
-  const [isMediaPickerVisible, setIsMediaPickerVisible] = useState(false);
-  const [userDetailsLoading, setUserDetailsLoading] = useState(true);
-  const [userIdState, setUserIdState] = useState<number | null>(null);
-  const [lastMessageId, setLastMessageId] = useState<number | undefined>(undefined);
-  const flatListRef = useRef<FlatList>(null);
-  const isDark = useColorScheme() === 'dark';
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const styles = getStyles(isDark, insets);
+  const isDark = useColorScheme() === 'dark';
+  
+  const { address: walletAddress, walletType } = useWalletAddress();
+  const mwa = useMobileWallet ? useMobileWallet() : null;
+  
+  const [token, setToken] = useState<string | null>(null);
+  const [cherryRoomId, setCherryRoomId] = useState<string | null>(null);
+  const [loadingToken, setLoadingToken] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const fetchMessages = async (loadMore = false) => {
-    if (loading || (!hasMore && loadMore)) return;
+  const { id } = useLocalSearchParams();
+  const chatId = Array.isArray(id) ? id[0] : id;
 
-    setLoading(true);
-
+  const fetchToken = async (addr: string) => {
+    setLoadingToken(true);
+    setErrorMsg(null);
     try {
-      const response = await getMessages(+id, loadMore ? lastMessageId : undefined);
-      const newMessages = response;
-
-      if (loadMore) {
-        setMessages(prev => [...prev, ...newMessages]);
+      const apiToken = await storage.getItem('access');
+      const response = await axios.post(`${GetApiUrl()}/chat/cherry-embed-token/`, {
+        walletAddress: addr,
+        chatId: chatId ? parseInt(chatId, 10) : undefined
+      }, {
+        headers: {
+          Authorization: `Bearer ${apiToken}`
+        }
+      });
+      if (response.data?.token) {
+        setToken(response.data.token);
+        setCherryRoomId(response.data.roomId || '68a27a2f-f26b-4a84-b8d6-55be5cb86122');
       } else {
-        setMessages(newMessages);
+        setErrorMsg("Failed to retrieve chat token");
       }
-
-      setHasMore(newMessages.length > 0);
-      if (newMessages.length > 0) {
-        setLastMessageId(newMessages[newMessages.length - 1].message_id);
-      }
-    } catch (error) {
-      console.error('Error fetching messages:', error);
+    } catch (error: any) {
+      console.error('Error fetching cherry embed token:', error);
+      setErrorMsg(error?.response?.data?.error || "Error authenticating chat session");
     } finally {
-      setLoading(false);
+      setLoadingToken(false);
     }
   };
 
-  const fetchUserId = async () => {
-    const id_ = await storage.getItem('id');
-    setUserIdState(Number(id_));
-  };
-
   useEffect(() => {
-    fetchUserId();
-  }, []);
+    if (walletAddress) {
+      fetchToken(walletAddress);
+    }
+  }, [walletAddress, chatId]);
 
-  const fetchUserDetails = async () => {
-    if (userId) {
-      setUserDetailsLoading(true);
+  const onSign = async (messageBytes: Uint8Array): Promise<Uint8Array> => {
+    if (walletType === 'mwa' && mwa) {
       try {
-        const details = await getUserDetail(+userId);
-        setUserDetails(details || {
-          username: 'User',
-          avatar: '',
-          created_at: new Date().toISOString(),
-          readers_count: 0,
-          post_count: 0,
-          official: false,
-          user_id: +userId
-        });
-      } catch (error) {
-        console.error('Error fetching user details:', error);
-      } finally {
-        setUserDetailsLoading(false);
+        const signature = await mwa.signMessage(messageBytes);
+        if (!signature) {
+          throw new Error("Signing rejected by wallet");
+        }
+        // Slice the last 64 bytes if the signature is appended to the message
+        return signature.length > 64 ? signature.slice(-64) : signature;
+      } catch (err: any) {
+        console.error("MWA signing error:", err);
+        throw err;
       }
     }
+    
+    // For LazorKit, fallback to a dummy signature
+    return new Uint8Array(64);
   };
 
-  const pickMedia = async () => {
-    setIsMediaPickerVisible(true);
+  const onWalletConnectRequested = () => {
+    // Redirect to the wallet introduction/selection screen
+    router.push('/wallet-select');
   };
 
-  const handleCameraPress = async () => {
-    setIsMediaPickerVisible(false);
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  const hostHtml = buildCherryHostHtml({
+    sdkUrl: 'https://embed.cherry.fun/cherry-embed.js'
+  });
 
-    if (status !== 'granted') {
-      alert('Sorry, we need camera permissions to make this work!');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 1,
-      allowsEditing: true,
-    });
-
-    if (!result.canceled) {
-      setSelectedMedia(prev => [...prev, ...result.assets]);
-    }
+  const config = {
+    appId: '16e14376-0fce-4536-8891-754fd8fb5748',
+    roomId: cherryRoomId || '68a27a2f-f26b-4a84-b8d6-55be5cb86122',
+    mode: 'single' as const,
+    theme: { mode: 'dark', primaryColor: '#613583' },
+    token: token || undefined,
+    walletAddress: walletAddress || undefined,
+    embedUrl: 'https://embed.cherry.fun'
   };
-
-  const handleGalleryPress = async () => {
-    setIsMediaPickerVisible(false);
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      alert('Sorry, we need gallery permissions to make this work!');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 1,
-      allowsMultipleSelection: true,
-    });
-
-    if (!result.canceled) {
-      setSelectedMedia(prev => [...prev, ...result.assets]);
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!text.trim() && selectedMedia.length === 0) return;
-
-    const tempMessage: Message = {
-      message_id: Date.now(),
-      content: text.trim(),
-      sender_id: userIdState!,
-      created_at: new Date().toISOString(),
-      is_read: false,
-      media: selectedMedia.map((media, index) => ({
-        id: Date.now() + index,
-        file_url: media.uri
-      }))
-    };
-
-    setMessages(prev => [tempMessage, ...prev]);
-
-    const messageText = text.trim();
-    const mediaToSend = [...selectedMedia];
-
-    setText('');
-    setSelectedMedia([]);
-
-    await sendWebSocketMessage(+id, messageText, mediaToSend);
-  };
-
-  // WebSocket listener
-  useEffect(() => {
-    if (!userIdState) return;
-
-    const handleWebSocketMessage = (data: any) => {
-      // Only fot messages this chat
-      if (data.chat_id !== +id) return;
-
-      // New message from other user
-      else if (data.message_id && data.sender_id !== userIdState) {
-        setMessages(prev => {
-          const exists = prev.some(msg => msg.message_id === data.message_id);
-          if (exists) return prev;
-
-          return [{
-            message_id: data.message_id,
-            sender_id: data.sender_id,
-            content: data.content,
-            created_at: data.created_at,
-            is_read: false,
-            media: data.media || []
-          }, ...prev];
-        });
-      }
-    };
-
-    const unsubscribe = WebSocketService.addListener(handleWebSocketMessage);
-    return () => unsubscribe();
-  }, [userIdState, id]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchUserDetails();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (id) {
-      fetchMessages();
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (userIdState && id) {
-      notifyEnterChat(+id);
-    }
-  }, [userIdState, id]);
-
-
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'android' ? 60 : 0}
-      style={styles.container}
-    >
+    <View style={[styles.container, { backgroundColor: isDark ? '#0A0410' : '#fff' }]}>
       <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"} />
-      <View style={{ flex: 1 }}>
-        <View style={styles.navbar}>
-          <TouchableOpacity
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            style={styles.userInfo}
-            onPress={() => router.push({
-              pathname: "/user-profile",
-              params: { id: userDetails?.user_id, last_page: `/chat-room?id=${id}` }
-            })}
-          >
-            <ExpoImage
-              source={{
-                uri: userDetails?.avatar
-                  ? `${userDetails.avatar}`
-                  : `https://media.nextvibe.io/images/default.png`
-              }}
-              style={styles.headerAvatar}
-            />
-            <View style={{ flexDirection: "row", "alignItems": "center" }}>
-              <Text style={[styles.headerUsername, { color: isDark ? "white" : "black" }]}>{userDetails?.username}</Text>
-              {userDetails?.official ? (
-                <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={false} size={24} />
-              ) : null}
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.rightPlaceholder} />
+      <View style={[styles.navbar, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
+        </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <Text style={[styles.title, { color: isDark ? '#fff' : '#000' }]}>Chat Room</Text>
         </View>
-
-        {loading && messages.length === 0 ? (
-          <ActivityIndicator style={styles.loading} color="#00CED1" />
-        ) : messages.length === 0 ? (
-          <EmptyState
-            title="Start messaging!"
-            subtitle={`Send a friendly hello to ${userDetails?.username || ''}`}
-            animation="code"
-          />
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            inverted
-            renderItem={({ item }) => (
-              <ChatBubble message={item} />
-            )}
-            keyExtractor={item => item.message_id.toString()}
-            onEndReached={() => fetchMessages(true)}
-            onEndReachedThreshold={0.6}
-            style={styles.messagesList}
-            contentContainerStyle={{ flexGrow: 1 }}
-            showsVerticalScrollIndicator={false}
-            removeClippedSubviews
-            maxToRenderPerBatch={12}
-            windowSize={9}
-            initialNumToRender={16}
-          />
-        )}
-
-        <View style={[styles.inputContainer, Platform.OS === 'android' && { paddingBottom: 10 }]}>
-          <View style={styles.mediaInputRow}>
-            {selectedMedia.length > 0 && (
-              <ScrollView
-                horizontal
-                style={styles.previewList}
-                showsHorizontalScrollIndicator={false}
-              >
-                {selectedMedia.map((media, index) => (
-                  <View key={index} style={styles.previewContainer}>
-                    <Image source={{ uri: media.uri }} style={styles.previewImage} />
-                    <TouchableOpacity
-                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                      style={styles.removeButton}
-                      onPress={() => setSelectedMedia(prev =>
-                        prev.filter((_, i) => i !== index)
-                      )}
-                    >
-                      <X size={16} color="#ffffff" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-
-          <View style={styles.inputRow}>
-            <BlurView
-              intensity={isDark ? 30 : 90}
-              tint={isDark ? 'dark' : 'light'}
-              style={styles.blurViewAbsolute}
-            />
-            <TouchableOpacity
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              onPress={pickMedia}
-              style={styles.mediaButton}
-            >
-              <Camera
-                size={24}
-                color={isDark ? '#A09CB8' : '#333'}
-              />
-            </TouchableOpacity>
-
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              placeholder="Message..."
-              placeholderTextColor={isDark ? '#666' : '#999'}
-              style={[styles.inputField, { color: isDark ? '#fff' : '#000' }]}
-              multiline
-            />
-
-            <TouchableOpacity
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              onPress={sendMessage}
-              style={[styles.sendButton, !text.trim() && !selectedMedia.length && styles.sendButtonDisabled]}
-              disabled={!text.trim() && !selectedMedia.length}
-            >
-              <LinearGradient
-                colors={['#A78BFA', '#5856D6']}
-                style={styles.sendButtonGradient}
-              />
-              <Send size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <View style={styles.rightPlaceholder} />
       </View>
 
-      <MediaPickerModal
-        visible={isMediaPickerVisible}
-        onClose={() => setIsMediaPickerVisible(false)}
-        onCameraPress={handleCameraPress}
-        onGalleryPress={handleGalleryPress}
-      />
-    </KeyboardAvoidingView>
+      {!walletAddress ? (
+        <View style={styles.center}>
+          <Text style={[styles.infoText, { color: isDark ? '#aaa' : '#666' }]}>
+            Please connect your wallet to access the chat.
+          </Text>
+          <TouchableOpacity style={styles.connectButton} onPress={onWalletConnectRequested}>
+            <Text style={styles.connectButtonText}>Connect Wallet</Text>
+          </TouchableOpacity>
+        </View>
+      ) : errorMsg ? (
+        <View style={styles.center}>
+          <Text style={[styles.errorText]}>{errorMsg}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => fetchToken(walletAddress)}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (loadingToken || !token) ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#613583" />
+          <Text style={[styles.infoText, { color: isDark ? '#aaa' : '#666', marginTop: 10 }]}>
+            Loading chat session...
+          </Text>
+        </View>
+      ) : (
+        <CherryChatWebView
+          source={{ html: hostHtml, baseUrl: 'https://embed.cherry.fun' }}
+          config={config}
+          onSign={onSign}
+          onWalletConnectRequested={onWalletConnectRequested}
+          style={styles.webview}
+          onEvent={(event, data) => {
+            console.log(`[CherryChat] Event: ${event}`, data);
+            if (event === 'error') {
+              console.error("[CherryChat] Error payload:", data);
+            }
+          }}
+        />
+      )}
+    </View>
   );
 }
 
-const getStyles = (isDark: boolean, insets: any) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: isDark ? '#0A0410' : '#fff'
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  messagesList: {
-    flex: 1,
-    paddingVertical: 0,
-    padding: 10,
-  },
-  inputContainer: {
-    padding: 10,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-    borderTopWidth: 1,
-    borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-    backgroundColor: isDark ? 'rgba(10, 4, 16, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-  },
-  mediaInputRow: {
-    width: '100%',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(220, 220, 220, 0.5)',
-    overflow: 'hidden',
-  },
-  blurViewAbsolute: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 24,
-  },
-  inputField: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    maxHeight: 100,
-    fontSize: 16,
-    backgroundColor: 'transparent',
-  },
-  mediaButton: {
-    paddingLeft: 15,
-    paddingRight: 10,
-    paddingVertical: 10,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    margin: 4,
-  },
-  sendButtonGradient: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 22,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5
-  },
-  previewList: {
-    flexDirection: 'row',
-    marginBottom: 10,
-    paddingHorizontal: 5,
-  },
-  previewContainer: {
-    marginRight: 8,
-  },
-  previewImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-  },
-  removeButton: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
-  },
-  headerUsername: {
-    fontSize: 16,
-    fontFamily: "Dank Mono Bold",
-    includeFontPadding: false,
-    color: isDark ? '#fff' : '#000',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  userInfoColumn: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  avatarSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 12,
-  },
-  username: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    width: '80%',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: isDark ? '#333' : '#eee',
-    marginHorizontal: 20,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: isDark ? '#fff' : '#000',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: isDark ? '#aaa' : '#666',
-  },
-  joinDate: {
-    fontSize: 14,
-    color: isDark ? '#aaa' : '#666',
   },
   navbar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: insets.top + 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-    backgroundColor: isDark ? 'rgba(10, 4, 16, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   backButton: {
     width: 40,
   },
-  userInfo: {
+  titleContainer: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  title: {
+    fontSize: 18,
+    fontFamily: "Dank Mono Bold",
   },
   rightPlaceholder: {
     width: 40,
   },
-  headerUsernameContainer: {
-    flexDirection: 'row',
+  center: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
   },
-  headerVerifiedBadge: {
-    marginLeft: 4,
+  infoText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: "Dank Mono",
   },
-  verifiedBadge: {
-    marginLeft: 4,
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: "Dank Mono",
   },
+  connectButton: {
+    backgroundColor: '#FF5BA8',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  connectButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: "Dank Mono Bold",
+  },
+  retryButton: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: "Dank Mono Bold",
+  },
+  webview: {
+    flex: 1,
+  }
 });

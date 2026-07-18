@@ -131,7 +131,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
       resetPosition();
     } else {
       router.push({
-        pathname: "/(tabs)/chat-room",
+        pathname: "/chat-room",
         params: { id: chat.chat_id, userId: chat.other_user.user_id }
       });
     }
