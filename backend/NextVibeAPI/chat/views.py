@@ -164,15 +164,25 @@ class CherryEmbedTokenView(APIView):
             app_secret = getattr(settings, 'CHERRY_APP_SECRET', None)
             project_key = getattr(settings, 'CHERRY_PROJECT_KEY', None)
 
+            if app_secret:
+                app_secret = app_secret.strip().strip("'\"")
+            if project_key:
+                project_key = project_key.strip().strip("'\"")
+            if app_id:
+                app_id = app_id.strip().strip("'\"")
+
             if not app_secret:
                 logger.error("CHERRY_APP_SECRET is not configured on the backend settings.")
                 return Response({'error': 'Server configuration error'}, status=500)
 
             import time
+            now_ts = int(time.time())
             payload = {
                 'sub': wallet_address,
                 'app_id': app_id,
-                'exp': int(time.time()) + 300,
+                'appId': app_id,
+                'iat': now_ts,
+                'exp': now_ts + 300,
                 'jti': str(uuid.uuid4())
             }
             token = jwt.encode(payload, app_secret, algorithm='HS256')
