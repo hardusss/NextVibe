@@ -8,7 +8,9 @@ import {
   StyleSheet,
   Platform,
   useColorScheme,
+  Alert,
 } from 'react-native';
+import { storage } from '@/src/utils/storage';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -59,10 +61,7 @@ const ALL_WALLET_CARDS: WalletCardConfig[] = [
   },
 ];
 
-// On iOS, only LazorKit is available — MWA is Android-only
-const WALLET_CARDS = Platform.OS === 'ios'
-  ? ALL_WALLET_CARDS.filter(c => c.id !== 'mwa')
-  : ALL_WALLET_CARDS;
+const WALLET_CARDS = ALL_WALLET_CARDS;
 
 const WalletSelectionScreen = () => {
   const scheme = useColorScheme();
@@ -126,16 +125,52 @@ const WalletSelectionScreen = () => {
     }
   }, [account, connect, disconnect]);
 
+  const handleIosWalletConnect = useCallback(async (walletType: 'phantom' | 'solflare' | 'backpack') => {
+    try {
+      setIsConnecting(true);
+      const connectedAccount = await connect(walletType);
+      if (connectedAccount) {
+        const walletAddr = connectedAccount.publicKey.toBase58();
+        await storage.setItem("deeplink_wallet_address", walletAddr);
+        await storage.setItem("deeplink_wallet_type", walletType);
+        
+        await saveWallet(walletAddr);
+        router.push('/wallet-dash');
+      }
+    } catch (error: any) {
+      console.error(`${walletType} connection failed:`, error);
+      Alert.alert("Connection Failed", error.message || `Could not connect to ${walletType}.`);
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [connect]);
+
   const handleLazorKitConnect = useCallback((_id: WalletType) => {
     router.push(`/wallet-init?page=${page ? page : 'wallet-dash'}`);
   }, [page]);
 
   const handleCtaPress = useCallback(
     (id: WalletType) => {
-      if (id === 'mwa') handleMwaConnect(id);
-      else handleLazorKitConnect(id);
+      if (id === 'mwa') {
+        if (Platform.OS === 'ios') {
+          Alert.alert(
+            "Connect Wallet",
+            "Choose a wallet to connect via Deep Link:",
+            [
+              { text: "Phantom", onPress: () => handleIosWalletConnect('phantom') },
+              { text: "Solflare", onPress: () => handleIosWalletConnect('solflare') },
+              { text: "Backpack", onPress: () => handleIosWalletConnect('backpack') },
+              { text: "Cancel", style: "cancel" }
+            ]
+          );
+        } else {
+          handleMwaConnect(id);
+        }
+      } else {
+        handleLazorKitConnect(id);
+      }
     },
-    [handleMwaConnect, handleLazorKitConnect],
+    [handleMwaConnect, handleLazorKitConnect, handleIosWalletConnect],
   );
 
   return (
