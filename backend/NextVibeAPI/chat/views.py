@@ -139,26 +139,20 @@ class CherryEmbedTokenView(APIView):
     def post(self, request):
         import jwt
         import uuid
-        import datetime
         import requests
         from django.conf import settings
+        import time
 
         try:
-            wallet_address = request.data.get('walletAddress')
+            # SECURITY: In app-trusted mode, NEVER derive the wallet from the
+            # request body — the client cannot be trusted. Use the wallet stored
+            # on the authenticated user's profile exclusively.
             chat_id = request.data.get('chatId')
-            if not wallet_address:
-                return Response({'error': 'walletAddress is required'}, status=400)
+            wallet_address = request.user.wallet_address
 
-            # Authenticate: only issue a token for the logged-in user's wallet.
-            # If the user doesn't have a wallet address set, link the connected one.
-            user_wallet = request.user.wallet_address
-            if not user_wallet:
-                request.user.wallet_address = wallet_address
-                request.user.save(update_fields=['wallet_address'])
-                user_wallet = wallet_address
-                logger.info(f"Automatically linked wallet address {wallet_address} to user {request.user.username}")
-            elif user_wallet.lower() != wallet_address.lower():
-                return Response({'error': 'Unauthorized wallet address'}, status=403)
+            if not wallet_address:
+                logger.warning(f"User {request.user.username} has no wallet address linked; cannot issue Cherry embed token.")
+                return Response({'error': 'No wallet address linked to your account. Please connect your wallet first.'}, status=400)
 
             app_id = getattr(settings, 'CHERRY_APP_ID', '16e14376-0fce-4536-8891-754fd8fb5748')
             app_secret = getattr(settings, 'CHERRY_APP_SECRET', None)
@@ -175,12 +169,10 @@ class CherryEmbedTokenView(APIView):
                 logger.error("CHERRY_APP_SECRET is not configured on the backend settings.")
                 return Response({'error': 'Server configuration error'}, status=500)
 
-            import time
             now_ts = int(time.time())
             payload = {
                 'sub': wallet_address,
                 'app_id': app_id,
-                'appId': app_id,
                 'iat': now_ts,
                 'exp': now_ts + 300,
                 'jti': str(uuid.uuid4())
@@ -214,9 +206,7 @@ class CherryEmbedTokenView(APIView):
                     
                     # If cherry_room_id doesn't exist, create it via Cherry API
                     if not chat.cherry_room_id:
-                        owner_wallet = request.user.wallet_address
-                        if not owner_wallet:
-                            owner_wallet = 'OwnerSolanaWallet1111111111111111'
+                        owner_wallet = wallet_address
                         
                         members = [p.wallet_address for p in participants if p.wallet_address]
                         if owner_wallet not in members:
