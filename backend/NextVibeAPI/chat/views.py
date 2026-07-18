@@ -100,7 +100,7 @@ class CreateChatView(APIView):
             for chat in existing_chat:
                 chat_participants = set(chat.participants.values_list('user_id', flat=True))
                 if chat_participants == set(participants.values_list('user_id', flat=True)):
-                    return Response({'error': 'Chat already exists', "existing_chat_id": chat.id}, status=400)
+                    return Response({'chat_id': chat.id, 'message': 'Chat already exists'}, status=200)
 
             chat = Chat.objects.create()
             chat.participants.set(participants)
