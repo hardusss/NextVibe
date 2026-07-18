@@ -195,6 +195,7 @@ export const CherryChatWebView = forwardRef<CherryChatWebViewRef, CherryChatWebV
 
     return (
       <WebView
+        key={`${config.roomId}_${config.token ? 'auth' : 'anon'}`}
         ref={webRef}
         source={source}
         onMessage={handleMessage}
@@ -203,6 +204,10 @@ export const CherryChatWebView = forwardRef<CherryChatWebViewRef, CherryChatWebV
         domStorageEnabled
         thirdPartyCookiesEnabled
         setSupportMultipleWindows={false}
+        keyboardDisplayRequiresUserAction={false}
+        onConsoleMessage={(event) => {
+          console.log(`[WebView Console] ${event.nativeEvent.message}`);
+        }}
         style={style}
         {...webViewProps}
       />

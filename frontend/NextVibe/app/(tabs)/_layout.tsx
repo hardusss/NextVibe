@@ -1,5 +1,5 @@
 import { Tabs, router } from "expo-router";
-import { House, Search, UserRound, Radar, BadgePlus } from "lucide-react-native";
+import { House, Search, UserRound, Radar, BadgePlus, MessageSquare } from "lucide-react-native";
 import { Platform } from "react-native";
 
 export default function TabsLayout() {
@@ -8,6 +8,7 @@ export default function TabsLayout() {
             <Tabs.Screen name="home" options={{ title: "Home", tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }} />
             <Tabs.Screen name="search" options={{ title: "Search", tabBarIcon: ({ color, size }) => <Search color={color} size={size} /> }} />
             <Tabs.Screen name="vibe-map" options={{ title: "Map", tabBarIcon: ({ color, size }) => <Radar color={color} size={size} /> }} />
+            <Tabs.Screen name="chats" options={{ title: "Chats", tabBarIcon: ({ color, size }) => <MessageSquare color={color} size={size} /> }} />
             <Tabs.Screen
                 name="camera"
                 options={{
