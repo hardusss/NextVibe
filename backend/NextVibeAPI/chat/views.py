@@ -162,6 +162,7 @@ class CherryEmbedTokenView(APIView):
 
             app_id = getattr(settings, 'CHERRY_APP_ID', '16e14376-0fce-4536-8891-754fd8fb5748')
             app_secret = getattr(settings, 'CHERRY_APP_SECRET', None)
+            project_key = getattr(settings, 'CHERRY_PROJECT_KEY', None)
 
             if not app_secret:
                 logger.error("CHERRY_APP_SECRET is not configured on the backend settings.")
@@ -198,8 +199,11 @@ class CherryEmbedTokenView(APIView):
                             members.append(owner_wallet)
                             
                         # Call Cherry API with the correct endpoint URL
+                        if not project_key:
+                            logger.warning("CHERRY_PROJECT_KEY is not configured on the backend. Group creation will likely fail.")
+                        auth_token = project_key if project_key else app_secret
                         headers = {
-                            'Authorization': f'Bearer {app_secret}',
+                            'Authorization': f'Bearer {auth_token}',
                             'Content-Type': 'application/json'
                         }
                         payload_cherry = {
