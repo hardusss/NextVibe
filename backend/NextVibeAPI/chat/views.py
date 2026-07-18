@@ -197,9 +197,23 @@ class CherryEmbedTokenView(APIView):
                 try:
                     chat = Chat.objects.get(id=chat_id, participants=request.user)
                     
+                    # Detect if participant wallets changed since the Cherry room was created
+                    participants = list(chat.participants.all())
+                    current_wallets = sorted([p.wallet_address for p in participants if p.wallet_address])
+                    
+                    if chat.cherry_room_id:
+                        from django.core.cache import cache
+                        cache_key = f"cherry_room_members_{chat.cherry_room_id}"
+                        cached_wallets = cache.get(cache_key)
+                        
+                        # If the cache is empty (old room setup) or the wallets mismatch, recreate the room
+                        if cached_wallets is None or cached_wallets != current_wallets:
+                            logger.info(f"Cherry room members changed or unverified for Chat {chat.id}. Clearing cherry_room_id to recreate.")
+                            chat.cherry_room_id = None
+                            chat.save()
+                    
                     # If cherry_room_id doesn't exist, create it via Cherry API
                     if not chat.cherry_room_id:
-                        participants = list(chat.participants.all())
                         owner_wallet = request.user.wallet_address
                         if not owner_wallet:
                             owner_wallet = 'OwnerSolanaWallet1111111111111111'
@@ -235,6 +249,11 @@ class CherryEmbedTokenView(APIView):
                             chat.cherry_room_id = resp_data.get('roomId')
                             chat.save()
                             logger.info(f"Created Cherry chat room {chat.cherry_room_id} for Chat {chat.id}")
+                            
+                            # Cache the members list for the new room
+                            from django.core.cache import cache
+                            cache_key = f"cherry_room_members_{chat.cherry_room_id}"
+                            cache.set(cache_key, current_wallets, timeout=3600*24*30)  # 30 days
                         else:
                             logger.error(f"Cherry group creation failed: {resp.status_code} - {resp.text}")
                     
