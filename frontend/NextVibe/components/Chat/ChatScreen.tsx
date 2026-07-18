@@ -95,25 +95,30 @@ export default function ChatScreen() {
   }, [walletAddress, chatId]);
 
   const onSign = async (messageBytes: Uint8Array): Promise<Uint8Array> => {
+    console.log("[ChatScreen] onSign requested by Cherry, bytes length:", messageBytes.length);
     if (walletType === 'mwa' && mwa) {
       try {
+        console.log("[ChatScreen] Launching MWA signature challenge...");
         const signature = await mwa.signMessage(messageBytes);
         if (!signature) {
           throw new Error("Signing rejected by wallet");
         }
+        console.log("[ChatScreen] MWA signature acquired.");
         // Slice the last 64 bytes if the signature is appended to the message
         return signature.length > 64 ? signature.slice(-64) : signature;
       } catch (err: any) {
-        console.error("MWA signing error:", err);
+        console.error("[ChatScreen] MWA signing error:", err);
         throw err;
       }
     }
     
+    console.log("[ChatScreen] Non-MWA wallet or platform fallback: returning dummy signature");
     // For LazorKit, fallback to a dummy signature
     return new Uint8Array(64);
   };
 
   const onWalletConnectRequested = () => {
+    console.log("[ChatScreen] onWalletConnectRequested triggered from Cherry iframe");
     // Redirect to the wallet introduction/selection screen
     router.push('/wallet-select');
   };
@@ -122,13 +127,16 @@ export default function ChatScreen() {
     sdkUrl: 'https://embed.cherry.fun/cherry-embed.js'
   });
 
+  const useSignature = walletType === 'mwa' && Platform.OS === 'android' && !!mwa;
+  console.log("[ChatScreen] Wallet type:", walletType, "Platform:", Platform.OS, "Use signature flow:", useSignature);
+
   const config = {
     appId: '16e14376-0fce-4536-8891-754fd8fb5748',
     roomId: cherryRoomId || '68a27a2f-f26b-4a84-b8d6-55be5cb86122',
     mode: 'single' as const,
     theme: { mode: 'dark', primaryColor: '#613583' },
     token: token || undefined,
-    walletAddress: walletAddress || undefined,
+    walletAddress: useSignature ? (walletAddress || undefined) : undefined,
     embedUrl: 'https://embed.cherry.fun'
   };
 
