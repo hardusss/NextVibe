@@ -25,6 +25,10 @@ export default function IOSTabsLayout() {
                     <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
                 </NativeTabs.Trigger>
 
+                <NativeTabs.Trigger name="chats">
+                    <NativeTabs.Trigger.Icon sf={{ default: "message", selected: "message.fill" }} />
+                    <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
+                </NativeTabs.Trigger>
 
                 <NativeTabs.Trigger name="profile">
                     <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />

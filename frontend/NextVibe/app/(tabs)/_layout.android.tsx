@@ -180,6 +180,7 @@ export default function AndroidTabsLayout() {
             <Tabs.Screen name="search" options={{ title: "Search" }} />
             <Tabs.Screen name="vibe-map" options={{ title: "Map" }} />
             <Tabs.Screen name="camera" options={{ title: "Camera" }} />
+            <Tabs.Screen name="chats" options={{ href: null }} />
             <Tabs.Screen name="profile" options={{ title: "Profile" }} />
             <Tabs.Screen name="u" options={{ href: null }} />
         </Tabs>
