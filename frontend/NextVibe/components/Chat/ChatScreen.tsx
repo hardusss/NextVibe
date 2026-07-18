@@ -140,6 +140,8 @@ export default function ChatScreen() {
     embedUrl: 'https://embed.cherry.fun'
   };
 
+  console.log("[ChatScreen] Loading Cherry Chat with Room:", config.roomId, "WalletAddress passed:", config.walletAddress, "Token:", token);
+
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0A0410' : '#fff' }]}>
       <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"} />
@@ -169,7 +171,7 @@ export default function ChatScreen() {
       ) : errorMsg ? (
         <View style={styles.center}>
           <Text style={[styles.errorText]}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => fetchToken(walletAddress)}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => { setErrorMsg(null); fetchToken(walletAddress); }}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -182,7 +184,7 @@ export default function ChatScreen() {
         </View>
       ) : (
         <CherryChatWebView
-          source={{ html: hostHtml, baseUrl: 'https://embed.cherry.fun' }}
+          source={{ html: hostHtml, baseUrl: 'https://nextvibe.io' }}
           config={config}
           onSign={onSign}
           onWalletConnectRequested={onWalletConnectRequested}
@@ -191,6 +193,8 @@ export default function ChatScreen() {
             console.log(`[CherryChat] Event: ${event}`, data);
             if (event === 'error') {
               console.error("[CherryChat] Error payload:", data);
+              const errMsg = data?.message || data?.code || (typeof data === 'string' ? data : JSON.stringify(data)) || "Unknown error";
+              setErrorMsg(`Cherry Error: ${errMsg}`);
             }
           }}
         />

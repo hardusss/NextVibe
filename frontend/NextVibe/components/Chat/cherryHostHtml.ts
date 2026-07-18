@@ -99,20 +99,25 @@ export function buildCherryHostHtml({ sdkUrl }: BuildCherryHostHtmlOptions): str
         return;
       }
 
-      chat = new SDK.CherryEmbed({
+      var embedOpts = {
         appId: cfg.appId,
         container: '#chat',
         roomId: cfg.roomId || undefined,
         mode: cfg.mode || undefined,
         token: cfg.token || undefined,
-        walletAddress: cfg.walletAddress || undefined,
         embedUrl: cfg.embedUrl || undefined,
         theme: cfg.theme || undefined,
         layout: cfg.layout || undefined,
-        signChallengeHandler: function (messageBytes) {
+      };
+
+      if (cfg.walletAddress) {
+        embedOpts.walletAddress = cfg.walletAddress;
+        embedOpts.signChallengeHandler = function (messageBytes) {
           return requestSignatureFromNative(messageBytes);
-        },
-      });
+        };
+      }
+
+      chat = new SDK.CherryEmbed(embedOpts);
 
       var events = ['ready', 'authStateChange', 'unreadCount', 'message', 'tokenExpired', 'error', 'walletConnectRequested', 'preview', 'roomChanged'];
       events.forEach(function (ev) {
