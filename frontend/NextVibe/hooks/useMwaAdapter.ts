@@ -6,7 +6,7 @@ export interface MwaAccount {
 
 export interface MwaAdapterResult {
     account: MwaAccount | null;
-    connect: () => Promise<MwaAccount | null>;
+    connect: (wallet?: 'phantom' | 'solflare' | 'backpack') => Promise<MwaAccount | null>;
     disconnect: () => Promise<void>;
 }
 
