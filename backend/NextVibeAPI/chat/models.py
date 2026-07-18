@@ -8,6 +8,7 @@ class Chat(models.Model):
     participants = models.ManyToManyField(User, related_name='chats')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    cherry_room_id = models.CharField(max_length=255, blank=True, null=True)
     objects = ChatManager()
     all_objects = models.Manager()
 
