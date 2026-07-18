@@ -16,6 +16,7 @@ import Animated, {
   withDelay,
   interpolate,
   Extrapolation,
+  SharedValue,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -264,7 +265,7 @@ const CardIcon: React.FC<{ id: WalletType; color: string }> = ({ id, color }) =>
 };
 
 const AnimatedDivider: React.FC<{
-  expandProgress: Animated.SharedValue<number>;
+  expandProgress: SharedValue<number>;
   color: string;
   isDark: boolean;
 }> = ({ expandProgress, color, isDark }) => {
@@ -284,7 +285,7 @@ const AnimatedDivider: React.FC<{
 };
 
 const AnimatedChevron: React.FC<{
-  expandProgress: Animated.SharedValue<number>;
+  expandProgress: SharedValue<number>;
   color: string;
 }> = ({ expandProgress, color }) => {
   const style = useAnimatedStyle(() => ({
