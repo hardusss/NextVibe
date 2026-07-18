@@ -184,7 +184,7 @@ export default function ChatScreen() {
         </View>
       ) : (
         <CherryChatWebView
-          source={{ html: hostHtml, baseUrl: 'https://nextvibe.io' }}
+          source={{ html: hostHtml, baseUrl: 'https://embed.cherry.fun' }}
           config={config}
           onSign={onSign}
           onWalletConnectRequested={onWalletConnectRequested}

@@ -28,8 +28,10 @@ export function buildCherryHostHtml({ sdkUrl }: BuildCherryHostHtmlOptions): str
   <div id="chat"></div>
   <script>
   (function () {
+    console.log("Cherry WebView Init, URL:", window.location.href);
     var chat = null;
     var pendingSigns = {};
+    var activeConfig = null;
 
     function toNative(msg) {
       var s = JSON.stringify(msg);
@@ -80,6 +82,10 @@ export function buildCherryHostHtml({ sdkUrl }: BuildCherryHostHtmlOptions): str
         toNative({ type: 'event', event: 'error', data: { code: 'BAD_CONFIG', message: String(e) } });
         return;
       }
+      if (chat && activeConfig && activeConfig.roomId === cfg.roomId && activeConfig.token === cfg.token) {
+        console.log("Cherry received config with same roomId and token, skipping recreation");
+        return;
+      }
       if (chat) { try { chat.destroy(); } catch (_) {} chat = null; }
       mount(cfg);
     };
@@ -93,6 +99,7 @@ export function buildCherryHostHtml({ sdkUrl }: BuildCherryHostHtmlOptions): str
     }
 
     function mount(cfg) {
+      activeConfig = cfg;
       var SDK = window.CherryEmbedSDK;
       if (!SDK || !SDK.CherryEmbed) {
         toNative({ type: 'event', event: 'error', data: { code: 'SDK_NOT_LOADED', message: 'CherryEmbedSDK global missing — check the sdkUrl <script src>' } });
@@ -127,6 +134,7 @@ export function buildCherryHostHtml({ sdkUrl }: BuildCherryHostHtmlOptions): str
       chat.mount().then(function () {
         toNative({ type: 'event', event: 'mounted' });
       }).catch(function (err) {
+        console.error("Cherry SDK mount failed:", err);
         toNative({ type: 'event', event: 'error', data: { code: 'MOUNT_FAILED', message: (err && err.message) || String(err) } });
       });
     }
