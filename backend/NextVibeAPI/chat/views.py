@@ -140,10 +140,12 @@ class CherryEmbedTokenView(APIView):
         import jwt
         import uuid
         import datetime
+        import requests
         from django.conf import settings
 
         try:
             wallet_address = request.data.get('walletAddress')
+            chat_id = request.data.get('chatId')
             if not wallet_address:
                 return Response({'error': 'walletAddress is required'}, status=400)
 
@@ -171,7 +173,59 @@ class CherryEmbedTokenView(APIView):
             if isinstance(token, bytes):
                 token = token.decode('utf-8')
 
-            return Response({'token': token}, status=200)
+            response_data = {'token': token}
+
+            # If chatId is provided, retrieve or create the Cherry room ID
+            if chat_id:
+                try:
+                    chat = Chat.objects.get(id=chat_id, participants=request.user)
+                    
+                    # If cherry_room_id doesn't exist, create it via Cherry API
+                    if not chat.cherry_room_id:
+                        participants = list(chat.participants.all())
+                        owner_wallet = request.user.wallet_address
+                        if not owner_wallet:
+                            owner_wallet = 'OwnerSolanaWallet1111111111111111'
+                        
+                        members = [p.wallet_address for p in participants if p.wallet_address]
+                        if owner_wallet not in members:
+                            members.append(owner_wallet)
+                            
+                        # Call Cherry API
+                        headers = {
+                            'Authorization': f'Bearer {app_secret}',
+                            'Content-Type': 'application/json'
+                        }
+                        payload_cherry = {
+                            'ownerWallet': owner_wallet,
+                            'title': f'Chat {chat.id}',
+                            'description': 'NextVibe direct chat room',
+                            'initialMembers': members
+                        }
+                        
+                        resp = requests.post(
+                            'https://chat.cherry.fun/api/sdk/groups',
+                            json=payload_cherry,
+                            headers=headers,
+                            timeout=10
+                        )
+                        
+                        if resp.status_code in (200, 201):
+                            resp_data = resp.json()
+                            chat.cherry_room_id = resp_data.get('roomId')
+                            chat.save()
+                            logger.info(f"Created Cherry chat room {chat.cherry_room_id} for Chat {chat.id}")
+                        else:
+                            logger.error(f"Cherry group creation failed: {resp.status_code} - {resp.text}")
+                    
+                    if chat.cherry_room_id:
+                        response_data['roomId'] = chat.cherry_room_id
+                except Chat.DoesNotExist:
+                    return Response({'error': 'Chat not found or access denied'}, status=404)
+                except Exception as e:
+                    logger.error(f"Error handling Cherry room creation/retrieval: {str(e)}")
+
+            return Response(response_data, status=200)
         except Exception as e:
             logger.error(f"Error in CherryEmbedTokenView: {str(e)}")
             return Response({'error': str(e)}, status=500)
