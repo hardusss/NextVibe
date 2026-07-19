@@ -233,6 +233,29 @@ class CherryEmbedTokenView(APIView):
 
                     if chat.cherry_room_id:
                         response_data['roomId'] = chat.cherry_room_id
+                        # Dynamic membership sync: make sure all current participants with valid wallet addresses
+                        # are active members in the Cherry room.
+                        participants = list(chat.participants.all())
+                        wallets_to_add = [p.wallet_address for p in participants if p.wallet_address]
+                        if wallets_to_add:
+                            if not project_key:
+                                logger.warning("CHERRY_PROJECT_KEY is not configured on the backend settings.")
+                            auth_token = project_key if project_key else app_secret
+                            headers = {
+                                'Authorization': f'Bearer {auth_token}',
+                                'Content-Type': 'application/json'
+                            }
+                            try:
+                                invite_url = f"https://api.cherry.fun/api/v1/apps/groups/{chat.cherry_room_id}/members"
+                                invite_payload = {
+                                    "wallets": wallets_to_add,
+                                    "autoAccept": True
+                                }
+                                resp = requests.post(invite_url, json=invite_payload, headers=headers, timeout=5)
+                                if resp.status_code not in (200, 201):
+                                    logger.warning(f"Failed to auto-accept members to existing room {chat.cherry_room_id}: {resp.status_code} - {resp.text}")
+                            except Exception as invite_err:
+                                logger.error(f"Error checking/adding members to existing room: {str(invite_err)}")
                     else:
                         response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
                 except Chat.DoesNotExist:
