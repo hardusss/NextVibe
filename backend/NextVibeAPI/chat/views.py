@@ -184,37 +184,22 @@ class CherryEmbedTokenView(APIView):
 
             response_data = {'token': token}
 
-            # If chatId is provided, retrieve or create the Cherry room ID
             if chat_id:
                 try:
                     chat = Chat.objects.get(id=chat_id, participants=request.user)
                     
-                    # Detect if participant wallets changed since the Cherry room was created
-                    participants = list(chat.participants.all())
-                    current_wallets = sorted([p.wallet_address for p in participants if p.wallet_address])
-                    
-                    if chat.cherry_room_id:
-                        from django.core.cache import cache
-                        cache_key = f"cherry_room_members_{chat.cherry_room_id}"
-                        cached_wallets = cache.get(cache_key)
-                        
-                        # If the cache is empty (old room setup) or the wallets mismatch, recreate the room
-                        if cached_wallets is None or cached_wallets != current_wallets:
-                            logger.info(f"Cherry room members changed or unverified for Chat {chat.id}. Clearing cherry_room_id to recreate.")
-                            chat.cherry_room_id = None
-                            chat.save()
-                    
-                    # If cherry_room_id doesn't exist, create it via Cherry API
                     if not chat.cherry_room_id:
                         owner_wallet = wallet_address
-                        
+                        participants = list(chat.participants.all())
                         members = [p.wallet_address for p in participants if p.wallet_address]
                         if owner_wallet not in members:
                             members.append(owner_wallet)
-                            
-                        # Call Cherry API with the correct endpoint URL
+
+                        other_user = chat.participants.exclude(user_id=request.user.user_id).first()
+                        chat_title = f"Chat with {other_user.username}" if other_user else f"Chat {chat.id}"
+
                         if not project_key:
-                            logger.warning("CHERRY_PROJECT_KEY is not configured on the backend. Group creation will likely fail.")
+                            logger.warning("CHERRY_PROJECT_KEY is not configured on the backend settings.")
                         auth_token = project_key if project_key else app_secret
                         headers = {
                             'Authorization': f'Bearer {auth_token}',
@@ -222,39 +207,39 @@ class CherryEmbedTokenView(APIView):
                         }
                         payload_cherry = {
                             'ownerWallet': owner_wallet,
-                            'title': f'Chat {chat.id}',
+                            'title': chat_title,
                             'description': 'NextVibe direct chat room',
                             'initialMembers': members
                         }
                         
-                        resp = requests.post(
-                            'https://api.cherry.fun/api/v1/apps/groups',
-                            json=payload_cherry,
-                            headers=headers,
-                            timeout=10
-                        )
-                        
-                        if resp.status_code in (200, 201):
-                            resp_data = resp.json()
-                            chat.cherry_room_id = resp_data.get('roomId')
-                            chat.save()
-                            logger.info(f"Created Cherry chat room {chat.cherry_room_id} for Chat {chat.id}")
-                            
-                            # Cache the members list for the new room
-                            from django.core.cache import cache
-                            cache_key = f"cherry_room_members_{chat.cherry_room_id}"
-                            cache.set(cache_key, current_wallets, timeout=3600*24*30)  # 30 days
-                        else:
-                            logger.error(f"Cherry group creation failed: {resp.status_code} - {resp.text}")
-                    
+                        try:
+                            resp = requests.post(
+                                'https://api.cherry.fun/api/v1/apps/groups',
+                                json=payload_cherry,
+                                headers=headers,
+                                timeout=10
+                            )
+                            if resp.status_code in (200, 201):
+                                resp_data = resp.json()
+                                room_id = resp_data.get('roomId') or resp_data.get('id')
+                                if room_id:
+                                    chat.cherry_room_id = room_id
+                                    chat.save()
+                                    logger.info(f"Created Cherry chat room {chat.cherry_room_id} for Chat {chat.id}")
+                            else:
+                                logger.error(f"Cherry group creation failed: {resp.status_code} - {resp.text}")
+                        except Exception as req_err:
+                            logger.error(f"Error calling Cherry group API: {str(req_err)}")
+
                     if chat.cherry_room_id:
                         response_data['roomId'] = chat.cherry_room_id
                     else:
                         response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
                 except Chat.DoesNotExist:
-                    return Response({'error': 'Chat not found or access denied'}, status=404)
+                    logger.warning(f"Chat {chat_id} not found for user {request.user.username}")
+                    response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
                 except Exception as e:
-                    logger.error(f"Error handling Cherry room creation/retrieval: {str(e)}")
+                    logger.error(f"Error retrieving/creating Cherry room for chat {chat_id}: {str(e)}")
                     response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
             else:
                 response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
