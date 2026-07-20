@@ -11,5 +11,6 @@ urlpatterns = [
     path('api/v1/posts/', include('posts.urls')),
     path('api/v1/wallets/', include('wallet.urls')),
     path('api/v1/chat/', include('chat.urls')),
+    path('api/chat/', include('chat.urls')),
     path('api/cherry-embed-token', CherryEmbedTokenView.as_view(), name='cherry-embed-token-direct'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
