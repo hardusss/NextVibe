@@ -272,3 +272,175 @@ class CherryEmbedTokenView(APIView):
             logger.error(f"Error in CherryEmbedTokenView: {str(e)}")
             return Response({'error': str(e)}, status=500)
 
+
+class CherryRoomMessagesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, room_id):
+        import requests
+        import json
+        from django.conf import settings
+
+        try:
+            # 1. Verify user belongs to the chat room
+            chat = Chat.objects.filter(cherry_room_id=room_id, participants=request.user).first()
+            if not chat:
+                return Response({'error': 'You do not have permission to view this chat room'}, status=403)
+
+            # 2. Get API credentials
+            app_secret = getattr(settings, 'CHERRY_APP_SECRET', None)
+            project_key = getattr(settings, 'CHERRY_PROJECT_KEY', None)
+
+            if project_key:
+                project_key = project_key.strip().strip("'\"")
+            if app_secret:
+                app_secret = app_secret.strip().strip("'\"")
+
+            auth_token = project_key if project_key else app_secret
+            if not auth_token:
+                logger.error("Cherry credentials not configured in settings.")
+                return Response({'error': 'Cherry API credentials not configured'}, status=500)
+
+            # 3. Call Cherry API
+            headers = {
+                'Authorization': f'Bearer {auth_token}',
+                'Content-Type': 'application/json'
+            }
+            url = f"https://api.cherry.fun/api/sdk/groups/{room_id}/messages"
+            
+            params = {}
+            if 'cursor' in request.GET:
+                params['cursor'] = request.GET['cursor']
+            if 'limit' in request.GET:
+                params['limit'] = request.GET['limit']
+
+            resp = requests.get(url, headers=headers, params=params, timeout=10)
+            if resp.status_code != 200:
+                logger.error(f"Cherry API GET messages failed: {resp.status_code} - {resp.text}")
+                return Response({'error': f'Failed to fetch messages: {resp.text}'}, status=resp.status_code)
+
+            cherry_data = resp.json()
+            messages_list = cherry_data.get('messages', [])
+
+            parsed_messages = []
+            for msg in messages_list:
+                msg_id = msg.get('id')
+                content = msg.get('content', '')
+                created_at = msg.get('createdAt') or msg.get('created_at')
+
+                parsed_text = content
+                sender_id = None
+                sender_username = "System"
+                sender_wallet = None
+
+                # Check if content is our custom JSON payload
+                try:
+                    data = json.loads(content)
+                    if isinstance(data, dict) and 'text' in data:
+                        parsed_text = data.get('text', '')
+                        sender_id = data.get('sender_id')
+                        sender_username = data.get('username', 'User')
+                        sender_wallet = data.get('sender_wallet')
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    pass
+
+                parsed_messages.append({
+                    'id': msg_id,
+                    'text': parsed_text,
+                    'created_at': created_at,
+                    'sender': {
+                        'user_id': sender_id,
+                        'username': sender_username,
+                        'wallet_address': sender_wallet
+                    }
+                })
+
+            return Response({
+                'messages': parsed_messages,
+                'next_cursor': cherry_data.get('nextCursor')
+            })
+
+        except Exception as e:
+            logger.error(f"Error in CherryRoomMessagesView GET: {str(e)}")
+            return Response({'error': str(e)}, status=500)
+
+    def post(self, request, room_id):
+        import requests
+        import json
+        from django.conf import settings
+
+        try:
+            # 1. Verify user belongs to the chat room
+            chat = Chat.objects.filter(cherry_room_id=room_id, participants=request.user).first()
+            if not chat:
+                return Response({'error': 'You do not have permission to post to this chat room'}, status=403)
+
+            text = request.data.get('text')
+            if not text:
+                return Response({'error': 'Message text is required'}, status=400)
+
+            # 2. Build the JSON content payload to identify the sender
+            payload_content = {
+                'text': text,
+                'sender_id': request.user.user_id,
+                'username': request.user.username,
+                'sender_wallet': request.user.wallet_address
+            }
+
+            # 3. Get API credentials
+            app_secret = getattr(settings, 'CHERRY_APP_SECRET', None)
+            project_key = getattr(settings, 'CHERRY_PROJECT_KEY', None)
+
+            if project_key:
+                project_key = project_key.strip().strip("'\"")
+            if app_secret:
+                app_secret = app_secret.strip().strip("'\"")
+
+            auth_token = project_key if project_key else app_secret
+            if not auth_token:
+                logger.error("Cherry credentials not configured in settings.")
+                return Response({'error': 'Cherry API credentials not configured'}, status=500)
+
+            # 4. Call Cherry API to send message
+            headers = {
+                'Authorization': f'Bearer {auth_token}',
+                'Content-Type': 'application/json'
+            }
+            url = f"https://api.cherry.fun/api/sdk/groups/{room_id}/messages"
+            payload = {
+                'content': json.dumps(payload_content)
+            }
+
+            resp = requests.post(url, headers=headers, json=payload, timeout=10)
+            if resp.status_code not in (200, 201):
+                logger.error(f"Cherry API POST message failed: {resp.status_code} - {resp.text}")
+                return Response({'error': f'Failed to send message: {resp.text}'}, status=resp.status_code)
+
+            cherry_resp = resp.json()
+
+            # 5. Also write it locally to the Django database
+            try:
+                Message.objects.create(
+                    chat=chat,
+                    sender=request.user,
+                    text=text
+                )
+            except Exception as db_err:
+                logger.error(f"Error saving message locally: {db_err}")
+
+            return Response({
+                'id': cherry_resp.get('id'),
+                'text': text,
+                'created_at': cherry_resp.get('createdAt') or cherry_resp.get('created_at'),
+                'sender': {
+                    'user_id': request.user.user_id,
+                    'username': request.user.username,
+                    'wallet_address': request.user.wallet_address
+                }
+            }, status=201)
+
+        except Exception as e:
+            logger.error(f"Error in CherryRoomMessagesView POST: {str(e)}")
+            return Response({'error': str(e)}, status=500)
+
+
