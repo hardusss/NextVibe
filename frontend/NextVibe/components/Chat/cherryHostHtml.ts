@@ -28,16 +28,40 @@ export function buildCherryHostHtml({ sdkUrl }: BuildCherryHostHtmlOptions): str
   <div id="chat"></div>
   <script>
   (function () {
-    console.log("Cherry WebView Init, URL:", window.location.href);
-    var chat = null;
-    var pendingSigns = {};
-    var activeConfig = null;
-
     function toNative(msg) {
       var s = JSON.stringify(msg);
       if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) { window.ReactNativeWebView.postMessage(s); return; }
       if (window.CherryNative && window.CherryNative.postMessage) { window.CherryNative.postMessage(s); return; }
     }
+
+    // Override console to forward logs to native
+    var _log = console.log;
+    var _error = console.error;
+    var _warn = console.warn;
+    console.log = function () {
+      var args = Array.prototype.slice.call(arguments);
+      toNative({ type: 'event', event: 'console_log', data: args.join(' ') });
+      _log.apply(console, arguments);
+    };
+    console.error = function () {
+      var args = Array.prototype.slice.call(arguments);
+      toNative({ type: 'event', event: 'console_error', data: args.join(' ') });
+      _error.apply(console, arguments);
+    };
+    console.warn = function () {
+      var args = Array.prototype.slice.call(arguments);
+      toNative({ type: 'event', event: 'console_warn', data: args.join(' ') });
+      _warn.apply(console, arguments);
+    };
+    window.onerror = function (message, source, lineno, colno, error) {
+      toNative({ type: 'event', event: 'window_error', data: { message: message, source: source, lineno: lineno, colno: colno, error: String(error) } });
+      return false;
+    };
+
+    console.log("Cherry WebView Init, URL: " + window.location.href);
+    var chat = null;
+    var pendingSigns = {};
+    var activeConfig = null;
 
     function bytesToB64(bytes) {
       var bin = '';
@@ -82,12 +106,31 @@ export function buildCherryHostHtml({ sdkUrl }: BuildCherryHostHtmlOptions): str
         toNative({ type: 'event', event: 'error', data: { code: 'BAD_CONFIG', message: String(e) } });
         return;
       }
-      if (chat && activeConfig && activeConfig.roomId === cfg.roomId && activeConfig.token === cfg.token) {
-        console.log("Cherry received config with same roomId and token, skipping recreation");
+      if (!chat) {
+        mount(cfg);
         return;
       }
-      if (chat) { try { chat.destroy(); } catch (_) {} chat = null; }
-      mount(cfg);
+      var roomChanged = !activeConfig || activeConfig.roomId !== cfg.roomId;
+      var tokenChanged = !activeConfig || activeConfig.token !== cfg.token;
+      var walletChanged = !activeConfig || activeConfig.walletAddress !== cfg.walletAddress;
+
+      if (roomChanged) {
+        console.log("Room ID changed from " + (activeConfig ? activeConfig.roomId : "null") + " to " + cfg.roomId + ". Recreating chat widget.");
+        try { chat.destroy(); } catch (_) {}
+        chat = null;
+        mount(cfg);
+        return;
+      }
+
+      activeConfig = cfg;
+      if (tokenChanged && cfg.token) {
+        console.log("Cherry received new token, updating dynamically");
+        try { chat.setToken(cfg.token); } catch (e) { console.error("Error setting token dynamically:", e); }
+      }
+      if (walletChanged && cfg.walletAddress) {
+        console.log("Cherry received new wallet address, updating dynamically");
+        try { chat.setWalletAddress(cfg.walletAddress); } catch (e) { console.error("Error setting wallet address dynamically:", e); }
+      }
     };
 
     function requestSignatureFromNative(messageBytes) {
@@ -128,7 +171,9 @@ export function buildCherryHostHtml({ sdkUrl }: BuildCherryHostHtmlOptions): str
 
       var events = ['ready', 'authStateChange', 'unreadCount', 'message', 'tokenExpired', 'error', 'walletConnectRequested', 'preview', 'roomChanged'];
       events.forEach(function (ev) {
-        chat.on(ev, function (data) { toNative({ type: 'event', event: ev, data: data }); });
+        chat.on(ev, function (data) {
+          toNative({ type: 'event', event: ev, data: data });
+        });
       });
 
       chat.mount().then(function () {
