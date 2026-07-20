@@ -306,7 +306,7 @@ class CherryRoomMessagesView(APIView):
                 'Authorization': f'Bearer {auth_token}',
                 'Content-Type': 'application/json'
             }
-            url = f"https://api.cherry.fun/api/sdk/groups/{room_id}/messages"
+            url = f"https://api.cherry.fun/api/v1/apps/groups/{room_id}/messages"
             
             params = {}
             if 'cursor' in request.GET:
@@ -326,7 +326,23 @@ class CherryRoomMessagesView(APIView):
             for msg in messages_list:
                 msg_id = msg.get('id')
                 content = msg.get('content', '')
-                created_at = msg.get('createdAt') or msg.get('created_at')
+                
+                created_at_raw = msg.get('createdAt') or msg.get('created_at')
+                created_at = created_at_raw
+                if isinstance(created_at_raw, dict) and '_seconds' in created_at_raw:
+                    import datetime
+                    try:
+                        dt = datetime.datetime.fromtimestamp(created_at_raw['_seconds'], tz=datetime.timezone.utc)
+                        created_at = dt.isoformat()
+                    except Exception:
+                        pass
+                elif isinstance(created_at_raw, (int, float)):
+                    import datetime
+                    try:
+                        dt = datetime.datetime.fromtimestamp(created_at_raw, tz=datetime.timezone.utc)
+                        created_at = dt.isoformat()
+                    except Exception:
+                        pass
 
                 parsed_text = content
                 sender_id = None
@@ -406,7 +422,7 @@ class CherryRoomMessagesView(APIView):
                 'Authorization': f'Bearer {auth_token}',
                 'Content-Type': 'application/json'
             }
-            url = f"https://api.cherry.fun/api/sdk/groups/{room_id}/messages"
+            url = f"https://api.cherry.fun/api/v1/apps/groups/{room_id}/messages"
             payload = {
                 'content': json.dumps(payload_content)
             }
