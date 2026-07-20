@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -6,28 +6,16 @@ import {
   Text,
   StyleSheet,
   StatusBar,
-  Platform,
   useColorScheme
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import useWalletAddress from '@/hooks/useWalletAddress';
 import { CherryChatWebView } from './CherryChatWebView';
 import { buildCherryHostHtml } from './cherryHostHtml';
 import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
-
-// Dynamically load useMobileWallet to avoid static import issues on iOS
-let useMobileWallet: any;
-try {
-  if (Platform.OS === 'android') {
-    useMobileWallet = require('@wallet-ui/react-native-web3js/dist/index.native.mjs').useMobileWallet;
-  }
-} catch (e) {
-  console.warn("Failed to load useMobileWallet dynamically:", e);
-}
 
 const formatToUuid = (id: string | number | undefined): string => {
   if (!id) return '68a27a2f-f26b-4a84-b8d6-55be5cb86122';
@@ -49,98 +37,66 @@ export default function ChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isDark = useColorScheme() === 'dark';
-  
-  const { address: walletAddress, walletType } = useWalletAddress();
-  const mwa = useMobileWallet ? useMobileWallet() : null;
-  
+
   const [token, setToken] = useState<string | null>(null);
   const [cherryRoomId, setCherryRoomId] = useState<string | null>(null);
-  const [loadingToken, setLoadingToken] = useState(false);
+  const [loadingToken, setLoadingToken] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { id } = useLocalSearchParams();
   const chatId = Array.isArray(id) ? id[0] : id;
 
-  const fetchToken = async (addr: string) => {
+  // App-trusted mode: the backend derives the wallet from the authenticated
+  // session — we only send our API access token. No walletAddress in body.
+  const fetchToken = async () => {
     setLoadingToken(true);
     setErrorMsg(null);
     try {
       const apiToken = await storage.getItem('access');
-      const response = await axios.post(`${GetApiUrl()}/chat/cherry-embed-token/`, {
-        walletAddress: addr,
-        chatId: chatId ? parseInt(chatId, 10) : undefined
-      }, {
-        headers: {
-          Authorization: `Bearer ${apiToken}`
-        }
-      });
+      const response = await axios.post(
+        `${GetApiUrl()}/chat/cherry-embed-token/`,
+        chatId ? { chatId: parseInt(chatId, 10) } : {},
+        { headers: { Authorization: `Bearer ${apiToken}` } }
+      );
       if (response.data?.token) {
         setToken(response.data.token);
         setCherryRoomId(response.data.roomId || '68a27a2f-f26b-4a84-b8d6-55be5cb86122');
+        console.log('[ChatScreen] Token received, roomId:', response.data.roomId);
       } else {
-        setErrorMsg("Failed to retrieve chat token");
+        setErrorMsg('Failed to retrieve chat token');
       }
     } catch (error: any) {
-      console.error('Error fetching cherry embed token:', error);
-      setErrorMsg(error?.response?.data?.error || "Error authenticating chat session");
+      console.error('[ChatScreen] Error fetching cherry embed token:', error?.response?.data || error);
+      setErrorMsg(error?.response?.data?.error || 'Error authenticating chat session');
     } finally {
       setLoadingToken(false);
     }
   };
 
+  // Fetch immediately on mount — no wallet dependency
   useEffect(() => {
-    if (walletAddress) {
-      fetchToken(walletAddress);
-    }
-  }, [walletAddress, chatId]);
+    fetchToken();
+  }, [chatId]);
 
-  const onSign = async (messageBytes: Uint8Array): Promise<Uint8Array> => {
-    console.log("[ChatScreen] onSign requested by Cherry, bytes length:", messageBytes.length);
-    if (walletType === 'mwa' && mwa) {
-      try {
-        console.log("[ChatScreen] Launching MWA signature challenge...");
-        const signature = await mwa.signMessage(messageBytes);
-        if (!signature) {
-          throw new Error("Signing rejected by wallet");
-        }
-        console.log("[ChatScreen] MWA signature acquired.");
-        // Slice the last 64 bytes if the signature is appended to the message
-        return signature.length > 64 ? signature.slice(-64) : signature;
-      } catch (err: any) {
-        console.error("[ChatScreen] MWA signing error:", err);
-        throw err;
-      }
-    }
-    
-    console.log("[ChatScreen] Non-MWA wallet or platform fallback: returning dummy signature");
-    // For LazorKit, fallback to a dummy signature
-    return new Uint8Array(64);
-  };
-
-  const onWalletConnectRequested = () => {
-    console.log("[ChatScreen] onWalletConnectRequested triggered from Cherry iframe");
-    // Redirect to the wallet introduction/selection screen
-    router.push('/wallet-select');
-  };
-
-  const hostHtml = buildCherryHostHtml({
+  const hostHtml = useMemo(() => buildCherryHostHtml({
     sdkUrl: 'https://embed.cherry.fun/cherry-embed.js'
-  });
+  }), []);
 
-  const useSignature = walletType === 'mwa' && Platform.OS === 'android' && !!mwa;
-  console.log("[ChatScreen] Wallet type:", walletType, "Platform:", Platform.OS, "Use signature flow:", useSignature);
+  const webViewSource = useMemo(() => ({
+    html: hostHtml,
+    baseUrl: 'https://nextvibe.io'
+  }), [hostHtml]);
 
-  const config = {
+  const config = useMemo(() => ({
     appId: '16e14376-0fce-4536-8891-754fd8fb5748',
     roomId: cherryRoomId || '68a27a2f-f26b-4a84-b8d6-55be5cb86122',
     mode: 'single' as const,
-    theme: { mode: 'dark', primaryColor: '#613583' },
+    theme: { mode: 'dark' as const, primaryColor: '#FF5BA8' },
     token: token || undefined,
-    walletAddress: useSignature ? (walletAddress || undefined) : undefined,
-    embedUrl: 'https://embed.cherry.fun'
-  };
+    embedUrl: 'https://embed.cherry.fun',
+  }), [token, cherryRoomId]);
 
-  console.log("[ChatScreen] Loading Cherry Chat with Room:", config.roomId, "WalletAddress passed:", config.walletAddress, "Token:", token);
+  console.log('[ChatScreen] Config — Room:', config.roomId, 'Token present:', !!token);
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0A0410' : '#fff' }]}>
@@ -159,41 +115,32 @@ export default function ChatScreen() {
         <View style={styles.rightPlaceholder} />
       </View>
 
-      {!walletAddress ? (
+      {errorMsg ? (
         <View style={styles.center}>
-          <Text style={[styles.infoText, { color: isDark ? '#aaa' : '#666' }]}>
-            Please connect your wallet to access the chat.
-          </Text>
-          <TouchableOpacity style={styles.connectButton} onPress={onWalletConnectRequested}>
-            <Text style={styles.connectButtonText}>Connect Wallet</Text>
-          </TouchableOpacity>
-        </View>
-      ) : errorMsg ? (
-        <View style={styles.center}>
-          <Text style={[styles.errorText]}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => { setErrorMsg(null); fetchToken(walletAddress); }}>
+          <Text style={styles.errorText}>{errorMsg}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => { setErrorMsg(null); fetchToken(); }}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      ) : (loadingToken || !token) ? (
+      ) : (loadingToken || !token || !cherryRoomId) ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#613583" />
+          <ActivityIndicator size="large" color="#FF5BA8" />
           <Text style={[styles.infoText, { color: isDark ? '#aaa' : '#666', marginTop: 10 }]}>
             Loading chat session...
           </Text>
         </View>
       ) : (
+        // App-trusted mode: no onSign, no onWalletConnectRequested — the token alone authenticates.
         <CherryChatWebView
-          source={{ html: hostHtml, baseUrl: 'https://embed.cherry.fun' }}
+          source={webViewSource}
           config={config}
-          onSign={onSign}
-          onWalletConnectRequested={onWalletConnectRequested}
           style={styles.webview}
           onEvent={(event, data) => {
             console.log(`[CherryChat] Event: ${event}`, data);
             if (event === 'error') {
-              console.error("[CherryChat] Error payload:", data);
-              const errMsg = data?.message || data?.code || (typeof data === 'string' ? data : JSON.stringify(data)) || "Unknown error";
+              console.error('[CherryChat] Error payload:', data);
+              const errData = data as any;
+              const errMsg = errData?.message || errData?.code || (typeof data === 'string' ? data : JSON.stringify(data)) || 'Unknown error';
               setErrorMsg(`Cherry Error: ${errMsg}`);
             }
           }}
