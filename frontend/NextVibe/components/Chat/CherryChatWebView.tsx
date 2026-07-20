@@ -35,7 +35,7 @@ export interface CherryChatWebViewProps {
    * This runs in the NATIVE layer — wire it to Mobile Wallet Adapter (Android)
    * or a deeplink wallet (iOS). See `wallet.ts`.
    */
-  onSign: (message: Uint8Array) => Promise<Uint8Array>;
+  onSign?: (message: Uint8Array) => Promise<Uint8Array>;
   /**
    * Forwarded SDK events: 'ready' | 'mounted' | 'authStateChange' |
    * 'unreadCount' | 'message' | 'tokenExpired' | 'error' |
@@ -115,7 +115,7 @@ export const CherryChatWebView = forwardRef<CherryChatWebViewRef, CherryChatWebV
     // Keep the latest config/handlers in refs so the message handler is stable.
     const configRef = useRef(config);
     configRef.current = config;
-    const onSignRef = useRef(onSign);
+    const onSignRef = useRef<((message: Uint8Array) => Promise<Uint8Array>) | undefined>(onSign);
     onSignRef.current = onSign;
 
     const inject = useCallback((js: string) => {
@@ -173,6 +173,9 @@ export const CherryChatWebView = forwardRef<CherryChatWebViewRef, CherryChatWebV
           const { id } = msg;
           try {
             const messageBytes = base64ToBytes(msg.message);
+            if (!onSignRef.current) {
+              throw new Error('Wallet signing not configured/supported in this mode.');
+            }
             const signature = await onSignRef.current(messageBytes);
             const sigB64 = bytesToBase64(signature);
 
@@ -195,7 +198,7 @@ export const CherryChatWebView = forwardRef<CherryChatWebViewRef, CherryChatWebV
 
     return (
       <WebView
-        key={`${config.roomId}_${config.token ? 'auth' : 'anon'}`}
+        key="cherry-chat-webview"
         ref={webRef}
         source={source}
         onMessage={handleMessage}
@@ -205,11 +208,13 @@ export const CherryChatWebView = forwardRef<CherryChatWebViewRef, CherryChatWebV
         thirdPartyCookiesEnabled
         setSupportMultipleWindows={false}
         keyboardDisplayRequiresUserAction={false}
-        onConsoleMessage={(event) => {
-          console.log(`[WebView Console] ${event.nativeEvent.message}`);
-        }}
         style={style}
         {...webViewProps}
+        {...({
+          onConsoleMessage: (event: any) => {
+            console.log(`[WebView Console] ${event.nativeEvent.message}`);
+          }
+        } as any)}
       />
     );
   },

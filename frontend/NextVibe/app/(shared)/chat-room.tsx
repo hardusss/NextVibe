@@ -1,5 +1,5 @@
-import ChatScreen from "@/components/Chat/ChatScreen";
+import CustomChatScreen from "@/components/Chat/CustomChatScreen";
 
 export default function ChatTab() {
-  return <ChatScreen />;
+  return <CustomChatScreen />;
 }
