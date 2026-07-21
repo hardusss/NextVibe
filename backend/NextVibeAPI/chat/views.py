@@ -144,9 +144,6 @@ class CherryEmbedTokenView(APIView):
         import time
 
         try:
-            # SECURITY: In app-trusted mode, NEVER derive the wallet from the
-            # request body — the client cannot be trusted. Use the wallet stored
-            # on the authenticated user's profile exclusively.
             chat_id = request.data.get('chatId')
             wallet_address = request.user.wallet_address
 
@@ -182,90 +179,62 @@ class CherryEmbedTokenView(APIView):
             if isinstance(token, bytes):
                 token = token.decode('utf-8')
 
-            response_data = {'token': token}
+            # We will always map to the default room for the embed app
+            default_room_id = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
+            response_data = {
+                'token': token,
+                'roomId': default_room_id
+            }
+
+            # Exchange the embedToken for a user sessionToken
+            try:
+                auth_payload = {
+                    "embedToken": token,
+                    "parentOrigin": "https://nextvibe.io"
+                }
+                r_auth = requests.post(
+                    "https://chat.cherry.fun/api/embed/auth",
+                    headers={"Content-Type": "application/json"},
+                    json=auth_payload,
+                    timeout=5
+                )
+                if r_auth.status_code == 201:
+                    session_token = r_auth.json().get("data", {}).get("token")
+                    if session_token:
+                        response_data['sessionToken'] = session_token
+                else:
+                    logger.warning(f"Failed to fetch sessionToken: {r_auth.status_code} - {r_auth.text}")
+            except Exception as auth_err:
+                logger.error(f"Error fetching sessionToken: {str(auth_err)}")
 
             if chat_id:
                 try:
                     chat = Chat.objects.get(id=chat_id, participants=request.user)
+                    if chat.cherry_room_id != default_room_id:
+                        chat.cherry_room_id = default_room_id
+                        chat.save()
                     
-                    if not chat.cherry_room_id:
-                        owner_wallet = wallet_address
-                        participants = list(chat.participants.all())
-                        members = [p.wallet_address for p in participants if p.wallet_address]
-                        if owner_wallet not in members:
-                            members.append(owner_wallet)
-
-                        other_user = chat.participants.exclude(user_id=request.user.user_id).first()
-                        chat_title = f"Chat with {other_user.username}" if other_user else f"Chat {chat.id}"
-
-                        if not project_key:
-                            logger.warning("CHERRY_PROJECT_KEY is not configured on the backend settings.")
-                        auth_token = project_key if project_key else app_secret
+                    # Auto-add the participants to the room members
+                    participants = list(chat.participants.all())
+                    wallets_to_add = [p.wallet_address for p in participants if p.wallet_address]
+                    if wallets_to_add and project_key:
                         headers = {
-                            'Authorization': f'Bearer {auth_token}',
+                            'Authorization': f'Bearer {project_key}',
                             'Content-Type': 'application/json'
                         }
-                        payload_cherry = {
-                            'ownerWallet': owner_wallet,
-                            'title': chat_title,
-                            'description': 'NextVibe direct chat room',
-                            'initialMembers': members
+                        invite_url = f"https://api.cherry.fun/api/v1/apps/groups/{default_room_id}/members"
+                        invite_payload = {
+                            "wallets": wallets_to_add,
+                            "autoAccept": True
                         }
-                        
                         try:
-                            resp = requests.post(
-                                'https://api.cherry.fun/api/v1/apps/groups',
-                                json=payload_cherry,
-                                headers=headers,
-                                timeout=10
-                            )
-                            if resp.status_code in (200, 201):
-                                resp_data = resp.json()
-                                room_id = resp_data.get('roomId') or resp_data.get('id')
-                                if room_id:
-                                    chat.cherry_room_id = room_id
-                                    chat.save()
-                                    logger.info(f"Created Cherry chat room {chat.cherry_room_id} for Chat {chat.id}")
-                            else:
-                                logger.error(f"Cherry group creation failed: {resp.status_code} - {resp.text}")
-                        except Exception as req_err:
-                            logger.error(f"Error calling Cherry group API: {str(req_err)}")
-
-                    if chat.cherry_room_id:
-                        response_data['roomId'] = chat.cherry_room_id
-                        # Dynamic membership sync: make sure all current participants with valid wallet addresses
-                        # are active members in the Cherry room.
-                        participants = list(chat.participants.all())
-                        wallets_to_add = [p.wallet_address for p in participants if p.wallet_address]
-                        if wallets_to_add:
-                            if not project_key:
-                                logger.warning("CHERRY_PROJECT_KEY is not configured on the backend settings.")
-                            auth_token = project_key if project_key else app_secret
-                            headers = {
-                                'Authorization': f'Bearer {auth_token}',
-                                'Content-Type': 'application/json'
-                            }
-                            try:
-                                invite_url = f"https://api.cherry.fun/api/v1/apps/groups/{chat.cherry_room_id}/members"
-                                invite_payload = {
-                                    "wallets": wallets_to_add,
-                                    "autoAccept": True
-                                }
-                                resp = requests.post(invite_url, json=invite_payload, headers=headers, timeout=5)
-                                if resp.status_code not in (200, 201):
-                                    logger.warning(f"Failed to auto-accept members to existing room {chat.cherry_room_id}: {resp.status_code} - {resp.text}")
-                            except Exception as invite_err:
-                                logger.error(f"Error checking/adding members to existing room: {str(invite_err)}")
-                    else:
-                        response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
+                            requests.post(invite_url, json=invite_payload, headers=headers, timeout=5)
+                        except Exception:
+                            pass
                 except Chat.DoesNotExist:
                     logger.warning(f"Chat {chat_id} not found for user {request.user.username}")
-                    response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
                 except Exception as e:
-                    logger.error(f"Error retrieving/creating Cherry room for chat {chat_id}: {str(e)}")
-                    response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
-            else:
-                response_data['roomId'] = '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
+                    logger.error(f"Error updating Cherry room for chat {chat_id}: {str(e)}")
 
             return Response(response_data, status=200)
         except Exception as e:
@@ -282,8 +251,21 @@ class CherryRoomMessagesView(APIView):
         from django.conf import settings
 
         try:
-            # 1. Verify user belongs to the chat room
-            chat = Chat.objects.filter(cherry_room_id=room_id, participants=request.user).first()
+            # 1. Resolve Chat object
+            chat = None
+            chat_id_param = request.GET.get('chatId')
+            if chat_id_param:
+                try:
+                    chat = Chat.objects.filter(id=int(chat_id_param), participants=request.user).first()
+                except (ValueError, TypeError):
+                    pass
+            
+            if not chat:
+                if room_id.isdigit():
+                    chat = Chat.objects.filter(id=int(room_id), participants=request.user).first()
+                else:
+                    chat = Chat.objects.filter(cherry_room_id=room_id, participants=request.user).first()
+
             if not chat:
                 return Response({'error': 'You do not have permission to view this chat room'}, status=403)
 
@@ -301,20 +283,18 @@ class CherryRoomMessagesView(APIView):
                 logger.error("Cherry credentials not configured in settings.")
                 return Response({'error': 'Cherry API credentials not configured'}, status=500)
 
-            # 3. Call Cherry API
-            headers = {
-                'Authorization': f'Bearer {auth_token}',
-                'Content-Type': 'application/json'
-            }
-            url = f"https://api.cherry.fun/api/v1/apps/groups/{room_id}/messages"
+            # 3. Call Cherry API using the shared room ID
+            cherry_room_id = chat.cherry_room_id if chat.cherry_room_id else '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
+            url = f"https://api.cherry.fun/api/v1/apps/groups/{cherry_room_id}/messages"
             
             params = {}
             if 'cursor' in request.GET:
                 params['cursor'] = request.GET['cursor']
-            if 'limit' in request.GET:
-                params['limit'] = request.GET['limit']
+            
+            # Fetch a larger limit because we'll be filtering messages by chatId
+            params['limit'] = 100
 
-            resp = requests.get(url, headers=headers, params=params, timeout=10)
+            resp = requests.get(url, headers={'Authorization': f'Bearer {auth_token}', 'Content-Type': 'application/json'}, params=params, timeout=10)
             if resp.status_code != 200:
                 logger.error(f"Cherry API GET messages failed: {resp.status_code} - {resp.text}")
                 return Response({'error': f'Failed to fetch messages: {resp.text}'}, status=resp.status_code)
@@ -348,28 +328,32 @@ class CherryRoomMessagesView(APIView):
                 sender_id = None
                 sender_username = "System"
                 sender_wallet = None
+                msg_chat_id = None
 
                 # Check if content is our custom JSON payload
                 try:
                     data = json.loads(content)
-                    if isinstance(data, dict) and 'text' in data:
+                    if isinstance(data, dict):
                         parsed_text = data.get('text', '')
                         sender_id = data.get('sender_id')
                         sender_username = data.get('username', 'User')
                         sender_wallet = data.get('sender_wallet')
+                        msg_chat_id = data.get('chat_id')
                 except (json.JSONDecodeError, TypeError, ValueError):
                     pass
 
-                parsed_messages.append({
-                    'id': msg_id,
-                    'text': parsed_text,
-                    'created_at': created_at,
-                    'sender': {
-                        'user_id': sender_id,
-                        'username': sender_username,
-                        'wallet_address': sender_wallet
-                    }
-                })
+                # Filter by local chat ID
+                if msg_chat_id == chat.id:
+                    parsed_messages.append({
+                        'id': msg_id,
+                        'text': parsed_text,
+                        'created_at': created_at,
+                        'sender': {
+                            'user_id': sender_id,
+                            'username': sender_username,
+                            'wallet_address': sender_wallet
+                        }
+                    })
 
             return Response({
                 'messages': parsed_messages,
@@ -383,11 +367,27 @@ class CherryRoomMessagesView(APIView):
     def post(self, request, room_id):
         import requests
         import json
+        import jwt
+        import uuid
+        import time
         from django.conf import settings
 
         try:
-            # 1. Verify user belongs to the chat room
-            chat = Chat.objects.filter(cherry_room_id=room_id, participants=request.user).first()
+            # 1. Resolve Chat object
+            chat = None
+            chat_id_param = request.data.get('chatId')
+            if chat_id_param:
+                try:
+                    chat = Chat.objects.filter(id=int(chat_id_param), participants=request.user).first()
+                except (ValueError, TypeError):
+                    pass
+
+            if not chat:
+                if room_id.isdigit():
+                    chat = Chat.objects.filter(id=int(room_id), participants=request.user).first()
+                else:
+                    chat = Chat.objects.filter(cherry_room_id=room_id, participants=request.user).first()
+
             if not chat:
                 return Response({'error': 'You do not have permission to post to this chat room'}, status=403)
 
@@ -395,36 +395,73 @@ class CherryRoomMessagesView(APIView):
             if not text:
                 return Response({'error': 'Message text is required'}, status=400)
 
-            # 2. Build the JSON content payload to identify the sender
+            # 2. Get API credentials
+            app_id = getattr(settings, 'CHERRY_APP_ID', '16e14376-0fce-4536-8891-754fd8fb5748')
+            app_secret = getattr(settings, 'CHERRY_APP_SECRET', None)
+            
+            if app_secret:
+                app_secret = app_secret.strip().strip("'\"")
+            if app_id:
+                app_id = app_id.strip().strip("'\"")
+
+            if not app_secret or not request.user.wallet_address:
+                return Response({'error': 'Cherry configuration error or missing user wallet'}, status=500)
+
+            # 3. Generate embedToken (JWT) for the user
+            now_ts = int(time.time())
+            payload_jwt = {
+                'sub': request.user.wallet_address,
+                'app_id': app_id,
+                'iat': now_ts,
+                'exp': now_ts + 300,
+                'jti': str(uuid.uuid4())
+            }
+            embed_token = jwt.encode(payload_jwt, app_secret, algorithm='HS256')
+            if isinstance(embed_token, bytes):
+                embed_token = embed_token.decode('utf-8')
+
+            # 4. Exchange for sessionToken
+            auth_payload = {
+                "embedToken": embed_token,
+                "parentOrigin": "https://nextvibe.io"
+            }
+            r_auth = requests.post(
+                "https://chat.cherry.fun/api/embed/auth",
+                headers={"Content-Type": "application/json"},
+                json=auth_payload,
+                timeout=5
+            )
+            if r_auth.status_code != 201:
+                logger.error(f"Cherry auth exchange failed: {r_auth.status_code} - {r_auth.text}")
+                return Response({'error': 'Authentication with Cherry failed'}, status=401)
+
+            session_token = r_auth.json().get("data", {}).get("token")
+            if not session_token:
+                return Response({'error': 'Failed to obtain session token'}, status=500)
+
+            # 5. Build the JSON content payload to identify the sender and the chat ID
             payload_content = {
                 'text': text,
                 'sender_id': request.user.user_id,
                 'username': request.user.username,
-                'sender_wallet': request.user.wallet_address
+                'sender_wallet': request.user.wallet_address,
+                'chat_id': chat.id
             }
 
-            # 3. Get API credentials
-            app_secret = getattr(settings, 'CHERRY_APP_SECRET', None)
-            project_key = getattr(settings, 'CHERRY_PROJECT_KEY', None)
-
-            if project_key:
-                project_key = project_key.strip().strip("'\"")
-            if app_secret:
-                app_secret = app_secret.strip().strip("'\"")
-
-            auth_token = project_key if project_key else app_secret
-            if not auth_token:
-                logger.error("Cherry credentials not configured in settings.")
-                return Response({'error': 'Cherry API credentials not configured'}, status=500)
-
-            # 4. Call Cherry API to send message
+            # 6. Call Cherry API to send message using sessionToken and Origin header
             headers = {
-                'Authorization': f'Bearer {auth_token}',
-                'Content-Type': 'application/json'
+                'Authorization': f'Bearer {session_token}',
+                'Content-Type': 'application/json',
+                'Origin': 'https://embed.cherry.fun',
+                'Referer': 'https://embed.cherry.fun/'
             }
-            url = f"https://api.cherry.fun/api/v1/apps/groups/{room_id}/messages"
+            cherry_room_id = chat.cherry_room_id if chat.cherry_room_id else '68a27a2f-f26b-4a84-b8d6-55be5cb86122'
+            url = "https://chat.cherry.fun/api/messages/send"
             payload = {
-                'content': json.dumps(payload_content)
+                'roomId': cherry_room_id,
+                'content': json.dumps(payload_content),
+                'encrypted': False,
+                'legacy': False
             }
 
             resp = requests.post(url, headers=headers, json=payload, timeout=10)
@@ -432,9 +469,9 @@ class CherryRoomMessagesView(APIView):
                 logger.error(f"Cherry API POST message failed: {resp.status_code} - {resp.text}")
                 return Response({'error': f'Failed to send message: {resp.text}'}, status=resp.status_code)
 
-            cherry_resp = resp.json()
+            cherry_resp = resp.json().get('data', {})
 
-            # 5. Also write it locally to the Django database
+            # 7. Also write it locally to the Django database
             try:
                 Message.objects.create(
                     chat=chat,
