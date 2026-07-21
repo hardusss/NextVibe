@@ -120,7 +120,10 @@ export default function CustomChatScreen() {
       const apiToken = await storage.getItem('access');
       const response = await axios.get(
         `${GetApiUrl()}/chat/${cherryRoomId}/messages/`,
-        { headers: { Authorization: `Bearer ${apiToken}` } }
+        {
+          headers: { Authorization: `Bearer ${apiToken}` },
+          params: { chatId }
+        }
       );
 
       if (response.data?.messages) {
@@ -185,7 +188,7 @@ export default function CustomChatScreen() {
       const apiToken = await storage.getItem('access');
       const response = await axios.post(
         `${GetApiUrl()}/chat/${cherryRoomId}/messages/`,
-        { text: messageText },
+        { text: messageText, chatId },
         { headers: { Authorization: `Bearer ${apiToken}` } }
       );
 
