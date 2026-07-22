@@ -230,17 +230,42 @@ async def add_reaction(
 
     invalidate_chat_cache(message.chat_id)
 
-    # Build reaction summary
     reactions = db.query(MessageReaction).filter(MessageReaction.message_id == message_id).all()
-    summary: Dict[str, Dict] = {}
-    for r_item in reactions:
-        if r_item.emoji not in summary:
-            summary[r_item.emoji] = {"emoji": r_item.emoji, "count": 0, "reacted_by_me": False}
-        summary[r_item.emoji]["count"] += 1
-        if r_item.user_id == user_id:
-            summary[r_item.emoji]["reacted_by_me"] = True
+    for p in chat.participants:
+        p_id = p.user_id
+        summary = {}
+        for r_item in reactions:
+            if r_item.emoji not in summary:
+                summary[r_item.emoji] = {"emoji": r_item.emoji, "count": 0, "reacted_by_me": False}
+            summary[r_item.emoji]["count"] += 1
+            if r_item.user_id == p_id:
+                summary[r_item.emoji]["reacted_by_me"] = True
 
-    return {"message_id": message_id, "reactions": list(summary.values())}
+        pubsub_payload = {
+            "sender_pod_id": "api",
+            "target_user_ids": [p_id],
+            "envelope": {
+                "type": "reaction_update",
+                "chat_id": message.chat_id,
+                "message_id": message_id,
+                "reactions": list(summary.values())
+            }
+        }
+        try:
+            r.publish("chat_pubsub_events", json.dumps(pubsub_payload))
+        except Exception:
+            pass
+
+    # Summary for current requesting user
+    summary_user = {}
+    for r_item in reactions:
+        if r_item.emoji not in summary_user:
+            summary_user[r_item.emoji] = {"emoji": r_item.emoji, "count": 0, "reacted_by_me": False}
+        summary_user[r_item.emoji]["count"] += 1
+        if r_item.user_id == user_id:
+            summary_user[r_item.emoji]["reacted_by_me"] = True
+
+    return {"message_id": message_id, "reactions": list(summary_user.values())}
 
 
 @router.delete("/messages/{message_id}/reactions/{emoji}")
@@ -271,15 +296,40 @@ async def remove_reaction(
     invalidate_chat_cache(message.chat_id)
 
     reactions = db.query(MessageReaction).filter(MessageReaction.message_id == message_id).all()
-    summary: Dict[str, Dict] = {}
-    for r_item in reactions:
-        if r_item.emoji not in summary:
-            summary[r_item.emoji] = {"emoji": r_item.emoji, "count": 0, "reacted_by_me": False}
-        summary[r_item.emoji]["count"] += 1
-        if r_item.user_id == user_id:
-            summary[r_item.emoji]["reacted_by_me"] = True
+    for p in chat.participants:
+        p_id = p.user_id
+        summary = {}
+        for r_item in reactions:
+            if r_item.emoji not in summary:
+                summary[r_item.emoji] = {"emoji": r_item.emoji, "count": 0, "reacted_by_me": False}
+            summary[r_item.emoji]["count"] += 1
+            if r_item.user_id == p_id:
+                summary[r_item.emoji]["reacted_by_me"] = True
 
-    return {"message_id": message_id, "reactions": list(summary.values())}
+        pubsub_payload = {
+            "sender_pod_id": "api",
+            "target_user_ids": [p_id],
+            "envelope": {
+                "type": "reaction_update",
+                "chat_id": message.chat_id,
+                "message_id": message_id,
+                "reactions": list(summary.values())
+            }
+        }
+        try:
+            r.publish("chat_pubsub_events", json.dumps(pubsub_payload))
+        except Exception:
+            pass
+
+    summary_user = {}
+    for r_item in reactions:
+        if r_item.emoji not in summary_user:
+            summary_user[r_item.emoji] = {"emoji": r_item.emoji, "count": 0, "reacted_by_me": False}
+        summary_user[r_item.emoji]["count"] += 1
+        if r_item.user_id == user_id:
+            summary_user[r_item.emoji]["reacted_by_me"] = True
+
+    return {"message_id": message_id, "reactions": list(summary_user.values())}
 
 
 @router.patch("/messages/{message_id}")
@@ -309,6 +359,25 @@ async def edit_message(
     db.commit()
 
     invalidate_chat_cache(message.chat_id)
+
+    participant_ids = [u.user_id for u in message.chat.participants]
+    pubsub_payload = {
+        "sender_pod_id": "api",
+        "target_user_ids": participant_ids,
+        "envelope": {
+            "type": "message_edited",
+            "chat_id": message.chat_id,
+            "message_id": message.id,
+            "server_msg_id": message.id,
+            "content": message.text,
+            "text": message.text,
+            "edited_at": message.edited_at.isoformat()
+        }
+    }
+    try:
+        r.publish("chat_pubsub_events", json.dumps(pubsub_payload))
+    except Exception as e:
+        pass
 
     return {
         "message_id": message.id,

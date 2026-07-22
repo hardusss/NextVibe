@@ -332,12 +332,19 @@ export default function CustomChatScreen() {
         if (event.user_id !== currentUserId) {
           setIsTyping(event.is_typing);
         }
-      } else if (event.type === 'message_edited') {
+      } else if (event.type === 'message_edited' || event.type === 'edit_message') {
+        const targetId = String(event.server_msg_id || event.message_id || event.id);
+        const updatedText = event.content || event.text;
         setMessages(prev =>
           prev.map(msg => {
-            const msgId = msg.server_msg_id || (msg as any).message_id || msg.id;
-            if (String(msgId) === String(event.message_id)) {
-              return { ...msg, text: event.content, content: event.content, edited_at: event.edited_at };
+            const msgId = String(msg.server_msg_id || (msg as any).message_id || msg.id || msg.client_msg_id);
+            if (msgId === targetId || (msg.server_msg_id && String(msg.server_msg_id) === targetId)) {
+              return {
+                ...msg,
+                text: updatedText || msg.text || msg.content,
+                content: updatedText || msg.content || msg.text,
+                edited_at: event.edited_at || new Date().toISOString()
+              };
             }
             return msg;
           })
@@ -426,12 +433,32 @@ export default function CustomChatScreen() {
 
     // If Editing existing message:
     if (editingMessage) {
-      const msgId = editingMessage.server_msg_id || (editingMessage as any).message_id || editingMessage.id;
+      const rawMsgId = editingMessage.server_msg_id || (editingMessage as any).message_id || editingMessage.id;
+      const numMsgId = Number(rawMsgId);
+
+      // Optimistically update message in state immediately
+      setMessages(prev =>
+        prev.map(m => {
+          const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
+          if (mKey === String(rawMsgId) || (!isNaN(numMsgId) && (m.server_msg_id === numMsgId || (m as any).message_id === numMsgId))) {
+            return {
+              ...m,
+              text: messageText,
+              content: messageText,
+              edited_at: new Date().toISOString()
+            };
+          }
+          return m;
+        })
+      );
+
       try {
-        await editMessage(chatId, Number(msgId), messageText);
+        await editMessage(chatId, numMsgId, messageText);
         setToast({ visible: true, message: 'Message edited', isSuccess: true });
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to edit message:', err);
+        const errorMsg = err?.response?.data?.detail || err?.message || 'Failed to edit message';
+        setToast({ visible: true, message: errorMsg, isSuccess: false });
       } finally {
         setEditingMessage(null);
         setIsSending(false);
@@ -487,10 +514,43 @@ export default function CustomChatScreen() {
 
   const handleToggleReaction = async (emoji: string) => {
     if (!selectedActionMessage) return;
-    const msgId = selectedActionMessage.server_msg_id || (selectedActionMessage as any).message_id || selectedActionMessage.id;
+    const rawMsgId = selectedActionMessage.server_msg_id || (selectedActionMessage as any).message_id || selectedActionMessage.id;
+    const numMsgId = Number(rawMsgId);
     setActionModalVisible(false);
+
+    if (isNaN(numMsgId)) return;
+
+    // Optimistically update reactions in local state
+    setMessages(prev =>
+      prev.map(msg => {
+        const mKey = String(msg.server_msg_id || (msg as any).message_id || msg.id || msg.client_msg_id);
+        if (mKey === String(rawMsgId) || (!isNaN(numMsgId) && (msg.server_msg_id === numMsgId || (msg as any).message_id === numMsgId))) {
+          const currentReactions = msg.reactions || [];
+          const existingIdx = currentReactions.findIndex(r => r.emoji === emoji);
+          let newReactions = [...currentReactions];
+
+          if (existingIdx !== -1) {
+            const existing = newReactions[existingIdx];
+            if (existing.reacted_by_me) {
+              if (existing.count <= 1) {
+                newReactions.splice(existingIdx, 1);
+              } else {
+                newReactions[existingIdx] = { ...existing, count: existing.count - 1, reacted_by_me: false };
+              }
+            } else {
+              newReactions[existingIdx] = { ...existing, count: existing.count + 1, reacted_by_me: true };
+            }
+          } else {
+            newReactions.push({ emoji, count: 1, reacted_by_me: true });
+          }
+          return { ...msg, reactions: newReactions };
+        }
+        return msg;
+      })
+    );
+
     try {
-      await addReaction(chatId, Number(msgId), emoji);
+      await addReaction(chatId, numMsgId, emoji);
     } catch (err) {
       console.error('Failed to add reaction:', err);
     }
@@ -550,7 +610,10 @@ export default function CustomChatScreen() {
         onLongPress={() => handleMessageLongPress(item)}
         onReply={() => setReplyToMessage(item)}
         onReactionPress={(msgId, emoji) => {
-          addReaction(chatId, msgId, emoji);
+          const numId = Number(msgId);
+          if (!isNaN(numId)) {
+            addReaction(chatId, numId, emoji);
+          }
         }}
       />
     );
@@ -657,7 +720,7 @@ export default function CustomChatScreen() {
             <LiquidGlassView
               glassEffectStyle="clear"
               colorScheme="auto"
-              fallbackBackgroundColor="rgba(21, 7, 35, 0.4)"
+              fallbackBackgroundColor="transparent"
               style={styles.floatingGlassCapsule}
             >
               {/* Action Banners */}
@@ -677,7 +740,7 @@ export default function CustomChatScreen() {
               )}
 
               {editingMessage && (
-                <View style={[styles.actionBanner, { backgroundColor: 'rgba(167, 139, 250, 0.25)' }]}>
+                <View style={[styles.actionBanner, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]}>
                   <View style={[styles.bannerBar, { backgroundColor: '#A78BFA' }]} />
                   <View style={styles.bannerContent}>
                     <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Editing message</Text>
@@ -966,7 +1029,7 @@ const styles = StyleSheet.create({
   actionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(167, 139, 250, 0.18)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderBottomWidth: 1,
@@ -1004,7 +1067,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -1016,7 +1079,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'transparent',
     marginRight: 8,
   },
   sendButton: {

@@ -164,7 +164,7 @@ const ChatBubble: React.FC<Props> = ({ message, onReply, onReactionPress, onEdit
             {/* Content text / tombstone */}
             <View style={styles.contentWrapper}>
                 <Text style={[styles.text, isDeleted && styles.deletedText]}>
-                  {isDeleted ? '🚫 This message was deleted' : message.content}
+                  {isDeleted ? '🚫 This message was deleted' : (message.content || (message as any).text)}
                 </Text>
                 
                 <View style={styles.statusContainer}>
@@ -183,7 +183,7 @@ const ChatBubble: React.FC<Props> = ({ message, onReply, onReactionPress, onEdit
                   <TouchableOpacity
                     key={react.emoji}
                     style={[styles.reactionPill, react.reacted_by_me && styles.reactionPillActive]}
-                    onPress={() => onReactionPress && onReactionPress(message.message_id, react.emoji)}
+                    onPress={() => onReactionPress && onReactionPress(message.server_msg_id || message.message_id || (message as any).id, react.emoji)}
                   >
                     <Text style={styles.reactionEmoji}>{react.emoji}</Text>
                     <Text style={styles.reactionCount}>{react.count}</Text>
