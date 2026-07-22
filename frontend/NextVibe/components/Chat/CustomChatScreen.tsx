@@ -96,12 +96,20 @@ export default function CustomChatScreen() {
 
   // Helper to strictly deduplicate message list by unique ID
   const deduplicateMessages = (list: MessageItem[]): MessageItem[] => {
-    const seen = new Set<string>();
+    const seenKeys = new Set<string>();
     const result: MessageItem[] = [];
+
     for (const m of list) {
-      const primaryKey = String(m.server_msg_id || m.id || m.client_msg_id || '');
-      if (primaryKey && !seen.has(primaryKey)) {
-        seen.add(primaryKey);
+      const serverId = m.server_msg_id ? String(m.server_msg_id) : (typeof m.id === 'number' ? String(m.id) : null);
+      const clientId = m.client_msg_id ? String(m.client_msg_id) : (typeof m.id === 'string' ? String(m.id) : null);
+
+      if (serverId && seenKeys.has(serverId)) continue;
+      if (clientId && seenKeys.has(clientId)) continue;
+
+      const mainKey = serverId || clientId;
+      if (mainKey) {
+        if (serverId) seenKeys.add(serverId);
+        if (clientId) seenKeys.add(clientId);
         result.push(m);
       }
     }
@@ -282,6 +290,7 @@ export default function CustomChatScreen() {
     const clientMsgId = `temp-${Date.now()}`;
     const optimisticMsg: MessageItem = {
       id: clientMsgId,
+      client_msg_id: clientMsgId,
       chat_id: chatId,
       text: messageText,
       content: messageText,
@@ -293,13 +302,13 @@ export default function CustomChatScreen() {
       }
     };
 
-    setMessages(prev => [optimisticMsg, ...prev]);
+    setMessages(prev => deduplicateMessages([optimisticMsg, ...prev]));
 
     try {
-      await sendWebSocketMessage(chatId, messageText);
+      await sendWebSocketMessage(chatId, messageText, [], undefined, clientMsgId);
     } catch (err) {
       console.error('[CustomChatScreen] Error sending message:', err);
-      setMessages(prev => prev.filter(m => m.id !== clientMsgId));
+      setMessages(prev => prev.filter(m => m.id !== clientMsgId && m.client_msg_id !== clientMsgId));
       setInputText(messageText);
     } finally {
       setIsSending(false);

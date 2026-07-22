@@ -53,7 +53,8 @@ export const sendWebSocketMessage = async (
   chatId: number,
   message: string,
   mediaFiles: any[] = [],
-  replyToId?: number
+  replyToId?: number,
+  clientMsgId?: string
 ) => {
   try {
     let mediaKeys: string[] = [];
@@ -69,6 +70,7 @@ export const sendWebSocketMessage = async (
       chat_id: chatId,
       message,
       reply_to_id: replyToId || null,
+      client_msg_id: clientMsgId || null,
       media_keys: mediaKeys
     });
   } catch (error) {
@@ -78,7 +80,8 @@ export const sendWebSocketMessage = async (
       type: 'message',
       chat_id: chatId,
       message,
-      reply_to_id: replyToId || null
+      reply_to_id: replyToId || null,
+      client_msg_id: clientMsgId || null
     });
   }
 };
