@@ -656,7 +656,8 @@ export default function CustomChatScreen() {
           <View style={[styles.floatingBottomWrapper, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 6) : 8 }]}>
             <LiquidGlassView
               glassEffectStyle="clear"
-              colorScheme={isDark ? 'dark' : 'light'}
+              colorScheme="auto"
+              fallbackBackgroundColor="rgba(21, 7, 35, 0.4)"
               style={styles.floatingGlassCapsule}
             >
               {/* Action Banners */}
@@ -953,9 +954,9 @@ const styles = StyleSheet.create({
   floatingGlassCapsule: {
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.35)',
+    borderColor: 'rgba(167, 139, 250, 0.3)',
     overflow: 'hidden',
-    backgroundColor: 'rgba(21, 7, 35, 0.65)',
+    backgroundColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
