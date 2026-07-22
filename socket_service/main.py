@@ -12,6 +12,7 @@ from db import SessionLocal
 from src.models import Message, MediaAttachment, User, Chat, UserOnlineSession, MessageReaction, MessageReceipt
 from src.messages import router as messages_router
 from src.keys import router as keys_router
+from src.notifications import send_chat_push_notification
 from r2_storage import r2_storage  
 from auth import auth_jwt
 from config import settings
@@ -572,6 +573,26 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # Workstream A2: Scoped fan-out to chat participants ONLY
                 await manager.send_to_users(participant_ids, response_envelope)
+
+                # Trigger Expo Push Notifications for offline recipients
+                sender_user = db.query(User).filter(User.user_id == user_id).first()
+                sender_name = sender_user.username if sender_user else "User"
+
+                offline_tokens = []
+                for p in chat.participants:
+                    if p.user_id != user_id and not manager.is_user_online(p.user_id):
+                        push_token = getattr(p, "expo_push_token", None)
+                        if push_token:
+                            offline_tokens.append(push_token)
+
+                if offline_tokens:
+                    await send_chat_push_notification(
+                        recipient_tokens=offline_tokens,
+                        sender_name=sender_name,
+                        message_text=message.text or "",
+                        chat_id=chat_id,
+                        message_id=message.id
+                    )
 
     except WebSocketDisconnect:
         logger.info(f"👋 User {user_id} disconnected")
