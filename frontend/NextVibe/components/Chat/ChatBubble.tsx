@@ -238,7 +238,7 @@ const getStyles = (isDark: boolean, isMyMessage: boolean) => StyleSheet.create({
   },
   replyBar: {
     width: 3,
-    backgroundColor: '#FF5BA8',
+    backgroundColor: '#A78BFA',
     borderRadius: 2,
     marginRight: 6,
   },
@@ -247,7 +247,7 @@ const getStyles = (isDark: boolean, isMyMessage: boolean) => StyleSheet.create({
   },
   replySender: {
     fontSize: 11,
-    color: '#FF5BA8',
+    color: '#A78BFA',
     fontWeight: '600',
   },
   replyText: {
@@ -309,8 +309,8 @@ const getStyles = (isDark: boolean, isMyMessage: boolean) => StyleSheet.create({
     borderColor: 'transparent',
   },
   reactionPillActive: {
-    backgroundColor: 'rgba(255, 91, 168, 0.25)',
-    borderColor: '#FF5BA8',
+    backgroundColor: 'rgba(167, 139, 250, 0.25)',
+    borderColor: '#A78BFA',
   },
   reactionEmoji: {
     fontSize: 12,

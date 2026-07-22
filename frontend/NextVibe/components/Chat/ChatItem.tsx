@@ -195,7 +195,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
                       {chat.other_user.username}
                     </Text>
                     {chat.other_user.official && (
-                      <BadgeCheck size={16} color="#FF5BA8" style={{ marginLeft: 4 }} />
+                      <BadgeCheck size={16} color="#A78BFA" style={{ marginLeft: 4 }} />
                     )}
                   </View>
                   <Text style={styles.time}>{messageTime}</Text>
@@ -266,8 +266,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    borderWidth: 1.5,
-    borderColor: isDark ? 'rgba(255, 91, 168, 0.4)' : 'rgba(255, 91, 168, 0.2)'
   },
   onlineIndicator: {
     position: 'absolute',

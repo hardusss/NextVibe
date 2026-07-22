@@ -20,11 +20,8 @@ import {
   Send,
   Plus,
   BadgeCheck,
-  Phone,
-  Video,
   ShieldCheck,
   X,
-  Smile,
   MessageSquare,
   Copy,
   Pencil,
@@ -46,10 +43,8 @@ import {
   sendTypingStart,
   sendTypingStop,
   addReaction,
-  removeReaction,
   editMessage,
   deleteMessage,
-  uploadMedia,
   getChats
 } from '@/src/api/chat';
 import WebSocketService from '@/src/services/WebSocketService';
@@ -204,7 +199,7 @@ export default function CustomChatScreen() {
           setHasMore(false);
         }
 
-        // Try extracting partner info if not set
+        // Extract partner info if not set
         if (!otherUser && data.length > 0) {
           const msgFromOther = data.find(m => m.sender_id && m.sender_id !== currentUserId);
           if (msgFromOther && msgFromOther.sender) {
@@ -433,7 +428,7 @@ export default function CustomChatScreen() {
       const msgId = editingMessage.server_msg_id || (editingMessage as any).message_id || editingMessage.id;
       try {
         await editMessage(chatId, Number(msgId), messageText);
-        setToast({ visible: true, message: 'Message edited', isSuccess: true });
+        setToast({ visible: true, message: 'Повідомлення відредаговано', isSuccess: true });
       } catch (err) {
         console.error('Failed to edit message:', err);
       } finally {
@@ -510,7 +505,7 @@ export default function CustomChatScreen() {
   const handleActionCopy = () => {
     if (selectedActionMessage && (selectedActionMessage.content || selectedActionMessage.text)) {
       Clipboard.setStringAsync(selectedActionMessage.content || selectedActionMessage.text || '');
-      setToast({ visible: true, message: 'Message copied', isSuccess: true });
+      setToast({ visible: true, message: 'Текст скопійовано', isSuccess: true });
     }
     setActionModalVisible(false);
   };
@@ -529,14 +524,10 @@ export default function CustomChatScreen() {
     setActionModalVisible(false);
     try {
       await deleteMessage(chatId, Number(msgId));
-      setToast({ visible: true, message: 'Message deleted', isSuccess: true });
+      setToast({ visible: true, message: 'Повідомлення видалено', isSuccess: true });
     } catch (err) {
       console.error('Failed to delete message:', err);
     }
-  };
-
-  const handleCallTrigger = (type: 'voice' | 'video') => {
-    setToast({ visible: true, message: `Starting ${type} call...`, isSuccess: true });
   };
 
   const partnerName = otherUser?.username || 'User';
@@ -570,7 +561,7 @@ export default function CustomChatScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* Modern NextVibe Header */}
+      {/* Modern Clean Header (Without Border around Avatar and without Call buttons) */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -600,11 +591,11 @@ export default function CustomChatScreen() {
                 {partnerName}
               </Text>
               {otherUser?.official && (
-                <BadgeCheck size={16} color="#FF5BA8" style={{ marginLeft: 4 }} />
+                <BadgeCheck size={16} color="#A78BFA" style={{ marginLeft: 4 }} />
               )}
             </View>
             <Text style={styles.partnerStatus}>
-              {isTyping ? 'typing...' : (otherUser?.is_online ? 'Online' : 'WebSocket Active')}
+              {isTyping ? 'друк...' : (otherUser?.is_online ? 'Онлайн' : 'Захищений чат')}
             </Text>
           </View>
         </TouchableOpacity>
@@ -614,26 +605,10 @@ export default function CustomChatScreen() {
 
           <TouchableOpacity
             style={styles.headerActionButton}
-            onPress={() => handleCallTrigger('voice')}
-            activeOpacity={0.7}
-          >
-            <Phone size={19} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.headerActionButton}
-            onPress={() => handleCallTrigger('video')}
-            activeOpacity={0.7}
-          >
-            <Video size={19} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.headerActionButton}
             onPress={() => setSafetyModalVisible(true)}
             activeOpacity={0.7}
           >
-            <ShieldCheck size={20} color="#FF5BA8" />
+            <ShieldCheck size={22} color="#A78BFA" />
           </TouchableOpacity>
         </View>
       </View>
@@ -641,14 +616,14 @@ export default function CustomChatScreen() {
       {/* Main Content Area */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#FF5BA8" />
-          <Text style={styles.infoText}>Loading Chat History...</Text>
+          <ActivityIndicator size="large" color="#A78BFA" />
+          <Text style={styles.infoText}>Завантаження історії...</Text>
         </View>
       ) : errorMsg ? (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{errorMsg}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={loadInitialMessages}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>Спробувати знову</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -668,98 +643,101 @@ export default function CustomChatScreen() {
             onEndReachedThreshold={0.3}
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator size="small" color="#FF5BA8" style={{ marginVertical: 8 }} />
+                <ActivityIndicator size="small" color="#A78BFA" style={{ marginVertical: 8 }} />
               ) : null
             }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No messages yet. Say hello!</Text>
+                <Text style={styles.emptyText}>Немає повідомлень. Привітайтеся!</Text>
               </View>
             }
           />
 
-          {/* Action Banners (Reply / Edit / Media Preview) */}
-          {replyToMessage && (
-            <View style={styles.actionBanner}>
-              <View style={styles.bannerBar} />
-              <View style={styles.bannerContent}>
-                <Text style={styles.bannerTitle}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
-                <Text style={styles.bannerText} numberOfLines={1}>
-                  {replyToMessage.content || replyToMessage.text}
-                </Text>
+          {/* Elevated Container for Reply / Edit / Media Preview & Text Input */}
+          <View style={[styles.bottomElevatedContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 12 : 20 }]}>
+            {/* Action Banners */}
+            {replyToMessage && (
+              <View style={styles.actionBanner}>
+                <View style={styles.bannerBar} />
+                <View style={styles.bannerContent}>
+                  <Text style={styles.bannerTitle}>Відповідь для {replyToMessage.sender?.username || 'User'}</Text>
+                  <Text style={styles.bannerText} numberOfLines={1}>
+                    {replyToMessage.content || replyToMessage.text}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setReplyToMessage(null)}>
+                  <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => setReplyToMessage(null)}>
-                <X size={18} color="rgba(255, 255, 255, 0.7)" />
-              </TouchableOpacity>
-            </View>
-          )}
+            )}
 
-          {editingMessage && (
-            <View style={[styles.actionBanner, { backgroundColor: 'rgba(167, 139, 250, 0.25)' }]}>
-              <View style={[styles.bannerBar, { backgroundColor: '#A78BFA' }]} />
-              <View style={styles.bannerContent}>
-                <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Editing Message</Text>
-                <Text style={styles.bannerText} numberOfLines={1}>
-                  {editingMessage.content || editingMessage.text}
-                </Text>
+            {editingMessage && (
+              <View style={[styles.actionBanner, { backgroundColor: 'rgba(167, 139, 250, 0.25)' }]}>
+                <View style={[styles.bannerBar, { backgroundColor: '#A78BFA' }]} />
+                <View style={styles.bannerContent}>
+                  <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Редагування повідомлення</Text>
+                  <Text style={styles.bannerText} numberOfLines={1}>
+                    {editingMessage.content || editingMessage.text}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => { setEditingMessage(null); setInputText(''); }}>
+                  <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => { setEditingMessage(null); setInputText(''); }}>
-                <X size={18} color="rgba(255, 255, 255, 0.7)" />
-              </TouchableOpacity>
-            </View>
-          )}
+            )}
 
-          {selectedMediaFile && (
-            <View style={styles.actionBanner}>
-              <ImageIcon size={20} color="#FF5BA8" style={{ marginRight: 8 }} />
-              <View style={styles.bannerContent}>
-                <Text style={styles.bannerTitle}>Media attached</Text>
-                <Text style={styles.bannerText} numberOfLines={1}>{selectedMediaFile.uri}</Text>
+            {selectedMediaFile && (
+              <View style={styles.actionBanner}>
+                <ImageIcon size={20} color="#A78BFA" style={{ marginRight: 8 }} />
+                <View style={styles.bannerContent}>
+                  <Text style={styles.bannerTitle}>Медіа прикріплено</Text>
+                  <Text style={styles.bannerText} numberOfLines={1}>{selectedMediaFile.uri}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedMediaFile(null)}>
+                  <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => setSelectedMediaFile(null)}>
-                <X size={18} color="rgba(255, 255, 255, 0.7)" />
-              </TouchableOpacity>
-            </View>
-          )}
+            )}
 
-          {/* Text Input Container */}
-          <BlurView intensity={40} tint="dark" style={styles.inputWrapper}>
-            <View style={styles.inputInnerContainer}>
-              <TouchableOpacity
-                style={styles.attachButton}
-                onPress={() => setMediaPickerVisible(true)}
-                activeOpacity={0.8}
-              >
-                <Plus size={22} color="#FF5BA8" />
-              </TouchableOpacity>
+            {/* Text Input Container */}
+            <BlurView intensity={45} tint="dark" style={styles.inputWrapper}>
+              <View style={styles.inputInnerContainer}>
+                <TouchableOpacity
+                  style={styles.attachButton}
+                  onPress={() => setMediaPickerVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <Plus size={22} color="#A78BFA" />
+                </TouchableOpacity>
 
-              <TextInput
-                style={[styles.textInput, { maxHeight: 100 }]}
-                value={inputText}
-                onChangeText={handleInputChange}
-                placeholder="Type a message..."
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                multiline
-                keyboardAppearance="dark"
-              />
+                <TextInput
+                  style={[styles.textInput, { maxHeight: 100 }]}
+                  value={inputText}
+                  onChangeText={handleInputChange}
+                  placeholder="Напишіть повідомлення..."
+                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                  multiline
+                  keyboardAppearance="dark"
+                />
 
-              <TouchableOpacity
-                style={[
-                  styles.sendButton,
-                  (!inputText.trim() && !selectedMediaFile) && styles.sendButtonDisabled
-                ]}
-                onPress={handleSendMessage}
-                disabled={(!inputText.trim() && !selectedMediaFile) || isSending}
-                activeOpacity={0.8}
-              >
-                {isSending ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Send size={18} color="#FFFFFF" />
-                )}
-              </TouchableOpacity>
-            </View>
-          </BlurView>
+                <TouchableOpacity
+                  style={[
+                    styles.sendButton,
+                    (!inputText.trim() && !selectedMediaFile) && styles.sendButtonDisabled
+                  ]}
+                  onPress={handleSendMessage}
+                  disabled={(!inputText.trim() && !selectedMediaFile) || isSending}
+                  activeOpacity={0.8}
+                >
+                  {isSending ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Send size={18} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+          </View>
         </KeyboardAvoidingView>
       )}
 
@@ -775,11 +753,11 @@ export default function CustomChatScreen() {
           activeOpacity={1}
           onPress={() => setActionModalVisible(false)}
         >
-          <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
 
           <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
             <View style={styles.actionModalCard}>
-              {/* Quick Reaction Bar */}
+              {/* Quick Emoji Reaction Bar */}
               <View style={styles.reactionBar}>
                 {EMOJI_LIST.map(emoji => (
                   <TouchableOpacity
@@ -795,13 +773,13 @@ export default function CustomChatScreen() {
               {/* Action Menu List */}
               <View style={styles.menuList}>
                 <TouchableOpacity style={styles.menuItem} onPress={handleActionReply}>
-                  <MessageSquare size={20} color="#FF5BA8" style={styles.menuIcon} />
-                  <Text style={styles.menuText}>Reply</Text>
+                  <MessageSquare size={20} color="#A78BFA" style={styles.menuIcon} />
+                  <Text style={styles.menuText}>Відповісти</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.menuItem} onPress={handleActionCopy}>
                   <Copy size={20} color="#FFFFFF" style={styles.menuIcon} />
-                  <Text style={styles.menuText}>Copy Text</Text>
+                  <Text style={styles.menuText}>Копіювати текст</Text>
                 </TouchableOpacity>
 
                 {selectedActionMessage &&
@@ -809,13 +787,13 @@ export default function CustomChatScreen() {
                     selectedActionMessage.sender?.user_id === currentUserId) && (
                     <>
                       <TouchableOpacity style={styles.menuItem} onPress={handleActionEdit}>
-                        <Pencil size={20} color="#A78BFA" style={styles.menuIcon} />
-                        <Text style={styles.menuText}>Edit Message</Text>
+                        <Pencil size={20} color="#C4B5FD" style={styles.menuIcon} />
+                        <Text style={styles.menuText}>Змінити повідомлення</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={handleActionDelete}>
                         <Trash2 size={20} color="#EF4444" style={styles.menuIcon} />
-                        <Text style={[styles.menuText, { color: '#EF4444' }]}>Delete Message</Text>
+                        <Text style={[styles.menuText, { color: '#EF4444' }]}>Видалити</Text>
                       </TouchableOpacity>
                     </>
                   )}
@@ -860,8 +838,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
     backgroundColor: 'rgba(10, 4, 16, 0.95)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
@@ -880,11 +858,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#FF5BA8',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    // Clean avatar without border outline
   },
   headerOnlineIndicator: {
     position: 'absolute',
@@ -919,7 +896,7 @@ const styles = StyleSheet.create({
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   headerActionButton: {
     padding: 6,
@@ -942,12 +919,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorText: {
-    color: '#FF5BA8',
+    color: '#A78BFA',
     fontSize: 15,
     marginBottom: 12,
   },
   retryButton: {
-    backgroundColor: '#FF5BA8',
+    backgroundColor: '#8B5CF6',
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 12,
@@ -964,10 +941,16 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 14,
   },
+  bottomElevatedContainer: {
+    backgroundColor: '#0A0410',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
   actionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 91, 168, 0.2)',
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderTopWidth: 1,
@@ -976,7 +959,7 @@ const styles = StyleSheet.create({
   bannerBar: {
     width: 3,
     height: '100%',
-    backgroundColor: '#FF5BA8',
+    backgroundColor: '#A78BFA',
     borderRadius: 2,
     marginRight: 10,
   },
@@ -985,7 +968,7 @@ const styles = StyleSheet.create({
   },
   bannerTitle: {
     fontSize: 12,
-    color: '#FF5BA8',
+    color: '#A78BFA',
     fontWeight: 'bold',
   },
   bannerText: {
@@ -997,7 +980,9 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: 'rgba(10, 4, 16, 0.85)',
+    backgroundColor: 'rgba(21, 7, 35, 0.85)',
+    borderRadius: 20,
+    marginHorizontal: 8,
   },
   inputInnerContainer: {
     flexDirection: 'row',
@@ -1007,7 +992,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255, 91, 168, 0.15)',
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -1026,7 +1011,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#FF5BA8',
+    backgroundColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1038,7 +1023,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
   },
   actionModalCard: {
     width: '100%',
@@ -1046,7 +1031,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: '#150723',
     borderWidth: 1,
-    borderColor: 'rgba(255, 91, 168, 0.3)',
+    borderColor: 'rgba(167, 139, 250, 0.3)',
     padding: 16,
     overflow: 'hidden',
   },
