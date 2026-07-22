@@ -1,3 +1,7 @@
+import axios from 'axios';
+import GetApiUrl from '../utils/url_api';
+import { storage } from '../utils/storage';
+
 function getRealtimeBaseUrl(): string {
   return GetApiUrl()
     .replace("api", "realtime")
