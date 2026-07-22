@@ -69,3 +69,39 @@ class MessageReaction(models.Model):
 
     def __str__(self):
         return f"Reaction {self.emoji} on Msg {self.message.id} by User {self.user.id}"
+
+
+class UserDevice(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='devices')
+    device_id = models.CharField(max_length=64)
+    identity_key = models.TextField()
+    registration_id = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'device_id')
+
+    def __str__(self):
+        return f"Device {self.device_id} for User {self.user.id}"
+
+
+class SignedPreKey(models.Model):
+    device = models.ForeignKey(UserDevice, on_delete=models.CASCADE, related_name='signed_prekeys')
+    key_id = models.IntegerField()
+    public_key = models.TextField()
+    signature = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('device', 'key_id')
+
+
+class OneTimePreKey(models.Model):
+    device = models.ForeignKey(UserDevice, on_delete=models.CASCADE, related_name='one_time_prekeys')
+    key_id = models.IntegerField()
+    public_key = models.TextField()
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('device', 'key_id')
