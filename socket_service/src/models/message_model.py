@@ -4,6 +4,8 @@ from .base import Base
 
 import datetime
 
+# NOTE: these models map to physical tables shared with backend/NextVibeAPI/chat/models.py — keep schemas in sync!
+
 # Import User after all models are defined if in separate file
 from .user_model import User 
 

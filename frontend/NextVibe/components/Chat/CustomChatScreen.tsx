@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,21 +17,42 @@ import { ArrowLeft, Send } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
-import axios from 'axios';
 import { storage } from '@/src/utils/storage';
-import GetApiUrl from '@/src/utils/url_api';
+import {
+  getMessages,
+  sendWebSocketMessage,
+  notifyEnterChat,
+  sendTypingStart,
+  sendTypingStop
+} from '@/src/api/chat';
+import WebSocketService from '@/src/services/WebSocketService';
+import ChatBubble from './ChatBubble';
+import P2PStatusBadge from './P2PStatusBadge';
+import ChatTransportManager from '@/src/services/ChatTransport';
 
 interface Sender {
   user_id: number | null;
   username: string;
-  wallet_address: string | null;
+  wallet_address?: string | null;
 }
 
-interface Message {
-  id: string;
-  text: string;
+interface MessageItem {
+  id: string | number;
+  server_msg_id?: number;
+  chat_id: number;
+  content?: string;
+  text?: string;
   created_at: string;
-  sender: Sender;
+  sender_id?: number;
+  sender?: Sender;
+  is_read?: boolean;
+  reply_to_id?: number | null;
+  reply_to_snippet?: any;
+  reactions?: any[];
+  receipts?: any[];
+  media?: any[];
+  edited_at?: string | null;
+  deleted_at?: string | null;
 }
 
 export default function CustomChatScreen() {
@@ -41,23 +62,24 @@ export default function CustomChatScreen() {
   const isFocused = useIsFocused();
 
   const { id } = useLocalSearchParams();
-  const chatId = Array.isArray(id) ? id[0] : id;
+  const chatIdStr = Array.isArray(id) ? id[0] : id;
+  const chatId = chatIdStr ? parseInt(chatIdStr, 10) : 0;
 
   // State Management
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loadingRoom, setLoadingRoom] = useState(true);
-  const [pollingLoading, setPollingLoading] = useState(false);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
-
-  // User details
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [transportType, setTransportType] = useState<'server' | 'p2p'>('server');
 
-  // Cherry Chat details
-  const [cherryRoomId, setCherryRoomId] = useState<string | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Fetch current user ID for message differentiation
+  // 1. Fetch current user ID for sender differentiation
   useEffect(() => {
     const fetchUserId = async () => {
       try {
@@ -72,182 +94,212 @@ export default function CustomChatScreen() {
     fetchUserId();
   }, []);
 
-  // 2. Fetch/Resolve Cherry Room ID using existing endpoint
-  const resolveRoomId = async () => {
-    setLoadingRoom(true);
+  // 2. Fetch history from socket_service REST endpoint
+  const loadInitialMessages = useCallback(async () => {
+    if (!chatId) return;
+    setLoading(true);
     setErrorMsg(null);
     try {
-      const apiToken = await storage.getItem('access');
-      if (!apiToken) {
-        setErrorMsg('Authentication token is missing. Please log in again.');
-        setLoadingRoom(false);
-        return;
+      const data = await getMessages(chatId);
+      if (Array.isArray(data)) {
+        // Backend returns newest messages. Sort descending by created_at for FlatList inverted
+        const sorted = data.sort(
+          (a: MessageItem, b: MessageItem) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setMessages(sorted);
+        if (data.length < 20) {
+          setHasMore(false);
+        }
       }
-
-      console.log('[CustomChatScreen] Resolving room ID for chatId:', chatId);
-      const response = await axios.post(
-        `${GetApiUrl()}/chat/cherry-embed-token/`,
-        chatId ? { chatId: parseInt(chatId, 10) } : {},
-        { headers: { Authorization: `Bearer ${apiToken}` } }
-      );
-
-      if (response.data?.roomId) {
-        setCherryRoomId(response.data.roomId);
-        console.log('[CustomChatScreen] Cherry Room ID resolved:', response.data.roomId);
-      } else {
-        setErrorMsg('Failed to retrieve chat room credentials.');
-      }
-    } catch (error: any) {
-      console.error('[CustomChatScreen] Error resolving room:', error?.response?.data || error);
-      setErrorMsg(error?.response?.data?.error || 'Failed to authenticate chat session.');
+    } catch (err: any) {
+      console.error('[CustomChatScreen] Error loading messages:', err);
+      setErrorMsg('Failed to load chat history.');
     } finally {
-      setLoadingRoom(false);
-    }
-  };
-
-  useEffect(() => {
-    if (chatId) {
-      resolveRoomId();
+      setLoading(false);
     }
   }, [chatId]);
 
-  // 3. Fetch messages from our custom backend proxy view
-  const fetchMessages = async (showLoadingIndicator = false) => {
-    if (!cherryRoomId) return;
-    if (showLoadingIndicator) setPollingLoading(true);
-    
-    try {
-      const apiToken = await storage.getItem('access');
-      const response = await axios.get(
-        `${GetApiUrl()}/chat/${cherryRoomId}/messages/`,
-        {
-          headers: { Authorization: `Bearer ${apiToken}` },
-          params: { chatId }
-        }
-      );
+  // 3. Load older messages (Pagination)
+  const loadOlderMessages = async () => {
+    if (!chatId || loadingMore || !hasMore || messages.length === 0) return;
+    const oldestMsg = messages[messages.length - 1];
+    const oldestId = oldestMsg.server_msg_id || (typeof oldestMsg.id === 'number' ? oldestMsg.id : undefined);
+    if (!oldestId) return;
 
-      if (response.data?.messages) {
-        // Sort messages newest first for FlatList inverted={true} rendering
-        const sorted = response.data.messages.sort(
-          (a: Message, b: Message) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    setLoadingMore(true);
+    try {
+      const data = await getMessages(chatId, oldestId);
+      if (Array.isArray(data) && data.length > 0) {
+        const sortedNew = data.sort(
+          (a: MessageItem, b: MessageItem) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-        setMessages(sorted);
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id));
+          const filtered = sortedNew.filter(m => !existingIds.has(m.id));
+          return [...prev, ...filtered];
+        });
+        if (data.length < 20) {
+          setHasMore(false);
+        }
+      } else {
+        setHasMore(false);
       }
-    } catch (error: any) {
-      console.error('[CustomChatScreen] Error fetching messages:', error?.response?.data || error);
-      // Only set errorMsg on initial failure to prevent breaking UI during background polling
-      if (messages.length === 0) {
-        setErrorMsg('Failed to load message history.');
-      }
+    } catch (err) {
+      console.error('[CustomChatScreen] Error loading older messages:', err);
     } finally {
-      if (showLoadingIndicator) setPollingLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  // 4. Short Polling Mechanism: Polls every 3 seconds when screen is focused
+  // 4. WebSocket Real-Time Event Handlers & Subscriptions
   useEffect(() => {
-    if (!cherryRoomId || !isFocused) return;
+    if (!chatId || !isFocused) return;
 
-    // Run initial fetch on focus/mount
-    fetchMessages(messages.length === 0);
+    loadInitialMessages();
+    notifyEnterChat(chatId);
 
-    const interval = setInterval(() => {
-      fetchMessages(false);
-    }, 3000);
+    // Subscribe to Transport Manager for P2P state
+    const unsubscribeTransport = ChatTransportManager.addListener({
+      onTransportStateChange: (cId, state) => {
+        if (cId === chatId) setTransportType(state);
+      },
+      onMessageReceived: (incoming) => {
+        if (incoming.chat_id === chatId) {
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === (incoming.server_msg_id || incoming.id || incoming.client_msg_id));
+            if (exists) return prev;
+            return [incoming, ...prev];
+          });
+        }
+      }
+    });
 
-    // Clean up interval on unmount or screen blur to prevent memory leaks
+    // Subscribe to WebSocketService global real-time frames
+    const unsubscribeWS = WebSocketService.addListener((event: any) => {
+      if (!event || event.chat_id !== chatId) return;
+
+      if (event.type === 'message') {
+        setMessages(prev => {
+          // Replace matching temp client message or append new
+          const index = prev.findIndex(
+            m => (m.id === event.client_msg_id) || (m.id === event.server_msg_id)
+          );
+          if (index !== -1) {
+            const copy = [...prev];
+            copy[index] = { ...copy[index], ...event };
+            return copy;
+          }
+          return [event, ...prev];
+        });
+      } else if (event.type === 'read_receipt') {
+        setMessages(prev =>
+          prev.map(msg => {
+            if (event.message_ids?.includes(msg.server_msg_id || msg.id)) {
+              return { ...msg, is_read: true };
+            }
+            return msg;
+          })
+        );
+      } else if (event.type === 'reaction_update') {
+        setMessages(prev =>
+          prev.map(msg => {
+            if ((msg.server_msg_id || msg.id) === event.message_id) {
+              return { ...msg, reactions: event.reactions };
+            }
+            return msg;
+          })
+        );
+      } else if (event.type === 'typing_status') {
+        if (event.user_id !== currentUserId) {
+          setIsTyping(event.is_typing);
+        }
+      } else if (event.type === 'message_edited') {
+        setMessages(prev =>
+          prev.map(msg => {
+            if ((msg.server_msg_id || msg.id) === event.message_id) {
+              return { ...msg, text: event.content, content: event.content, edited_at: event.edited_at };
+            }
+            return msg;
+          })
+        );
+      } else if (event.type === 'message_deleted') {
+        setMessages(prev =>
+          prev.map(msg => {
+            if ((msg.server_msg_id || msg.id) === event.message_id) {
+              return { ...msg, content: '[Message deleted]', text: '[Message deleted]', deleted_at: event.deleted_at };
+            }
+            return msg;
+          })
+        );
+      }
+    });
+
     return () => {
-      clearInterval(interval);
-      console.log('[CustomChatScreen] Short polling interval cleared.');
+      unsubscribeWS();
+      unsubscribeTransport();
     };
-  }, [cherryRoomId, isFocused]);
+  }, [chatId, isFocused, currentUserId, loadInitialMessages]);
 
-  // 5. Send message action
+  // 5. Input Typing Indicator
+  const handleInputChange = (text: string) => {
+    setInputText(text);
+    if (!chatId) return;
+
+    sendTypingStart(chatId);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    typingTimeoutRef.current = setTimeout(() => {
+      sendTypingStop(chatId);
+    }, 3000);
+  };
+
+  // 6. Send Message Action
   const handleSendMessage = async () => {
-    if (!inputText.trim() || !cherryRoomId || isSending) return;
+    if (!inputText.trim() || !chatId || isSending) return;
 
     const messageText = inputText.trim();
     setInputText('');
     setIsSending(true);
 
-    // Optimistic Update
-    const tempId = `temp-${Date.now()}`;
-    const optimisticMsg: Message = {
-      id: tempId,
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    sendTypingStop(chatId);
+
+    const clientMsgId = `temp-${Date.now()}`;
+    const optimisticMsg: MessageItem = {
+      id: clientMsgId,
+      chat_id: chatId,
       text: messageText,
+      content: messageText,
       created_at: new Date().toISOString(),
+      sender_id: currentUserId || undefined,
       sender: {
         user_id: currentUserId,
-        username: 'Me',
-        wallet_address: null
+        username: 'Me'
       }
     };
+
     setMessages(prev => [optimisticMsg, ...prev]);
 
     try {
-      const apiToken = await storage.getItem('access');
-      const response = await axios.post(
-        `${GetApiUrl()}/chat/${cherryRoomId}/messages/`,
-        { text: messageText, chatId },
-        { headers: { Authorization: `Bearer ${apiToken}` } }
-      );
-
-      if (response.data) {
-        // Replace optimistic message with the real one returned from server
-        setMessages(prev =>
-          prev.map(msg => (msg.id === tempId ? response.data : msg))
-        );
-      }
-    } catch (error: any) {
-      console.error('[CustomChatScreen] Error sending message:', error?.response?.data || error);
-      // Remove optimistic message and restore input text on failure
-      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      await sendWebSocketMessage(chatId, messageText);
+    } catch (err) {
+      console.error('[CustomChatScreen] Error sending message:', err);
+      setMessages(prev => prev.filter(m => m.id !== clientMsgId));
       setInputText(messageText);
-      alert('Failed to send message. Please try again.');
     } finally {
       setIsSending(false);
     }
   };
 
-  // Format time display
-  const formatTime = (isoString: string) => {
-    try {
-      const date = new Date(isoString);
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      return `${hours}:${minutes}`;
-    } catch {
-      return '';
-    }
-  };
-
-  // Render bubble wrapper
-  const renderItem = ({ item }: { item: Message }) => {
-    const isMe = item.sender.user_id === currentUserId;
+  const renderItem = ({ item }: { item: MessageItem }) => {
+    const isMe = item.sender_id === currentUserId || item.sender?.user_id === currentUserId;
 
     return (
-      <View style={[styles.bubbleRow, isMe ? styles.rowRight : styles.rowLeft]}>
-        {!isMe && (
-          <Text style={styles.senderLabel}>
-            {item.sender.username || 'User'}
-          </Text>
-        )}
-        <View style={[styles.bubbleContainer, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-          {!isMe && (
-            <BlurView
-              intensity={25}
-              tint="dark"
-              style={StyleSheet.absoluteFillObject}
-            />
-          )}
-          <Text style={[styles.bubbleText, isMe ? styles.textMe : styles.textOther]}>
-            {item.text}
-          </Text>
-          <Text style={[styles.bubbleTime, isMe ? styles.timeMe : styles.timeOther]}>
-            {formatTime(item.created_at)}
-          </Text>
-        </View>
-      </View>
+      <ChatBubble
+        message={item}
+        isMe={isMe}
+        currentUserId={currentUserId || 0}
+      />
     );
   };
 
@@ -255,7 +307,7 @@ export default function CustomChatScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* Sleek Translucent Header */}
+      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -264,27 +316,30 @@ export default function CustomChatScreen() {
         >
           <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
+
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Chat Room</Text>
-          {cherryRoomId && (
-            <Text style={styles.headerSubtitle}>
-              {pollingLoading ? 'Syncing...' : 'Connected'}
-            </Text>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.headerTitle}>Chat Room</Text>
+            <P2PStatusBadge isP2PActive={transportType === 'p2p'} />
+          </View>
+          <Text style={styles.headerSubtitle}>
+            {isTyping ? 'typing...' : 'Real-time WebSocket'}
+          </Text>
         </View>
+
         <View style={styles.headerRightPlaceholder} />
       </View>
 
       {/* Main Content Area */}
-      {loadingRoom ? (
+      {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#FF5BA8" />
-          <Text style={styles.infoText}>Loading Chat Session...</Text>
+          <Text style={styles.infoText}>Loading Chat History...</Text>
         </View>
       ) : errorMsg ? (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={resolveRoomId}>
+          <TouchableOpacity style={styles.retryButton} onPress={loadInitialMessages}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -296,11 +351,18 @@ export default function CustomChatScreen() {
         >
           <FlatList
             data={messages}
-            keyExtractor={item => item.id}
+            keyExtractor={item => String(item.id || item.server_msg_id)}
             renderItem={renderItem}
             inverted
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            onEndReached={loadOlderMessages}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={
+              loadingMore ? (
+                <ActivityIndicator size="small" color="#FF5BA8" style={{ marginVertical: 8 }} />
+              ) : null
+            }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No messages yet. Say hello!</Text>
@@ -308,13 +370,13 @@ export default function CustomChatScreen() {
             }
           />
 
-          {/* Sleek Text Input Container */}
+          {/* Text Input Container */}
           <BlurView intensity={30} tint="dark" style={styles.inputWrapper}>
             <View style={styles.inputInnerContainer}>
               <TextInput
                 style={[styles.textInput, { maxHeight: 100 }]}
                 value={inputText}
-                onChangeText={setInputText}
+                onChangeText={handleInputChange}
                 placeholder="Type a message..."
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
                 multiline
@@ -342,56 +404,6 @@ export default function CustomChatScreen() {
     </View>
   );
 }
-
-/*
-  ========================================================================
-  UPGRADING FROM SHORT POLLING TO WEBSOCKETS (REAL-TIME MVP STEP-BY-STEP)
-  ========================================================================
-
-  1. Backend Upgrades:
-     - Install Django Channels and configure ASGI routing (`asgi.py`).
-     - Create a Channels Consumer (e.g. `ChatConsumer` in `chat/consumers.py`)
-       handling connection, room group joining, and sending messages.
-     - Implement JWT-based connection authentication to verify the user.
-     - When receiving a message in the consumer:
-       - Validate user permission.
-       - Post the message content JSON proxy to Cherry API (S2S).
-       - Broadcast the event to the Channels channel group.
-
-  2. Frontend Code Migration:
-     - Keep a ref to track the WebSocket connection:
-       const ws = useRef<WebSocket | null>(null);
-     - Replace the `useEffect` interval logic with WebSocket instantiation:
-       useEffect(() => {
-         if (!cherryRoomId) return;
-         
-         const wsUrl = `wss://your-backend.com/ws/chat/${cherryRoomId}/?token=${apiToken}`;
-         ws.current = new WebSocket(wsUrl);
-
-         ws.current.onopen = () => {
-           console.log('WebSocket Connected');
-         };
-         
-         ws.current.onmessage = (event) => {
-           const data = JSON.parse(event.data);
-           if (data.type === 'chat_message') {
-             // Prepend new messages to maintain FlatList inverted ordering
-             setMessages(prev => [data.message, ...prev]);
-           }
-         };
-
-         ws.current.onerror = (e) => console.error('WebSocket Error', e);
-         ws.current.onclose = () => console.log('WebSocket Closed');
-
-         return () => {
-           ws.current?.close();
-         };
-       }, [cherryRoomId]);
-
-     - Replace the `handleSendMessage` axios POST request with:
-       ws.current?.send(JSON.stringify({ text: messageText }));
-  ========================================================================
-*/
 
 const styles = StyleSheet.create({
   container: {
@@ -477,64 +489,6 @@ const styles = StyleSheet.create({
   emptyText: {
     color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 15,
-    fontFamily: 'Dank Mono',
-  },
-  bubbleRow: {
-    marginBottom: 12,
-    maxWidth: '85%',
-  },
-  rowLeft: {
-    alignSelf: 'flex-start',
-  },
-  rowRight: {
-    alignSelf: 'flex-end',
-  },
-  senderLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 11,
-    fontFamily: 'Dank Mono',
-    marginBottom: 4,
-    marginLeft: 4,
-  },
-  bubbleContainer: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  bubbleMe: {
-    backgroundColor: '#FF5BA8',
-    borderBottomRightRadius: 4,
-  },
-  bubbleOther: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    borderBottomLeftRadius: 4,
-  },
-  bubbleText: {
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  textMe: {
-    color: '#FFFFFF',
-    fontFamily: 'Dank Mono',
-  },
-  textOther: {
-    color: '#E2E8F0',
-    fontFamily: 'Dank Mono',
-  },
-  bubbleTime: {
-    fontSize: 10,
-    marginTop: 4,
-    textAlign: 'right',
-  },
-  timeMe: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontFamily: 'Dank Mono',
-  },
-  timeOther: {
-    color: 'rgba(255, 255, 255, 0.4)',
     fontFamily: 'Dank Mono',
   },
   inputWrapper: {
