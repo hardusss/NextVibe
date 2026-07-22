@@ -652,95 +652,97 @@ export default function CustomChatScreen() {
             }
           />
 
-          {/* Liquid Glass Bottom Input Bar Container (Sits at the very bottom edge on iOS) */}
-          <LiquidGlassView
-            glassEffectStyle="clear"
-            colorScheme={isDark ? 'dark' : 'light'}
-            style={[styles.bottomElevatedContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom - 12, 2) : 4 }]}
-          >
-            {/* Action Banners */}
-            {replyToMessage && (
-              <View style={styles.actionBanner}>
-                <View style={styles.bannerBar} />
-                <View style={styles.bannerContent}>
-                  <Text style={styles.bannerTitle}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
-                  <Text style={styles.bannerText} numberOfLines={1}>
-                    {replyToMessage.content || replyToMessage.text}
-                  </Text>
+          {/* Floating Liquid Glass Bottom Capsule (Floating Pill with Liquid Glass on iOS) */}
+          <View style={[styles.floatingBottomWrapper, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 6) : 8 }]}>
+            <LiquidGlassView
+              glassEffectStyle="clear"
+              colorScheme={isDark ? 'dark' : 'light'}
+              style={styles.floatingGlassCapsule}
+            >
+              {/* Action Banners */}
+              {replyToMessage && (
+                <View style={styles.actionBanner}>
+                  <View style={styles.bannerBar} />
+                  <View style={styles.bannerContent}>
+                    <Text style={styles.bannerTitle}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
+                    <Text style={styles.bannerText} numberOfLines={1}>
+                      {replyToMessage.content || replyToMessage.text}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setReplyToMessage(null)}>
+                    <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setReplyToMessage(null)}>
-                  <X size={18} color="rgba(255, 255, 255, 0.7)" />
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
 
-            {editingMessage && (
-              <View style={[styles.actionBanner, { backgroundColor: 'rgba(167, 139, 250, 0.25)' }]}>
-                <View style={[styles.bannerBar, { backgroundColor: '#A78BFA' }]} />
-                <View style={styles.bannerContent}>
-                  <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Editing message</Text>
-                  <Text style={styles.bannerText} numberOfLines={1}>
-                    {editingMessage.content || editingMessage.text}
-                  </Text>
+              {editingMessage && (
+                <View style={[styles.actionBanner, { backgroundColor: 'rgba(167, 139, 250, 0.25)' }]}>
+                  <View style={[styles.bannerBar, { backgroundColor: '#A78BFA' }]} />
+                  <View style={styles.bannerContent}>
+                    <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Editing message</Text>
+                    <Text style={styles.bannerText} numberOfLines={1}>
+                      {editingMessage.content || editingMessage.text}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => { setEditingMessage(null); setInputText(''); }}>
+                    <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => { setEditingMessage(null); setInputText(''); }}>
-                  <X size={18} color="rgba(255, 255, 255, 0.7)" />
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
 
-            {selectedMediaFile && (
-              <View style={styles.actionBanner}>
-                <ImageIcon size={20} color="#A78BFA" style={{ marginRight: 8 }} />
-                <View style={styles.bannerContent}>
-                  <Text style={styles.bannerTitle}>Media attached</Text>
-                  <Text style={styles.bannerText} numberOfLines={1}>{selectedMediaFile.uri}</Text>
+              {selectedMediaFile && (
+                <View style={styles.actionBanner}>
+                  <ImageIcon size={20} color="#A78BFA" style={{ marginRight: 8 }} />
+                  <View style={styles.bannerContent}>
+                    <Text style={styles.bannerTitle}>Media attached</Text>
+                    <Text style={styles.bannerText} numberOfLines={1}>{selectedMediaFile.uri}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setSelectedMediaFile(null)}>
+                    <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setSelectedMediaFile(null)}>
-                  <X size={18} color="rgba(255, 255, 255, 0.7)" />
-                </TouchableOpacity>
+              )}
+
+              {/* Text Input Inner Container */}
+              <View style={styles.inputWrapper}>
+                <View style={styles.inputInnerContainer}>
+                  <TouchableOpacity
+                    style={styles.attachButton}
+                    onPress={() => setMediaPickerVisible(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Plus size={22} color="#A78BFA" />
+                  </TouchableOpacity>
+
+                  <TextInput
+                    style={[styles.textInput, { maxHeight: 100 }]}
+                    value={inputText}
+                    onChangeText={handleInputChange}
+                    placeholder="Type a message..."
+                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    multiline
+                    keyboardAppearance="dark"
+                  />
+
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      (!inputText.trim() && !selectedMediaFile) && styles.sendButtonDisabled
+                    ]}
+                    onPress={handleSendMessage}
+                    disabled={(!inputText.trim() && !selectedMediaFile) || isSending}
+                    activeOpacity={0.8}
+                  >
+                    {isSending ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Send size={18} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
-            )}
-
-            {/* Text Input Container */}
-            <View style={styles.inputWrapper}>
-              <View style={styles.inputInnerContainer}>
-                <TouchableOpacity
-                  style={styles.attachButton}
-                  onPress={() => setMediaPickerVisible(true)}
-                  activeOpacity={0.8}
-                >
-                  <Plus size={22} color="#A78BFA" />
-                </TouchableOpacity>
-
-                <TextInput
-                  style={[styles.textInput, { maxHeight: 100 }]}
-                  value={inputText}
-                  onChangeText={handleInputChange}
-                  placeholder="Type a message..."
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                  multiline
-                  keyboardAppearance="dark"
-                />
-
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    (!inputText.trim() && !selectedMediaFile) && styles.sendButtonDisabled
-                  ]}
-                  onPress={handleSendMessage}
-                  disabled={(!inputText.trim() && !selectedMediaFile) || isSending}
-                  activeOpacity={0.8}
-                >
-                  {isSending ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Send size={18} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </LiquidGlassView>
+            </LiquidGlassView>
+          </View>
         </KeyboardAvoidingView>
       )}
 
@@ -944,17 +946,30 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 14,
   },
-  bottomElevatedContainer: {
-    backgroundColor: '#0A0410',
+  floatingBottomWrapper: {
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
+  },
+  floatingGlassCapsule: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.35)',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(21, 7, 35, 0.65)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
   actionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    backgroundColor: 'rgba(167, 139, 250, 0.18)',
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   bannerBar: {
     width: 3,
@@ -976,11 +991,9 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
   },
   inputWrapper: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(21, 7, 35, 0.95)',
+    paddingVertical: 6,
+    backgroundColor: 'transparent',
   },
   inputInnerContainer: {
     flexDirection: 'row',
