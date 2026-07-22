@@ -537,23 +537,16 @@ export default function CustomChatScreen() {
     const isMe = item.sender_id === currentUserId || item.sender?.user_id === currentUserId;
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.9}
+      <ChatBubble
+        message={item as any}
+        isMe={isMe}
+        currentUserId={currentUserId || 0}
         onLongPress={() => handleMessageLongPress(item)}
-        delayLongPress={300}
-      >
-        <ChatBubble
-          message={item as any}
-          isMe={isMe}
-          currentUserId={currentUserId || 0}
-          onReply={() => {
-            setReplyToMessage(item);
-          }}
-          onReactionPress={(msgId, emoji) => {
-            addReaction(chatId, msgId, emoji);
-          }}
-        />
-      </TouchableOpacity>
+        onReply={() => setReplyToMessage(item)}
+        onReactionPress={(msgId, emoji) => {
+          addReaction(chatId, msgId, emoji);
+        }}
+      />
     );
   };
 
@@ -653,8 +646,8 @@ export default function CustomChatScreen() {
             }
           />
 
-          {/* Elevated Container for Reply / Edit / Media Preview & Text Input */}
-          <View style={[styles.bottomElevatedContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 12 : 20 }]}>
+          {/* Clean Bottom Input Bar Container */}
+          <View style={[styles.bottomElevatedContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 4 : 6 }]}>
             {/* Action Banners */}
             {replyToMessage && (
               <View style={styles.actionBanner}>
@@ -943,9 +936,6 @@ const styles = StyleSheet.create({
   },
   bottomElevatedContainer: {
     backgroundColor: '#0A0410',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
   },
   actionBanner: {
     flexDirection: 'row',
@@ -980,9 +970,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: 'rgba(21, 7, 35, 0.85)',
-    borderRadius: 20,
-    marginHorizontal: 8,
+    backgroundColor: 'rgba(21, 7, 35, 0.95)',
   },
   inputInnerContainer: {
     flexDirection: 'row',
