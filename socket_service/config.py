@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
     MAX_MEDIA_SIZE_MB: int = 100
     MAX_CONNECTIONS_PER_USER: int = 5
+    MAX_TEXT_LENGTH: int = 10000
+    MAX_EVENTS_PER_SECOND: int = 10
     CORS_ORIGINS: list[str] = []
 
     model_config = SettingsConfigDict(
