@@ -11,6 +11,7 @@ from connection_manager import ConnectionManager
 from db import SessionLocal
 from src.models import Message, MediaAttachment, User, Chat, UserOnlineSession, MessageReaction, MessageReceipt
 from src.messages import router as messages_router
+from src.keys import router as keys_router
 from r2_storage import r2_storage  
 from auth import auth_jwt
 from config import settings
@@ -71,6 +72,7 @@ async def shutdown_event():
 
 
 app.include_router(messages_router, prefix="/api/v2", tags=["Messages"])
+app.include_router(keys_router, prefix="/api/v2", tags=["Keys"])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,  
