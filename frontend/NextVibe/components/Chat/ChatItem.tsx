@@ -9,20 +9,23 @@ import {
   Dimensions,
   TouchableWithoutFeedback 
 } from 'react-native';
-import { Trash2 } from 'lucide-react-native';
+import { Trash2, BadgeCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import timeAgo from '@/src/utils/formatTime';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { Image } from 'expo-image';
+import { BlurView } from 'expo-blur';
 
 const { width: screenWidth } = Dimensions.get('window');
+const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 
 interface ChatUser {
   user_id: number;
   username: string;
   avatar: string | null;
   is_online: boolean;
+  official?: boolean;
 }
 
 interface LastMessage {
@@ -131,7 +134,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
       resetPosition();
     } else {
       router.push({
-        pathname: "/chat-room",
+        pathname: "/(shared)/chat-room",
         params: { id: chat.chat_id, userId: chat.other_user.user_id }
       });
     }
@@ -139,13 +142,15 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
 
   const messageContent = chat.last_message?.content || 'No messages yet';
   const messageTime = chat.last_message?.created_at ? timeAgo(chat.last_message.created_at) : '';
+  const avatarUri = chat.other_user.avatar || DEFAULT_AVATAR;
 
   return (
     <>
       <TouchableWithoutFeedback onPress={isPressed ? resetPosition : undefined}>
         <Animated.View style={[styles.wrapper, { opacity }]}>
           {isPressed && (
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            <TouchableOpacity 
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               style={styles.deleteButton}
               onPress={handleDeletePress}
               disabled={isDeleting}
@@ -159,33 +164,46 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
           )}
 
           <Animated.View style={{ transform: [{ translateX }] }}>
-            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              style={[styles.container, { backgroundColor: isDark ? '#0A0410' : '#fff' }]}
+            <TouchableOpacity 
+              style={styles.container}
               onPress={handlePress}
               onLongPress={handleLongPress}
-              delayLongPress={500}
+              delayLongPress={400}
               disabled={isDeleting}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
+              <BlurView
+                intensity={isDark ? 20 : 40}
+                tint={isDark ? 'dark' : 'light'}
+                style={styles.blurBackground}
+              />
+
               <View style={styles.avatarContainer}>
                 <Image
-                  source={{ uri: `${chat.other_user.avatar}` }}
+                  source={{ uri: avatarUri }}
                   style={styles.avatar}
+                  contentFit="cover"
+                  transition={200}
                 />
                 {chat.other_user.is_online && <View style={styles.onlineIndicator} />}
               </View>
               
               <View style={styles.contentContainer}>
                 <View style={styles.header}>
-                  <Text style={[styles.username, { color: isDark ? '#fff' : '#000' }]}>
-                    {chat.other_user.username}
-                  </Text>
+                  <View style={styles.nameRow}>
+                    <Text style={[styles.username, { color: isDark ? '#FFF' : '#111' }]} numberOfLines={1}>
+                      {chat.other_user.username}
+                    </Text>
+                    {chat.other_user.official && (
+                      <BadgeCheck size={16} color="#FF5BA8" style={{ marginLeft: 4 }} />
+                    )}
+                  </View>
                   <Text style={styles.time}>{messageTime}</Text>
                 </View>
                 
                 <View style={styles.messageContainer}>
                   <Text 
-                    style={[styles.message, { color: isDark ? '#aaa' : '#666' }]}
+                    style={[styles.message, { color: isDark ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)' }]}
                     numberOfLines={1}
                   >
                     {messageContent}
@@ -227,44 +245,63 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   container: {
     flexDirection: 'row',
-    padding: 15,
-    borderBottomWidth: 0.2,
-    borderBottomColor: 'gray',
-    backgroundColor: isDark ? '#0A0410' : '#fff',
+    padding: 14,
+    paddingHorizontal: 16,
+    marginHorizontal: 10,
+    marginVertical: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: isDark ? 'rgba(21, 7, 35, 0.4)' : 'rgba(255, 255, 255, 0.7)',
+    overflow: 'hidden',
     zIndex: 1,
+  },
+  blurBackground: {
+    ...StyleSheet.absoluteFillObject,
   },
   avatarContainer: {
     position: 'relative'
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: isDark ? 'rgba(255, 91, 168, 0.4)' : 'rgba(255, 91, 168, 0.2)'
   },
   onlineIndicator: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#4CAF50',
+    bottom: 2,
+    right: 2,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
+    backgroundColor: '#10B981',
     borderWidth: 2,
-    borderColor: '#fff'
+    borderColor: isDark ? '#0A0410' : '#FFF'
   },
   contentContainer: {
     flex: 1,
-    marginLeft: 15
+    marginLeft: 14,
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 5
+    alignItems: 'center',
+    marginBottom: 4
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
   },
   username: {
     fontSize: 16,
+    fontWeight: '700',
     fontFamily: "Dank Mono Bold",
-includeFontPadding:false,
+    includeFontPadding: false,
   },
   time: {
     fontSize: 12,

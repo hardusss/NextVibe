@@ -10,35 +10,71 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  useColorScheme
+  useColorScheme,
+  Modal,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Send,
+  Plus,
+  BadgeCheck,
+  Phone,
+  Video,
+  ShieldCheck,
+  X,
+  Smile,
+  MessageSquare,
+  Copy,
+  Pencil,
+  Trash2,
+  Image as ImageIcon
+} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
+import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
+
 import { storage } from '@/src/utils/storage';
 import {
   getMessages,
   sendWebSocketMessage,
   notifyEnterChat,
   sendTypingStart,
-  sendTypingStop
+  sendTypingStop,
+  addReaction,
+  removeReaction,
+  editMessage,
+  deleteMessage,
+  uploadMedia,
+  getChats
 } from '@/src/api/chat';
 import WebSocketService from '@/src/services/WebSocketService';
 import ChatBubble from './ChatBubble';
 import P2PStatusBadge from './P2PStatusBadge';
 import ChatTransportManager from '@/src/services/ChatTransport';
+import SafetyNumberModal from './SafetyNumberModal';
+import MediaPickerModal from './MediaPickerModal';
+import Web3Toast from '../Shared/Toasts/Web3Toast';
+
+const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
+const EMOJI_LIST = ['❤️', '👍', '🔥', '😂', '😮', '🙏', '👏'];
 
 interface Sender {
   user_id: number | null;
   username: string;
-  wallet_address?: string | null;
+  avatar?: string | null;
+  official?: boolean;
 }
 
 interface MessageItem {
   id: string | number;
+  message_id?: number;
   server_msg_id?: number;
+  client_msg_id?: string;
   chat_id: number;
   content?: string;
   text?: string;
@@ -77,9 +113,30 @@ export default function CustomChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [transportType, setTransportType] = useState<'server' | 'p2p'>('server');
 
+  // Partner User Info
+  const [otherUser, setOtherUser] = useState<{
+    user_id: number;
+    username: string;
+    avatar: string | null;
+    is_online: boolean;
+    official?: boolean;
+  } | null>(null);
+
+  // Feature Modals & Action Banners
+  const [replyToMessage, setReplyToMessage] = useState<MessageItem | null>(null);
+  const [editingMessage, setEditingMessage] = useState<MessageItem | null>(null);
+  const [selectedMediaFile, setSelectedMediaFile] = useState<any | null>(null);
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [selectedActionMessage, setSelectedActionMessage] = useState<MessageItem | null>(null);
+  const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+  const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
+
+  const [toast, setToast] = useState({ visible: false, message: '', isSuccess: true });
+
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Fetch current user ID for sender differentiation
+  // 1. Fetch current user ID & Partner Info
   useEffect(() => {
     const fetchUserId = async () => {
       try {
@@ -93,6 +150,21 @@ export default function CustomChatScreen() {
     };
     fetchUserId();
   }, []);
+
+  useEffect(() => {
+    const fetchPartnerInfo = async () => {
+      try {
+        const chatsList = await getChats();
+        const found = chatsList.find((c: any) => c.chat_id === chatId);
+        if (found && found.other_user) {
+          setOtherUser(found.other_user);
+        }
+      } catch (err) {
+        // Fallback info from messages
+      }
+    };
+    if (chatId) fetchPartnerInfo();
+  }, [chatId]);
 
   // Helper to strictly deduplicate message list by unique ID
   const deduplicateMessages = (list: MessageItem[]): MessageItem[] => {
@@ -131,6 +203,20 @@ export default function CustomChatScreen() {
         if (data.length < 20) {
           setHasMore(false);
         }
+
+        // Try extracting partner info if not set
+        if (!otherUser && data.length > 0) {
+          const msgFromOther = data.find(m => m.sender_id && m.sender_id !== currentUserId);
+          if (msgFromOther && msgFromOther.sender) {
+            setOtherUser({
+              user_id: msgFromOther.sender.user_id || msgFromOther.sender_id || 0,
+              username: msgFromOther.sender.username || 'User',
+              avatar: msgFromOther.sender.avatar || null,
+              is_online: false,
+              official: msgFromOther.sender.official
+            });
+          }
+        }
       }
     } catch (err: any) {
       console.error('[CustomChatScreen] Error loading messages:', err);
@@ -138,7 +224,7 @@ export default function CustomChatScreen() {
     } finally {
       setLoading(false);
     }
-  }, [chatId]);
+  }, [chatId, currentUserId, otherUser]);
 
   // 3. Load older messages (Pagination)
   const loadOlderMessages = async () => {
@@ -239,7 +325,7 @@ export default function CustomChatScreen() {
       } else if (event.type === 'reaction_update') {
         setMessages(prev =>
           prev.map(msg => {
-            const msgId = msg.server_msg_id || msg.id;
+            const msgId = msg.server_msg_id || (msg as any).message_id || msg.id;
             if (String(msgId) === String(event.message_id)) {
               return { ...msg, reactions: event.reactions };
             }
@@ -253,7 +339,7 @@ export default function CustomChatScreen() {
       } else if (event.type === 'message_edited') {
         setMessages(prev =>
           prev.map(msg => {
-            const msgId = msg.server_msg_id || msg.id;
+            const msgId = msg.server_msg_id || (msg as any).message_id || msg.id;
             if (String(msgId) === String(event.message_id)) {
               return { ...msg, text: event.content, content: event.content, edited_at: event.edited_at };
             }
@@ -263,7 +349,7 @@ export default function CustomChatScreen() {
       } else if (event.type === 'message_deleted') {
         setMessages(prev =>
           prev.map(msg => {
-            const msgId = msg.server_msg_id || msg.id;
+            const msgId = msg.server_msg_id || (msg as any).message_id || msg.id;
             if (String(msgId) === String(event.message_id)) {
               return { ...msg, content: '[Message deleted]', text: '[Message deleted]', deleted_at: event.deleted_at };
             }
@@ -292,18 +378,75 @@ export default function CustomChatScreen() {
     }, 3000);
   };
 
-  // 6. Send Message Action
+  // 6. Media Selection Handlers
+  const handleCameraPick = async () => {
+    setMediaPickerVisible(false);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      setToast({ visible: true, message: 'Camera permission denied', isSuccess: false });
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images', 'videos'],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      setSelectedMediaFile(result.assets[0]);
+    }
+  };
+
+  const handleGalleryPick = async () => {
+    setMediaPickerVisible(false);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      setToast({ visible: true, message: 'Gallery permission denied', isSuccess: false });
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      setSelectedMediaFile(result.assets[0]);
+    }
+  };
+
+  // 7. Send Message / Save Edit Action
   const handleSendMessage = async () => {
-    if (!inputText.trim() || !chatId || isSending) return;
+    if ((!inputText.trim() && !selectedMediaFile) || !chatId || isSending) return;
 
     const messageText = inputText.trim();
     setInputText('');
+    const mediaToSend = selectedMediaFile;
+    setSelectedMediaFile(null);
     setIsSending(true);
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     sendTypingStop(chatId);
 
+    // If Editing existing message:
+    if (editingMessage) {
+      const msgId = editingMessage.server_msg_id || (editingMessage as any).message_id || editingMessage.id;
+      try {
+        await editMessage(chatId, Number(msgId), messageText);
+        setToast({ visible: true, message: 'Message edited', isSuccess: true });
+      } catch (err) {
+        console.error('Failed to edit message:', err);
+      } finally {
+        setEditingMessage(null);
+        setIsSending(false);
+      }
+      return;
+    }
+
+    // Normal Send Message (Optimistic)
     const clientMsgId = `temp-${Date.now()}`;
+    const replyToId = replyToMessage ? (replyToMessage.server_msg_id || (replyToMessage as any).message_id || replyToMessage.id) : undefined;
+    
     const optimisticMsg: MessageItem = {
       id: clientMsgId,
       client_msg_id: clientMsgId,
@@ -312,16 +455,25 @@ export default function CustomChatScreen() {
       content: messageText,
       created_at: new Date().toISOString(),
       sender_id: currentUserId || undefined,
+      reply_to_id: replyToId ? Number(replyToId) : null,
+      reply_to_snippet: replyToMessage ? {
+        id: replyToId,
+        sender_id: replyToMessage.sender_id,
+        sender_name: replyToMessage.sender?.username || 'User',
+        text: replyToMessage.content || replyToMessage.text || ''
+      } : null,
       sender: {
         user_id: currentUserId,
         username: 'Me'
       }
     };
 
+    setReplyToMessage(null);
     setMessages(prev => deduplicateMessages([optimisticMsg, ...prev]));
 
     try {
-      await sendWebSocketMessage(chatId, messageText, [], undefined, clientMsgId);
+      const mediaList = mediaToSend ? [mediaToSend] : [];
+      await sendWebSocketMessage(chatId, messageText, mediaList, replyToId ? Number(replyToId) : undefined, clientMsgId);
     } catch (err) {
       console.error('[CustomChatScreen] Error sending message:', err);
       setMessages(prev => prev.filter(m => m.id !== clientMsgId && m.client_msg_id !== clientMsgId));
@@ -331,15 +483,86 @@ export default function CustomChatScreen() {
     }
   };
 
+  // 8. Reaction / Action Menu Handlers
+  const handleMessageLongPress = (msg: MessageItem) => {
+    setSelectedActionMessage(msg);
+    setActionModalVisible(true);
+  };
+
+  const handleToggleReaction = async (emoji: string) => {
+    if (!selectedActionMessage) return;
+    const msgId = selectedActionMessage.server_msg_id || (selectedActionMessage as any).message_id || selectedActionMessage.id;
+    setActionModalVisible(false);
+    try {
+      await addReaction(chatId, Number(msgId), emoji);
+    } catch (err) {
+      console.error('Failed to add reaction:', err);
+    }
+  };
+
+  const handleActionReply = () => {
+    if (selectedActionMessage) {
+      setReplyToMessage(selectedActionMessage);
+    }
+    setActionModalVisible(false);
+  };
+
+  const handleActionCopy = () => {
+    if (selectedActionMessage && (selectedActionMessage.content || selectedActionMessage.text)) {
+      Clipboard.setStringAsync(selectedActionMessage.content || selectedActionMessage.text || '');
+      setToast({ visible: true, message: 'Message copied', isSuccess: true });
+    }
+    setActionModalVisible(false);
+  };
+
+  const handleActionEdit = () => {
+    if (selectedActionMessage) {
+      setEditingMessage(selectedActionMessage);
+      setInputText(selectedActionMessage.content || selectedActionMessage.text || '');
+    }
+    setActionModalVisible(false);
+  };
+
+  const handleActionDelete = async () => {
+    if (!selectedActionMessage) return;
+    const msgId = selectedActionMessage.server_msg_id || (selectedActionMessage as any).message_id || selectedActionMessage.id;
+    setActionModalVisible(false);
+    try {
+      await deleteMessage(chatId, Number(msgId));
+      setToast({ visible: true, message: 'Message deleted', isSuccess: true });
+    } catch (err) {
+      console.error('Failed to delete message:', err);
+    }
+  };
+
+  const handleCallTrigger = (type: 'voice' | 'video') => {
+    setToast({ visible: true, message: `Starting ${type} call...`, isSuccess: true });
+  };
+
+  const partnerName = otherUser?.username || 'User';
+  const partnerAvatar = otherUser?.avatar || DEFAULT_AVATAR;
+
   const renderItem = ({ item }: { item: MessageItem }) => {
     const isMe = item.sender_id === currentUserId || item.sender?.user_id === currentUserId;
 
     return (
-      <ChatBubble
-        message={item}
-        isMe={isMe}
-        currentUserId={currentUserId || 0}
-      />
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onLongPress={() => handleMessageLongPress(item)}
+        delayLongPress={300}
+      >
+        <ChatBubble
+          message={item as any}
+          isMe={isMe}
+          currentUserId={currentUserId || 0}
+          onReply={() => {
+            setReplyToMessage(item);
+          }}
+          onReactionPress={(msgId, emoji) => {
+            addReaction(chatId, msgId, emoji);
+          }}
+        />
+      </TouchableOpacity>
     );
   };
 
@@ -347,27 +570,72 @@ export default function CustomChatScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      {/* Modern NextVibe Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={24} color="#FFFFFF" />
+          <ArrowLeft size={22} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <View style={styles.headerTitleContainer}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.headerTitle}>Chat Room</Text>
-            <P2PStatusBadge isP2PActive={transportType === 'p2p'} />
+        <TouchableOpacity 
+          style={styles.partnerInfoContainer}
+          onPress={() => setSafetyModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.avatarWrapper}>
+            <Image
+              source={{ uri: partnerAvatar }}
+              style={styles.headerAvatar}
+              contentFit="cover"
+            />
+            {otherUser?.is_online && <View style={styles.headerOnlineIndicator} />}
           </View>
-          <Text style={styles.headerSubtitle}>
-            {isTyping ? 'typing...' : 'Real-time WebSocket'}
-          </Text>
-        </View>
 
-        <View style={styles.headerRightPlaceholder} />
+          <View style={styles.partnerTextCol}>
+            <View style={styles.nameRow}>
+              <Text style={styles.partnerName} numberOfLines={1}>
+                {partnerName}
+              </Text>
+              {otherUser?.official && (
+                <BadgeCheck size={16} color="#FF5BA8" style={{ marginLeft: 4 }} />
+              )}
+            </View>
+            <Text style={styles.partnerStatus}>
+              {isTyping ? 'typing...' : (otherUser?.is_online ? 'Online' : 'WebSocket Active')}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.headerRightActions}>
+          <P2PStatusBadge isP2PActive={transportType === 'p2p'} />
+
+          <TouchableOpacity
+            style={styles.headerActionButton}
+            onPress={() => handleCallTrigger('voice')}
+            activeOpacity={0.7}
+          >
+            <Phone size={19} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerActionButton}
+            onPress={() => handleCallTrigger('video')}
+            activeOpacity={0.7}
+          >
+            <Video size={19} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerActionButton}
+            onPress={() => setSafetyModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <ShieldCheck size={20} color="#FF5BA8" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Content Area */}
@@ -410,9 +678,61 @@ export default function CustomChatScreen() {
             }
           />
 
+          {/* Action Banners (Reply / Edit / Media Preview) */}
+          {replyToMessage && (
+            <View style={styles.actionBanner}>
+              <View style={styles.bannerBar} />
+              <View style={styles.bannerContent}>
+                <Text style={styles.bannerTitle}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
+                <Text style={styles.bannerText} numberOfLines={1}>
+                  {replyToMessage.content || replyToMessage.text}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setReplyToMessage(null)}>
+                <X size={18} color="rgba(255, 255, 255, 0.7)" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {editingMessage && (
+            <View style={[styles.actionBanner, { backgroundColor: 'rgba(167, 139, 250, 0.25)' }]}>
+              <View style={[styles.bannerBar, { backgroundColor: '#A78BFA' }]} />
+              <View style={styles.bannerContent}>
+                <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Editing Message</Text>
+                <Text style={styles.bannerText} numberOfLines={1}>
+                  {editingMessage.content || editingMessage.text}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => { setEditingMessage(null); setInputText(''); }}>
+                <X size={18} color="rgba(255, 255, 255, 0.7)" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {selectedMediaFile && (
+            <View style={styles.actionBanner}>
+              <ImageIcon size={20} color="#FF5BA8" style={{ marginRight: 8 }} />
+              <View style={styles.bannerContent}>
+                <Text style={styles.bannerTitle}>Media attached</Text>
+                <Text style={styles.bannerText} numberOfLines={1}>{selectedMediaFile.uri}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedMediaFile(null)}>
+                <X size={18} color="rgba(255, 255, 255, 0.7)" />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Text Input Container */}
-          <BlurView intensity={30} tint="dark" style={styles.inputWrapper}>
+          <BlurView intensity={40} tint="dark" style={styles.inputWrapper}>
             <View style={styles.inputInnerContainer}>
+              <TouchableOpacity
+                style={styles.attachButton}
+                onPress={() => setMediaPickerVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Plus size={22} color="#FF5BA8" />
+              </TouchableOpacity>
+
               <TextInput
                 style={[styles.textInput, { maxHeight: 100 }]}
                 value={inputText}
@@ -422,13 +742,14 @@ export default function CustomChatScreen() {
                 multiline
                 keyboardAppearance="dark"
               />
+
               <TouchableOpacity
                 style={[
                   styles.sendButton,
-                  !inputText.trim() && styles.sendButtonDisabled
+                  (!inputText.trim() && !selectedMediaFile) && styles.sendButtonDisabled
                 ]}
                 onPress={handleSendMessage}
-                disabled={!inputText.trim() || isSending}
+                disabled={(!inputText.trim() && !selectedMediaFile) || isSending}
                 activeOpacity={0.8}
               >
                 {isSending ? (
@@ -441,6 +762,92 @@ export default function CustomChatScreen() {
           </BlurView>
         </KeyboardAvoidingView>
       )}
+
+      {/* Message Long-Press Quick Action Modal & Emoji Reaction Bar */}
+      <Modal
+        visible={actionModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setActionModalVisible(false)}
+        >
+          <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+
+          <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
+            <View style={styles.actionModalCard}>
+              {/* Quick Reaction Bar */}
+              <View style={styles.reactionBar}>
+                {EMOJI_LIST.map(emoji => (
+                  <TouchableOpacity
+                    key={emoji}
+                    style={styles.emojiButton}
+                    onPress={() => handleToggleReaction(emoji)}
+                  >
+                    <Text style={styles.emojiText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Action Menu List */}
+              <View style={styles.menuList}>
+                <TouchableOpacity style={styles.menuItem} onPress={handleActionReply}>
+                  <MessageSquare size={20} color="#FF5BA8" style={styles.menuIcon} />
+                  <Text style={styles.menuText}>Reply</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.menuItem} onPress={handleActionCopy}>
+                  <Copy size={20} color="#FFFFFF" style={styles.menuIcon} />
+                  <Text style={styles.menuText}>Copy Text</Text>
+                </TouchableOpacity>
+
+                {selectedActionMessage &&
+                  (selectedActionMessage.sender_id === currentUserId ||
+                    selectedActionMessage.sender?.user_id === currentUserId) && (
+                    <>
+                      <TouchableOpacity style={styles.menuItem} onPress={handleActionEdit}>
+                        <Pencil size={20} color="#A78BFA" style={styles.menuIcon} />
+                        <Text style={styles.menuText}>Edit Message</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={handleActionDelete}>
+                        <Trash2 size={20} color="#EF4444" style={styles.menuIcon} />
+                        <Text style={[styles.menuText, { color: '#EF4444' }]}>Delete Message</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Safety Number E2EE Verification Modal */}
+      <SafetyNumberModal
+        visible={safetyModalVisible}
+        onClose={() => setSafetyModalVisible(false)}
+        contactName={partnerName}
+        safetyNumber={`1029 3847 5610 ${chatId.toString().padStart(4, '0')} 9283 7461 8234`}
+      />
+
+      {/* Media Attachment Selector Modal */}
+      <MediaPickerModal
+        visible={mediaPickerVisible}
+        onClose={() => setMediaPickerVisible(false)}
+        onCameraPress={handleCameraPick}
+        onGalleryPress={handleGalleryPick}
+      />
+
+      {/* Toast Notification */}
+      <Web3Toast
+        visible={toast.visible}
+        message={toast.message}
+        isSuccess={toast.isSuccess}
+        onHide={() => setToast({ ...toast, visible: false })}
+      />
     </View>
   );
 }
@@ -448,123 +855,232 @@ export default function CustomChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  keyboardContainer: {
-    flex: 1,
+    backgroundColor: '#0A0410',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    backgroundColor: 'rgba(10, 4, 16, 0.95)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   backButton: {
-    padding: 4,
-    justifyContent: 'center',
+    padding: 6,
+    marginRight: 6,
+  },
+  partnerInfoContainer: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  headerTitleContainer: {
+  avatarWrapper: {
+    position: 'relative',
+    marginRight: 10,
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#FF5BA8',
+  },
+  headerOnlineIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#0A0410',
+  },
+  partnerTextCol: {
     flex: 1,
     justifyContent: 'center',
+  },
+  nameRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  headerTitle: {
+  partnerName: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: '700',
     fontFamily: 'Dank Mono Bold',
   },
-  headerSubtitle: {
-    color: '#FF5BA8',
+  partnerStatus: {
+    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 11,
-    fontFamily: 'Dank Mono',
-    marginTop: 2,
+    marginTop: 1,
   },
-  headerRightPlaceholder: {
-    width: 32,
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerActionButton: {
+    padding: 6,
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
+  listContent: {
+    paddingVertical: 12,
+    paddingHorizontal: 4,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
   },
   infoText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 15,
-    fontFamily: 'Dank Mono',
-    marginTop: 16,
-    textAlign: 'center',
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 10,
+    fontSize: 14,
   },
   errorText: {
-    color: '#EF4444',
+    color: '#FF5BA8',
     fontSize: 15,
-    fontFamily: 'Dank Mono',
-    textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   retryButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FF5BA8',
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
   retryButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: 'Dank Mono Bold',
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    fontWeight: 'bold',
   },
   emptyContainer: {
-    flex: 1,
+    padding: 40,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 100,
   },
   emptyText: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 15,
-    fontFamily: 'Dank Mono',
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 14,
+  },
+  actionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 91, 168, 0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  bannerBar: {
+    width: 3,
+    height: '100%',
+    backgroundColor: '#FF5BA8',
+    borderRadius: 2,
+    marginRight: 10,
+  },
+  bannerContent: {
+    flex: 1,
+  },
+  bannerTitle: {
+    fontSize: 12,
+    color: '#FF5BA8',
+    fontWeight: 'bold',
+  },
+  bannerText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   inputWrapper: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(10, 4, 16, 0.85)',
   },
   inputInnerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    borderRadius: 24,
-    paddingLeft: 16,
-    paddingRight: 6,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  attachButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 91, 168, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   textInput: {
     flex: 1,
     color: '#FFFFFF',
     fontSize: 15,
-    fontFamily: 'Dank Mono',
-    paddingVertical: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginRight: 8,
   },
   sendButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#FF5BA8',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: 'rgba(255, 91, 168, 0.4)',
+    opacity: 0.4,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  actionModalCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 24,
+    backgroundColor: '#150723',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 91, 168, 0.3)',
+    padding: 16,
+    overflow: 'hidden',
+  },
+  reactionBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 8,
+  },
+  emojiButton: {
+    padding: 6,
+  },
+  emojiText: {
+    fontSize: 24,
+  },
+  menuList: {
+    paddingVertical: 4,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  menuIcon: {
+    marginRight: 12,
+  },
+  menuText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
