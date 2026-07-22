@@ -151,8 +151,8 @@ def test_rate_limiting():
 
         with client.websocket_connect(f"/ws?token={t1}") as ws1:
             rate_limited_hit = False
-            # Send 15 messages rapidly (cap is 10/sec)
-            for i in range(15):
+            # Send 25 messages rapidly (cap is 10/sec)
+            for i in range(25):
                 ws1.send_json({
                     "type": "message",
                     "chat_id": 100,
