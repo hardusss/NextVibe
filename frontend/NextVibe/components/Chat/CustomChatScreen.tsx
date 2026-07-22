@@ -192,10 +192,13 @@ export default function CustomChatScreen() {
       if (!event || event.chat_id !== chatId) return;
 
       if (event.type === 'message') {
+        if (event.sender_id && event.sender_id !== currentUserId) {
+          notifyEnterChat(chatId);
+        }
         setMessages(prev => {
           const matchIndex = prev.findIndex(m => {
-            const mKey = String(m.server_msg_id || m.id || m.client_msg_id);
-            const incomingKey = String(event.server_msg_id || event.id || event.client_msg_id);
+            const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
+            const incomingKey = String(event.server_msg_id || event.message_id || event.id || event.client_msg_id);
             return (
               (event.client_msg_id && m.id === event.client_msg_id) ||
               (event.client_msg_id && m.client_msg_id === event.client_msg_id) ||
@@ -213,9 +216,22 @@ export default function CustomChatScreen() {
       } else if (event.type === 'read_receipt') {
         setMessages(prev =>
           prev.map(msg => {
-            const msgId = msg.server_msg_id || msg.id;
-            if (event.message_ids?.some((id: any) => String(id) === String(msgId))) {
-              return { ...msg, is_read: true };
+            const msgId = msg.server_msg_id || (msg as any).message_id || msg.id;
+            const isMatch = !event.message_ids || event.message_ids.length === 0 || event.message_ids.some((id: any) => String(id) === String(msgId));
+            if (isMatch) {
+              const updatedReceipts = (msg.receipts || []).map(r =>
+                (event.reader_id && r.user_id === event.reader_id)
+                  ? { ...r, read_at: event.read_at || new Date().toISOString() }
+                  : r
+              );
+              if (event.reader_id && !updatedReceipts.some(r => r.user_id === event.reader_id)) {
+                updatedReceipts.push({
+                  user_id: event.reader_id,
+                  delivered_at: event.read_at || new Date().toISOString(),
+                  read_at: event.read_at || new Date().toISOString()
+                });
+              }
+              return { ...msg, is_read: true, receipts: updatedReceipts };
             }
             return msg;
           })
