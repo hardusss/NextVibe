@@ -56,6 +56,7 @@ interface Props {
   onReactionPress?: (messageId: number, emoji: string) => void;
   onEdit?: (message: Message) => void;
   onDelete?: (messageId: number) => void;
+  onLongPress?: (message: Message) => void;
 }
 
 function formatMessageTime(isoDate: string): string {
@@ -70,7 +71,7 @@ function formatMessageTime(isoDate: string): string {
   }
 }
 
-const ChatBubble: React.FC<Props> = ({ message, onReply, onReactionPress, onEdit, onDelete }) => {
+const ChatBubble: React.FC<Props> = ({ message, onReply, onReactionPress, onEdit, onDelete, onLongPress }) => {
   const isDark = useColorScheme() === 'dark';
   const [userId, setUserId] = useState<number | null>(null);
 
@@ -91,7 +92,9 @@ const ChatBubble: React.FC<Props> = ({ message, onReply, onReactionPress, onEdit
 
   const handleLongPress = () => {
     if (message.deleted_at) return;
-    if (onReply) {
+    if (onLongPress) {
+      onLongPress(message);
+    } else if (onReply) {
       onReply(message);
     } else if (message.content) {
       Clipboard.setStringAsync(message.content);
