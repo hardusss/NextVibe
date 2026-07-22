@@ -11,6 +11,15 @@ logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
+def get_avatar_url(user):
+    try:
+        if user and user.avatar and hasattr(user.avatar, 'url'):
+            return user.avatar.url
+    except Exception:
+        pass
+    return None
+
+
 class ChatListView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
@@ -29,27 +38,31 @@ class ChatListView(APIView):
             
             chat_data = []
             for chat in chats:
-                other_user = chat.participants.exclude(user_id=user.user_id).first()
-                if not other_user:
+                try:
+                    other_user = chat.participants.exclude(user_id=user.user_id).first()
+                    if not other_user:
+                        continue
+                    last_message = Message.objects.filter(chat=chat).order_by('-created_at').first()
+                    if not last_message:
+                        continue
+                    
+                    chat_data.append({
+                        "chat_id": chat.id,
+                        "last_message": {
+                            "content": last_message.text or "",
+                            "created_at": last_message.created_at.isoformat() if last_message.created_at else ""
+                        },
+                        "other_user": {
+                            "user_id": other_user.user_id,
+                            "username": other_user.username,
+                            "avatar": get_avatar_url(other_user),
+                            "is_online": getattr(other_user, 'is_online', False)
+                        },
+                        "sort_date": last_message.created_at
+                    })
+                except Exception as inner_err:
+                    logger.error(f"Error processing chat item: {inner_err}")
                     continue
-                last_message = Message.objects.filter(chat=chat).order_by('-created_at').first()
-                if not last_message:
-                    continue
-                
-                chat_data.append({
-                    "chat_id": chat.id,
-                    "last_message": {
-                        "content": last_message.text,
-                        "created_at": last_message.created_at.isoformat()
-                    },
-                    "other_user": {
-                        "user_id": other_user.user_id,
-                        "username": other_user.username,
-                        "avatar": other_user.avatar.url if other_user.avatar else None,
-                        "is_online": other_user.is_online
-                    },
-                    "sort_date": last_message.created_at
-                })
             
             chat_data.sort(
                 key=lambda x: x["sort_date"].timestamp() if x["sort_date"] else 0,
@@ -71,19 +84,23 @@ class OnlineUsersView(APIView):
     throttle_scope = "online_users"
 
     def get(self, request):
-        following_ids = request.user.follow_for
-        online_users = User.objects.filter(
-            is_online=True,
-            user_id__in=following_ids  
-        ).exclude(user_id=request.user.user_id)
+        try:
+            following_ids = getattr(request.user, 'follow_for', []) or []
+            online_users = User.objects.filter(
+                is_online=True,
+                user_id__in=following_ids  
+            ).exclude(user_id=request.user.user_id)
 
-        users_data = [{
-            'user_id': user.user_id,
-            'username': user.username,
-            'avatar': user.avatar.url if user.avatar else None
-        } for user in online_users]
+            users_data = [{
+                'user_id': user.user_id,
+                'username': user.username,
+                'avatar': get_avatar_url(user)
+            } for user in online_users]
 
-        return Response(users_data)
+            return Response(users_data)
+        except Exception as e:
+            logger.error(f"Error in OnlineUsersView: {str(e)}")
+            return Response([], status=200)
 
 
 class CreateChatView(APIView):
