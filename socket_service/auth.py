@@ -41,10 +41,12 @@ def auth_jwt(token: str) -> AuthResponse:
         token = token.split(" ")[1]
 
     try:
+        secret = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
+        algorithm = os.getenv("JWT_ALGORITHM", ALGORITHM)
         payload = jwt.decode(
             token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],  # must be list
+            secret,
+            algorithms=[algorithm],  # must be list
         )
 
         return {
