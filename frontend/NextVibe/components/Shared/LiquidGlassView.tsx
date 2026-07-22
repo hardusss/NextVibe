@@ -29,7 +29,7 @@ function resolveFallbackBackground(
               ? 'light'
               : 'dark';
 
-    return resolved === 'light' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(21, 13, 36, 0.85)';
+    return resolved === 'light' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.1)';
 }
 
 function makeMoreTransparent(color: string | undefined): string | undefined {
