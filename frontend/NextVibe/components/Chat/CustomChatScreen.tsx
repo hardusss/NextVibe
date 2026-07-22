@@ -428,7 +428,7 @@ export default function CustomChatScreen() {
       const msgId = editingMessage.server_msg_id || (editingMessage as any).message_id || editingMessage.id;
       try {
         await editMessage(chatId, Number(msgId), messageText);
-        setToast({ visible: true, message: 'Повідомлення відредаговано', isSuccess: true });
+        setToast({ visible: true, message: 'Message edited', isSuccess: true });
       } catch (err) {
         console.error('Failed to edit message:', err);
       } finally {
@@ -505,7 +505,7 @@ export default function CustomChatScreen() {
   const handleActionCopy = () => {
     if (selectedActionMessage && (selectedActionMessage.content || selectedActionMessage.text)) {
       Clipboard.setStringAsync(selectedActionMessage.content || selectedActionMessage.text || '');
-      setToast({ visible: true, message: 'Текст скопійовано', isSuccess: true });
+      setToast({ visible: true, message: 'Message copied', isSuccess: true });
     }
     setActionModalVisible(false);
   };
@@ -524,7 +524,7 @@ export default function CustomChatScreen() {
     setActionModalVisible(false);
     try {
       await deleteMessage(chatId, Number(msgId));
-      setToast({ visible: true, message: 'Повідомлення видалено', isSuccess: true });
+      setToast({ visible: true, message: 'Message deleted', isSuccess: true });
     } catch (err) {
       console.error('Failed to delete message:', err);
     }
@@ -532,6 +532,11 @@ export default function CustomChatScreen() {
 
   const partnerName = otherUser?.username || 'User';
   const partnerAvatar = otherUser?.avatar || DEFAULT_AVATAR;
+
+  const isActionMsgMine = selectedActionMessage && (
+    selectedActionMessage.sender_id === currentUserId ||
+    selectedActionMessage.sender?.user_id === currentUserId
+  );
 
   const renderItem = ({ item }: { item: MessageItem }) => {
     const isMe = item.sender_id === currentUserId || item.sender?.user_id === currentUserId;
@@ -554,7 +559,7 @@ export default function CustomChatScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* Modern Clean Header (Without Border around Avatar and without Call buttons) */}
+      {/* Modern Clean Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -623,7 +628,7 @@ export default function CustomChatScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardContainer}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
           <FlatList
             data={messages}
@@ -646,8 +651,8 @@ export default function CustomChatScreen() {
             }
           />
 
-          {/* Clean Bottom Input Bar Container */}
-          <View style={[styles.bottomElevatedContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 4 : 6 }]}>
+          {/* Clean Bottom Input Bar Container (Sits at the very bottom on iOS) */}
+          <View style={[styles.bottomElevatedContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 4) : 4 }]}>
             {/* Action Banners */}
             {replyToMessage && (
               <View style={styles.actionBanner}>
@@ -734,7 +739,7 @@ export default function CustomChatScreen() {
         </KeyboardAvoidingView>
       )}
 
-      {/* Message Long-Press Quick Action Modal & Emoji Reaction Bar */}
+      {/* Message Long-Press Side Popover Card (Compact Pill/Card anchored to side of message) */}
       <Modal
         visible={actionModalVisible}
         transparent
@@ -746,50 +751,51 @@ export default function CustomChatScreen() {
           activeOpacity={1}
           onPress={() => setActionModalVisible(false)}
         >
-          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFillObject} />
 
           <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
-            <View style={styles.actionModalCard}>
-              {/* Quick Emoji Reaction Bar */}
-              <View style={styles.reactionBar}>
+            <View style={[
+              styles.actionModalCardSide,
+              isActionMsgMine ? styles.actionModalCardRight : styles.actionModalCardLeft
+            ]}>
+              {/* Compact Emoji Reaction Bar */}
+              <View style={styles.reactionBarCompact}>
                 {EMOJI_LIST.map(emoji => (
                   <TouchableOpacity
                     key={emoji}
-                    style={styles.emojiButton}
+                    style={styles.emojiButtonCompact}
                     onPress={() => handleToggleReaction(emoji)}
                   >
-                    <Text style={styles.emojiText}>{emoji}</Text>
+                    <Text style={styles.emojiTextCompact}>{emoji}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {/* Action Menu List */}
-              <View style={styles.menuList}>
-                <TouchableOpacity style={styles.menuItem} onPress={handleActionReply}>
-                  <MessageSquare size={20} color="#A78BFA" style={styles.menuIcon} />
-                  <Text style={styles.menuText}>Reply</Text>
+              <View style={styles.menuListCompact}>
+                <TouchableOpacity style={styles.menuItemCompact} onPress={handleActionReply}>
+                  <MessageSquare size={16} color="#A78BFA" style={styles.menuIconCompact} />
+                  <Text style={styles.menuTextCompact}>Reply</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} onPress={handleActionCopy}>
-                  <Copy size={20} color="#FFFFFF" style={styles.menuIcon} />
-                  <Text style={styles.menuText}>Copy Text</Text>
+                <TouchableOpacity style={styles.menuItemCompact} onPress={handleActionCopy}>
+                  <Copy size={16} color="#FFFFFF" style={styles.menuIconCompact} />
+                  <Text style={styles.menuTextCompact}>Copy Text</Text>
                 </TouchableOpacity>
 
-                {selectedActionMessage &&
-                  (selectedActionMessage.sender_id === currentUserId ||
-                    selectedActionMessage.sender?.user_id === currentUserId) && (
-                    <>
-                      <TouchableOpacity style={styles.menuItem} onPress={handleActionEdit}>
-                        <Pencil size={20} color="#C4B5FD" style={styles.menuIcon} />
-                        <Text style={styles.menuText}>Edit Message</Text>
-                      </TouchableOpacity>
+                {isActionMsgMine && (
+                  <>
+                    <TouchableOpacity style={styles.menuItemCompact} onPress={handleActionEdit}>
+                      <Pencil size={16} color="#C4B5FD" style={styles.menuIconCompact} />
+                      <Text style={styles.menuTextCompact}>Edit Message</Text>
+                    </TouchableOpacity>
 
-                      <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={handleActionDelete}>
-                        <Trash2 size={20} color="#EF4444" style={styles.menuIcon} />
-                        <Text style={[styles.menuText, { color: '#EF4444' }]}>Delete Message</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
+                    <TouchableOpacity style={[styles.menuItemCompact, { borderBottomWidth: 0 }]} onPress={handleActionDelete}>
+                      <Trash2 size={16} color="#EF4444" style={styles.menuIconCompact} />
+                      <Text style={[styles.menuTextCompact, { color: '#EF4444' }]}>Delete</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             </View>
           </TouchableWithoutFeedback>
@@ -854,7 +860,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    // Clean avatar without border outline
   },
   headerOnlineIndicator: {
     position: 'absolute',
@@ -969,7 +974,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     backgroundColor: 'rgba(21, 7, 35, 0.95)',
   },
   inputInnerContainer: {
@@ -977,9 +982,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   attachButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(167, 139, 250, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -996,9 +1001,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1009,51 +1014,61 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
-  actionModalCard: {
-    width: '100%',
-    maxWidth: 320,
-    borderRadius: 24,
-    backgroundColor: '#150723',
+  actionModalCardSide: {
+    width: 240,
+    borderRadius: 20,
+    backgroundColor: 'rgba(21, 7, 35, 0.96)',
     borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.3)',
-    padding: 16,
-    overflow: 'hidden',
+    borderColor: 'rgba(167, 139, 250, 0.35)',
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 12,
   },
-  reactionBar: {
+  actionModalCardRight: {
+    alignSelf: 'flex-end',
+    marginRight: 10,
+  },
+  actionModalCardLeft: {
+    alignSelf: 'flex-start',
+    marginLeft: 10,
+  },
+  reactionBarCompact: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  emojiButton: {
-    padding: 6,
+  emojiButtonCompact: {
+    padding: 2,
   },
-  emojiText: {
-    fontSize: 24,
+  emojiTextCompact: {
+    fontSize: 18,
   },
-  menuList: {
-    paddingVertical: 4,
+  menuListCompact: {
+    paddingVertical: 2,
   },
-  menuItem: {
+  menuItemCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
-  menuIcon: {
-    marginRight: 12,
+  menuIconCompact: {
+    marginRight: 10,
   },
-  menuText: {
+  menuTextCompact: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
 });
