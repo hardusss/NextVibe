@@ -595,7 +595,7 @@ export default function CustomChatScreen() {
               )}
             </View>
             <Text style={styles.partnerStatus}>
-              {isTyping ? 'друк...' : (otherUser?.is_online ? 'Онлайн' : 'Захищений чат')}
+              {isTyping ? 'typing...' : (otherUser?.is_online ? 'Online' : 'Encrypted Chat')}
             </Text>
           </View>
         </TouchableOpacity>
@@ -617,13 +617,13 @@ export default function CustomChatScreen() {
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#A78BFA" />
-          <Text style={styles.infoText}>Завантаження історії...</Text>
+          <Text style={styles.infoText}>Loading chat history...</Text>
         </View>
       ) : errorMsg ? (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{errorMsg}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={loadInitialMessages}>
-            <Text style={styles.retryButtonText}>Спробувати знову</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -648,7 +648,7 @@ export default function CustomChatScreen() {
             }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Немає повідомлень. Привітайтеся!</Text>
+                <Text style={styles.emptyText}>No messages yet. Say hello!</Text>
               </View>
             }
           />
@@ -660,7 +660,7 @@ export default function CustomChatScreen() {
               <View style={styles.actionBanner}>
                 <View style={styles.bannerBar} />
                 <View style={styles.bannerContent}>
-                  <Text style={styles.bannerTitle}>Відповідь для {replyToMessage.sender?.username || 'User'}</Text>
+                  <Text style={styles.bannerTitle}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
                   <Text style={styles.bannerText} numberOfLines={1}>
                     {replyToMessage.content || replyToMessage.text}
                   </Text>
@@ -675,7 +675,7 @@ export default function CustomChatScreen() {
               <View style={[styles.actionBanner, { backgroundColor: 'rgba(167, 139, 250, 0.25)' }]}>
                 <View style={[styles.bannerBar, { backgroundColor: '#A78BFA' }]} />
                 <View style={styles.bannerContent}>
-                  <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Редагування повідомлення</Text>
+                  <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Editing message</Text>
                   <Text style={styles.bannerText} numberOfLines={1}>
                     {editingMessage.content || editingMessage.text}
                   </Text>
@@ -690,7 +690,7 @@ export default function CustomChatScreen() {
               <View style={styles.actionBanner}>
                 <ImageIcon size={20} color="#A78BFA" style={{ marginRight: 8 }} />
                 <View style={styles.bannerContent}>
-                  <Text style={styles.bannerTitle}>Медіа прикріплено</Text>
+                  <Text style={styles.bannerTitle}>Media attached</Text>
                   <Text style={styles.bannerText} numberOfLines={1}>{selectedMediaFile.uri}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setSelectedMediaFile(null)}>
@@ -714,7 +714,7 @@ export default function CustomChatScreen() {
                   style={[styles.textInput, { maxHeight: 100 }]}
                   value={inputText}
                   onChangeText={handleInputChange}
-                  placeholder="Напишіть повідомлення..."
+                  placeholder="Type a message..."
                   placeholderTextColor="rgba(255, 255, 255, 0.4)"
                   multiline
                   keyboardAppearance="dark"
@@ -774,12 +774,12 @@ export default function CustomChatScreen() {
               <View style={styles.menuList}>
                 <TouchableOpacity style={styles.menuItem} onPress={handleActionReply}>
                   <MessageSquare size={20} color="#A78BFA" style={styles.menuIcon} />
-                  <Text style={styles.menuText}>Відповісти</Text>
+                  <Text style={styles.menuText}>Reply</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.menuItem} onPress={handleActionCopy}>
                   <Copy size={20} color="#FFFFFF" style={styles.menuIcon} />
-                  <Text style={styles.menuText}>Копіювати текст</Text>
+                  <Text style={styles.menuText}>Copy Text</Text>
                 </TouchableOpacity>
 
                 {selectedActionMessage &&
@@ -788,12 +788,12 @@ export default function CustomChatScreen() {
                     <>
                       <TouchableOpacity style={styles.menuItem} onPress={handleActionEdit}>
                         <Pencil size={20} color="#C4B5FD" style={styles.menuIcon} />
-                        <Text style={styles.menuText}>Змінити повідомлення</Text>
+                        <Text style={styles.menuText}>Edit Message</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={handleActionDelete}>
                         <Trash2 size={20} color="#EF4444" style={styles.menuIcon} />
-                        <Text style={[styles.menuText, { color: '#EF4444' }]}>Видалити</Text>
+                        <Text style={[styles.menuText, { color: '#EF4444' }]}>Delete Message</Text>
                       </TouchableOpacity>
                     </>
                   )}
