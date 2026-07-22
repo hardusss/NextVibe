@@ -54,6 +54,7 @@ import ChatTransportManager from '@/src/services/ChatTransport';
 import SafetyNumberModal from './SafetyNumberModal';
 import MediaPickerModal from './MediaPickerModal';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
+import { LiquidGlassView } from '../Shared/LiquidGlassView';
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 const EMOJI_LIST = ['❤️', '👍', '🔥', '😂', '😮', '🙏', '👏'];
@@ -651,8 +652,12 @@ export default function CustomChatScreen() {
             }
           />
 
-          {/* Clean Bottom Input Bar Container (Sits at the very bottom on iOS) */}
-          <View style={[styles.bottomElevatedContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 4) : 4 }]}>
+          {/* Liquid Glass Bottom Input Bar Container (Sits at the very bottom edge on iOS) */}
+          <LiquidGlassView
+            glassEffectStyle="clear"
+            colorScheme={isDark ? 'dark' : 'light'}
+            style={[styles.bottomElevatedContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom - 12, 2) : 4 }]}
+          >
             {/* Action Banners */}
             {replyToMessage && (
               <View style={styles.actionBanner}>
@@ -698,7 +703,7 @@ export default function CustomChatScreen() {
             )}
 
             {/* Text Input Container */}
-            <BlurView intensity={45} tint="dark" style={styles.inputWrapper}>
+            <View style={styles.inputWrapper}>
               <View style={styles.inputInnerContainer}>
                 <TouchableOpacity
                   style={styles.attachButton}
@@ -734,8 +739,8 @@ export default function CustomChatScreen() {
                   )}
                 </TouchableOpacity>
               </View>
-            </BlurView>
-          </View>
+            </View>
+          </LiquidGlassView>
         </KeyboardAvoidingView>
       )}
 
