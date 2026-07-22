@@ -65,6 +65,7 @@ class MediaAttachment(Base):
     id = Column(Integer, primary_key=True, index=True)
     message_id = Column(Integer, ForeignKey('chat_message.id', ondelete='CASCADE'))
     file = Column(String(255))
+    preview_file = Column(String(255), nullable=True)
     
     message = relationship("Message", back_populates="media")
     
@@ -73,6 +74,12 @@ class MediaAttachment(Base):
         if self.file:
             return f"https://media.nextvibe.io/{self.file}"
         return None
+
+    @property
+    def preview_url(self):
+        if self.preview_file:
+            return f"https://media.nextvibe.io/{self.preview_file}"
+        return self.file_url
 
 
 class MessageReceipt(Base):
