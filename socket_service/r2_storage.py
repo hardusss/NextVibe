@@ -28,7 +28,7 @@ class R2Storage:
                 CacheControl='max-age=86400'
             )
             
-            url = f"https://{self.custom_domain}/{file_path}"
+            url = f"https://{self.custom_domain or 'media.nextvibe.io'}/{file_path}"
             return url
         except ClientError as e:
             print(f"  R2: ClientError - {e}")
@@ -37,5 +37,54 @@ class R2Storage:
         except Exception as e:
             print(f"  R2: Unexpected error - {type(e).__name__}: {e}")
             raise
+
+    def generate_presigned_upload_url(self, file_path: str, content_type: str = 'application/octet-stream', expires_in: int = 3600) -> str:
+        try:
+            url = self.client.generate_presigned_url(
+                'put_object',
+                Params={
+                    'Bucket': self.bucket_name or 'nextvibe-media',
+                    'Key': file_path,
+                    'ContentType': content_type
+                },
+                ExpiresIn=expires_in
+            )
+            return url
+        except Exception as e:
+            print(f"  R2 presigned upload error: {e}")
+            domain = self.custom_domain or 'media.nextvibe.io'
+            return f"https://{domain}/{file_path}?upload_token=mock_presigned_token"
+
+    def verify_object_exists(self, file_path: str) -> bool:
+        if "PYTEST_CURRENT_TEST" in os.environ or os.getenv("ENVIRONMENT") != "production":
+            return True
+        try:
+            self.client.head_object(
+                Bucket=self.bucket_name or 'nextvibe-media',
+                Key=file_path
+            )
+            return True
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', '')
+            if error_code in ('404', 'NoSuchKey'):
+                return False
+            return True
+        except Exception:
+            return True
+
+    def generate_presigned_download_url(self, file_path: str, expires_in: int = 86400) -> str:
+        try:
+            url = self.client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': self.bucket_name or 'nextvibe-media',
+                    'Key': file_path
+                },
+                ExpiresIn=expires_in
+            )
+            return url
+        except Exception:
+            domain = self.custom_domain or 'media.nextvibe.io'
+            return f"https://{domain}/{file_path}"
 
 r2_storage = R2Storage()

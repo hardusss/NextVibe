@@ -146,25 +146,25 @@ def test_message_idempotency():
 
 
 def test_rate_limiting():
-    client = TestClient(app)
-    t1 = create_jwt_token(1)
+    with TestClient(app) as client:
+        t1 = create_jwt_token(1)
 
-    with client.websocket_connect(f"/ws?token={t1}") as ws1:
-        rate_limited_hit = False
-        # Send 15 messages rapidly (cap is 10/sec)
-        for i in range(15):
-            ws1.send_json({
-                "type": "message",
-                "chat_id": 100,
-                "message": f"Spam {i}",
-                "client_msg_id": str(uuid.uuid4())
-            })
-            resp = ws1.receive_json()
-            if resp.get("type") == "error" and resp.get("code") == "rate_limited":
-                rate_limited_hit = True
-                break
+        with client.websocket_connect(f"/ws?token={t1}") as ws1:
+            rate_limited_hit = False
+            # Send 15 messages rapidly (cap is 10/sec)
+            for i in range(15):
+                ws1.send_json({
+                    "type": "message",
+                    "chat_id": 100,
+                    "message": f"Spam {i}",
+                    "client_msg_id": str(uuid.uuid4())
+                })
+                resp = ws1.receive_json()
+                if resp.get("type") == "error" and resp.get("code") == "rate_limited":
+                    rate_limited_hit = True
+                    break
 
-        assert rate_limited_hit, "Expected rate limit error frame to be triggered"
+            assert rate_limited_hit, "Expected rate limit error frame to be triggered"
 
 
 @pytest.mark.asyncio
