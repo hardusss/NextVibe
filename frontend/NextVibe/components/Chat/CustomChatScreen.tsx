@@ -94,6 +94,20 @@ export default function CustomChatScreen() {
     fetchUserId();
   }, []);
 
+  // Helper to strictly deduplicate message list by unique ID
+  const deduplicateMessages = (list: MessageItem[]): MessageItem[] => {
+    const seen = new Set<string>();
+    const result: MessageItem[] = [];
+    for (const m of list) {
+      const primaryKey = String(m.server_msg_id || m.id || m.client_msg_id || '');
+      if (primaryKey && !seen.has(primaryKey)) {
+        seen.add(primaryKey);
+        result.push(m);
+      }
+    }
+    return result;
+  };
+
   // 2. Fetch history from socket_service REST endpoint
   const loadInitialMessages = useCallback(async () => {
     if (!chatId) return;
@@ -102,11 +116,10 @@ export default function CustomChatScreen() {
     try {
       const data = await getMessages(chatId);
       if (Array.isArray(data)) {
-        // Backend returns newest messages. Sort descending by created_at for FlatList inverted
         const sorted = data.sort(
           (a: MessageItem, b: MessageItem) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-        setMessages(sorted);
+        setMessages(deduplicateMessages(sorted));
         if (data.length < 20) {
           setHasMore(false);
         }
@@ -133,11 +146,7 @@ export default function CustomChatScreen() {
         const sortedNew = data.sort(
           (a: MessageItem, b: MessageItem) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-        setMessages(prev => {
-          const existingIds = new Set(prev.map(m => m.id));
-          const filtered = sortedNew.filter(m => !existingIds.has(m.id));
-          return [...prev, ...filtered];
-        });
+        setMessages(prev => deduplicateMessages([...prev, ...sortedNew]));
         if (data.length < 20) {
           setHasMore(false);
         }
@@ -165,11 +174,7 @@ export default function CustomChatScreen() {
       },
       onMessageReceived: (incoming) => {
         if (incoming.chat_id === chatId) {
-          setMessages(prev => {
-            const exists = prev.some(m => m.id === (incoming.server_msg_id || incoming.id || incoming.client_msg_id));
-            if (exists) return prev;
-            return [incoming, ...prev];
-          });
+          setMessages(prev => deduplicateMessages([incoming, ...prev]));
         }
       }
     });
@@ -180,21 +185,28 @@ export default function CustomChatScreen() {
 
       if (event.type === 'message') {
         setMessages(prev => {
-          // Replace matching temp client message or append new
-          const index = prev.findIndex(
-            m => (m.id === event.client_msg_id) || (m.id === event.server_msg_id)
-          );
-          if (index !== -1) {
+          const matchIndex = prev.findIndex(m => {
+            const mKey = String(m.server_msg_id || m.id || m.client_msg_id);
+            const incomingKey = String(event.server_msg_id || event.id || event.client_msg_id);
+            return (
+              (event.client_msg_id && m.id === event.client_msg_id) ||
+              (event.client_msg_id && m.client_msg_id === event.client_msg_id) ||
+              (incomingKey && mKey === incomingKey)
+            );
+          });
+
+          if (matchIndex !== -1) {
             const copy = [...prev];
-            copy[index] = { ...copy[index], ...event };
-            return copy;
+            copy[matchIndex] = { ...copy[matchIndex], ...event };
+            return deduplicateMessages(copy);
           }
-          return [event, ...prev];
+          return deduplicateMessages([event, ...prev]);
         });
       } else if (event.type === 'read_receipt') {
         setMessages(prev =>
           prev.map(msg => {
-            if (event.message_ids?.includes(msg.server_msg_id || msg.id)) {
+            const msgId = msg.server_msg_id || msg.id;
+            if (event.message_ids?.some((id: any) => String(id) === String(msgId))) {
               return { ...msg, is_read: true };
             }
             return msg;
@@ -203,7 +215,8 @@ export default function CustomChatScreen() {
       } else if (event.type === 'reaction_update') {
         setMessages(prev =>
           prev.map(msg => {
-            if ((msg.server_msg_id || msg.id) === event.message_id) {
+            const msgId = msg.server_msg_id || msg.id;
+            if (String(msgId) === String(event.message_id)) {
               return { ...msg, reactions: event.reactions };
             }
             return msg;
@@ -216,7 +229,8 @@ export default function CustomChatScreen() {
       } else if (event.type === 'message_edited') {
         setMessages(prev =>
           prev.map(msg => {
-            if ((msg.server_msg_id || msg.id) === event.message_id) {
+            const msgId = msg.server_msg_id || msg.id;
+            if (String(msgId) === String(event.message_id)) {
               return { ...msg, text: event.content, content: event.content, edited_at: event.edited_at };
             }
             return msg;
@@ -225,7 +239,8 @@ export default function CustomChatScreen() {
       } else if (event.type === 'message_deleted') {
         setMessages(prev =>
           prev.map(msg => {
-            if ((msg.server_msg_id || msg.id) === event.message_id) {
+            const msgId = msg.server_msg_id || msg.id;
+            if (String(msgId) === String(event.message_id)) {
               return { ...msg, content: '[Message deleted]', text: '[Message deleted]', deleted_at: event.deleted_at };
             }
             return msg;
@@ -351,7 +366,7 @@ export default function CustomChatScreen() {
         >
           <FlatList
             data={messages}
-            keyExtractor={item => String(item.id || item.server_msg_id)}
+            keyExtractor={(item, index) => String(item.server_msg_id || item.id || item.client_msg_id || `msg_${index}`)}
             renderItem={renderItem}
             inverted
             contentContainerStyle={styles.listContent}
