@@ -1,6 +1,7 @@
 import axios from 'axios';
 import GetApiUrl from '../utils/url_api';
 import { storage } from '../utils/storage';
+import WebSocketService from '../services/WebSocketService';
 
 function getRealtimeBaseUrl(): string {
   return GetApiUrl()
