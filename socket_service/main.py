@@ -217,10 +217,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 await manager.send_to_users(participant_ids, response_data)
 
             elif message_type in ("reaction_add", "reaction_remove"):
-                chat_id = data.get("chat_id")
-                message_id = data.get("message_id")
-                emoji = data.get("emoji")
+                try:
+                    chat_id = int(data.get("chat_id")) if data.get("chat_id") is not None else None
+                    message_id = int(data.get("message_id")) if data.get("message_id") is not None else None
+                except (ValueError, TypeError):
+                    await websocket.send_json({"type": "error", "detail": "Invalid chat_id or message_id"})
+                    continue
 
+                emoji = data.get("emoji")
                 if not chat_id or not message_id or not emoji:
                     await websocket.send_json({"type": "error", "detail": "Missing chat_id, message_id or emoji"})
                     continue
@@ -230,7 +234,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_json({"type": "error", "detail": "Not authorized"})
                     continue
 
-                message = db.query(Message).filter(Message.id == message_id, Message.chat_id == chat_id).first()
+                message = db.query(Message).filter(Message.id == message_id).first()
                 if not message:
                     await websocket.send_json({"type": "error", "detail": "Message not found"})
                     continue
@@ -254,26 +258,27 @@ async def websocket_endpoint(websocket: WebSocket):
                         db.delete(existing)
                         db.commit()
 
-                keys = r.keys(f"chat:{chat_id}:*")
+                keys = r.keys(f"chat:{message.chat_id}:*")
                 if keys:
                     r.delete(*keys)
 
                 reactions = db.query(MessageReaction).filter(MessageReaction.message_id == message_id).all()
-                summary = {}
-                for r_item in reactions:
-                    if r_item.emoji not in summary:
-                        summary[r_item.emoji] = {"emoji": r_item.emoji, "count": 0, "reacted_by_me": False}
-                    summary[r_item.emoji]["count"] += 1
-                    if r_item.user_id == user_id:
-                        summary[r_item.emoji]["reacted_by_me"] = True
+                for p in chat.participants:
+                    p_id = p.user_id
+                    summary = {}
+                    for r_item in reactions:
+                        if r_item.emoji not in summary:
+                            summary[r_item.emoji] = {"emoji": r_item.emoji, "count": 0, "reacted_by_me": False}
+                        summary[r_item.emoji]["count"] += 1
+                        if r_item.user_id == p_id:
+                            summary[r_item.emoji]["reacted_by_me"] = True
 
-                participant_ids = [u.user_id for u in chat.participants]
-                await manager.send_to_users(participant_ids, {
-                    "type": "reaction_update",
-                    "chat_id": chat_id,
-                    "message_id": message_id,
-                    "reactions": list(summary.values())
-                })
+                    await manager.send_to_users([p_id], {
+                        "type": "reaction_update",
+                        "chat_id": message.chat_id,
+                        "message_id": message_id,
+                        "reactions": list(summary.values())
+                    })
 
             elif message_type in ("typing_start", "typing_stop"):
                 chat_id = data.get("chat_id")
@@ -324,11 +329,20 @@ async def websocket_endpoint(websocket: WebSocket):
                 await manager.send_to_users([target_user_id], signal_payload)
 
             elif message_type == "edit_message":
-                chat_id = data.get("chat_id")
-                message_id = data.get("message_id")
+                try:
+                    chat_id = int(data.get("chat_id")) if data.get("chat_id") is not None else None
+                    message_id = int(data.get("message_id")) if data.get("message_id") is not None else None
+                except (ValueError, TypeError):
+                    await websocket.send_json({"type": "error", "detail": "Invalid chat_id or message_id"})
+                    continue
+
                 new_text = data.get("text", "")
 
-                message = db.query(Message).filter(Message.id == message_id, Message.chat_id == chat_id).first()
+                if not message_id:
+                    await websocket.send_json({"type": "error", "detail": "Missing message_id"})
+                    continue
+
+                message = db.query(Message).filter(Message.id == message_id).first()
                 if not message:
                     await websocket.send_json({"type": "error", "detail": "Message not found"})
                     continue
@@ -349,17 +363,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 message.edited_at = datetime.utcnow()
                 db.commit()
 
-                keys = r.keys(f"chat:{chat_id}:*")
+                keys = r.keys(f"chat:{message.chat_id}:*")
                 if keys:
                     r.delete(*keys)
 
                 participant_ids = [u.user_id for u in message.chat.participants]
                 await manager.send_to_users(participant_ids, {
                     "type": "message_edited",
-                    "chat_id": chat_id,
-                    "message_id": message_id,
-                    "server_msg_id": message_id,
+                    "chat_id": message.chat_id,
+                    "message_id": message.id,
+                    "server_msg_id": message.id,
                     "content": new_text,
+                    "text": new_text,
                     "edited_at": message.edited_at.isoformat()
                 })
 
