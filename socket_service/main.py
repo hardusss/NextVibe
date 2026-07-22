@@ -293,6 +293,35 @@ async def websocket_endpoint(websocket: WebSocket):
                         "is_typing": is_typing
                     })
 
+            elif message_type in ("webrtc_offer", "webrtc_answer", "webrtc_ice_candidate"):
+                chat_id = data.get("chat_id")
+                target_user_id = data.get("target_user_id")
+
+                if not chat_id or not target_user_id:
+                    await websocket.send_json({"type": "error", "detail": "Missing chat_id or target_user_id"})
+                    continue
+
+                chat = db.query(Chat).filter(Chat.id == chat_id).first()
+                if not chat or user_id not in [u.user_id for u in chat.participants]:
+                    await websocket.send_json({"type": "error", "detail": "Not authorized"})
+                    continue
+
+                if target_user_id not in [u.user_id for u in chat.participants]:
+                    await websocket.send_json({"type": "error", "detail": "Target user not in chat"})
+                    continue
+
+                # Forward signaling payload directly to target user
+                signal_payload = {
+                    "type": message_type,
+                    "chat_id": chat_id,
+                    "sender_user_id": user_id,
+                    "target_user_id": target_user_id,
+                    "sdp": data.get("sdp"),
+                    "candidate": data.get("candidate"),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                await manager.send_to_users([target_user_id], signal_payload)
+
             elif message_type == "edit_message":
                 chat_id = data.get("chat_id")
                 message_id = data.get("message_id")
