@@ -4,7 +4,7 @@ import uuid
 import pytest
 import jwt
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 
 test_db_path = "test_push.db"
@@ -63,7 +63,7 @@ def create_jwt_token(user_id: int) -> str:
 
 
 def test_push_notification_dispatch_for_offline_user():
-    with patch("main.send_chat_push_notification") as mock_push:
+    with patch("main.send_chat_push_notification", new_callable=AsyncMock) as mock_push:
         with TestClient(app) as client:
             t1 = create_jwt_token(1)
 
