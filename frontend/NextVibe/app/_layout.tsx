@@ -88,8 +88,8 @@ function resolveNotificationUrl(data: Record<string, any>): { internal?: string;
     if (data?.type === 'new_comment' && data?.post_id) {
         return { internal: `/post-details?id=${data.post_id}` };
     }
-    if (data?.type === 'new_message' && data?.chat_id && data?.user_id) {
-        return { internal: `/chat-room?id=${data.chat_id}&userId=${data.user_id}` };
+    if ((data?.type === 'new_message' || data?.type === 'chat_message') && data?.chat_id) {
+        return { internal: `/(shared)/chat-room?id=${data.chat_id}` };
     }
     return {};
 }
