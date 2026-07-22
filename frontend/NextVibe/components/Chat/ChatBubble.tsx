@@ -101,19 +101,22 @@ const ChatBubble: React.FC<Props> = ({ message, onReply, onReactionPress, onEdit
   // Derive receipt status for my messages
   const getReceiptStatus = () => {
     if (!isMyMessage) return null;
+
+    if (message.is_read) {
+      return <CheckCheck size={14} color="#38BDF8" style={styles.checkIcon} />;
+    }
+
     const recipientReceipts = (message.receipts || []).filter(r => r.user_id !== userId);
     
     if (recipientReceipts.length > 0) {
       const allRead = recipientReceipts.every(r => r.read_at !== null);
-      if (allRead || message.is_read) {
+      if (allRead) {
         return <CheckCheck size={14} color="#38BDF8" style={styles.checkIcon} />;
       }
       const anyDelivered = recipientReceipts.some(r => r.delivered_at !== null);
       if (anyDelivered) {
         return <CheckCheck size={14} color={isDark ? '#94A3B8' : '#64748B'} style={styles.checkIcon} />;
       }
-    } else if (message.is_read) {
-      return <CheckCheck size={14} color="#38BDF8" style={styles.checkIcon} />;
     }
 
     return <Check size={14} color={isDark ? '#94A3B8' : '#64748B'} style={styles.checkIcon} />;
