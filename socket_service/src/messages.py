@@ -171,6 +171,81 @@ async def get_chat_messages(
     return data
 
 
+@router.post("/messages/chat/{chat_id}/read")
+@router.post("/messages/{chat_id}/mark-read")
+async def mark_chat_as_read(
+    chat_id: int,
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    chat = (
+        db.query(Chat)
+        .join(Chat.participants)
+        .filter(Chat.id == chat_id, Chat.participants.any(user_id=user_id))
+        .first()
+    )
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found or access denied")
+
+    messages_in_chat = (
+        db.query(Message)
+        .filter(Message.chat_id == chat_id)
+        .filter(Message.sender_id != user_id)
+        .all()
+    )
+
+    read_msg_ids = []
+    now = datetime.utcnow()
+    for msg in messages_in_chat:
+        rcpt = db.query(MessageReceipt).filter(
+            MessageReceipt.message_id == msg.id,
+            MessageReceipt.user_id == user_id
+        ).first()
+        if not rcpt:
+            rcpt = MessageReceipt(message_id=msg.id, user_id=user_id, delivered_at=now, read_at=now)
+            db.add(rcpt)
+            read_msg_ids.append(msg.id)
+        elif not rcpt.read_at:
+            rcpt.read_at = now
+            if not rcpt.delivered_at:
+                rcpt.delivered_at = now
+            read_msg_ids.append(msg.id)
+        msg.is_read = True
+
+    if read_msg_ids or messages_in_chat:
+        try:
+            db.commit()
+            invalidate_chat_cache(chat_id)
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Failed to persist read receipts")
+
+    participant_ids = [u.user_id for u in chat.participants]
+    pubsub_payload = {
+        "sender_pod_id": "api",
+        "target_user_ids": participant_ids,
+        "envelope": {
+            "type": "read_receipt",
+            "chat_id": chat_id,
+            "reader_id": user_id,
+            "message_ids": read_msg_ids,
+            "read_at": now.isoformat(),
+            "timestamp": now.isoformat()
+        }
+    }
+    try:
+        r.publish("chat_pubsub_events", json.dumps(pubsub_payload))
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "chat_id": chat_id,
+        "marked_read_count": len(read_msg_ids),
+        "message_ids": read_msg_ids
+    }
+
+
 @router.post("/media/upload-url")
 async def get_media_upload_url(
     req: UploadUrlRequest,

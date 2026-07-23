@@ -94,6 +94,25 @@ export const notifyEnterChat = (chatId: number) => {
   });
 };
 
+export const markChatAsRead = async (chatId: number) => {
+  if (!chatId) return;
+
+  // 1. Immediate WebSocket notification
+  notifyEnterChat(chatId);
+
+  // 2. Guaranteed REST database persistence
+  try {
+    const token = await storage.getItem('access');
+    await axios.post(
+      `${getRealtimeBaseUrl()}/messages/chat/${chatId}/read`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  } catch (err) {
+    // Silent fallback catch
+  }
+};
+
 export const sendTypingStart = (chatId: number) => {
   WebSocketService.send({
     type: 'typing_start',
