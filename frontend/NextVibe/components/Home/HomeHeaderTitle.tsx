@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { useColorScheme } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
-import { Bell, Plus } from "lucide-react-native";
+import { Bell, Plus, MessageSquare } from "lucide-react-native";
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
 import GlassSurface from "@/components/Shared/GlassSurface";
 
@@ -16,7 +16,7 @@ function CameraBtn({ isDark, onPress }: BtnProps) {
                 activeOpacity={0.7}
                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 onPress={onPress}
-                style={{ width: 40, height: 40 }}
+                style={{ width: 40, height: 40, zIndex: 10 }}
             >
                 <GlassSurface
                     style={styles.glassBtn}
@@ -34,9 +34,41 @@ function CameraBtn({ isDark, onPress }: BtnProps) {
             activeOpacity={0.7}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             onPress={onPress}
-            style={[styles.roundBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)' }]}
+            style={[styles.roundBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)', zIndex: 10 }]}
         >
             <Plus size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
+        </TouchableOpacity>
+    );
+}
+
+function ChatBtn({ isDark, onPress }: BtnProps) {
+    if (Platform.OS === 'ios') {
+        return (
+            <TouchableOpacity
+                activeOpacity={0.7}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                onPress={onPress}
+                style={{ width: 40, height: 40, zIndex: 10 }}
+            >
+                <GlassSurface
+                    style={styles.glassBtn}
+                    glassEffectStyle="regular"
+                    colorScheme={isDark ? "dark" : "light"}
+                    fallbackBackgroundColor={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)'}
+                >
+                    <MessageSquare size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
+                </GlassSurface>
+            </TouchableOpacity>
+        );
+    }
+    return (
+        <TouchableOpacity
+            activeOpacity={0.7}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            onPress={onPress}
+            style={[styles.roundBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)', zIndex: 10 }]}
+        >
+            <MessageSquare size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
         </TouchableOpacity>
     );
 }
@@ -48,7 +80,7 @@ function BellBtn({ isDark, onPress, badge }: BtnProps) {
                 activeOpacity={0.7}
                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 onPress={onPress}
-                style={{ position: 'relative', width: 40, height: 40 }}
+                style={{ position: 'relative', width: 40, height: 40, zIndex: 10 }}
             >
                 <GlassSurface
                     style={styles.glassBtn}
@@ -67,7 +99,7 @@ function BellBtn({ isDark, onPress, badge }: BtnProps) {
             activeOpacity={0.7}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             onPress={onPress}
-            style={{ position: "relative", justifyContent: "center", alignItems: "center", height: 40, width: 40 }}
+            style={{ position: "relative", justifyContent: "center", alignItems: "center", height: 40, width: 40, zIndex: 10 }}
         >
             <Bell size={24} color={isDark ? "#fafafa" : "#1A1225"} />
             {badge}
@@ -114,27 +146,28 @@ export default function HomeHeaderTitle() {
 
     return (
         <View style={styles.row}>
-            {/* Camera button (iOS only) */}
+            {/* Title Container (Background layer with pointerEvents="none") */}
+            <View style={styles.titleContainer} pointerEvents="none">
+                <Text
+                    style={[
+                        styles.title,
+                        { color: isDark ? "#F3EEFF" : "#1A1225" }
+                    ]}
+                    numberOfLines={1}
+                >
+                    NextVibe
+                </Text>
+            </View>
+
+            {/* Left side button */}
             {Platform.OS === 'ios' && (
                 <CameraBtn isDark={isDark} onPress={() => router.push("/(shared)/camera")} />
             )}
 
-            {/* Title */}
-            <Text
-                style={[
-                    styles.title,
-                    Platform.OS === "android" && {
-                        position: "relative",
-                        left: 0,
-                        textAlign: "left",
-                        flex: 1,
-                    },
-                    { color: isDark ? "#F3EEFF" : "#1A1225" }
-                ]}
-                numberOfLines={1}
-            >
-                NextVibe
-            </Text>
+            {/* Chat button (Android only) */}
+            {Platform.OS === 'android' && (
+                <ChatBtn isDark={isDark} onPress={() => router.push("/chats")} />
+            )}
 
             {/* Right side — bell + logo */}
             <View style={styles.rightGroup}>
@@ -152,23 +185,32 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         width: "100%",
         paddingRight: 16,
-        paddingLeft: 4,
+        paddingLeft: 0,
+        height: 40,
+        position: "relative",
+    },
+    titleContainer: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1,
     },
     title: {
         fontFamily: "Dank Mono Bold",
         fontSize: 26,
         letterSpacing: -0.75,
         includeFontPadding: false,
-        position: "absolute",
-        left: -17,
-        right: 0,
         textAlign: "center",
-        pointerEvents: "none",
     },
     rightGroup: {
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
+        zIndex: 10,
     },
     glassBtn: {
         width: 40,
