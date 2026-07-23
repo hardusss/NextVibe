@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 from db import SessionLocal
 from src.models import Message, MediaAttachment, User, Chat, UserOnlineSession, MessageReaction, MessageReceipt
-from src.messages import router as messages_router
+from src.messages import router as messages_router, invalidate_chat_cache
 from src.keys import router as keys_router
 from src.notifications import send_chat_push_notification
 from r2_storage import r2_storage  
@@ -202,8 +202,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         read_msg_ids.append(msg.id)
                     msg.is_read = True
 
-                if read_msg_ids:
+                if read_msg_ids or messages_in_chat:
                     db.commit()
+                    invalidate_chat_cache(chat_id)
 
                 participant_ids = [u.user_id for u in chat.participants]
                 response_data = {
@@ -258,9 +259,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         db.delete(existing)
                         db.commit()
 
-                keys = r.keys(f"chat:{message.chat_id}:*")
-                if keys:
-                    r.delete(*keys)
+                invalidate_chat_cache(message.chat_id)
 
                 reactions = db.query(MessageReaction).filter(MessageReaction.message_id == message_id).all()
                 for p in chat.participants:
