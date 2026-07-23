@@ -109,17 +109,20 @@ export const sendTypingStop = (chatId: number) => {
 };
 
 export const addReaction = async (chatId: number, messageId: number, emoji: string) => {
+  const numChatId = Number(chatId);
+  const numMsgId = Number(messageId);
+
   WebSocketService.send({
     type: 'reaction_add',
-    chat_id: chatId,
-    message_id: messageId,
+    chat_id: numChatId,
+    message_id: numMsgId,
     emoji
   });
 
   const token = await storage.getItem('access');
   try {
     await axios.post(
-      `${getRealtimeBaseUrl()}/messages/${messageId}/reactions`,
+      `${getRealtimeBaseUrl()}/messages/${numMsgId}/reactions`,
       { emoji },
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -129,17 +132,20 @@ export const addReaction = async (chatId: number, messageId: number, emoji: stri
 };
 
 export const removeReaction = async (chatId: number, messageId: number, emoji: string) => {
+  const numChatId = Number(chatId);
+  const numMsgId = Number(messageId);
+
   WebSocketService.send({
     type: 'reaction_remove',
-    chat_id: chatId,
-    message_id: messageId,
+    chat_id: numChatId,
+    message_id: numMsgId,
     emoji
   });
 
   const token = await storage.getItem('access');
   try {
     await axios.delete(
-      `${getRealtimeBaseUrl()}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
+      `${getRealtimeBaseUrl()}/messages/${numMsgId}/reactions/${encodeURIComponent(emoji)}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch (err) {

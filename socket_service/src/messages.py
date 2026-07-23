@@ -248,6 +248,7 @@ async def add_reaction(
                 "type": "reaction_update",
                 "chat_id": message.chat_id,
                 "message_id": message_id,
+                "server_msg_id": message_id,
                 "reactions": list(summary.values())
             }
         }
@@ -313,6 +314,7 @@ async def remove_reaction(
                 "type": "reaction_update",
                 "chat_id": message.chat_id,
                 "message_id": message_id,
+                "server_msg_id": message_id,
                 "reactions": list(summary.values())
             }
         }
