@@ -43,6 +43,7 @@ import {
   sendTypingStart,
   sendTypingStop,
   addReaction,
+  removeReaction,
   editMessage,
   deleteMessage,
   getChats
@@ -271,7 +272,7 @@ export default function CustomChatScreen() {
 
     // Subscribe to WebSocketService global real-time frames
     const unsubscribeWS = WebSocketService.addListener((event: any) => {
-      if (!event || event.chat_id !== chatId) return;
+      if (!event || String(event.chat_id) !== String(chatId)) return;
 
       if (event.type === 'message') {
         if (event.sender_id && event.sender_id !== currentUserId) {
@@ -319,10 +320,20 @@ export default function CustomChatScreen() {
           })
         );
       } else if (event.type === 'reaction_update') {
+        const targetMsgId = String(event.message_id || event.server_msg_id);
         setMessages(prev =>
           prev.map(msg => {
-            const msgId = msg.server_msg_id || (msg as any).message_id || msg.id;
-            if (String(msgId) === String(event.message_id)) {
+            const mServerId = msg.server_msg_id ? String(msg.server_msg_id) : null;
+            const mMsgId = (msg as any).message_id ? String((msg as any).message_id) : null;
+            const mId = msg.id ? String(msg.id) : null;
+            const mClientId = msg.client_msg_id ? String(msg.client_msg_id) : null;
+
+            if (
+              (mServerId && mServerId === targetMsgId) ||
+              (mMsgId && mMsgId === targetMsgId) ||
+              (mId && mId === targetMsgId) ||
+              (mClientId && mClientId === targetMsgId)
+            ) {
               return { ...msg, reactions: event.reactions };
             }
             return msg;
@@ -520,6 +531,7 @@ export default function CustomChatScreen() {
 
     if (isNaN(numMsgId)) return;
 
+    let isRemoving = false;
     // Optimistically update reactions in local state
     setMessages(prev =>
       prev.map(msg => {
@@ -532,6 +544,7 @@ export default function CustomChatScreen() {
           if (existingIdx !== -1) {
             const existing = newReactions[existingIdx];
             if (existing.reacted_by_me) {
+              isRemoving = true;
               if (existing.count <= 1) {
                 newReactions.splice(existingIdx, 1);
               } else {
@@ -550,9 +563,13 @@ export default function CustomChatScreen() {
     );
 
     try {
-      await addReaction(chatId, numMsgId, emoji);
+      if (isRemoving) {
+        await removeReaction(chatId, numMsgId, emoji);
+      } else {
+        await addReaction(chatId, numMsgId, emoji);
+      }
     } catch (err) {
-      console.error('Failed to add reaction:', err);
+      console.error('Failed to update reaction:', err);
     }
   };
 
@@ -611,7 +628,46 @@ export default function CustomChatScreen() {
         onReply={() => setReplyToMessage(item)}
         onReactionPress={(msgId, emoji) => {
           const numId = Number(msgId);
-          if (!isNaN(numId)) {
+          if (isNaN(numId)) return;
+
+          const targetMsg = messages.find(m => {
+            const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
+            return mKey === String(msgId) || (m.server_msg_id === numId || (m as any).message_id === numId);
+          });
+          const existingReaction = targetMsg?.reactions?.find(r => r.emoji === emoji);
+          const isRemoving = Boolean(existingReaction && existingReaction.reacted_by_me);
+
+          setMessages(prev =>
+            prev.map(msg => {
+              const mKey = String(msg.server_msg_id || (msg as any).message_id || msg.id || msg.client_msg_id);
+              if (mKey === String(msgId) || (msg.server_msg_id === numId || (msg as any).message_id === numId)) {
+                const currentReactions = msg.reactions || [];
+                const existingIdx = currentReactions.findIndex(r => r.emoji === emoji);
+                let newReactions = [...currentReactions];
+
+                if (existingIdx !== -1) {
+                  const existing = newReactions[existingIdx];
+                  if (existing.reacted_by_me) {
+                    if (existing.count <= 1) {
+                      newReactions.splice(existingIdx, 1);
+                    } else {
+                      newReactions[existingIdx] = { ...existing, count: existing.count - 1, reacted_by_me: false };
+                    }
+                  } else {
+                    newReactions[existingIdx] = { ...existing, count: existing.count + 1, reacted_by_me: true };
+                  }
+                } else {
+                  newReactions.push({ emoji, count: 1, reacted_by_me: true });
+                }
+                return { ...msg, reactions: newReactions };
+              }
+              return msg;
+            })
+          );
+
+          if (isRemoving) {
+            removeReaction(chatId, numId, emoji);
+          } else {
             addReaction(chatId, numId, emoji);
           }
         }}
