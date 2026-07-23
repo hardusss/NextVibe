@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, useColorScheme } from 'react-native';
 import MediaPreview from './MediaPreview';
 import GetApiUrl from '@/src/utils/url_api';
+import { chatColors, chatRadius } from '@/src/theme/chatTheme';
 
 interface MediaItem {
   id: number;
@@ -12,11 +13,15 @@ interface MediaGridProps {
   media: MediaItem[];
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const MAX_CONTENT_WIDTH = SCREEN_WIDTH * 0.8 - 54;
 const GRID_SPACING = 2;
 
 export default function MediaGrid({ media }: MediaGridProps) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isDark = useColorScheme() === 'dark';
+  const colors = chatColors[isDark ? 'dark' : 'light'];
+
+  const maxContentWidth = Math.min(screenWidth * 0.82, 420) - 24;
+
   const getGridLayout = () => {
     switch (media.length) {
       case 1:
@@ -33,74 +38,76 @@ export default function MediaGrid({ media }: MediaGridProps) {
   };
 
   const getMediaSize = (index: number) => {
-    const baseWidth = MAX_CONTENT_WIDTH;
-    const aspectRatio = 3/4; 
+    const baseWidth = maxContentWidth;
+    const aspectRatio = 3 / 4;
 
     switch (media.length) {
       case 1:
-        return { 
-          width: baseWidth, 
+        return {
+          width: baseWidth,
           height: baseWidth * aspectRatio,
-          borderRadius: 12
+          borderRadius: chatRadius.card,
         };
       case 2:
-        return { 
-          width: (baseWidth - GRID_SPACING) / 2, 
+        return {
+          width: (baseWidth - GRID_SPACING) / 2,
           height: ((baseWidth - GRID_SPACING) / 2) * aspectRatio,
-          borderRadius: 8
+          borderRadius: chatRadius.card / 2,
         };
       case 3:
         if (index === 0) {
-          return { 
-            width: baseWidth, 
-            height: baseWidth * aspectRatio,
-            borderRadius: 8
+          return {
+            width: baseWidth,
+            height: baseWidth * aspectRatio * 0.7,
+            borderRadius: chatRadius.card / 2,
           };
         }
-        return { 
-          width: (baseWidth - GRID_SPACING) / 2, 
+        return {
+          width: (baseWidth - GRID_SPACING) / 2,
           height: ((baseWidth - GRID_SPACING) / 2) * aspectRatio,
-          borderRadius: 8
+          borderRadius: chatRadius.card / 2,
         };
       case 4:
-        return { 
-          width: (baseWidth - GRID_SPACING) / 2, 
+        return {
+          width: (baseWidth - GRID_SPACING) / 2,
           height: ((baseWidth - GRID_SPACING) / 2) * aspectRatio,
-          borderRadius: 8
+          borderRadius: chatRadius.card / 2,
         };
       default:
         if (index === 0) {
-          return { 
-            width: baseWidth, 
-            height: baseWidth * aspectRatio,
-            borderRadius: 8
+          return {
+            width: baseWidth,
+            height: baseWidth * aspectRatio * 0.7,
+            borderRadius: chatRadius.card / 2,
           };
         }
-        return { 
-          width: (baseWidth - GRID_SPACING * 2) / 3, 
+        return {
+          width: (baseWidth - GRID_SPACING * 2) / 3,
           height: ((baseWidth - GRID_SPACING * 2) / 3) * aspectRatio,
-          borderRadius: 6
+          borderRadius: chatRadius.card / 3,
         };
     }
   };
 
   return (
-    <View style={[styles.container, getGridLayout()]}>
+    <View style={[styles.container, { width: maxContentWidth }, getGridLayout()]}>
       {media.slice(0, 6).map((item, index) => {
         const size = getMediaSize(index);
         return (
-          <View 
-            key={item.id} 
+          <View
+            key={item.id || index}
             style={[
               styles.mediaWrapper,
               size,
-              index > 0 && styles.mediaSpacing
+              index > 0 && styles.mediaSpacing,
             ]}
           >
             <MediaPreview
-              uri={item.file_url?.startsWith('/media/') 
-                ? `${GetApiUrl().slice(0, 25)}${item.file_url}` 
-                : item.file_url || ''}
+              uri={
+                item.file_url?.startsWith('/media/')
+                  ? `${GetApiUrl().slice(0, 25)}${item.file_url}`
+                  : item.file_url || ''
+              }
               type={item.file_url?.includes('.mp4') ? 'video' : 'image'}
               customSize={size}
             />
@@ -121,32 +128,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     overflow: 'hidden',
-    borderRadius: 12,
+    borderRadius: chatRadius.card,
     marginBottom: 8,
-
   },
-  singleContainer: {
-    width: MAX_CONTENT_WIDTH,
-  },
+  singleContainer: {},
   doubleContainer: {
-    width: MAX_CONTENT_WIDTH,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   tripleContainer: {
-    width: MAX_CONTENT_WIDTH,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: GRID_SPACING,
   },
   quadContainer: {
-    width: MAX_CONTENT_WIDTH,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: GRID_SPACING,
   },
   manyContainer: {
-    width: MAX_CONTENT_WIDTH,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: GRID_SPACING,

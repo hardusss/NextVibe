@@ -1,25 +1,78 @@
-import React from 'react';
-import { View, StyleSheet, useColorScheme } from 'react-native';
-
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, useColorScheme, Animated } from 'react-native';
+import { chatColors, chatRadius } from '@/src/theme/chatTheme';
 
 export const OnlineUserSkeleton = () => {
   const isDark = useColorScheme() === 'dark';
+  const colors = chatColors[isDark ? 'dark' : 'light'];
+  const opacityAnim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacityAnim, {
+          toValue: 0.9,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0.4,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [opacityAnim]);
+
+  const bgStyle = {
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    opacity: opacityAnim,
+  };
+
   return (
     <View style={styles.onlineUserSkeleton}>
-      <View style={[styles.avatar, { backgroundColor: isDark ? '#2c2c2c' : '#e0e0e0' }]} />
-      <View style={[styles.username, { backgroundColor: isDark ? '#2c2c2c' : '#e0e0e0' }]} />
+      <Animated.View style={[styles.avatar, bgStyle]} />
+      <Animated.View style={[styles.username, bgStyle]} />
     </View>
   );
 };
 
 export const ChatItemSkeleton = () => {
   const isDark = useColorScheme() === 'dark';
+  const opacityAnim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacityAnim, {
+          toValue: 0.9,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0.4,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [opacityAnim]);
+
+  const bgStyle = {
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    opacity: opacityAnim,
+  };
+
   return (
     <View style={styles.chatItemSkeleton}>
-      <View style={[styles.chatAvatar, { backgroundColor: isDark ? '#2c2c2c' : '#e0e0e0' }]} />
+      <Animated.View style={[styles.chatAvatar, bgStyle]} />
       <View style={styles.chatInfo}>
-        <View style={[styles.chatName, { backgroundColor: isDark ? '#2c2c2c' : '#e0e0e0' }]} />
-        <View style={[styles.chatMessage, { backgroundColor: isDark ? '#2c2c2c' : '#e0e0e0' }]} />
+        <Animated.View style={[styles.chatName, bgStyle]} />
+        <Animated.View style={[styles.chatMessage, bgStyle]} />
       </View>
     </View>
   );

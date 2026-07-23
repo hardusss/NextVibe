@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   StatusBar,
   useColorScheme,
   Modal,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -26,7 +26,8 @@ import {
   Copy,
   Pencil,
   Trash2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Sparkles,
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -34,12 +35,12 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 
 import { storage } from '@/src/utils/storage';
 import {
   getMessages,
   sendWebSocketMessage,
-  notifyEnterChat,
   markChatAsRead,
   sendTypingStart,
   sendTypingStop,
@@ -47,7 +48,7 @@ import {
   removeReaction,
   editMessage,
   deleteMessage,
-  getChats
+  getChats,
 } from '@/src/api/chat';
 import WebSocketService from '@/src/services/WebSocketService';
 import ChatBubble from './ChatBubble';
@@ -57,6 +58,7 @@ import SafetyNumberModal from './SafetyNumberModal';
 import MediaPickerModal from './MediaPickerModal';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { LiquidGlassView } from '../Shared/LiquidGlassView';
+import { chatColors, chatRadius, chatSpacing } from '@/src/theme/chatTheme';
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 const EMOJI_LIST = ['❤️', '👍', '🔥', '😂', '😮', '🙏', '👏'];
@@ -89,10 +91,45 @@ interface MessageItem {
   deleted_at?: string | null;
 }
 
+interface DateSeparatorItem {
+  type: 'date_separator';
+  id: string;
+  dateString: string;
+}
+
+type ListItem = (MessageItem & { type?: 'message' }) | DateSeparatorItem;
+
+function formatDateSeparator(isoDate: string): string {
+  try {
+    const d = new Date(isoDate);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const msgDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+    if (msgDate.getTime() === today.getTime()) {
+      return 'Today';
+    } else if (msgDate.getTime() === yesterday.getTime()) {
+      return 'Yesterday';
+    } else {
+      return d.toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+      });
+    }
+  } catch {
+    return '';
+  }
+}
+
 export default function CustomChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isDark = useColorScheme() === 'dark';
+  const colors = chatColors[isDark ? 'dark' : 'light'];
   const isFocused = useIsFocused();
 
   const { id } = useLocalSearchParams();
@@ -131,10 +168,12 @@ export default function CustomChatScreen() {
   const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
 
   const [toast, setToast] = useState({ visible: false, message: '', isSuccess: true });
-
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Fetch current user ID & Partner Info
+  // Memoized dynamic styles
+  const styles = useMemo(() => getStyles(isDark, insets, colors), [isDark, insets, colors]);
+
+  // Fetch current user ID & Partner Info
   useEffect(() => {
     const fetchUserId = async () => {
       try {
@@ -186,7 +225,7 @@ export default function CustomChatScreen() {
     return result;
   };
 
-  // 2. Fetch history from socket_service REST endpoint
+  // Fetch history from REST endpoint
   const loadInitialMessages = useCallback(async () => {
     if (!chatId) return;
     setLoading(true);
@@ -202,7 +241,6 @@ export default function CustomChatScreen() {
           setHasMore(false);
         }
 
-        // Extract partner info if not set
         if (!otherUser && data.length > 0) {
           const msgFromOther = data.find(m => m.sender_id && m.sender_id !== currentUserId);
           if (msgFromOther && msgFromOther.sender) {
@@ -211,7 +249,7 @@ export default function CustomChatScreen() {
               username: msgFromOther.sender.username || 'User',
               avatar: msgFromOther.sender.avatar || null,
               is_online: false,
-              official: msgFromOther.sender.official
+              official: msgFromOther.sender.official,
             });
           }
         }
@@ -224,7 +262,7 @@ export default function CustomChatScreen() {
     }
   }, [chatId, currentUserId, otherUser]);
 
-  // 3. Load older messages (Pagination)
+  // Pagination
   const loadOlderMessages = async () => {
     if (!chatId || loadingMore || !hasMore || messages.length === 0) return;
     const oldestMsg = messages[messages.length - 1];
@@ -252,14 +290,13 @@ export default function CustomChatScreen() {
     }
   };
 
-  // 4. WebSocket Real-Time Event Handlers & Subscriptions
+  // Real-time subscriptions
   useEffect(() => {
     if (!chatId || !isFocused) return;
 
     loadInitialMessages();
     markChatAsRead(chatId);
 
-    // Subscribe to Transport Manager for P2P state
     const unsubscribeTransport = ChatTransportManager.addListener({
       onTransportStateChange: (cId, state) => {
         if (cId === chatId) setTransportType(state);
@@ -268,10 +305,9 @@ export default function CustomChatScreen() {
         if (incoming.chat_id === chatId) {
           setMessages(prev => deduplicateMessages([incoming, ...prev]));
         }
-      }
+      },
     });
 
-    // Subscribe to WebSocketService global real-time frames
     const unsubscribeWS = WebSocketService.addListener((event: any) => {
       if (!event || String(event.chat_id) !== String(chatId)) return;
 
@@ -314,7 +350,7 @@ export default function CustomChatScreen() {
                 updatedReceipts.push({
                   user_id: event.reader_id,
                   delivered_at: event.read_at || new Date().toISOString(),
-                  read_at: event.read_at || new Date().toISOString()
+                  read_at: event.read_at || new Date().toISOString(),
                 });
               }
               const isReadByRecipient = Boolean(
@@ -362,7 +398,7 @@ export default function CustomChatScreen() {
                 ...msg,
                 text: updatedText || msg.text || msg.content,
                 content: updatedText || msg.content || msg.text,
-                edited_at: event.edited_at || new Date().toISOString()
+                edited_at: event.edited_at || new Date().toISOString(),
               };
             }
             return msg;
@@ -388,7 +424,7 @@ export default function CustomChatScreen() {
     };
   }, [chatId, isFocused, currentUserId, loadInitialMessages]);
 
-  // 5. Input Typing Indicator
+  // Input Typing Indicator
   const handleInputChange = (text: string) => {
     setInputText(text);
     if (!chatId) return;
@@ -401,11 +437,12 @@ export default function CustomChatScreen() {
     }, 3000);
   };
 
-  // 6. Media Selection Handlers
+  // Media Selection Handlers
   const handleCameraPick = async () => {
     setMediaPickerVisible(false);
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setToast({ visible: true, message: 'Camera permission denied', isSuccess: false });
       return;
     }
@@ -424,6 +461,7 @@ export default function CustomChatScreen() {
     setMediaPickerVisible(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setToast({ visible: true, message: 'Gallery permission denied', isSuccess: false });
       return;
     }
@@ -438,9 +476,11 @@ export default function CustomChatScreen() {
     }
   };
 
-  // 7. Send Message / Save Edit Action
+  // Send Message / Save Edit Action
   const handleSendMessage = async () => {
     if ((!inputText.trim() && !selectedMediaFile) || !chatId || isSending) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const messageText = inputText.trim();
     setInputText('');
@@ -451,12 +491,11 @@ export default function CustomChatScreen() {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     sendTypingStop(chatId);
 
-    // If Editing existing message:
+    // If Editing existing message
     if (editingMessage) {
       const rawMsgId = editingMessage.server_msg_id || (editingMessage as any).message_id || editingMessage.id;
       const numMsgId = Number(rawMsgId);
 
-      // Optimistically update message in state immediately
       setMessages(prev =>
         prev.map(m => {
           const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
@@ -465,7 +504,7 @@ export default function CustomChatScreen() {
               ...m,
               text: messageText,
               content: messageText,
-              edited_at: new Date().toISOString()
+              edited_at: new Date().toISOString(),
             };
           }
           return m;
@@ -477,8 +516,9 @@ export default function CustomChatScreen() {
         setToast({ visible: true, message: 'Message edited', isSuccess: true });
       } catch (err: any) {
         console.error('Failed to edit message:', err);
-        const errorMsg = err?.response?.data?.detail || err?.message || 'Failed to edit message';
-        setToast({ visible: true, message: errorMsg, isSuccess: false });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        const errDetail = err?.response?.data?.detail || err?.message || 'Failed to edit message';
+        setToast({ visible: true, message: errDetail, isSuccess: false });
       } finally {
         setEditingMessage(null);
         setIsSending(false);
@@ -489,7 +529,7 @@ export default function CustomChatScreen() {
     // Normal Send Message (Optimistic)
     const clientMsgId = `temp-${Date.now()}`;
     const replyToId = replyToMessage ? (replyToMessage.server_msg_id || (replyToMessage as any).message_id || replyToMessage.id) : undefined;
-    
+
     const optimisticMsg: MessageItem = {
       id: clientMsgId,
       client_msg_id: clientMsgId,
@@ -503,12 +543,12 @@ export default function CustomChatScreen() {
         id: replyToId,
         sender_id: replyToMessage.sender_id,
         sender_name: replyToMessage.sender?.username || 'User',
-        text: replyToMessage.content || replyToMessage.text || ''
+        text: replyToMessage.content || replyToMessage.text || '',
       } : null,
       sender: {
         user_id: currentUserId,
-        username: 'Me'
-      }
+        username: 'Me',
+      },
     };
 
     setReplyToMessage(null);
@@ -519,6 +559,7 @@ export default function CustomChatScreen() {
       await sendWebSocketMessage(chatId, messageText, mediaList, replyToId ? Number(replyToId) : undefined, clientMsgId);
     } catch (err) {
       console.error('[CustomChatScreen] Error sending message:', err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setMessages(prev => prev.filter(m => m.id !== clientMsgId && m.client_msg_id !== clientMsgId));
       setInputText(messageText);
     } finally {
@@ -526,14 +567,17 @@ export default function CustomChatScreen() {
     }
   };
 
-  // 8. Reaction / Action Menu Handlers
-  const handleMessageLongPress = (msg: MessageItem) => {
+  // Reaction / Action Menu Handlers
+  const handleMessageLongPress = useCallback((msg: MessageItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedActionMessage(msg);
     setActionModalVisible(true);
-  };
+  }, []);
 
-  const handleToggleReaction = async (emoji: string) => {
+  const handleToggleReaction = useCallback(async (emoji: string) => {
     if (!selectedActionMessage) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     const rawMsgId = selectedActionMessage.server_msg_id || (selectedActionMessage as any).message_id || selectedActionMessage.id;
     const numMsgId = Number(rawMsgId);
     setActionModalVisible(false);
@@ -541,7 +585,6 @@ export default function CustomChatScreen() {
     if (isNaN(numMsgId)) return;
 
     let isRemoving = false;
-    // Optimistically update reactions in local state
     setMessages(prev =>
       prev.map(msg => {
         const mKey = String(msg.server_msg_id || (msg as any).message_id || msg.id || msg.client_msg_id);
@@ -580,42 +623,48 @@ export default function CustomChatScreen() {
     } catch (err) {
       console.error('Failed to update reaction:', err);
     }
-  };
+  }, [selectedActionMessage, chatId]);
 
-  const handleActionReply = () => {
+  const handleActionReply = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (selectedActionMessage) {
       setReplyToMessage(selectedActionMessage);
     }
     setActionModalVisible(false);
-  };
+  }, [selectedActionMessage]);
 
-  const handleActionCopy = () => {
+  const handleActionCopy = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (selectedActionMessage && (selectedActionMessage.content || selectedActionMessage.text)) {
       Clipboard.setStringAsync(selectedActionMessage.content || selectedActionMessage.text || '');
       setToast({ visible: true, message: 'Message copied', isSuccess: true });
     }
     setActionModalVisible(false);
-  };
+  }, [selectedActionMessage]);
 
-  const handleActionEdit = () => {
+  const handleActionEdit = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (selectedActionMessage) {
       setEditingMessage(selectedActionMessage);
       setInputText(selectedActionMessage.content || selectedActionMessage.text || '');
     }
     setActionModalVisible(false);
-  };
+  }, [selectedActionMessage]);
 
-  const handleActionDelete = async () => {
+  const handleActionDelete = useCallback(async () => {
     if (!selectedActionMessage) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const msgId = selectedActionMessage.server_msg_id || (selectedActionMessage as any).message_id || selectedActionMessage.id;
     setActionModalVisible(false);
     try {
       await deleteMessage(chatId, Number(msgId));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setToast({ visible: true, message: 'Message deleted', isSuccess: true });
     } catch (err) {
       console.error('Failed to delete message:', err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  };
+  }, [selectedActionMessage, chatId]);
 
   const partnerName = otherUser?.username || 'User';
   const partnerAvatar = otherUser?.avatar || DEFAULT_AVATAR;
@@ -625,68 +674,139 @@ export default function CustomChatScreen() {
     selectedActionMessage.sender?.user_id === currentUserId
   );
 
-  const renderItem = ({ item }: { item: MessageItem }) => {
-    const isMe = item.sender_id === currentUserId || item.sender?.user_id === currentUserId;
+  // Process message list for Date Separators & Sequence Grouping
+  const processedListItems = useMemo(() => {
+    const items: ListItem[] = [];
+    const count = messages.length;
 
-    return (
-      <ChatBubble
-        message={item as any}
-        isMe={isMe}
-        currentUserId={currentUserId || 0}
-        onLongPress={() => handleMessageLongPress(item)}
-        onReply={() => setReplyToMessage(item)}
-        onReactionPress={(msgId, emoji) => {
-          const numId = Number(msgId);
-          if (isNaN(numId)) return;
+    for (let i = 0; i < count; i++) {
+      const msg = messages[i];
+      const prevMsg = messages[i - 1]; // Newer message (below on screen)
+      const nextMsg = messages[i + 1]; // Older message (above on screen)
 
-          const targetMsg = messages.find(m => {
-            const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
-            return mKey === String(msgId) || (m.server_msg_id === numId || (m as any).message_id === numId);
+      // Add the message item itself
+      items.push(msg);
+
+      // Check date separator: insert separator after msg if next (older) msg is on a different calendar day or doesn't exist
+      const currentDateStr = msg.created_at ? new Date(msg.created_at).toDateString() : '';
+      const nextDateStr = nextMsg && nextMsg.created_at ? new Date(nextMsg.created_at).toDateString() : '';
+
+      if (!nextMsg || (currentDateStr && nextDateStr && currentDateStr !== nextDateStr)) {
+        if (msg.created_at) {
+          items.push({
+            type: 'date_separator',
+            id: `date_sep_${msg.id || i}`,
+            dateString: formatDateSeparator(msg.created_at),
           });
-          const existingReaction = targetMsg?.reactions?.find(r => r.emoji === emoji);
-          const isRemoving = Boolean(existingReaction && existingReaction.reacted_by_me);
+        }
+      }
+    }
+    return items;
+  }, [messages]);
 
-          setMessages(prev =>
-            prev.map(msg => {
-              const mKey = String(msg.server_msg_id || (msg as any).message_id || msg.id || msg.client_msg_id);
-              if (mKey === String(msgId) || (msg.server_msg_id === numId || (msg as any).message_id === numId)) {
-                const currentReactions = msg.reactions || [];
-                const existingIdx = currentReactions.findIndex(r => r.emoji === emoji);
-                let newReactions = [...currentReactions];
+  // Render FlatList Item
+  const renderItem = useCallback(
+    ({ item, index }: { item: ListItem; index: number }) => {
+      if (item.type === 'date_separator') {
+        return (
+          <View style={styles.dateSeparatorWrapper}>
+            <View style={styles.dateSeparatorBadge}>
+              <Text style={styles.dateSeparatorText}>{(item as DateSeparatorItem).dateString}</Text>
+            </View>
+          </View>
+        );
+      }
 
-                if (existingIdx !== -1) {
-                  const existing = newReactions[existingIdx];
-                  if (existing.reacted_by_me) {
-                    if (existing.count <= 1) {
-                      newReactions.splice(existingIdx, 1);
+      const msg = item as MessageItem;
+      const prevItem = processedListItems[index - 1]; // Newer item (below on screen)
+      const nextItem = processedListItems[index + 1]; // Older item (above on screen)
+
+      const prevMsg = prevItem && prevItem.type !== 'date_separator' ? (prevItem as MessageItem) : null;
+      const nextMsg = nextItem && nextItem.type !== 'date_separator' ? (nextItem as MessageItem) : null;
+
+      const currentSenderId = msg.sender_id || msg.sender?.user_id;
+
+      // Grouped above if older message exists, same sender, and created within 60s
+      const isGroupedAbove = Boolean(
+        nextMsg &&
+        (nextMsg.sender_id || nextMsg.sender?.user_id) === currentSenderId &&
+        Math.abs(new Date(msg.created_at).getTime() - new Date(nextMsg.created_at).getTime()) < 60000
+      );
+
+      // Grouped below if newer message exists, same sender, and created within 60s
+      const isGroupedBelow = Boolean(
+        prevMsg &&
+        (prevMsg.sender_id || prevMsg.sender?.user_id) === currentSenderId &&
+        Math.abs(new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime()) < 60000
+      );
+
+      const isLastInGroup = !isGroupedBelow;
+
+      return (
+        <ChatBubble
+          message={msg as any}
+          isGroupedAbove={isGroupedAbove}
+          isGroupedBelow={isGroupedBelow}
+          isLastInGroup={isLastInGroup}
+          onLongPress={() => handleMessageLongPress(msg)}
+          onReply={() => setReplyToMessage(msg)}
+          onReactionPress={(msgId, emoji) => {
+            const numId = Number(msgId);
+            if (isNaN(numId)) return;
+
+            const targetMsg = messages.find(m => {
+              const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
+              return mKey === String(msgId) || (m.server_msg_id === numId || (m as any).message_id === numId);
+            });
+            const existingReaction = targetMsg?.reactions?.find(r => r.emoji === emoji);
+            const isRemoving = Boolean(existingReaction && existingReaction.reacted_by_me);
+
+            setMessages(prev =>
+              prev.map(m => {
+                const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
+                if (mKey === String(msgId) || (m.server_msg_id === numId || (m as any).message_id === numId)) {
+                  const currentReactions = m.reactions || [];
+                  const existingIdx = currentReactions.findIndex(r => r.emoji === emoji);
+                  let newReactions = [...currentReactions];
+
+                  if (existingIdx !== -1) {
+                    const existing = newReactions[existingIdx];
+                    if (existing.reacted_by_me) {
+                      if (existing.count <= 1) {
+                        newReactions.splice(existingIdx, 1);
+                      } else {
+                        newReactions[existingIdx] = { ...existing, count: existing.count - 1, reacted_by_me: false };
+                      }
                     } else {
-                      newReactions[existingIdx] = { ...existing, count: existing.count - 1, reacted_by_me: false };
+                      newReactions[existingIdx] = { ...existing, count: existing.count + 1, reacted_by_me: true };
                     }
                   } else {
-                    newReactions[existingIdx] = { ...existing, count: existing.count + 1, reacted_by_me: true };
+                    newReactions.push({ emoji, count: 1, reacted_by_me: true });
                   }
-                } else {
-                  newReactions.push({ emoji, count: 1, reacted_by_me: true });
+                  return { ...m, reactions: newReactions };
                 }
-                return { ...msg, reactions: newReactions };
-              }
-              return msg;
-            })
-          );
+                return m;
+              })
+            );
 
-          if (isRemoving) {
-            removeReaction(chatId, numId, emoji);
-          } else {
-            addReaction(chatId, numId, emoji);
-          }
-        }}
-      />
-    );
-  };
+            if (isRemoving) {
+              removeReaction(chatId, numId, emoji);
+            } else {
+              addReaction(chatId, numId, emoji);
+            }
+          }}
+        />
+      );
+    },
+    [processedListItems, messages, handleMessageLongPress]
+  );
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.bg}
+      />
 
       {/* Modern Clean Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -695,10 +815,10 @@ export default function CustomChatScreen() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={22} color="#FFFFFF" />
+          <ArrowLeft size={22} color={colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.partnerInfoContainer}
           onPress={() => setSafetyModalVisible(true)}
           activeOpacity={0.8}
@@ -709,20 +829,22 @@ export default function CustomChatScreen() {
               style={styles.headerAvatar}
               contentFit="cover"
             />
-            {otherUser?.is_online && <View style={styles.headerOnlineIndicator} />}
+            {otherUser?.is_online && (
+              <View style={[styles.headerOnlineIndicator, { borderColor: colors.bg }]} />
+            )}
           </View>
 
           <View style={styles.partnerTextCol}>
             <View style={styles.nameRow}>
-              <Text style={styles.partnerName} numberOfLines={1}>
+              <Text style={[styles.partnerName, { color: colors.text }]} numberOfLines={1}>
                 {partnerName}
               </Text>
               {otherUser?.official && (
-                <BadgeCheck size={16} color="#A78BFA" style={{ marginLeft: 4 }} />
+                <BadgeCheck size={16} color={colors.accent} style={{ marginLeft: 4 }} />
               )}
             </View>
-            <Text style={styles.partnerStatus}>
-              {isTyping ? 'typing...' : (otherUser?.is_online ? 'Online' : 'Encrypted Chat')}
+            <Text style={[styles.partnerStatus, { color: colors.subtext }]}>
+              {isTyping ? 'typing...' : otherUser?.is_online ? 'Online' : 'Encrypted Chat'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -735,7 +857,7 @@ export default function CustomChatScreen() {
             onPress={() => setSafetyModalVisible(true)}
             activeOpacity={0.7}
           >
-            <ShieldCheck size={22} color="#A78BFA" />
+            <ShieldCheck size={22} color={colors.accent} />
           </TouchableOpacity>
         </View>
       </View>
@@ -743,13 +865,13 @@ export default function CustomChatScreen() {
       {/* Main Content Area */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#A78BFA" />
-          <Text style={styles.infoText}>Loading chat history...</Text>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.infoText, { color: colors.subtext }]}>Loading chat history...</Text>
         </View>
       ) : errorMsg ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadInitialMessages}>
+          <Text style={[styles.errorText, { color: colors.accent }]}>{errorMsg}</Text>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.accent }]} onPress={loadInitialMessages}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -760,74 +882,94 @@ export default function CustomChatScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
           <FlatList
-            data={messages}
-            keyExtractor={(item, index) => String(item.server_msg_id || item.id || item.client_msg_id || `msg_${index}`)}
+            data={processedListItems}
+            keyExtractor={(item, index) =>
+              item.type === 'date_separator'
+                ? item.id
+                : String(item.server_msg_id || item.id || item.client_msg_id || `msg_${index}`)
+            }
             renderItem={renderItem}
             inverted
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             onEndReached={loadOlderMessages}
             onEndReachedThreshold={0.3}
+            maxToRenderPerBatch={12}
+            windowSize={10}
+            initialNumToRender={15}
+            removeClippedSubviews={Platform.OS === 'android'}
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator size="small" color="#A78BFA" style={{ marginVertical: 8 }} />
+                <ActivityIndicator size="small" color={colors.accent} style={{ marginVertical: 8 }} />
               ) : null
             }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No messages yet. Say hello!</Text>
+                <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.12)' : 'rgba(124, 58, 237, 0.08)' }]}>
+                  <Sparkles size={32} color={colors.accent} />
+                </View>
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No messages yet</Text>
+                <Text style={[styles.emptySubtext, { color: colors.subtext }]}>
+                  Send a message or media attachment to start chatting with {partnerName}!
+                </Text>
               </View>
             }
           />
 
-          {/* Floating Liquid Glass Bottom Capsule (Floating Pill with Liquid Glass on iOS) */}
-          <View style={[styles.floatingBottomWrapper, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 6) : 8 }]}>
+          {/* Floating Liquid Glass Bottom Capsule */}
+          <View style={[styles.floatingBottomWrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}>
             <LiquidGlassView
               glassEffectStyle="clear"
               colorScheme="auto"
               fallbackBackgroundColor="transparent"
-              style={styles.floatingGlassCapsule}
+              style={[
+                styles.floatingGlassCapsule,
+                {
+                  borderColor: isDark ? 'rgba(167, 139, 250, 0.3)' : 'rgba(124, 58, 237, 0.25)',
+                  backgroundColor: isDark ? 'rgba(21, 7, 35, 0.85)' : 'rgba(255, 255, 255, 0.92)',
+                },
+              ]}
             >
               {/* Action Banners */}
               {replyToMessage && (
-                <View style={styles.actionBanner}>
-                  <View style={styles.bannerBar} />
+                <View style={[styles.actionBanner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
+                  <View style={[styles.bannerBar, { backgroundColor: colors.accent }]} />
                   <View style={styles.bannerContent}>
-                    <Text style={styles.bannerTitle}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
-                    <Text style={styles.bannerText} numberOfLines={1}>
+                    <Text style={[styles.bannerTitle, { color: colors.accent }]}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
+                    <Text style={[styles.bannerText, { color: colors.subtext }]} numberOfLines={1}>
                       {replyToMessage.content || replyToMessage.text}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={() => setReplyToMessage(null)}>
-                    <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                    <X size={18} color={colors.subtext} />
                   </TouchableOpacity>
                 </View>
               )}
 
               {editingMessage && (
-                <View style={[styles.actionBanner, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]}>
-                  <View style={[styles.bannerBar, { backgroundColor: '#A78BFA' }]} />
+                <View style={[styles.actionBanner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(124, 58, 237, 0.08)' }]}>
+                  <View style={[styles.bannerBar, { backgroundColor: colors.accent }]} />
                   <View style={styles.bannerContent}>
-                    <Text style={[styles.bannerTitle, { color: '#A78BFA' }]}>Editing message</Text>
-                    <Text style={styles.bannerText} numberOfLines={1}>
+                    <Text style={[styles.bannerTitle, { color: colors.accent }]}>Editing message</Text>
+                    <Text style={[styles.bannerText, { color: colors.subtext }]} numberOfLines={1}>
                       {editingMessage.content || editingMessage.text}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={() => { setEditingMessage(null); setInputText(''); }}>
-                    <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                    <X size={18} color={colors.subtext} />
                   </TouchableOpacity>
                 </View>
               )}
 
               {selectedMediaFile && (
-                <View style={styles.actionBanner}>
-                  <ImageIcon size={20} color="#A78BFA" style={{ marginRight: 8 }} />
+                <View style={[styles.actionBanner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
+                  <ImageIcon size={20} color={colors.accent} style={{ marginRight: 8 }} />
                   <View style={styles.bannerContent}>
-                    <Text style={styles.bannerTitle}>Media attached</Text>
-                    <Text style={styles.bannerText} numberOfLines={1}>{selectedMediaFile.uri}</Text>
+                    <Text style={[styles.bannerTitle, { color: colors.accent }]}>Media attached</Text>
+                    <Text style={[styles.bannerText, { color: colors.subtext }]} numberOfLines={1}>{selectedMediaFile.uri}</Text>
                   </View>
                   <TouchableOpacity onPress={() => setSelectedMediaFile(null)}>
-                    <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                    <X size={18} color={colors.subtext} />
                   </TouchableOpacity>
                 </View>
               )}
@@ -837,26 +979,30 @@ export default function CustomChatScreen() {
                 <View style={styles.inputInnerContainer}>
                   <TouchableOpacity
                     style={styles.attachButton}
-                    onPress={() => setMediaPickerVisible(true)}
-                    activeOpacity={0.8}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setMediaPickerVisible(true);
+                    }}
+                    activeOpacity={0.7}
                   >
-                    <Plus size={22} color="#A78BFA" />
+                    <Plus size={22} color={colors.accent} />
                   </TouchableOpacity>
 
                   <TextInput
-                    style={[styles.textInput, { maxHeight: 100 }]}
+                    style={[styles.textInput, { color: colors.text, maxHeight: 100 }]}
                     value={inputText}
                     onChangeText={handleInputChange}
                     placeholder="Type a message..."
-                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    placeholderTextColor={colors.subtext}
                     multiline
-                    keyboardAppearance="dark"
+                    keyboardAppearance={isDark ? 'dark' : 'light'}
                   />
 
                   <TouchableOpacity
                     style={[
                       styles.sendButton,
-                      (!inputText.trim() && !selectedMediaFile) && styles.sendButtonDisabled
+                      { backgroundColor: colors.accent },
+                      (!inputText.trim() && !selectedMediaFile) && styles.sendButtonDisabled,
                     ]}
                     onPress={handleSendMessage}
                     disabled={(!inputText.trim() && !selectedMediaFile) || isSending}
@@ -865,7 +1011,7 @@ export default function CustomChatScreen() {
                     {isSending ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Send size={18} color="#FFFFFF" />
+                      <Send size={17} color="#FFFFFF" />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -875,7 +1021,7 @@ export default function CustomChatScreen() {
         </KeyboardAvoidingView>
       )}
 
-      {/* Message Long-Press Side Popover Card (Compact Pill/Card anchored to side of message) */}
+      {/* Message Long-Press Side Popover Card */}
       <Modal
         visible={actionModalVisible}
         transparent
@@ -887,20 +1033,27 @@ export default function CustomChatScreen() {
           activeOpacity={1}
           onPress={() => setActionModalVisible(false)}
         >
-          <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={65} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
 
           <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
-            <View style={[
-              styles.actionModalCardSide,
-              isActionMsgMine ? styles.actionModalCardRight : styles.actionModalCardLeft
-            ]}>
+            <View
+              style={[
+                styles.actionModalCardSide,
+                {
+                  backgroundColor: colors.cardBg,
+                  borderColor: colors.border,
+                },
+                isActionMsgMine ? styles.actionModalCardRight : styles.actionModalCardLeft,
+              ]}
+            >
               {/* Compact Emoji Reaction Bar */}
-              <View style={styles.reactionBarCompact}>
+              <View style={[styles.reactionBarCompact, { borderBottomColor: colors.divider }]}>
                 {EMOJI_LIST.map(emoji => (
                   <TouchableOpacity
                     key={emoji}
                     style={styles.emojiButtonCompact}
                     onPress={() => handleToggleReaction(emoji)}
+                    activeOpacity={0.6}
                   >
                     <Text style={styles.emojiTextCompact}>{emoji}</Text>
                   </TouchableOpacity>
@@ -909,26 +1062,26 @@ export default function CustomChatScreen() {
 
               {/* Action Menu List */}
               <View style={styles.menuListCompact}>
-                <TouchableOpacity style={styles.menuItemCompact} onPress={handleActionReply}>
-                  <MessageSquare size={16} color="#A78BFA" style={styles.menuIconCompact} />
-                  <Text style={styles.menuTextCompact}>Reply</Text>
+                <TouchableOpacity style={[styles.menuItemCompact, { borderBottomColor: colors.divider }]} onPress={handleActionReply}>
+                  <MessageSquare size={16} color={colors.accent} style={styles.menuIconCompact} />
+                  <Text style={[styles.menuTextCompact, { color: colors.text }]}>Reply</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItemCompact} onPress={handleActionCopy}>
-                  <Copy size={16} color="#FFFFFF" style={styles.menuIconCompact} />
-                  <Text style={styles.menuTextCompact}>Copy Text</Text>
+                <TouchableOpacity style={[styles.menuItemCompact, { borderBottomColor: colors.divider }]} onPress={handleActionCopy}>
+                  <Copy size={16} color={colors.text} style={styles.menuIconCompact} />
+                  <Text style={[styles.menuTextCompact, { color: colors.text }]}>Copy Text</Text>
                 </TouchableOpacity>
 
                 {isActionMsgMine && (
                   <>
-                    <TouchableOpacity style={styles.menuItemCompact} onPress={handleActionEdit}>
-                      <Pencil size={16} color="#C4B5FD" style={styles.menuIconCompact} />
-                      <Text style={styles.menuTextCompact}>Edit Message</Text>
+                    <TouchableOpacity style={[styles.menuItemCompact, { borderBottomColor: colors.divider }]} onPress={handleActionEdit}>
+                      <Pencil size={16} color={colors.accent} style={styles.menuIconCompact} />
+                      <Text style={[styles.menuTextCompact, { color: colors.text }]}>Edit Message</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.menuItemCompact, { borderBottomWidth: 0 }]} onPress={handleActionDelete}>
-                      <Trash2 size={16} color="#EF4444" style={styles.menuIconCompact} />
-                      <Text style={[styles.menuTextCompact, { color: '#EF4444' }]}>Delete</Text>
+                      <Trash2 size={16} color={colors.danger} style={styles.menuIconCompact} />
+                      <Text style={[styles.menuTextCompact, { color: colors.danger }]}>Delete</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -965,257 +1118,274 @@ export default function CustomChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A0410',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingBottom: 12,
-    backgroundColor: 'rgba(10, 4, 16, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  backButton: {
-    padding: 6,
-    marginRight: 6,
-  },
-  partnerInfoContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarWrapper: {
-    position: 'relative',
-    marginRight: 10,
-  },
-  headerAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-  },
-  headerOnlineIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 11,
-    height: 11,
-    borderRadius: 5.5,
-    backgroundColor: '#10B981',
-    borderWidth: 2,
-    borderColor: '#0A0410',
-  },
-  partnerTextCol: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  partnerName: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Dank Mono Bold',
-  },
-  partnerStatus: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 11,
-    marginTop: 1,
-  },
-  headerRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerActionButton: {
-    padding: 6,
-  },
-  keyboardContainer: {
-    flex: 1,
-  },
-  listContent: {
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  infoText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 10,
-    fontSize: 14,
-  },
-  errorText: {
-    color: '#A78BFA',
-    fontSize: 15,
-    marginBottom: 12,
-  },
-  retryButton: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 14,
-  },
-  floatingBottomWrapper: {
-    paddingHorizontal: 12,
-    backgroundColor: 'transparent',
-  },
-  floatingGlassCapsule: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.3)',
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  actionBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  bannerBar: {
-    width: 3,
-    height: '100%',
-    backgroundColor: '#A78BFA',
-    borderRadius: 2,
-    marginRight: 10,
-  },
-  bannerContent: {
-    flex: 1,
-  },
-  bannerTitle: {
-    fontSize: 12,
-    color: '#A78BFA',
-    fontWeight: 'bold',
-  },
-  bannerText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  inputWrapper: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: 'transparent',
-  },
-  inputInnerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  attachButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  textInput: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 15,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'transparent',
-    marginRight: 8,
-  },
-  sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#8B5CF6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.4,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-  },
-  actionModalCardSide: {
-    width: 240,
-    borderRadius: 20,
-    backgroundColor: 'rgba(21, 7, 35, 0.96)',
-    borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.35)',
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  actionModalCardRight: {
-    alignSelf: 'flex-end',
-    marginRight: 10,
-  },
-  actionModalCardLeft: {
-    alignSelf: 'flex-start',
-    marginLeft: 10,
-  },
-  reactionBarCompact: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 6,
-  },
-  emojiButtonCompact: {
-    padding: 2,
-  },
-  emojiTextCompact: {
-    fontSize: 18,
-  },
-  menuListCompact: {
-    paddingVertical: 2,
-  },
-  menuItemCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  menuIconCompact: {
-    marginRight: 10,
-  },
-  menuTextCompact: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+const getStyles = (
+  isDark: boolean,
+  insets: any,
+  colors: typeof chatColors.dark
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingBottom: 12,
+      backgroundColor: colors.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      padding: 6,
+      marginRight: 6,
+    },
+    partnerInfoContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    avatarWrapper: {
+      position: 'relative',
+      marginRight: 10,
+    },
+    headerAvatar: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+    },
+    headerOnlineIndicator: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 11,
+      height: 11,
+      borderRadius: 5.5,
+      backgroundColor: colors.success,
+      borderWidth: 2,
+    },
+    partnerTextCol: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    partnerName: {
+      fontSize: 16,
+      fontWeight: '700',
+      fontFamily: 'Dank Mono Bold',
+    },
+    partnerStatus: {
+      fontSize: 11,
+      marginTop: 1,
+    },
+    headerRightActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    headerActionButton: {
+      padding: 6,
+    },
+    keyboardContainer: {
+      flex: 1,
+    },
+    listContent: {
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    infoText: {
+      marginTop: 10,
+      fontSize: 14,
+    },
+    errorText: {
+      fontSize: 15,
+      marginBottom: 12,
+    },
+    retryButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+      borderRadius: 12,
+    },
+    retryButtonText: {
+      color: '#FFFFFF',
+      fontWeight: 'bold',
+    },
+    dateSeparatorWrapper: {
+      alignItems: 'center',
+      marginVertical: 12,
+    },
+    dateSeparatorBadge: {
+      backgroundColor: colors.dateBadgeBg,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    dateSeparatorText: {
+      color: colors.dateBadgeText,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    emptyContainer: {
+      padding: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyIconCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    emptyTitle: {
+      fontSize: 17,
+      fontFamily: 'Dank Mono Bold',
+      marginBottom: 6,
+    },
+    emptySubtext: {
+      fontSize: 13,
+      textAlign: 'center',
+      lineHeight: 18,
+      maxWidth: 260,
+    },
+    floatingBottomWrapper: {
+      paddingHorizontal: 12,
+      backgroundColor: 'transparent',
+    },
+    floatingGlassCapsule: {
+      borderRadius: chatRadius.modal,
+      borderWidth: 1,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    actionBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    bannerBar: {
+      width: 3,
+      height: '100%',
+      borderRadius: 2,
+      marginRight: 10,
+    },
+    bannerContent: {
+      flex: 1,
+    },
+    bannerTitle: {
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    bannerText: {
+      fontSize: 12,
+    },
+    inputWrapper: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: 'transparent',
+    },
+    inputInnerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    attachButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'transparent',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 6,
+    },
+    textInput: {
+      flex: 1,
+      fontSize: 15,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: 'transparent',
+      marginRight: 6,
+    },
+    sendButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sendButtonDisabled: {
+      opacity: 0.4,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    },
+    actionModalCardSide: {
+      width: 240,
+      borderRadius: chatRadius.card,
+      borderWidth: 1,
+      padding: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.5,
+      shadowRadius: 16,
+      elevation: 12,
+    },
+    actionModalCardRight: {
+      alignSelf: 'flex-end',
+      marginRight: 10,
+    },
+    actionModalCardLeft: {
+      alignSelf: 'flex-start',
+      marginLeft: 10,
+    },
+    reactionBarCompact: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 4,
+      borderBottomWidth: 1,
+      marginBottom: 6,
+    },
+    emojiButtonCompact: {
+      padding: 2,
+    },
+    emojiTextCompact: {
+      fontSize: 18,
+    },
+    menuListCompact: {
+      paddingVertical: 2,
+    },
+    menuItemCompact: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 6,
+      borderBottomWidth: 1,
+    },
+    menuIconCompact: {
+      marginRight: 10,
+    },
+    menuTextCompact: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  });
