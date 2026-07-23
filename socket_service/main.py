@@ -166,15 +166,21 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if message_type in ("enter_chat", "mark_read", "read_status"):
                 chat_id = data.get("chat_id")
+                
+                # Expire stale objects in session identity map & commit active read transaction snapshot
+                try:
+                    db.expire_all()
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
                 chat = db.query(Chat).filter(Chat.id == chat_id).first()
                 if not chat or user_id not in [u.user_id for u in chat.participants]:
                     await websocket.send_json({"type": "error", "detail": "Not authorized or chat not found"})
                     continue
 
                 # Clear cache
-                keys = r.keys(f"chat:{chat_id}:*")
-                if keys:
-                    r.delete(*keys)
+                invalidate_chat_cache(chat_id)
 
                 # Fetch all messages in chat sent by others
                 messages_in_chat = (
@@ -202,9 +208,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         read_msg_ids.append(msg.id)
                     msg.is_read = True
 
-                if read_msg_ids or messages_in_chat:
+                try:
                     db.commit()
                     invalidate_chat_cache(chat_id)
+                except Exception as e:
+                    logger.error(f"❌ Error persisting read receipts: {e}")
+                    db.rollback()
 
                 participant_ids = [u.user_id for u in chat.participants]
                 response_data = {

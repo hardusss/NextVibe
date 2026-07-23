@@ -104,6 +104,10 @@ def test_read_and_delivery_receipts():
 
         # Verify receipts in REST API
         headers = {"Authorization": f"Bearer {t2}"}
+        res = client.post("/api/v2/messages/chat/100/read", headers=headers)
+        assert res.status_code == 200
+        assert res.json()["success"] is True
+
         res = client.get("/api/v2/messages/100", headers=headers)
         assert res.status_code == 200
         messages = res.json()

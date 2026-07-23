@@ -40,6 +40,7 @@ import {
   getMessages,
   sendWebSocketMessage,
   notifyEnterChat,
+  markChatAsRead,
   sendTypingStart,
   sendTypingStop,
   addReaction,
@@ -256,7 +257,7 @@ export default function CustomChatScreen() {
     if (!chatId || !isFocused) return;
 
     loadInitialMessages();
-    notifyEnterChat(chatId);
+    markChatAsRead(chatId);
 
     // Subscribe to Transport Manager for P2P state
     const unsubscribeTransport = ChatTransportManager.addListener({
@@ -276,7 +277,7 @@ export default function CustomChatScreen() {
 
       if (event.type === 'message') {
         if (event.sender_id && event.sender_id !== currentUserId) {
-          notifyEnterChat(chatId);
+          markChatAsRead(chatId);
         }
         setMessages(prev => {
           const matchIndex = prev.findIndex(m => {
@@ -300,7 +301,9 @@ export default function CustomChatScreen() {
         setMessages(prev =>
           prev.map(msg => {
             const msgId = msg.server_msg_id || (msg as any).message_id || msg.id;
-            const isMatch = !event.message_ids || event.message_ids.length === 0 || event.message_ids.some((id: any) => String(id) === String(msgId));
+            const isMatch = Array.isArray(event.message_ids)
+              ? (event.message_ids.length > 0 && event.message_ids.some((id: any) => String(id) === String(msgId)))
+              : true;
             if (isMatch) {
               const updatedReceipts = (msg.receipts || []).map(r =>
                 (event.reader_id && r.user_id === event.reader_id)
@@ -379,6 +382,7 @@ export default function CustomChatScreen() {
     });
 
     return () => {
+      markChatAsRead(chatId);
       unsubscribeWS();
       unsubscribeTransport();
     };
