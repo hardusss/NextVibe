@@ -277,6 +277,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "type": "reaction_update",
                         "chat_id": message.chat_id,
                         "message_id": message_id,
+                        "server_msg_id": message_id,
                         "reactions": list(summary.values())
                     })
 
