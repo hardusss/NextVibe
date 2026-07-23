@@ -34,8 +34,8 @@ class ReactionRequest(BaseModel):
 class EditMessageRequest(BaseModel):
     text: str
 
-def get_messages_cache_key(chat_id: int, last_message_id: Optional[int]):
-    return f"chat:{chat_id}:last:{last_message_id or 0}"
+def get_messages_cache_key(chat_id: int, last_message_id: Optional[int], user_id: int):
+    return f"chat:{chat_id}:user:{user_id}:last:{last_message_id or 0}"
 
 def invalidate_chat_cache(chat_id: int):
     try:
@@ -74,7 +74,7 @@ async def get_chat_messages(
     user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    cache_key = get_messages_cache_key(chat_id, last_message_id)
+    cache_key = get_messages_cache_key(chat_id, last_message_id, user_id)
     try:
         cached_data = r.get(cache_key)
         if cached_data:
@@ -150,7 +150,7 @@ async def get_chat_messages(
             "created_at": msg.created_at.isoformat(),
             "edited_at": msg.edited_at.isoformat() if msg.edited_at else None,
             "deleted_at": msg.deleted_at.isoformat() if msg.deleted_at else None,
-            "is_read": msg.is_read,
+            "is_read": msg.is_read or any(rcpt.read_at is not None for rcpt in msg.receipts if rcpt.user_id != msg.sender_id),
             "reactions": list(reaction_summary.values()),
             "receipts": receipts_data,
             "media": [

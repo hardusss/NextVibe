@@ -314,7 +314,12 @@ export default function CustomChatScreen() {
                   read_at: event.read_at || new Date().toISOString()
                 });
               }
-              return { ...msg, is_read: true, receipts: updatedReceipts };
+              const isReadByRecipient = Boolean(
+                event.reader_id &&
+                event.reader_id !== currentUserId &&
+                (msg.sender_id === currentUserId || (msg.sender && msg.sender.user_id === currentUserId))
+              );
+              return { ...msg, is_read: msg.is_read || isReadByRecipient, receipts: updatedReceipts };
             }
             return msg;
           })
