@@ -10,43 +10,53 @@ function getRealtimeBaseUrl(): string {
     .replace("v1", "v2");
 }
 
-export const uploadMedia = async (chatId: number, file: { uri: string; type?: string; name?: string }) => {
-  const token = await storage.getItem('access');
-  try {
-    const filename = file.name || file.uri.split('/').pop() || 'media_file.jpg';
-    const contentType = file.type || (filename.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg');
+export const convertFileToBase64 = async (uri: string): Promise<string> => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = (err) => reject(err);
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+      resolve(base64);
+    };
+    reader.readAsDataURL(blob);
+  });
+};
 
-    const res = await fetch(file.uri);
-    const blob = await res.blob();
-    const fileSize = blob.size || 1024;
+export const prepareMediaForSocket = async (file: {
+  uri: string;
+  type?: string;
+  mimeType?: string;
+  name?: string;
+  fileName?: string;
+}) => {
+  const filename = file.fileName || file.name || file.uri.split('/').pop() || 'media_file.jpg';
+  let contentType = file.mimeType || file.type;
 
-    const urlResponse = await axios.post(
-      `${getRealtimeBaseUrl()}/media/upload-url`,
-      {
-        chat_id: chatId,
-        filename,
-        content_type: contentType,
-        file_size: fileSize
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-    );
-
-    const { upload_url, media_key, file_url } = urlResponse.data;
-
-    // Upload directly to R2 off-socket
-    await fetch(upload_url, {
-      method: 'PUT',
-      headers: { 'Content-Type': contentType },
-      body: blob
-    });
-
-    return { media_key, file_url };
-  } catch (error) {
-    console.error('Error uploading media off-socket:', error);
-    throw error;
+  if (!contentType || contentType === 'image' || contentType === 'video') {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'png') contentType = 'image/png';
+    else if (ext === 'gif') contentType = 'image/gif';
+    else if (ext === 'webp') contentType = 'image/webp';
+    else if (ext === 'mp4' || ext === 'mov') contentType = 'video/mp4';
+    else contentType = 'image/jpeg';
   }
+
+  const base64Data = await convertFileToBase64(file.uri);
+  return {
+    data: base64Data,
+    type: contentType,
+    name: filename,
+  };
+};
+
+export const uploadMedia = async (
+  chatId: number,
+  file: { uri: string; type?: string; mimeType?: string; name?: string; fileName?: string }
+) => {
+  return prepareMediaForSocket(file);
 };
 
 export const sendWebSocketMessage = async (
@@ -57,31 +67,29 @@ export const sendWebSocketMessage = async (
   clientMsgId?: string
 ) => {
   try {
-    let mediaKeys: string[] = [];
+    let preparedMedia: any[] = [];
     if (mediaFiles && mediaFiles.length > 0) {
-      const uploadResults = await Promise.all(
-        mediaFiles.map((file) => uploadMedia(chatId, file))
+      preparedMedia = await Promise.all(
+        mediaFiles.map((file) => prepareMediaForSocket(file))
       );
-      mediaKeys = uploadResults.map((r) => r.media_key);
     }
-    
+
     WebSocketService.send({
       type: 'message',
       chat_id: chatId,
       message,
       reply_to_id: replyToId || null,
       client_msg_id: clientMsgId || null,
-      media_keys: mediaKeys
+      media: preparedMedia,
     });
   } catch (error) {
     console.error('Error preparing media / sending message:', error);
-    // Fallback send message without media if upload failed
     WebSocketService.send({
       type: 'message',
       chat_id: chatId,
       message,
       reply_to_id: replyToId || null,
-      client_msg_id: clientMsgId || null
+      client_msg_id: clientMsgId || null,
     });
   }
 };

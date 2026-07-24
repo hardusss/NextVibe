@@ -27,6 +27,7 @@ import { vexo, identifyDevice } from 'vexo-analytics';
 import { StatusBar } from "expo-status-bar";
 import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
 import { useBleScanner } from "@/hooks/useBleScanner";
+import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 
 setupAxiosInterceptor();
@@ -246,6 +247,32 @@ export default function RootLayout() {
 
     useEffect(() => {
         registerForPushNotifications();
+    }, []);
+
+    useEffect(() => {
+        const unsubscribeWS = WebSocketService.addListener(async (event: any) => {
+            if (!event) return;
+
+            if (event.type === 'reaction_update' && Array.isArray(event.reactions)) {
+                const otherReaction = event.reactions.find((r: any) => r.reacted_by_me === false);
+
+                if (otherReaction) {
+                    const emoji = otherReaction.emoji || '❤️';
+                    Notifications.scheduleNotificationAsync({
+                        content: {
+                            title: 'New Reaction',
+                            body: `Someone reacted ${emoji} to your message`,
+                            data: { url: `/(shared)/chat-room?id=${event.chat_id}` },
+                        },
+                        trigger: null,
+                    });
+                }
+            }
+        });
+
+        return () => {
+            unsubscribeWS();
+        };
     }, []);
 
     useEffect(() => {

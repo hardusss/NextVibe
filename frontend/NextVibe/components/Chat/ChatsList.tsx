@@ -140,6 +140,7 @@ export default function ChatsList() {
             targetChat.last_message = {
               content: incomingContent,
               created_at: incomingCreatedAt,
+              media: event.media || event.media_attachments || event.media_keys || [],
             };
 
             // Increment unread count if message is from another user
