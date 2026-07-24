@@ -473,7 +473,16 @@ export default function CustomChatScreen() {
         });
 
         if (!result.canceled && result.assets.length > 0) {
-            setSelectedMediaFile(result.assets[0]);
+            const asset = result.assets[0];
+            const mime = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+            const fileName = asset.fileName || asset.uri.split('/').pop() || 'media.jpg';
+            setSelectedMediaFile({
+                uri: asset.uri,
+                name: fileName,
+                fileName,
+                type: mime,
+                mimeType: mime,
+            });
         }
     };
 
@@ -492,7 +501,16 @@ export default function CustomChatScreen() {
         });
 
         if (!result.canceled && result.assets.length > 0) {
-            setSelectedMediaFile(result.assets[0]);
+            const asset = result.assets[0];
+            const mime = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+            const fileName = asset.fileName || asset.uri.split('/').pop() || 'media.jpg';
+            setSelectedMediaFile({
+                uri: asset.uri,
+                name: fileName,
+                fileName,
+                type: mime,
+                mimeType: mime,
+            });
         }
     };
 
@@ -556,6 +574,7 @@ export default function CustomChatScreen() {
             created_at: new Date().toISOString(),
             sender_id: currentUserId || undefined,
             reply_to_id: replyToId ? Number(replyToId) : null,
+            media: mediaToSend ? [{ id: Date.now(), file_url: mediaToSend.uri }] : [],
             reply_to_snippet: replyToMessage ? {
                 id: replyToId,
                 sender_id: replyToMessage.sender_id,
