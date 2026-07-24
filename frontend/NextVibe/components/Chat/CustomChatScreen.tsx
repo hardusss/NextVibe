@@ -40,6 +40,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 
 import { storage } from '@/src/utils/storage';
+import { parseISOToLocalDate } from '@/src/utils/formatTime';
 import {
     getMessages,
     sendWebSocketMessage,
@@ -103,7 +104,8 @@ type ListItem = (MessageItem & { type?: 'message' }) | DateSeparatorItem;
 
 function formatDateSeparator(isoDate: string): string {
     try {
-        const d = new Date(isoDate);
+        const d = parseISOToLocalDate(isoDate);
+        if (!d || isNaN(d.getTime())) return '';
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const yesterday = new Date(today);
@@ -683,6 +685,16 @@ export default function CustomChatScreen() {
     const partnerName = otherUser?.username || 'User';
     const partnerAvatar = otherUser?.avatar || DEFAULT_AVATAR;
 
+    const handleOpenProfile = useCallback(() => {
+        const targetUserId = otherUser?.user_id;
+        if (targetUserId) {
+            router.push({
+                pathname: '/user-profile',
+                params: { id: targetUserId, last_page: '/chats' },
+            });
+        }
+    }, [otherUser, router]);
+
     const isActionMsgMine = selectedActionMessage && (
         selectedActionMessage.sender_id === currentUserId ||
         selectedActionMessage.sender?.user_id === currentUserId
@@ -698,8 +710,8 @@ export default function CustomChatScreen() {
 
             items.push(msg);
 
-            const currentDateStr = msg.created_at ? new Date(msg.created_at).toDateString() : '';
-            const nextDateStr = nextMsg && nextMsg.created_at ? new Date(nextMsg.created_at).toDateString() : '';
+            const currentDateStr = msg.created_at ? (parseISOToLocalDate(msg.created_at)?.toDateString() || '') : '';
+            const nextDateStr = nextMsg && nextMsg.created_at ? (parseISOToLocalDate(nextMsg.created_at)?.toDateString() || '') : '';
 
             if (!nextMsg || (currentDateStr && nextDateStr && currentDateStr !== nextDateStr)) {
                 if (msg.created_at) {
@@ -734,17 +746,20 @@ export default function CustomChatScreen() {
             const nextMsg = nextItem && nextItem.type !== 'date_separator' ? (nextItem as MessageItem) : null;
 
             const currentSenderId = msg.sender_id || msg.sender?.user_id;
+            const msgTime = parseISOToLocalDate(msg.created_at)?.getTime() || 0;
+            const nextTime = nextMsg ? (parseISOToLocalDate(nextMsg.created_at)?.getTime() || 0) : 0;
+            const prevTime = prevMsg ? (parseISOToLocalDate(prevMsg.created_at)?.getTime() || 0) : 0;
 
             const isGroupedAbove = Boolean(
                 nextMsg &&
                 (nextMsg.sender_id || nextMsg.sender?.user_id) === currentSenderId &&
-                Math.abs(new Date(msg.created_at).getTime() - new Date(nextMsg.created_at).getTime()) < 60000
+                Math.abs(msgTime - nextTime) < 60000
             );
 
             const isGroupedBelow = Boolean(
                 prevMsg &&
                 (prevMsg.sender_id || prevMsg.sender?.user_id) === currentSenderId &&
-                Math.abs(new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime()) < 60000
+                Math.abs(msgTime - prevTime) < 60000
             );
 
             const isLastInGroup = !isGroupedBelow;
@@ -826,7 +841,7 @@ export default function CustomChatScreen() {
 
                 <TouchableOpacity
                     style={styles.partnerInfoContainer}
-                    onPress={() => setSafetyModalVisible(true)}
+                    onPress={handleOpenProfile}
                     activeOpacity={0.8}
                 >
                     <View style={styles.avatarWrapper}>
