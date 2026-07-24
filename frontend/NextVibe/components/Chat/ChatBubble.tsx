@@ -64,9 +64,12 @@ interface Props {
   onLongPress?: (message: Message) => void;
 }
 
+import { parseISOToLocalDate } from '@/src/utils/formatTime';
+
 function formatMessageTime(isoDate: string): string {
   try {
-    const date = new Date(isoDate);
+    const date = parseISOToLocalDate(isoDate);
+    if (!date || isNaN(date.getTime())) return '';
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
