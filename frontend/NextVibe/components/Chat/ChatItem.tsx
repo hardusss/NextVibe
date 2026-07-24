@@ -17,7 +17,7 @@ import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
-import { chatColors, chatRadius, chatSpacing } from '@/src/theme/chatTheme';
+import { chatColors, chatRadius } from '@/src/theme/chatTheme';
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 
@@ -38,6 +38,9 @@ export interface Chat {
   chat_id: number;
   other_user: ChatUser;
   last_message: LastMessage | null;
+  unread_count?: number;
+  unread_messages_count?: number;
+  unread_count_user?: number;
 }
 
 interface ChatItemProps {
@@ -154,6 +157,13 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
   const messageTime = chat.last_message?.created_at ? timeAgo(chat.last_message.created_at) : '';
   const avatarUri = chat.other_user.avatar || DEFAULT_AVATAR;
 
+  const unreadCount =
+    chat.unread_count ||
+    (chat as any).unread_messages_count ||
+    (chat as any).unread_count_user ||
+    (chat as any).unread ||
+    0;
+
   return (
     <>
       <TouchableWithoutFeedback onPress={isPressed ? resetPosition : undefined}>
@@ -210,16 +220,31 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
                       <BadgeCheck size={16} color={colors.accent} style={{ marginLeft: 4 }} />
                     )}
                   </View>
-                  <Text style={[styles.time, { color: colors.subtext }]}>{messageTime}</Text>
+                  <Text style={[styles.time, { color: unreadCount > 0 ? colors.accent : colors.subtext, fontWeight: unreadCount > 0 ? '700' : '400' }]}>
+                    {messageTime}
+                  </Text>
                 </View>
 
                 <View style={styles.messageContainer}>
                   <Text
-                    style={[styles.message, { color: colors.subtext }]}
+                    style={[
+                      styles.message,
+                      {
+                        color: unreadCount > 0 ? colors.text : colors.subtext,
+                        fontWeight: unreadCount > 0 ? '600' : '400',
+                      },
+                    ]}
                     numberOfLines={1}
                   >
                     {messageContent}
                   </Text>
+                  {unreadCount > 0 && (
+                    <View style={[styles.unreadBadge, { backgroundColor: colors.accent }]}>
+                      <Text style={styles.unreadText}>
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </TouchableOpacity>
@@ -319,11 +344,26 @@ const getStyles = (isDark: boolean, colors: typeof chatColors.dark) =>
     messageContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
     },
     message: {
       flex: 1,
       fontSize: 14,
       marginRight: 5,
+    },
+    unreadBadge: {
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      paddingHorizontal: 6,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 6,
+    },
+    unreadText: {
+      color: '#FFFFFF',
+      fontSize: 11,
+      fontWeight: 'bold',
     },
     deleteButton: {
       position: 'absolute',

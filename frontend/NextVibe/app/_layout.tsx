@@ -171,6 +171,15 @@ export default function RootLayout() {
             return;
         }
 
+        if (Platform.OS === 'android') {
+            Notifications.setNotificationChannelAsync('default', {
+                name: 'default',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#7C3AED',
+            });
+        }
+
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
 
@@ -193,10 +202,8 @@ export default function RootLayout() {
             const pushTokenString = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
             const savedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
 
-            if (savedToken !== pushTokenString) {
-                await savePushToken(pushTokenString);
-                await AsyncStorage.setItem(PUSH_TOKEN_KEY, pushTokenString);
-            }
+            await savePushToken(pushTokenString);
+            await AsyncStorage.setItem(PUSH_TOKEN_KEY, pushTokenString);
 
             pushRegisteredRef.current = true;
             return pushTokenString;
@@ -238,10 +245,8 @@ export default function RootLayout() {
     }, []);
 
     useEffect(() => {
-        if (segments[1] === "profile" && userID) {
-            registerForPushNotifications();
-        }
-    }, [segments, userID]);
+        registerForPushNotifications();
+    }, []);
 
     useEffect(() => {
         let pushTokenSubscription: any = null;
