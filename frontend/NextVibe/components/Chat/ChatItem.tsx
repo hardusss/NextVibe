@@ -29,9 +29,47 @@ interface ChatUser {
   official?: boolean;
 }
 
-interface LastMessage {
-  content: string | null;
-  created_at: string | null;
+export interface LastMessage {
+  content?: string | null;
+  text?: string | null;
+  created_at?: string | null;
+  media?: any[];
+  media_attachments?: any[];
+  media_keys?: any[];
+}
+
+export function formatLastMessagePreview(lastMessage: any): string {
+  if (!lastMessage) return 'No messages yet';
+
+  const text = (lastMessage.content || lastMessage.text || '').trim();
+  const mediaList = lastMessage.media || lastMessage.media_attachments || lastMessage.media_keys || [];
+
+  if (Array.isArray(mediaList) && mediaList.length > 0) {
+    const count = mediaList.length;
+    const firstItem = mediaList[0];
+    const isVideo =
+      (typeof firstItem === 'object' &&
+        (firstItem.type?.includes('video') ||
+          firstItem.file_url?.endsWith('.mp4') ||
+          firstItem.file?.endsWith('.mp4'))) ||
+      false;
+
+    const mediaLabel = isVideo
+      ? count > 1
+        ? `🎥 ${count} videos`
+        : '🎥 Video'
+      : count > 1
+      ? `📷 ${count} photos`
+      : '📷 Photo';
+
+    return text ? `${mediaLabel} ${text}` : mediaLabel;
+  }
+
+  if (text.startsWith('http') && (text.endsWith('.jpg') || text.endsWith('.png') || text.endsWith('.mp4'))) {
+    return text.endsWith('.mp4') ? '🎥 Video' : '📷 Photo';
+  }
+
+  return text || 'No messages yet';
 }
 
 export interface Chat {
@@ -153,7 +191,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
     }
   };
 
-  const messageContent = chat.last_message?.content || 'No messages yet';
+  const messageContent = formatLastMessagePreview(chat.last_message);
   const messageTime = chat.last_message?.created_at ? timeAgo(chat.last_message.created_at) : '';
   const avatarUri = chat.other_user.avatar || DEFAULT_AVATAR;
 

@@ -258,6 +258,26 @@ async def websocket_endpoint(websocket: WebSocket):
                     if not existing:
                         db.add(MessageReaction(message_id=message_id, user_id=user_id, emoji=emoji, created_at=datetime.utcnow()))
                         db.commit()
+
+                        # Push notification for recipient if offline
+                        sender_user = db.query(User).filter(User.user_id == user_id).first()
+                        sender_name = sender_user.username if sender_user else "User"
+
+                        recipient_tokens = []
+                        for p in chat.participants:
+                            if p.user_id != user_id and not manager.is_user_online(p.user_id):
+                                push_token = getattr(p, "expo_push_token", None)
+                                if push_token:
+                                    recipient_tokens.append(push_token)
+
+                        if recipient_tokens:
+                            await send_chat_push_notification(
+                                recipient_tokens=recipient_tokens,
+                                sender_name=sender_name,
+                                message_text=f"reacted {emoji} to your message",
+                                chat_id=message.chat_id,
+                                message_id=message_id
+                            )
                 else:
                     existing = db.query(MessageReaction).filter(
                         MessageReaction.message_id == message_id,
@@ -307,6 +327,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         "user_id": user_id,
                         "is_typing": is_typing
                     })
+
+            elif message_type in ("enter_chat", "leave_chat"):
+                pass
 
             elif message_type in ("webrtc_offer", "webrtc_answer", "webrtc_ice_candidate"):
                 chat_id = data.get("chat_id")
@@ -610,10 +633,17 @@ async def websocket_endpoint(websocket: WebSocket):
                             offline_tokens.append(push_token)
 
                 if offline_tokens:
+                    push_text = message.text or ""
+                    if media_attachments:
+                        count = len(media_attachments)
+                        is_video = any(".mp4" in str(m.get("file_url", "")) for m in media_attachments)
+                        media_label = ("🎥 Video" if count == 1 else f"🎥 {count} videos") if is_video else ("📷 Photo" if count == 1 else f"📷 {count} photos")
+                        push_text = f"{media_label} {push_text}".strip() if push_text else media_label
+
                     await send_chat_push_notification(
                         recipient_tokens=offline_tokens,
                         sender_name=sender_name,
-                        message_text=message.text or "",
+                        message_text=push_text,
                         chat_id=chat_id,
                         message_id=message.id
                     )
