@@ -2,6 +2,7 @@ import axios from 'axios';
 import GetApiUrl from '../utils/url_api';
 import { storage } from '../utils/storage';
 import WebSocketService from '../services/WebSocketService';
+import CryptoService from '../services/CryptoService';
 
 function getRealtimeBaseUrl(): string {
   return GetApiUrl()
@@ -64,24 +65,53 @@ export const sendWebSocketMessage = async (
   message: string,
   mediaFiles: any[] = [],
   replyToId?: number,
-  clientMsgId?: string
+  clientMsgId?: string,
+  targetUserId?: number,
+  onProgress?: (progressPercent: number, statusText?: string) => void
 ) => {
   try {
     let preparedMedia: any[] = [];
     if (mediaFiles && mediaFiles.length > 0) {
-      preparedMedia = await Promise.all(
-        mediaFiles.map((file) => prepareMediaForSocket(file))
-      );
+      const totalFiles = mediaFiles.length;
+      if (onProgress) onProgress(10, `Processing 1 of ${totalFiles} files...`);
+
+      preparedMedia = [];
+      for (let i = 0; i < mediaFiles.length; i++) {
+        const file = mediaFiles[i];
+        const mediaData = await prepareMediaForSocket(file);
+        preparedMedia.push(mediaData);
+
+        const stepProgress = Math.round(10 + ((i + 1) / totalFiles) * 75);
+        if (onProgress) {
+          onProgress(stepProgress, `Processing ${i + 1} of ${totalFiles} (${stepProgress}%)`);
+        }
+      }
+    }
+
+    if (onProgress) onProgress(90, 'Encrypting & sending...');
+
+    let finalPayload = message;
+    if (message && message.trim()) {
+      try {
+        const currentUserIdStr = await storage.getItem('id');
+        const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : 0;
+        const envelope = await CryptoService.encryptMessage(currentUserId, targetUserId || 0, message.trim());
+        finalPayload = JSON.stringify(envelope);
+      } catch (encryptErr) {
+        console.warn('[E2EE] Encryption fallback warning:', encryptErr);
+      }
     }
 
     WebSocketService.send({
       type: 'message',
       chat_id: chatId,
-      message,
+      message: finalPayload,
       reply_to_id: replyToId || null,
       client_msg_id: clientMsgId || null,
       media: preparedMedia,
     });
+
+    if (onProgress) onProgress(100, 'Sent');
   } catch (error) {
     console.error('Error preparing media / sending message:', error);
     WebSocketService.send({
