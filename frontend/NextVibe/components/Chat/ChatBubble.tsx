@@ -1,5 +1,5 @@
 import React, { useEffect, useState, memo } from 'react';
-import { View, Text, StyleSheet, useColorScheme, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme, TouchableOpacity, useWindowDimensions, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
@@ -94,6 +94,10 @@ const ChatBubbleComponent: React.FC<Props> = ({
   const { width: screenWidth } = useWindowDimensions();
   const [userId, setUserId] = useState<number | null>(null);
 
+  const lastTapRef = React.useRef<number>(0);
+  const [popEmoji, setPopEmoji] = useState<string | null>(null);
+  const popAnim = React.useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     const getId = async () => {
       const id = await storage.getItem('id');
@@ -108,6 +112,41 @@ const ChatBubbleComponent: React.FC<Props> = ({
 
   const isMyMessage = message.sender_id === userId;
   const isDeleted = !!message.deleted_at;
+
+  const handlePress = async () => {
+    if (isDeleted) return;
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+
+    if (lastTapRef.current && (now - lastTapRef.current) < DOUBLE_TAP_DELAY) {
+      lastTapRef.current = 0;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      const lastReaction = (await storage.getItem('last_user_reaction')) || '❤️';
+      const msgId = message.server_msg_id || message.message_id || (message as any).id;
+
+      if (onReactionPress && msgId) {
+        onReactionPress(msgId, lastReaction);
+      }
+
+      setPopEmoji(lastReaction);
+      popAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(popAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.timing(popAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setPopEmoji(null));
+    } else {
+      lastTapRef.current = now;
+    }
+  };
 
   const handleLongPress = () => {
     if (message.deleted_at) return;
@@ -203,6 +242,7 @@ const ChatBubbleComponent: React.FC<Props> = ({
         <TouchableOpacity
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={styles.messageContent}
+          onPress={handlePress}
           onLongPress={handleLongPress}
           delayLongPress={280}
           activeOpacity={0.85}
@@ -257,6 +297,33 @@ const ChatBubbleComponent: React.FC<Props> = ({
             </View>
           )}
         </TouchableOpacity>
+        {popEmoji && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.popEmojiContainer,
+              {
+                opacity: popAnim,
+                transform: [
+                  {
+                    scale: popAnim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [0.3, 1.4, 1.1],
+                    }),
+                  },
+                  {
+                    translateY: popAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -35],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Text style={{ fontSize: 36 }}>{popEmoji}</Text>
+          </Animated.View>
+        )}
       </View>
     </View>
   );
@@ -391,6 +458,18 @@ const getStyles = (
       fontSize: 11,
       color: colors.text,
       fontWeight: '600',
+    },
+    popEmojiContainer: {
+      position: 'absolute',
+      alignSelf: 'center',
+      top: '30%',
+      zIndex: 99,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
     },
   });
 
