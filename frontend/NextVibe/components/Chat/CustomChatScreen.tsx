@@ -15,6 +15,7 @@ import {
     KeyboardAvoidingView,
     Keyboard,
     EmitterSubscription,
+    ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -30,6 +31,7 @@ import {
     Trash2,
     Image as ImageIcon,
     Sparkles,
+    Play,
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -57,6 +59,8 @@ import WebSocketService from '@/src/services/WebSocketService';
 import ChatBubble from './ChatBubble';
 import P2PStatusBadge from './P2PStatusBadge';
 import ChatTransportManager from '@/src/services/ChatTransport';
+import CryptoService from '@/src/services/CryptoService';
+import BackgroundUploadService from '@/src/services/BackgroundUploadService';
 import SafetyNumberModal from './SafetyNumberModal';
 import MediaPickerModal from './MediaPickerModal';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
@@ -162,7 +166,7 @@ export default function CustomChatScreen() {
 
     const [replyToMessage, setReplyToMessage] = useState<MessageItem | null>(null);
     const [editingMessage, setEditingMessage] = useState<MessageItem | null>(null);
-    const [selectedMediaFile, setSelectedMediaFile] = useState<any | null>(null);
+    const [selectedMediaFiles, setSelectedMediaFiles] = useState<any[]>([]);
 
     const [actionModalVisible, setActionModalVisible] = useState(false);
     const [selectedActionMessage, setSelectedActionMessage] = useState<MessageItem | null>(null);
@@ -250,6 +254,24 @@ export default function CustomChatScreen() {
         return result;
     };
 
+    const decryptMessageItem = useCallback(async (msg: MessageItem): Promise<MessageItem> => {
+        const raw = msg.content || msg.text || '';
+        if (!raw || typeof raw !== 'string') return msg;
+        if (!raw.trim().startsWith('{')) return msg;
+        try {
+            const senderId = msg.sender_id || (msg.sender?.user_id) || 0;
+            const dec = await CryptoService.decryptMessage(
+                currentUserId || 0,
+                senderId,
+                raw,
+                otherUser?.user_id
+            );
+            return { ...msg, content: dec, text: dec };
+        } catch {
+            return msg;
+        }
+    }, [currentUserId, otherUser]);
+
     const loadInitialMessages = useCallback(async () => {
         if (!chatId) return;
         setLoading(true);
@@ -257,7 +279,8 @@ export default function CustomChatScreen() {
         try {
             const data = await getMessages(chatId);
             if (Array.isArray(data)) {
-                const sorted = data.sort(
+                const decryptedData = await Promise.all(data.map(m => decryptMessageItem(m)));
+                const sorted = decryptedData.sort(
                     (a: MessageItem, b: MessageItem) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                 );
                 setMessages(deduplicateMessages(sorted));
@@ -284,7 +307,7 @@ export default function CustomChatScreen() {
         } finally {
             setLoading(false);
         }
-    }, [chatId, currentUserId, otherUser]);
+    }, [chatId, currentUserId, otherUser, decryptMessageItem]);
 
     const loadOlderMessages = async () => {
         if (!chatId || loadingMore || !hasMore || messages.length === 0) return;
@@ -296,7 +319,8 @@ export default function CustomChatScreen() {
         try {
             const data = await getMessages(chatId, oldestId);
             if (Array.isArray(data) && data.length > 0) {
-                const sortedNew = data.sort(
+                const decryptedData = await Promise.all(data.map(m => decryptMessageItem(m)));
+                const sortedNew = decryptedData.sort(
                     (a: MessageItem, b: MessageItem) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                 );
                 setMessages(prev => deduplicateMessages([...prev, ...sortedNew]));
@@ -323,37 +347,39 @@ export default function CustomChatScreen() {
             onTransportStateChange: (cId, state) => {
                 if (cId === chatId) setTransportType(state);
             },
-            onMessageReceived: (incoming) => {
+            onMessageReceived: async (incoming) => {
                 if (incoming.chat_id === chatId) {
-                    setMessages(prev => deduplicateMessages([incoming, ...prev]));
+                    const decrypted = await decryptMessageItem(incoming);
+                    setMessages(prev => deduplicateMessages([decrypted, ...prev]));
                 }
             },
         });
 
-        const unsubscribeWS = WebSocketService.addListener((event: any) => {
+        const unsubscribeWS = WebSocketService.addListener(async (event: any) => {
             if (!event || String(event.chat_id) !== String(chatId)) return;
 
             if (event.type === 'message') {
                 if (event.sender_id && event.sender_id !== currentUserId) {
                     markChatAsRead(chatId);
                 }
+                const decryptedEvent = await decryptMessageItem(event);
                 setMessages(prev => {
                     const matchIndex = prev.findIndex(m => {
                         const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
-                        const incomingKey = String(event.server_msg_id || event.message_id || event.id || event.client_msg_id);
+                        const incomingKey = String(decryptedEvent.server_msg_id || decryptedEvent.message_id || decryptedEvent.id || decryptedEvent.client_msg_id);
                         return (
-                            (event.client_msg_id && m.id === event.client_msg_id) ||
-                            (event.client_msg_id && m.client_msg_id === event.client_msg_id) ||
+                            (decryptedEvent.client_msg_id && m.id === decryptedEvent.client_msg_id) ||
+                            (decryptedEvent.client_msg_id && m.client_msg_id === decryptedEvent.client_msg_id) ||
                             (incomingKey && mKey === incomingKey)
                         );
                     });
 
                     if (matchIndex !== -1) {
                         const copy = [...prev];
-                        copy[matchIndex] = { ...copy[matchIndex], ...event };
+                        copy[matchIndex] = { ...copy[matchIndex], ...decryptedEvent };
                         return deduplicateMessages(copy);
                     }
-                    return deduplicateMessages([event, ...prev]);
+                    return deduplicateMessages([decryptedEvent, ...prev]);
                 });
             } else if (event.type === 'read_receipt') {
                 setMessages(prev =>
@@ -467,22 +493,28 @@ export default function CustomChatScreen() {
             return;
         }
 
+        if (selectedMediaFiles.length >= 10) {
+            setToast({ visible: true, message: 'Maximum 10 media files allowed', isSuccess: false });
+            return;
+        }
+
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ['images', 'videos'],
-            quality: 0.8,
+            quality: 0.85,
         });
 
         if (!result.canceled && result.assets.length > 0) {
             const asset = result.assets[0];
             const mime = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
-            const fileName = asset.fileName || asset.uri.split('/').pop() || 'media.jpg';
-            setSelectedMediaFile({
+            const fileName = asset.fileName || asset.uri.split('/').pop() || (asset.type === 'video' ? 'video.mp4' : 'media.jpg');
+            const newItem = {
                 uri: asset.uri,
                 name: fileName,
                 fileName,
                 type: mime,
                 mimeType: mime,
-            });
+            };
+            setSelectedMediaFiles(prev => [...prev, newItem].slice(0, 10));
         }
     };
 
@@ -495,34 +527,44 @@ export default function CustomChatScreen() {
             return;
         }
 
+        const maxAllowed = 10 - selectedMediaFiles.length;
+        if (maxAllowed <= 0) {
+            setToast({ visible: true, message: 'Maximum 10 media files allowed', isSuccess: false });
+            return;
+        }
+
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images', 'videos'],
-            quality: 0.8,
+            allowsMultipleSelection: true,
+            selectionLimit: maxAllowed,
+            quality: 0.85,
         });
 
-        if (!result.canceled && result.assets.length > 0) {
-            const asset = result.assets[0];
-            const mime = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
-            const fileName = asset.fileName || asset.uri.split('/').pop() || 'media.jpg';
-            setSelectedMediaFile({
-                uri: asset.uri,
-                name: fileName,
-                fileName,
-                type: mime,
-                mimeType: mime,
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            const newItems = result.assets.map(asset => {
+                const mime = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+                const fileName = asset.fileName || asset.uri.split('/').pop() || (asset.type === 'video' ? 'video.mp4' : 'media.jpg');
+                return {
+                    uri: asset.uri,
+                    name: fileName,
+                    fileName,
+                    type: mime,
+                    mimeType: mime,
+                };
             });
+            setSelectedMediaFiles(prev => [...prev, ...newItems].slice(0, 10));
         }
     };
 
     const handleSendMessage = async () => {
-        if ((!inputText.trim() && !selectedMediaFile) || !chatId || isSending) return;
+        if ((!inputText.trim() && selectedMediaFiles.length === 0) || !chatId || isSending) return;
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
         const messageText = inputText.trim();
         setInputText('');
-        const mediaToSend = selectedMediaFile;
-        setSelectedMediaFile(null);
+        const mediaToSend = [...selectedMediaFiles];
+        setSelectedMediaFiles([]);
         setIsSending(true);
 
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -574,7 +616,12 @@ export default function CustomChatScreen() {
             created_at: new Date().toISOString(),
             sender_id: currentUserId || undefined,
             reply_to_id: replyToId ? Number(replyToId) : null,
-            media: mediaToSend ? [{ id: Date.now(), file_url: mediaToSend.uri }] : [],
+            media: mediaToSend.map((item, idx) => ({
+                id: Date.now() + idx,
+                file_url: item.uri,
+                type: item.type,
+                isTemp: true,
+            })),
             reply_to_snippet: replyToMessage ? {
                 id: replyToId,
                 sender_id: replyToMessage.sender_id,
@@ -590,14 +637,52 @@ export default function CustomChatScreen() {
         setReplyToMessage(null);
         setMessages(prev => deduplicateMessages([optimisticMsg, ...prev]));
 
+        const uploadId = `upload_${clientMsgId}`;
+        if (mediaToSend.length > 0) {
+            BackgroundUploadService.startUpload(uploadId, mediaToSend.length);
+        }
+
         try {
-            const mediaList = mediaToSend ? [mediaToSend] : [];
-            await sendWebSocketMessage(chatId, messageText, mediaList, replyToId ? Number(replyToId) : undefined, clientMsgId);
+            await sendWebSocketMessage(
+                chatId,
+                messageText,
+                mediaToSend,
+                replyToId ? Number(replyToId) : undefined,
+                clientMsgId,
+                otherUser?.user_id,
+                (progressPercent, statusText) => {
+                    if (mediaToSend.length > 0) {
+                        BackgroundUploadService.updateUploadProgress(uploadId, progressPercent, statusText);
+                        setMessages(prev =>
+                            prev.map(m => {
+                                if (m.id === clientMsgId || m.client_msg_id === clientMsgId) {
+                                    return {
+                                        ...m,
+                                        media: (m.media || []).map(med => ({
+                                            ...med,
+                                            uploadProgress: progressPercent,
+                                        })),
+                                    };
+                                }
+                                return m;
+                            })
+                        );
+                    }
+                }
+            );
+
+            if (mediaToSend.length > 0) {
+                BackgroundUploadService.notifyUploadComplete(uploadId, mediaToSend.length);
+            }
         } catch (err) {
             console.error('[CustomChatScreen] Error sending message:', err);
+            if (mediaToSend.length > 0) {
+                BackgroundUploadService.notifyUploadFailed(uploadId);
+            }
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             setMessages(prev => prev.filter(m => m.id !== clientMsgId && m.client_msg_id !== clientMsgId));
             setInputText(messageText);
+            setSelectedMediaFiles(mediaToSend);
         } finally {
             setIsSending(false);
         }
@@ -612,6 +697,7 @@ export default function CustomChatScreen() {
     const handleToggleReaction = useCallback(async (emoji: string) => {
         if (!selectedActionMessage) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        storage.setItem('last_user_reaction', emoji);
 
         const rawMsgId = selectedActionMessage.server_msg_id || (selectedActionMessage as any).message_id || selectedActionMessage.id;
         const numMsgId = Number(rawMsgId);
@@ -794,6 +880,7 @@ export default function CustomChatScreen() {
                     onReactionPress={(msgId, emoji) => {
                         const numId = Number(msgId);
                         if (isNaN(numId)) return;
+                        storage.setItem('last_user_reaction', emoji);
 
                         const targetMsg = messages.find(m => {
                             const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
@@ -1007,16 +1094,51 @@ export default function CustomChatScreen() {
                                 </View>
                             )}
 
-                            {selectedMediaFile && (
-                                <View style={[styles.actionBanner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
-                                    <ImageIcon size={20} color={colors.accent} style={{ marginRight: 8 }} />
-                                    <View style={styles.bannerContent}>
-                                        <Text style={[styles.bannerTitle, { color: colors.accent }]}>Media attached</Text>
-                                        <Text style={[styles.bannerText, { color: colors.subtext }]} numberOfLines={1}>{selectedMediaFile.uri}</Text>
+                            {selectedMediaFiles.length > 0 && (
+                                <View style={[styles.mediaPreviewBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)' }]}>
+                                    <View style={styles.mediaPreviewHeader}>
+                                        <Text style={[styles.mediaPreviewTitle, { color: colors.accent }]}>
+                                            📎 Media attached ({selectedMediaFiles.length}/10)
+                                        </Text>
+                                        <TouchableOpacity onPress={() => setSelectedMediaFiles([])}>
+                                            <Text style={[styles.clearAllText, { color: colors.subtext }]}>Clear all</Text>
+                                        </TouchableOpacity>
                                     </View>
-                                    <TouchableOpacity onPress={() => setSelectedMediaFile(null)}>
-                                        <X size={18} color={colors.subtext} />
-                                    </TouchableOpacity>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mediaPreviewScroll}>
+                                        {selectedMediaFiles.map((file, index) => {
+                                            const isVid = (file.type || '').startsWith('video') || file.uri.endsWith('.mp4') || file.uri.endsWith('.mov');
+                                            return (
+                                                <View key={`${file.uri}-${index}`} style={styles.mediaThumbnailCard}>
+                                                    <Image source={{ uri: file.uri }} style={styles.mediaThumbnailImage} contentFit="cover" />
+                                                    {isVid && (
+                                                        <View style={styles.videoBadgeOverlay}>
+                                                            <Play size={12} color="#FFFFFF" />
+                                                        </View>
+                                                    )}
+                                                    <TouchableOpacity
+                                                        style={styles.removeMediaButton}
+                                                        onPress={() => {
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                            setSelectedMediaFiles(prev => prev.filter((_, i) => i !== index));
+                                                        }}
+                                                    >
+                                                        <X size={10} color="#FFFFFF" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            );
+                                        })}
+                                        {selectedMediaFiles.length < 10 && (
+                                            <TouchableOpacity
+                                                style={[styles.addMoreMediaCard, { borderColor: colors.border }]}
+                                                onPress={() => {
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    setMediaPickerVisible(true);
+                                                }}
+                                            >
+                                                <Plus size={18} color={colors.accent} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </ScrollView>
                                 </View>
                             )}
 
@@ -1047,10 +1169,10 @@ export default function CustomChatScreen() {
                                         style={[
                                             styles.sendButton,
                                             { backgroundColor: colors.accent },
-                                            (!inputText.trim() && !selectedMediaFile) && styles.sendButtonDisabled,
+                                            (!inputText.trim() && selectedMediaFiles.length === 0) && styles.sendButtonDisabled,
                                         ]}
                                         onPress={handleSendMessage}
-                                        disabled={(!inputText.trim() && !selectedMediaFile) || isSending}
+                                        disabled={(!inputText.trim() && selectedMediaFiles.length === 0) || isSending}
                                         activeOpacity={0.8}
                                     >
                                         {isSending ? (
@@ -1324,6 +1446,72 @@ const getStyles = (
             paddingVertical: 8,
             borderBottomWidth: 1,
             borderBottomColor: colors.divider,
+        },
+        mediaPreviewBar: {
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.divider,
+        },
+        mediaPreviewHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 6,
+        },
+        mediaPreviewTitle: {
+            fontSize: 12,
+            fontWeight: '600',
+        },
+        clearAllText: {
+            fontSize: 11,
+            fontWeight: '500',
+        },
+        mediaPreviewScroll: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+        },
+        mediaThumbnailCard: {
+            width: 58,
+            height: 58,
+            borderRadius: 10,
+            overflow: 'hidden',
+            position: 'relative',
+            backgroundColor: '#1a1a24',
+        },
+        mediaThumbnailImage: {
+            width: '100%',
+            height: '100%',
+        },
+        videoBadgeOverlay: {
+            position: 'absolute',
+            bottom: 3,
+            left: 3,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            borderRadius: 8,
+            padding: 2,
+        },
+        removeMediaButton: {
+            position: 'absolute',
+            top: 3,
+            right: 3,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            borderRadius: 10,
+            width: 18,
+            height: 18,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        addMoreMediaCard: {
+            width: 58,
+            height: 58,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderStyle: 'dashed',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
         },
         bannerBar: {
             width: 3,
