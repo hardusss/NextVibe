@@ -66,7 +66,7 @@ export default function MediaPickerModal({
             />
             <View style={[styles.grabber, { backgroundColor: colors.subtext, opacity: 0.3 }]} />
 
-            <Text style={[styles.title, { color: colors.text }]}>Select Media</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Add Media (Up to 10)</Text>
 
             <TouchableOpacity
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
@@ -75,7 +75,7 @@ export default function MediaPickerModal({
               activeOpacity={0.7}
             >
               <Camera size={24} color={colors.text} />
-              <Text style={[styles.optionText, { color: colors.text }]}>Take Photo</Text>
+              <Text style={[styles.optionText, { color: colors.text }]}>Take Photo or Video</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -85,7 +85,7 @@ export default function MediaPickerModal({
               activeOpacity={0.7}
             >
               <Images size={24} color={colors.text} />
-              <Text style={[styles.optionText, { color: colors.text }]}>Choose from Gallery</Text>
+              <Text style={[styles.optionText, { color: colors.text }]}>Choose Photos & Videos</Text>
             </TouchableOpacity>
           </View>
         </TouchableWithoutFeedback>

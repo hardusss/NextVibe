@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Dimensions, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PlayCircle, X } from 'lucide-react-native';
@@ -8,9 +8,11 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 
 interface MediaPreviewProps {
   uri: string;
-  type: 'image' | 'video';
-  customSize?: { width: number; height: number };
+  type?: 'image' | 'video';
+  customSize?: { width: number; height: number; borderRadius?: number };
   isInGrid?: boolean;
+  isTemp?: boolean;
+  uploadProgress?: number;
 }
 
 interface OnLoadEvent {
@@ -20,96 +22,113 @@ interface OnLoadEvent {
   };
 }
 
-export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaPreviewProps) {
+export default function MediaPreview({ uri, type, customSize, isInGrid, isTemp, uploadProgress }: MediaPreviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
   const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
 
-  const fullScreenPlayer = type === 'video' ? useVideoPlayer(uri, (player) => {
+  // Auto-detect video type if not explicitly provided
+  const isVideo = type === 'video' || (
+    uri && (
+      uri.toLowerCase().includes('.mp4') ||
+      uri.toLowerCase().includes('.mov') ||
+      uri.toLowerCase().includes('.m4v') ||
+      uri.toLowerCase().includes('.webm') ||
+      uri.startsWith('data:video/')
+    )
+  );
+
+  const fullScreenPlayer = isVideo && uri ? useVideoPlayer(uri, (player) => {
     player.loop = true;
   }) : null;
 
   React.useEffect(() => {
-    if (isFullScreen && isPlaying && type === 'video' && fullScreenPlayer) {
+    if (isFullScreen && isPlaying && isVideo && fullScreenPlayer) {
       fullScreenPlayer.play();
     } else if (fullScreenPlayer) {
       fullScreenPlayer.pause();
     }
-  }, [isFullScreen, isPlaying]);
+  }, [isFullScreen, isPlaying, isVideo, fullScreenPlayer]);
 
   React.useEffect(() => {
-    if (type === 'video') {
+    if (isVideo && uri) {
       setIsLoading(true);
       (async () => {
         try {
           const { uri: generatedUri } = await VideoThumbnails.getThumbnailAsync(
             uri,
-            { time: 1000 } 
+            { time: 1000 }
           );
           setThumbnailUri(generatedUri);
         } catch (e) {
-          console.warn('Не вдалося згенерувати прев\'ю для відео:', e);
+          // Thumbnail fallback
         } finally {
-          setIsLoading(false); 
+          setIsLoading(false);
         }
       })();
     }
-  }, [uri, type]); 
-
+  }, [uri, isVideo]);
 
   const handleLoad = (width: number, height: number) => {
     setIsLoading(false);
-    setImageSize({ width, height });
+    if (width > 0 && height > 0) {
+      const ratio = width / height;
+      // Clamp aspect ratio between 0.6 (portrait) and 1.8 (landscape)
+      const clampedRatio = Math.max(0.6, Math.min(1.8, ratio));
+      setAspectRatio(clampedRatio);
+    }
   };
 
   const getThumbnailSize = () => {
     if (customSize) {
       return customSize;
     }
-    if (!isInGrid) {
-      const maxWidth = Dimensions.get('window').width * 0.6;
-      const aspectRatio = imageSize.width / imageSize.height || 1;
-      const calculatedHeight = maxWidth / aspectRatio;
-      return {
-        width: maxWidth,
-        height: Math.min(calculatedHeight, 200)
-      };
-    }
-    return { width: 150, height: 150 };
+    const screenWidth = Dimensions.get('window').width;
+    const maxWidth = Math.min(screenWidth * 0.75, 320);
+    const activeRatio = aspectRatio || (4 / 3);
+    const calculatedHeight = Math.min(Math.max(maxWidth / activeRatio, 150), 340);
+
+    return {
+      width: maxWidth,
+      height: calculatedHeight,
+      borderRadius: 12,
+    };
   };
 
   const handleOpenModal = () => {
     setIsFullScreen(true);
-    setIsPlaying(true); 
+    setIsPlaying(true);
   };
 
   const handleCloseModal = () => {
     setIsFullScreen(false);
-    setIsPlaying(false); 
+    setIsPlaying(false);
   };
 
   const size = getThumbnailSize();
 
   const renderThumbnail = () => (
-    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleOpenModal} activeOpacity={0.9}>
-      <View style={{
-        // @ts-ignore
-        width: size.width,
-        height: size.height,
-        // @ts-ignore
-        borderRadius: size.borderRadius || 8, 
-        overflow: 'hidden',
-        backgroundColor: '#1a1a1a',
-      }}>
-        
-        {type === 'image' ? (
+    <TouchableOpacity
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      onPress={handleOpenModal}
+      activeOpacity={0.9}
+    >
+      <View
+        style={{
+          width: size.width,
+          height: size.height,
+          borderRadius: size.borderRadius || 12,
+          overflow: 'hidden',
+          backgroundColor: '#15151e',
+        }}
+      >
+        {!isVideo ? (
           <>
             {isLoading && (
               <View style={[StyleSheet.absoluteFill, styles.loadingContainer]}>
-                <ActivityIndicator color="#00CED1" />
+                <ActivityIndicator color="#a78bfa" />
               </View>
             )}
             <Image
@@ -119,6 +138,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
                 height: size.height,
               }}
               contentFit="cover"
+              transition={200}
               onLoad={(e: OnLoadEvent) => {
                 const { width, height } = e.source;
                 handleLoad(width, height);
@@ -128,34 +148,47 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
           </>
         ) : (
           <>
-            {isLoading && (
+            {isLoading && !thumbnailUri && (
               <View style={[StyleSheet.absoluteFill, styles.loadingContainer]}>
-                <ActivityIndicator color="#00CED1" />
+                <ActivityIndicator color="#a78bfa" />
               </View>
             )}
-            
-            {thumbnailUri && (
-              <Image
-                source={{ uri: thumbnailUri }}
-                style={{
-                  width: size.width,
-                  height: size.height,
-                }}
-                contentFit="cover"
-              />
-            )}
+
+            <Image
+              source={{ uri: thumbnailUri || uri }}
+              style={{
+                width: size.width,
+                height: size.height,
+              }}
+              contentFit="cover"
+              transition={200}
+              onLoad={(e: OnLoadEvent) => {
+                const { width, height } = e.source;
+                handleLoad(width, height);
+              }}
+            />
 
             <View style={StyleSheet.absoluteFill} pointerEvents="none">
               <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.3)']}
+                colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.45)']}
                 style={StyleSheet.absoluteFill}
               >
                 <View style={styles.playIconContainer}>
-                  <PlayCircle size={40} color="white" />
+                  <View style={styles.playCircleBackground}>
+                    <PlayCircle size={38} color="#ffffff" />
+                  </View>
                 </View>
               </LinearGradient>
             </View>
           </>
+        )}
+        {(isTemp || (uploadProgress !== undefined && uploadProgress < 100)) && (
+          <View style={[StyleSheet.absoluteFill, styles.uploadProgressOverlay]}>
+            <ActivityIndicator size="small" color="#ffffff" />
+            <Text style={styles.uploadProgressText}>
+              {uploadProgress !== undefined ? `${Math.round(uploadProgress)}%` : 'Sending...'}
+            </Text>
+          </View>
         )}
       </View>
     </TouchableOpacity>
@@ -170,7 +203,8 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
       statusBarTranslucent
     >
       <View style={styles.modalContainer}>
-        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        <TouchableOpacity
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           style={styles.closeButton}
           onPress={handleCloseModal}
           activeOpacity={0.7}
@@ -179,12 +213,10 @@ export default function MediaPreview({ uri, type, customSize, isInGrid }: MediaP
             <X size={24} color="white" />
           </View>
         </TouchableOpacity>
-        
-        {type === 'image' ? (
+
+        {!isVideo ? (
           <Image
-            source={{ 
-              uri,
-            }}
+            source={{ uri }}
             style={styles.fullScreenMedia}
             contentFit="contain"
           />
@@ -218,9 +250,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  playCircleBackground: {
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 30,
+    padding: 6,
+  },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -235,16 +272,28 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   closeButtonCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(30, 30, 40, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#15151e',
+  },
+  uploadProgressOverlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  uploadProgressText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
   },
 });
