@@ -61,6 +61,7 @@ import P2PStatusBadge from './P2PStatusBadge';
 import ChatTransportManager from '@/src/services/ChatTransport';
 import CryptoService from '@/src/services/CryptoService';
 import BackgroundUploadService from '@/src/services/BackgroundUploadService';
+import MediaUploadManager from '@/src/services/MediaUploadManager';
 import SafetyNumberModal from './SafetyNumberModal';
 import MediaPickerModal from './MediaPickerModal';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
@@ -465,10 +466,30 @@ export default function CustomChatScreen() {
             }
         });
 
+        const unsubscribeUploads = MediaUploadManager.addListener((task) => {
+            if (task.chatId === chatId) {
+                setMessages(prev =>
+                    prev.map(m => {
+                        if (m.id === task.clientMsgId || m.client_msg_id === task.clientMsgId) {
+                            return {
+                                ...m,
+                                media: (m.media || []).map(med => ({
+                                    ...med,
+                                    uploadProgress: task.progressPercent,
+                                })),
+                            };
+                        }
+                        return m;
+                    })
+                );
+            }
+        });
+
         return () => {
             markChatAsRead(chatId);
             unsubscribeWS();
             unsubscribeTransport();
+            unsubscribeUploads();
         };
     }, [chatId, isFocused, currentUserId, loadInitialMessages]);
 
@@ -637,54 +658,34 @@ export default function CustomChatScreen() {
         setReplyToMessage(null);
         setMessages(prev => deduplicateMessages([optimisticMsg, ...prev]));
 
-        const uploadId = `upload_${clientMsgId}`;
         if (mediaToSend.length > 0) {
-            BackgroundUploadService.startUpload(uploadId, mediaToSend.length);
-        }
-
-        try {
-            await sendWebSocketMessage(
+            MediaUploadManager.enqueueUpload({
                 chatId,
-                messageText,
-                mediaToSend,
-                replyToId ? Number(replyToId) : undefined,
                 clientMsgId,
-                otherUser?.user_id,
-                (progressPercent, statusText) => {
-                    if (mediaToSend.length > 0) {
-                        BackgroundUploadService.updateUploadProgress(uploadId, progressPercent, statusText);
-                        setMessages(prev =>
-                            prev.map(m => {
-                                if (m.id === clientMsgId || m.client_msg_id === clientMsgId) {
-                                    return {
-                                        ...m,
-                                        media: (m.media || []).map(med => ({
-                                            ...med,
-                                            uploadProgress: progressPercent,
-                                        })),
-                                    };
-                                }
-                                return m;
-                            })
-                        );
-                    }
-                }
-            );
-
-            if (mediaToSend.length > 0) {
-                BackgroundUploadService.notifyUploadComplete(uploadId, mediaToSend.length);
-            }
-        } catch (err) {
-            console.error('[CustomChatScreen] Error sending message:', err);
-            if (mediaToSend.length > 0) {
-                BackgroundUploadService.notifyUploadFailed(uploadId);
-            }
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            setMessages(prev => prev.filter(m => m.id !== clientMsgId && m.client_msg_id !== clientMsgId));
-            setInputText(messageText);
-            setSelectedMediaFiles(mediaToSend);
-        } finally {
+                messageText,
+                mediaFiles: mediaToSend,
+                replyToId: replyToId ? Number(replyToId) : undefined,
+                targetUserId: otherUser?.user_id,
+            });
             setIsSending(false);
+        } else {
+            try {
+                await sendWebSocketMessage(
+                    chatId,
+                    messageText,
+                    [],
+                    replyToId ? Number(replyToId) : undefined,
+                    clientMsgId,
+                    otherUser?.user_id
+                );
+            } catch (err) {
+                console.error('[CustomChatScreen] Error sending text message:', err);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                setMessages(prev => prev.filter(m => m.id !== clientMsgId && m.client_msg_id !== clientMsgId));
+                setInputText(messageText);
+            } finally {
+                setIsSending(false);
+            }
         }
     };
 
