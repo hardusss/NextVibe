@@ -169,7 +169,7 @@ class MediaUploadManager {
         task.statusText = `Processing file ${i + 1}/${totalFiles}...`;
         this.notifyListeners(task);
 
-        const fileInfo = await FileSystem.getInfoAsync(processUri, { size: true });
+        const fileInfo = await FileSystem.getInfoAsync(processUri);
         const sizeInBytes = fileInfo.exists && (fileInfo as any).size ? (fileInfo as any).size : 0;
         const sizeMB = sizeInBytes > 0 ? (sizeInBytes / (1024 * 1024)).toFixed(1) : '0';
 
