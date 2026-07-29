@@ -368,7 +368,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_json({"type": "error", "detail": "Invalid chat_id or message_id"})
                     continue
 
-                new_text = data.get("text", "")
+                new_text = data.get("text") if data.get("text") is not None else (data.get("content") or data.get("message") or "")
 
                 if not message_id:
                     await websocket.send_json({"type": "error", "detail": "Missing message_id"})
@@ -387,17 +387,20 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_json({"type": "error", "detail": "Cannot edit deleted message"})
                     continue
 
-                if (datetime.utcnow() - message.created_at).total_seconds() > 900:
-                    await websocket.send_json({"type": "error", "detail": "Edit time window expired"})
-                    continue
+                created_at = message.created_at
+                if created_at:
+                    if created_at.tzinfo is not None:
+                        created_at = created_at.astimezone(timezone.utc).replace(tzinfo=None)
+                    time_diff = (datetime.utcnow() - created_at).total_seconds()
+                    if time_diff > 900:
+                        await websocket.send_json({"type": "error", "detail": "Edit time window expired"})
+                        continue
 
                 message.text = new_text
                 message.edited_at = datetime.utcnow()
                 db.commit()
 
-                keys = r.keys(f"chat:{message.chat_id}:*")
-                if keys:
-                    r.delete(*keys)
+                invalidate_chat_cache(message.chat_id)
 
                 participant_ids = [u.user_id for u in message.chat.participants]
                 await manager.send_to_users(participant_ids, {
