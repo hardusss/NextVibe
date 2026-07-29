@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,8 @@ import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { chatColors, chatRadius } from '@/src/theme/chatTheme';
+import CryptoService from '@/src/services/CryptoService';
+import { storage } from '@/src/utils/storage';
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 
@@ -38,12 +40,42 @@ export interface LastMessage {
   media_keys?: any[];
 }
 
-export function formatLastMessagePreview(lastMessage: any): string {
+export function formatLastMessagePreview(
+  lastMessage: any,
+  currentUserId?: number,
+  otherUser?: ChatUser
+): string {
   if (!lastMessage) return 'No messages yet';
 
-  const text = (lastMessage.content || lastMessage.text || '').trim();
-  const mediaList = lastMessage.media || lastMessage.media_attachments || lastMessage.media_keys || [];
+  let text = (lastMessage.content || lastMessage.text || '').trim();
 
+  // If text is encrypted JSON payload, mask raw JSON
+  if (text.startsWith('{') && (text.includes('"ciphertext"') || text.includes('"sender_device_id"'))) {
+    text = '🔒 Encrypted message';
+  }
+
+  const senderId = Number(lastMessage.sender_id || lastMessage.sender?.user_id || 0);
+  const isMyMessage = currentUserId && senderId === currentUserId;
+
+  // 1. Check for reactions on the message
+  const reactions = lastMessage.reactions || [];
+  if (Array.isArray(reactions) && reactions.length > 0) {
+    if (isMyMessage) {
+      const otherReaction = reactions.find((r: any) => !r.reacted_by_me || (r.user_id && r.user_id !== currentUserId));
+      if (otherReaction) {
+        return `Reacted ${otherReaction.emoji} to your message`;
+      }
+    } else {
+      const myReaction = reactions.find((r: any) => r.reacted_by_me);
+      if (myReaction) {
+        return `You reacted ${myReaction.emoji} to message`;
+      }
+    }
+  }
+
+  // 2. Format media labels if attachments are present
+  const mediaList = lastMessage.media || lastMessage.media_attachments || lastMessage.media_keys || [];
+  let mediaLabel = '';
   if (Array.isArray(mediaList) && mediaList.length > 0) {
     const count = mediaList.length;
     const firstItem = mediaList[0];
@@ -54,7 +86,7 @@ export function formatLastMessagePreview(lastMessage: any): string {
           firstItem.file?.endsWith('.mp4'))) ||
       false;
 
-    const mediaLabel = isVideo
+    mediaLabel = isVideo
       ? count > 1
         ? `🎥 ${count} videos`
         : '🎥 Video'
@@ -62,14 +94,31 @@ export function formatLastMessagePreview(lastMessage: any): string {
       ? `📷 ${count} photos`
       : '📷 Photo';
 
-    return text ? `${mediaLabel} ${text}` : mediaLabel;
+    text = text ? `${mediaLabel} ${text}` : mediaLabel;
+  } else if (text.startsWith('http') && (text.endsWith('.jpg') || text.endsWith('.png') || text.endsWith('.mp4'))) {
+    text = text.endsWith('.mp4') ? '🎥 Video' : '📷 Photo';
   }
 
-  if (text.startsWith('http') && (text.endsWith('.jpg') || text.endsWith('.png') || text.endsWith('.mp4'))) {
-    return text.endsWith('.mp4') ? '🎥 Video' : '📷 Photo';
+  if (!text) text = 'No messages yet';
+
+  // 3. Handle My Message status prefix (Seen vs You: {text})
+  if (isMyMessage) {
+    const isRead = Boolean(
+      lastMessage.is_read ||
+      lastMessage.read_at ||
+      (lastMessage.receipts && lastMessage.receipts.some((r: any) => r.user_id !== currentUserId && r.read_at))
+    );
+
+    if (isRead) {
+      const readTimestamp = lastMessage.read_at || lastMessage.receipts?.find((r: any) => r.read_at)?.read_at || lastMessage.created_at;
+      const seenTimeStr = readTimestamp ? timeAgo(readTimestamp) : '';
+      return seenTimeStr ? `Seen • ${seenTimeStr}` : `Seen • ${text}`;
+    }
+
+    return `You: ${text}`;
   }
 
-  return text || 'No messages yet';
+  return text;
 }
 
 export interface Chat {
@@ -191,7 +240,57 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
     }
   };
 
-  const messageContent = formatLastMessagePreview(chat.last_message);
+  const [currentUserId, setCurrentUserId] = useState<number | undefined>(undefined);
+  const [decryptedPreviewText, setDecryptedPreviewText] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const storedId = await storage.getItem('id');
+      if (storedId) setCurrentUserId(Number(storedId));
+    };
+    fetchUserId();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const decryptLastMsg = async () => {
+      const rawText = (chat.last_message?.content || chat.last_message?.text || '').trim();
+      if (!rawText) {
+        if (isMounted) setDecryptedPreviewText(null);
+        return;
+      }
+
+      if (rawText.startsWith('{') && (rawText.includes('"ciphertext"') || rawText.includes('"sender_device_id"'))) {
+        try {
+          const storedUserId = await storage.getItem('id');
+          const uid = storedUserId ? Number(storedUserId) : 0;
+          const senderId = (chat.last_message as any)?.sender_id || chat.other_user?.user_id || 0;
+          const decrypted = await CryptoService.decryptMessage(
+            uid,
+            senderId,
+            rawText,
+            chat.other_user?.user_id
+          );
+          if (isMounted) setDecryptedPreviewText(decrypted);
+        } catch {
+          if (isMounted) setDecryptedPreviewText('🔒 Encrypted message');
+        }
+      } else {
+        if (isMounted) setDecryptedPreviewText(rawText);
+      }
+    };
+
+    decryptLastMsg();
+    return () => {
+      isMounted = false;
+    };
+  }, [chat.last_message?.content, chat.last_message?.text, chat.other_user?.user_id]);
+
+  const activeLastMessage = decryptedPreviewText !== null
+    ? { ...chat.last_message, content: decryptedPreviewText, text: decryptedPreviewText }
+    : chat.last_message;
+
+  const messageContent = formatLastMessagePreview(activeLastMessage, currentUserId, chat.other_user);
   const messageTime = chat.last_message?.created_at ? timeAgo(chat.last_message.created_at) : '';
   const avatarUri = chat.other_user.avatar || DEFAULT_AVATAR;
 
