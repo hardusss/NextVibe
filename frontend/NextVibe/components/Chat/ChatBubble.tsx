@@ -7,6 +7,8 @@ import { Check, CheckCheck } from 'lucide-react-native';
 import MediaGrid from './MediaGrid';
 import { storage } from '@/src/utils/storage';
 import { chatColors, chatRadius, chatSpacing, chatTypography } from '@/src/theme/chatTheme';
+import { useSettingsStore } from '@/src/stores/settingsStore';
+import { getWallpaperColors } from '@/constants/chatWallpapers';
 
 interface MediaAttachment {
   id: number;
@@ -91,6 +93,11 @@ const ChatBubbleComponent: React.FC<Props> = ({
 }) => {
   const isDark = useColorScheme() === 'dark';
   const colors = chatColors[isDark ? 'dark' : 'light'];
+  const chatWallpaperType = useSettingsStore((state) => state.chatWallpaperType);
+  const chatWallpaperValue = useSettingsStore((state) => state.chatWallpaperValue);
+  const chatBubbleStyle = useSettingsStore((state) => state.chatBubbleStyle);
+
+  const wpColors = getWallpaperColors(chatWallpaperType, chatWallpaperValue, isDark);
   const { width: screenWidth } = useWindowDimensions();
   const [userId, setUserId] = useState<number | null>(null);
 
@@ -106,7 +113,7 @@ const ChatBubbleComponent: React.FC<Props> = ({
     getId();
   }, []);
 
-  if (userId === null) {
+  if (userId === null || message.deleted_at || message.content === '[Message deleted]') {
     return null;
   }
 
@@ -230,14 +237,39 @@ const ChatBubbleComponent: React.FC<Props> = ({
           styles.messageContainer,
           { maxWidth: maxBubbleWidth },
           getBubbleBorderRadius(),
+          isMyMessage
+            ? {
+                backgroundColor: wpColors.bubbleMine,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.4)',
+              }
+            : {
+                backgroundColor: isDark ? 'rgba(24, 12, 38, 0.94)' : 'rgba(242, 240, 248, 0.96)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+              },
+          chatBubbleStyle === 'classic' && (
+            isMyMessage
+              ? { backgroundColor: wpColors.bubbleMine, borderWidth: 0 }
+              : { backgroundColor: isDark ? '#1C102A' : '#ECEAF4', borderWidth: 0 }
+          ),
+          chatBubbleStyle === 'minimal' && (
+            isMyMessage
+              ? { backgroundColor: wpColors.bubbleMine, borderWidth: 1, borderColor: wpColors.accent }
+              : { backgroundColor: isDark ? 'rgba(28, 14, 44, 0.90)' : 'rgba(245, 243, 252, 0.92)', borderWidth: 1, borderColor: colors.border }
+          ),
+          chatBubbleStyle === 'modern' && (
+            isMyMessage
+              ? { backgroundColor: wpColors.bubbleMine, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.25)' }
+              : { backgroundColor: isDark ? 'rgba(26, 14, 40, 0.95)' : 'rgba(245, 243, 255, 0.96)', borderWidth: 1, borderColor: colors.border }
+          ),
         ]}
       >
-        <BlurView
-          intensity={isMyMessage ? (isDark ? 30 : 60) : (isDark ? 25 : 95)}
-          tint={isMyMessage ? 'dark' : (isDark ? 'dark' : 'light')}
-          style={styles.blurViewAbsolute}
-        />
-        {isMyMessage && <View style={styles.myMessageTint} />}
+        {chatBubbleStyle === 'glass' && (
+          <BlurView
+            intensity={isDark ? 50 : 75}
+            tint={isDark ? 'dark' : 'light'}
+            style={styles.blurViewAbsolute}
+          />
+        )}
 
         <TouchableOpacity
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

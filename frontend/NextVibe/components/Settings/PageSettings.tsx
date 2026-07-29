@@ -4,7 +4,7 @@ import {
     Animated, TouchableWithoutFeedback, TouchableOpacity, TextInput, RefreshControl, Platform
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Palette } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import { Switch } from "react-native-paper";
 import { useRouter } from "expo-router";
@@ -15,6 +15,7 @@ import { useCallback } from 'react';
 import AvatarSheet from "./AvatarSheet";
 import LogoutConfirmationSheet from "./LogoutConfirmationSheet";
 import ResetPasswordSheet from "./ResetPasswordSheet";
+import { ChatWallpaperModal } from "./ChatWallpaperModal";
 import resetAvatar from "@/src/api/reset.avatar";
 import { PopupProvider, usePopup } from "../Popup";
 import updateUser from "@/src/api/update.user";
@@ -56,14 +57,14 @@ const darkColors = {
 const lightColors = {
     background: "#ffffff",
     inputBackground: "transparent",
-    textPrimary: "#000000",
-    textSecondary: "#666666",
-    border: "#eeeeee",
-    accent: "#05f0d8",
-    link: "#7b05f1",
-    danger: "#ef4444",
-    saveActive: "#7b05f1",
-    saveInactive: "#e5e5e5"
+    textPrimary: "#1A1225",
+    textSecondary: "#64748B",
+    border: "#E2E8F0",
+    accent: "#7C3AED",
+    link: "#7C3AED",
+    danger: "#EF4444",
+    saveActive: "#7C3AED",
+    saveInactive: "#E2E8F0"
 };
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
@@ -76,6 +77,7 @@ function PageSettingsContent() {
     const [isVisibleAvatar, setIsVisableAvatar] = useState<boolean>(false);
     const [isVisibleLogoutConfirmation, setIsVisibleLogoutConfirmation] = useState<boolean>(false);
     const [isVisibleResetPassword, setIsVisibleResetPassword] = useState<boolean>(false);
+    const [isWallpaperModalVisible, setIsWallpaperModalVisible] = useState<boolean>(false);
     const [user, setUser] = useState<User | null>(null);
     const [username, setUsername] = useState("");
     const [about, setAbout] = useState("");
@@ -471,6 +473,20 @@ function PageSettingsContent() {
                             </View>
                         </View>
 
+                        <TouchableOpacity 
+                            style={styles.row}
+                            onPress={() => setIsWallpaperModalVisible(true)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={{ flex: 1, paddingRight: 16 }}>
+                                <Text style={styles.rowText}>Chat Wallpaper & Theme</Text>
+                                <Text style={styles.rowDescription}>
+                                    Customize background images, gradients, dimming, and bubble styles
+                                </Text>
+                            </View>
+                            <Palette size={22} color={colors.accent} />
+                        </TouchableOpacity>
+
                         {Platform.OS === 'ios' && (
                             <View style={styles.row}>
                                 <View style={{ flex: 1, paddingRight: 16 }}>
@@ -537,6 +553,10 @@ function PageSettingsContent() {
                     showPopup('success', 'Success', 'Your password has been successfully changed');
                     setIsVisibleResetPassword(false);
                 }} 
+            />
+            <ChatWallpaperModal
+                visible={isWallpaperModalVisible}
+                onClose={() => setIsWallpaperModalVisible(false)}
             />
         </Animated.View>
     );
@@ -690,12 +710,12 @@ const getStyles = (colors: any, insets: any) => {
         },
         themeOptionText: {
             fontSize: 14,
-            fontWeight: '500',
-            color: colors.textSecondary,
+            fontWeight: '600',
+            color: colors.textPrimary,
         },
         themeOptionTextSelected: {
-            color: colors.background,
-            fontWeight: '600',
+            color: '#FFFFFF',
+            fontWeight: '700',
         },
     });
 };
