@@ -16,6 +16,8 @@ import {
     Keyboard,
     EmitterSubscription,
     ScrollView,
+    LayoutAnimation,
+    UIManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -32,6 +34,7 @@ import {
     Image as ImageIcon,
     Sparkles,
     Play,
+    Palette,
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -41,6 +44,10 @@ import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 
+import { ChatBackground } from './ChatBackground';
+import { ChatWallpaperModal } from '@/components/Settings/ChatWallpaperModal';
+import { useSettingsStore } from '@/src/stores/settingsStore';
+import { getWallpaperColors } from '@/constants/chatWallpapers';
 import { storage } from '@/src/utils/storage';
 import { parseISOToLocalDate } from '@/src/utils/formatTime';
 import {
@@ -139,6 +146,10 @@ export default function CustomChatScreen() {
     const insets = useSafeAreaInsets();
     const isDark = useColorScheme() === 'dark';
     const colors = chatColors[isDark ? 'dark' : 'light'];
+    const chatWallpaperType = useSettingsStore((state) => state.chatWallpaperType);
+    const chatWallpaperValue = useSettingsStore((state) => state.chatWallpaperValue);
+    const liquidGlassEnabled = useSettingsStore((state) => state.liquidGlassEnabled);
+    const wpColors = useMemo(() => getWallpaperColors(chatWallpaperType, chatWallpaperValue, isDark), [chatWallpaperType, chatWallpaperValue, isDark]);
     const isFocused = useIsFocused();
 
     const { id } = useLocalSearchParams();
@@ -172,6 +183,7 @@ export default function CustomChatScreen() {
     const [actionModalVisible, setActionModalVisible] = useState(false);
     const [selectedActionMessage, setSelectedActionMessage] = useState<MessageItem | null>(null);
     const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+    const [wallpaperModalVisible, setWallpaperModalVisible] = useState(false);
     const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
     const [inputLayoutHeight, setInputLayoutHeight] = useState(70);
 
@@ -454,13 +466,14 @@ export default function CustomChatScreen() {
                     })
                 );
             } else if (event.type === 'message_deleted') {
+                if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+                    UIManager.setLayoutAnimationEnabledExperimental(true);
+                }
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                 setMessages(prev =>
-                    prev.map(msg => {
+                    prev.filter(msg => {
                         const msgId = msg.server_msg_id || (msg as any).message_id || msg.id;
-                        if (String(msgId) === String(event.message_id)) {
-                            return { ...msg, content: '[Message deleted]', text: '[Message deleted]', deleted_at: event.deleted_at };
-                        }
-                        return msg;
+                        return String(msgId) !== String(event.message_id);
                     })
                 );
             }
@@ -778,6 +791,19 @@ export default function CustomChatScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const msgId = selectedActionMessage.server_msg_id || (selectedActionMessage as any).message_id || selectedActionMessage.id;
         setActionModalVisible(false);
+
+        if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+            UIManager.setLayoutAnimationEnabledExperimental(true);
+        }
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+        setMessages(prev =>
+            prev.filter(msg => {
+                const mId = msg.server_msg_id || (msg as any).message_id || msg.id;
+                return String(mId) !== String(msgId);
+            })
+        );
+
         try {
             await deleteMessage(chatId, Number(msgId));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -931,13 +957,19 @@ export default function CustomChatScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <ChatBackground>
             <StatusBar
                 barStyle={isDark ? 'light-content' : 'dark-content'}
-                backgroundColor={colors.bg}
+                backgroundColor="transparent"
+                translucent
             />
 
             <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+                <BlurView
+                    intensity={isDark ? 45 : 55}
+                    tint={isDark ? 'dark' : 'light'}
+                    style={StyleSheet.absoluteFillObject}
+                />
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => router.back()}
@@ -978,6 +1010,14 @@ export default function CustomChatScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.headerRightActions}>
+                    <TouchableOpacity
+                        style={styles.headerActionButton}
+                        onPress={() => setWallpaperModalVisible(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Palette size={20} color={colors.accent} />
+                    </TouchableOpacity>
+
                     <P2PStatusBadge isP2PActive={transportType === 'p2p'} />
 
                     <TouchableOpacity
@@ -1061,15 +1101,18 @@ export default function CustomChatScreen() {
                             style={[
                                 styles.floatingGlassCapsule,
                                 {
-                                    borderColor: isDark ? 'rgba(167, 139, 250, 0.3)' : 'rgba(124, 58, 237, 0.25)',
+                                    borderColor: wpColors.inputBorder,
+                                    backgroundColor: liquidGlassEnabled
+                                        ? (isDark ? 'rgba(10, 4, 16, 0.38)' : 'rgba(255, 255, 255, 0.45)')
+                                        : (isDark ? 'rgba(18, 10, 28, 0.94)' : 'rgba(255, 255, 255, 0.96)'),
                                 },
                             ]}
                         >
                             {replyToMessage && (
                                 <View style={[styles.actionBanner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
-                                    <View style={[styles.bannerBar, { backgroundColor: colors.accent }]} />
+                                    <View style={[styles.bannerBar, { backgroundColor: wpColors.accent }]} />
                                     <View style={styles.bannerContent}>
-                                        <Text style={[styles.bannerTitle, { color: colors.accent }]}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
+                                        <Text style={[styles.bannerTitle, { color: wpColors.accent }]}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
                                         <Text style={[styles.bannerText, { color: colors.subtext }]} numberOfLines={1}>
                                             {replyToMessage.content || replyToMessage.text}
                                         </Text>
@@ -1082,9 +1125,9 @@ export default function CustomChatScreen() {
 
                             {editingMessage && (
                                 <View style={[styles.actionBanner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(124, 58, 237, 0.08)' }]}>
-                                    <View style={[styles.bannerBar, { backgroundColor: colors.accent }]} />
+                                    <View style={[styles.bannerBar, { backgroundColor: wpColors.accent }]} />
                                     <View style={styles.bannerContent}>
-                                        <Text style={[styles.bannerTitle, { color: colors.accent }]}>Editing message</Text>
+                                        <Text style={[styles.bannerTitle, { color: wpColors.accent }]}>Editing message</Text>
                                         <Text style={[styles.bannerText, { color: colors.subtext }]} numberOfLines={1}>
                                             {editingMessage.content || editingMessage.text}
                                         </Text>
@@ -1098,7 +1141,7 @@ export default function CustomChatScreen() {
                             {selectedMediaFiles.length > 0 && (
                                 <View style={[styles.mediaPreviewBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)' }]}>
                                     <View style={styles.mediaPreviewHeader}>
-                                        <Text style={[styles.mediaPreviewTitle, { color: colors.accent }]}>
+                                        <Text style={[styles.mediaPreviewTitle, { color: wpColors.accent }]}>
                                             📎 Media attached ({selectedMediaFiles.length}/10)
                                         </Text>
                                         <TouchableOpacity onPress={() => setSelectedMediaFiles([])}>
@@ -1136,7 +1179,7 @@ export default function CustomChatScreen() {
                                                     setMediaPickerVisible(true);
                                                 }}
                                             >
-                                                <Plus size={18} color={colors.accent} />
+                                                <Plus size={18} color={wpColors.accent} />
                                             </TouchableOpacity>
                                         )}
                                     </ScrollView>
@@ -1153,7 +1196,7 @@ export default function CustomChatScreen() {
                                         }}
                                         activeOpacity={0.7}
                                     >
-                                        <Plus size={22} color={colors.accent} />
+                                        <Plus size={22} color={wpColors.accent} />
                                     </TouchableOpacity>
 
                                     <TextInput
@@ -1169,7 +1212,7 @@ export default function CustomChatScreen() {
                                     <TouchableOpacity
                                         style={[
                                             styles.sendButton,
-                                            { backgroundColor: colors.accent },
+                                            { backgroundColor: wpColors.accent },
                                             (!inputText.trim() && selectedMediaFiles.length === 0) && styles.sendButtonDisabled,
                                         ]}
                                         onPress={handleSendMessage}
@@ -1276,7 +1319,12 @@ export default function CustomChatScreen() {
                 isSuccess={toast.isSuccess}
                 onHide={() => setToast({ ...toast, visible: false })}
             />
-        </View>
+
+            <ChatWallpaperModal
+                visible={wallpaperModalVisible}
+                onClose={() => setWallpaperModalVisible(false)}
+            />
+        </ChatBackground>
     );
 }
 
@@ -1295,9 +1343,11 @@ const getStyles = (
             alignItems: 'center',
             paddingHorizontal: 14,
             paddingBottom: 12,
-            backgroundColor: colors.headerBg,
+            backgroundColor: isDark ? 'rgba(10, 4, 16, 0.45)' : 'rgba(255, 255, 255, 0.55)',
             borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+            overflow: 'hidden',
+            zIndex: 10,
         },
         backButton: {
             padding: 6,
@@ -1433,12 +1483,12 @@ const getStyles = (
             overflow: 'hidden',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.25,
+            shadowOpacity: 0.3,
             shadowRadius: 12,
             elevation: 8,
-            backgroundColor: Platform.OS === 'ios'
-                ? (isDark ? 'rgba(21, 7, 35, 0.85)' : 'rgba(255, 255, 255, 0.92)')
-                : (isDark ? 'rgb(25, 10, 40)' : 'rgb(245, 240, 250)'),
+            backgroundColor: isDark
+                ? 'rgba(18, 10, 28, 0.94)'
+                : 'rgba(255, 255, 255, 0.96)',
         },
         actionBanner: {
             flexDirection: 'row',
