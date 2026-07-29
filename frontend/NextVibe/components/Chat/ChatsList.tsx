@@ -18,6 +18,7 @@ import { getChats, getOnlineUsers, deleteChat } from '@/src/api/chat';
 import WebSocketService from '@/src/services/WebSocketService';
 import Header from './Header';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatItemSkeleton, OnlineUserSkeleton } from './SkeletonLoaders';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -58,6 +59,7 @@ export default function ChatsList() {
   const isLoadedOnceRef = useRef(false);
 
   const isDark = useColorScheme() === 'dark';
+  const insets = useSafeAreaInsets();
   const colors = chatColors[isDark ? 'dark' : 'light'];
   const styles = useMemo(() => getStyles(isDark, colors), [isDark, colors]);
 
@@ -265,6 +267,7 @@ export default function ChatsList() {
             onRefresh={onRefresh}
             tintColor={colors.text}
             colors={[colors.accent]}
+            progressViewOffset={insets.top + 10}
           />
         }
         ListEmptyComponent={
