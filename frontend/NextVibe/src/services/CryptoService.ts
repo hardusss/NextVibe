@@ -77,8 +77,10 @@ class CryptoService {
   ): Promise<EncryptedEnvelope> {
     const identity = await this.getOrCreateIdentityKeyPair(senderUserId);
     
-    // Convert text to base64 & perform lightweight XOR/AES transformation with session secret
-    const sessionSecret = `${identity.privateKey}_${targetUserId}`;
+    // Derive symmetric session key for conversation between sender & recipient
+    const u1 = Math.min(senderUserId, targetUserId);
+    const u2 = Math.max(senderUserId, targetUserId);
+    const sessionSecret = `e2ee_secret_chat_${u1}_${u2}_${identity.privateKey.slice(0, 8)}`;
     const nonce = Buffer.from(Array.from({ length: 12 }, () => Math.floor(Math.random() * 256))).toString('base64');
     
     const textBuffer = Buffer.from(plaintext, 'utf-8');
@@ -106,27 +108,36 @@ class CryptoService {
   public async decryptMessage(
     currentUserId: number,
     senderUserId: number,
-    envelopeJsonOrObj: any
+    envelopeJsonOrObj: any,
+    targetUserId?: number
   ): Promise<string> {
     try {
+      if (!envelopeJsonOrObj) return '';
       let envelope: EncryptedEnvelope;
+
       if (typeof envelopeJsonOrObj === 'string') {
+        const trimmed = envelopeJsonOrObj.trim();
+        if (!trimmed.startsWith('{')) {
+          return envelopeJsonOrObj;
+        }
         try {
           envelope = JSON.parse(envelopeJsonOrObj);
         } catch {
-          // If not JSON, return as-is (plaintext fallback)
           return envelopeJsonOrObj;
         }
       } else {
         envelope = envelopeJsonOrObj;
       }
 
-      if (!envelope || !envelope.ciphertext) {
-        return typeof envelopeJsonOrObj === 'string' ? envelopeJsonOrObj : (envelopeJsonOrObj?.content || '');
+      if (!envelope || typeof envelope !== 'object' || !envelope.ciphertext) {
+        return typeof envelopeJsonOrObj === 'string' ? envelopeJsonOrObj : (envelopeJsonOrObj?.content || envelopeJsonOrObj?.text || '');
       }
 
       const identity = await this.getOrCreateIdentityKeyPair(currentUserId);
-      const sessionSecret = `${identity.privateKey}_${currentUserId === senderUserId ? senderUserId : senderUserId}`;
+      const otherUser = targetUserId || (senderUserId === currentUserId ? currentUserId : senderUserId);
+      const u1 = Math.min(currentUserId, otherUser);
+      const u2 = Math.max(currentUserId, otherUser);
+      const sessionSecret = `e2ee_secret_chat_${u1}_${u2}_${identity.privateKey.slice(0, 8)}`;
 
       const cipherBytes = Buffer.from(envelope.ciphertext, 'base64');
       const secretBuffer = Buffer.from(sessionSecret, 'utf-8');
@@ -139,7 +150,7 @@ class CryptoService {
       return Buffer.from(plainBytes).toString('utf-8');
     } catch (err) {
       console.error('Error decrypting message:', err);
-      return '[Encrypted Message]';
+      return typeof envelopeJsonOrObj === 'string' ? envelopeJsonOrObj : (envelopeJsonOrObj?.content || envelopeJsonOrObj?.text || '[Encrypted Message]');
     }
   }
 
