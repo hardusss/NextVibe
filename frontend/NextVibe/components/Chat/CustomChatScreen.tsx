@@ -608,6 +608,16 @@ export default function CustomChatScreen() {
             const rawMsgId = editingMessage.server_msg_id || (editingMessage as any).message_id || editingMessage.id;
             const numMsgId = Number(rawMsgId);
 
+            if (isNaN(numMsgId) || numMsgId <= 0) {
+                setToast({ visible: true, message: 'Cannot edit unsynced message', isSuccess: false });
+                setEditingMessage(null);
+                setIsSending(false);
+                return;
+            }
+
+            const oldText = editingMessage.content || editingMessage.text || '';
+            const oldEditedAt = editingMessage.edited_at;
+
             setMessages(prev =>
                 prev.map(m => {
                     const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
@@ -631,6 +641,22 @@ export default function CustomChatScreen() {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 const errDetail = err?.response?.data?.detail || err?.message || 'Failed to edit message';
                 setToast({ visible: true, message: errDetail, isSuccess: false });
+
+                // Revert optimistic update on failure
+                setMessages(prev =>
+                    prev.map(m => {
+                        const mKey = String(m.server_msg_id || (m as any).message_id || m.id || m.client_msg_id);
+                        if (mKey === String(rawMsgId) || (!isNaN(numMsgId) && (m.server_msg_id === numMsgId || (m as any).message_id === numMsgId))) {
+                            return {
+                                ...m,
+                                text: oldText,
+                                content: oldText,
+                                edited_at: oldEditedAt,
+                            };
+                        }
+                        return m;
+                    })
+                );
             } finally {
                 setEditingMessage(null);
                 setIsSending(false);

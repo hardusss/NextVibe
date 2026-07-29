@@ -211,6 +211,10 @@ export const removeReaction = async (chatId: number, messageId: number, emoji: s
 };
 
 export const editMessage = async (chatId: number, messageId: number, text: string) => {
+  if (!messageId || isNaN(messageId) || messageId <= 0) {
+    throw new Error('Invalid message ID');
+  }
+
   WebSocketService.send({
     type: 'edit_message',
     chat_id: chatId,
@@ -220,13 +224,17 @@ export const editMessage = async (chatId: number, messageId: number, text: strin
 
   const token = await storage.getItem('access');
   try {
-    await axios.patch(
+    const res = await axios.patch(
       `${getRealtimeBaseUrl()}/messages/${messageId}`,
       { text },
       { headers: { Authorization: `Bearer ${token}` } }
     );
-  } catch (err) {
-    // Socket primary
+    return res.data;
+  } catch (err: any) {
+    if (err?.response) {
+      throw err;
+    }
+    console.warn('[editMessage] REST fallback failed:', err);
   }
 };
 
