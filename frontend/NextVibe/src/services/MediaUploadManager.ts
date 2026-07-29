@@ -1,6 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Video } from 'react-native-compressor';
-import BackgroundUploadService from './BackgroundUploadService';
 import { sendWebSocketMessage } from '../api/chat';
 
 export interface UploadTask {
@@ -115,8 +114,6 @@ class MediaUploadManager {
     task.statusText = 'Starting background upload...';
     this.notifyListeners(task);
 
-    await BackgroundUploadService.startUpload(task.uploadId, task.mediaFiles.length);
-
     try {
       const preparedMedia: any[] = [];
       const totalFiles = task.mediaFiles.length;
@@ -156,7 +153,6 @@ class MediaUploadManager {
                 const compPercent = Math.round(fileWeightStart + progress * (fileWeightEnd - fileWeightStart) * 0.5);
                 task.progressPercent = compPercent;
                 task.statusText = `Compressing video ${i + 1}/${totalFiles} (${Math.round(progress * 100)}%)`;
-                BackgroundUploadService.updateUploadProgress(task.uploadId, compPercent, task.statusText);
                 this.notifyListeners(task);
               }
             );
@@ -186,13 +182,11 @@ class MediaUploadManager {
         const fileCompletePercent = Math.round(fileWeightEnd);
         task.progressPercent = fileCompletePercent;
         task.statusText = `Processed ${i + 1}/${totalFiles} (${sizeMB} MB)`;
-        BackgroundUploadService.updateUploadProgress(task.uploadId, fileCompletePercent, task.statusText);
         this.notifyListeners(task);
       }
 
       task.progressPercent = 90;
       task.statusText = 'Encrypting & sending...';
-      BackgroundUploadService.updateUploadProgress(task.uploadId, 90, task.statusText);
       this.notifyListeners(task);
 
       await sendWebSocketMessage(
@@ -207,13 +201,11 @@ class MediaUploadManager {
       task.status = 'completed';
       task.progressPercent = 100;
       task.statusText = 'Upload complete';
-      BackgroundUploadService.notifyUploadComplete(task.uploadId, task.mediaFiles.length);
       this.notifyListeners(task);
     } catch (err: any) {
       console.error('[MediaUploadManager] Upload task error:', err);
       task.status = 'failed';
       task.error = err?.message || 'Upload failed';
-      BackgroundUploadService.notifyUploadFailed(task.uploadId, task.error);
       this.notifyListeners(task);
     }
   }
