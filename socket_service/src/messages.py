@@ -427,9 +427,13 @@ async def edit_message(
         raise HTTPException(status_code=400, detail="Cannot edit deleted message")
 
     # Time window check (15 minutes = 900 seconds)
-    time_diff = (datetime.utcnow() - message.created_at).total_seconds()
-    if time_diff > 900:
-        raise HTTPException(status_code=400, detail="Message edit window (15 mins) expired")
+    created_at = message.created_at
+    if created_at:
+        if created_at.tzinfo is not None:
+            created_at = created_at.astimezone(timezone.utc).replace(tzinfo=None)
+        time_diff = (datetime.utcnow() - created_at).total_seconds()
+        if time_diff > 900:
+            raise HTTPException(status_code=400, detail="Message edit window (15 mins) expired")
 
     message.text = req.text
     message.edited_at = datetime.utcnow()
