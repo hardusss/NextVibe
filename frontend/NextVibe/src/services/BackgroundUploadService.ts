@@ -62,16 +62,26 @@ class BackgroundUploadService {
     await this.updateUploadProgress(uploadId, 5, fileCount > 1 ? `Uploading ${fileCount} files...` : 'Starting media upload...');
   }
 
+  private renderProgressBar(percent: number): string {
+    const totalBlocks = 10;
+    const filled = Math.min(totalBlocks, Math.max(0, Math.round((percent / 100) * totalBlocks)));
+    const empty = totalBlocks - filled;
+    return '█'.repeat(filled) + '░'.repeat(empty);
+  }
+
   public async updateUploadProgress(uploadId: string, progressPercent: number, statusText?: string) {
     const clampedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
     this.activeUploads.set(uploadId, clampedProgress);
+
+    const bar = this.renderProgressBar(clampedProgress);
+    const bodyText = statusText ? `[${bar}] ${statusText}` : `[${bar}] ${clampedProgress}% complete`;
 
     try {
       await Notifications.scheduleNotificationAsync({
         identifier: uploadId,
         content: {
-          title: `📤 Sending media (${clampedProgress}%)`,
-          body: statusText || `Upload in progress • ${clampedProgress}%`,
+          title: `📤 Uploading media • ${clampedProgress}%`,
+          body: bodyText,
           data: { uploadId, progress: clampedProgress },
           sound: false,
         },
