@@ -69,3 +69,34 @@ class InviteSystemTest(TestCase):
         response = view(request)
         self.assertEqual(response.status_code, 400)
         self.assertIn("at least 3 invites", response.data.get("error", ""))
+
+    def test_link_email_grants_reputation(self):
+        from rest_framework.test import APIRequestFactory, force_authenticate
+        from user.views_pac.link_email import LinkEmailView
+
+        wallet_user = User.objects.create_user(
+            email=None,
+            username="wallet_only_user",
+            wallet_address="0x9999999999999999999999999999999999999999"
+        )
+
+        factory = APIRequestFactory()
+        request = factory.post("/users/link-email/", {"email": "linked@example.com"}, format="json")
+        force_authenticate(request, user=wallet_user)
+        view = LinkEmailView.as_view()
+
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("reputation_earned"), 20)
+
+        wallet_user.refresh_from_db()
+        self.assertEqual(wallet_user.email, "linked@example.com")
+        self.assertTrue(
+            Reputation.objects.filter(user=wallet_user, post_type="link_email_reward", points=20).exists()
+        )
+
+        # Trying to link email again should fail
+        request2 = factory.post("/users/link-email/", {"email": "another@example.com"}, format="json")
+        force_authenticate(request2, user=wallet_user)
+        response2 = view(request2)
+        self.assertEqual(response2.status_code, 400)
