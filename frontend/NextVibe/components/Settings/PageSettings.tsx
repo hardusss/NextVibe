@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
     ScrollView, View, Text, StatusBar, StyleSheet, useColorScheme,
-    Animated, TouchableWithoutFeedback, TouchableOpacity, TextInput, RefreshControl, Platform
+    Animated, TouchableWithoutFeedback, TouchableOpacity, TextInput, RefreshControl, Platform, ActivityIndicator
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, Palette } from "lucide-react-native";
+import { ArrowLeft, Palette, Mail, Sparkles } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
+import linkEmail from "@/src/api/link.email";
 import { Switch } from "react-native-paper";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -35,6 +36,8 @@ interface User {
     username: string;
     about: string;
     avatar: string | null;
+    email?: string | null;
+    wallet_address?: string | null;
     post_count: number;
     readers_count: number;
     follows_count: number;
@@ -89,11 +92,33 @@ function PageSettingsContent() {
     const [toastMessage, setToastMessage] = useState("");
     const [toastSuccess, setToastSuccess] = useState(true);
     const [isBluetoothEnabled, setIsBluetoothEnabled] = useState<boolean>(true);
+    const [newEmail, setNewEmail] = useState("");
+    const [isLinkingEmail, setIsLinkingEmail] = useState(false);
     const themePreference = useSettingsStore((state) => state.themePreference);
     const liquidGlassEnabled = useSettingsStore((state) => state.liquidGlassEnabled);
     const setThemePreference = useSettingsStore((state) => state.setThemePreference);
     const setLiquidGlassEnabled = useSettingsStore((state) => state.setLiquidGlassEnabled);
     const { address, disconnect } = useWalletAddress();
+
+    const handleLinkEmail = async () => {
+        if (!newEmail || !newEmail.trim()) {
+            showToast("Please enter a valid email address", false);
+            return;
+        }
+        setIsLinkingEmail(true);
+        try {
+            const res = await linkEmail(newEmail.trim());
+            showToast(res.message || "Email linked successfully! +20 Rep 🎉", true);
+            showPopup('success', 'Email Linked', 'You earned +20 Reputation points!');
+            setNewEmail("");
+            await fetchUserData();
+        } catch (err: any) {
+            const errMsg = err?.response?.data?.error || "Failed to link email";
+            showToast(errMsg, false);
+        } finally {
+            setIsLinkingEmail(false);
+        }
+    };
 
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
@@ -521,6 +546,57 @@ function PageSettingsContent() {
                             />
                         </View>
 
+                        {!user?.email ? (
+                            <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 4 }}>
+                                    <Text style={styles.sectionHeader}>LINK EMAIL</Text>
+                                    <View style={styles.repBadge}>
+                                        <Sparkles size={12} color={colors.accent} style={{ marginRight: 4 }} />
+                                        <Text style={styles.repBadgeText}>+20 REP</Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.linkEmailCard}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                        <Mail size={18} color={colors.accent} />
+                                        <Text style={styles.linkEmailTitle}>Link Email Address</Text>
+                                    </View>
+                                    <Text style={styles.linkEmailDesc}>
+                                        Add your email address to secure your account and claim +20 Reputation points.
+                                    </Text>
+                                    <View style={styles.linkEmailInputRow}>
+                                        <TextInput
+                                            style={styles.linkEmailInput}
+                                            placeholder="Enter email address"
+                                            placeholderTextColor={colors.textSecondary}
+                                            value={newEmail}
+                                            onChangeText={setNewEmail}
+                                            keyboardType="email-address"
+                                            autoCapitalize="none"
+                                            selectionColor={colors.accent}
+                                        />
+                                        <TouchableOpacity
+                                            style={[styles.linkEmailBtn, isLinkingEmail && { opacity: 0.7 }]}
+                                            onPress={handleLinkEmail}
+                                            disabled={isLinkingEmail}
+                                            activeOpacity={0.8}
+                                        >
+                                            {isLinkingEmail ? (
+                                                <ActivityIndicator size="small" color="#ffffff" />
+                                            ) : (
+                                                <Text style={styles.linkEmailBtnText}>Link (+20 Rep)</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </>
+                        ) : (
+                            <View style={styles.section}>
+                                <Text style={styles.label}>LINKED EMAIL</Text>
+                                <Text style={[styles.input, { color: colors.textSecondary }]}>{user.email}</Text>
+                            </View>
+                        )}
+
                         <Text style={styles.sectionHeader}>SECURITY & ACCOUNT</Text>
 
                         <TouchableOpacity 
@@ -716,6 +792,69 @@ const getStyles = (colors: any, insets: any) => {
         themeOptionTextSelected: {
             color: '#FFFFFF',
             fontWeight: '700',
+        },
+        repBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(124, 58, 237, 0.15)',
+            borderWidth: 1,
+            borderColor: 'rgba(124, 58, 237, 0.4)',
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 6,
+        },
+        repBadgeText: {
+            color: colors.accent,
+            fontSize: 11,
+            fontWeight: '700',
+        },
+        linkEmailCard: {
+            backgroundColor: colors.inputBackground || colors.border,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 24,
+        },
+        linkEmailTitle: {
+            fontSize: 15,
+            fontWeight: '600',
+            color: colors.textPrimary,
+        },
+        linkEmailDesc: {
+            fontSize: 13,
+            color: colors.textSecondary,
+            marginBottom: 12,
+            lineHeight: 18,
+        },
+        linkEmailInputRow: {
+            flexDirection: 'row',
+            gap: 8,
+            alignItems: 'center',
+        },
+        linkEmailInput: {
+            flex: 1,
+            height: 42,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            paddingHorizontal: 12,
+            fontSize: 14,
+            color: colors.textPrimary,
+            backgroundColor: colors.background,
+        },
+        linkEmailBtn: {
+            backgroundColor: colors.accent,
+            paddingHorizontal: 14,
+            height: 42,
+            borderRadius: 8,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        linkEmailBtnText: {
+            color: '#ffffff',
+            fontWeight: '600',
+            fontSize: 13,
         },
     });
 };

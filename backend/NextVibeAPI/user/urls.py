@@ -12,7 +12,7 @@ from .views_pac import (
                             CheckStatusView, PublicUserDetailView,
                             SavePushTokenView, SaveWalletAddressView,
                             GetInviteInfoView, OgNftMintView,
-                            WalletSignInView
+                            WalletSignInView, LinkEmailView
                         )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -47,4 +47,5 @@ urlpatterns = [
     path("mint-og/", OgNftMintView.as_view(), name="mint_og"),
     path("wallet-sign-in/", WalletSignInView.as_view(), name="waller_signin"),
     path("apple-sign-in/", AppleRegisterView.as_view(), name="apple_sign_in"),
+    path("link-email/", LinkEmailView.as_view(), name="link_email"),
 ]
