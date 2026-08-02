@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.throttling import ScopedRateThrottle
 from django.core.exceptions import ObjectDoesNotExist
 from user.models import InviteUser
+from user.src.grant_invite_reward import check_and_grant_invite_rewards
 
 
 class GetInviteInfoView(APIView):
@@ -25,6 +26,8 @@ class GetInviteInfoView(APIView):
             return Response({
                 "error": "Invite data not found"
             }, status=status.HTTP_404_NOT_FOUND)
+
+        check_and_grant_invite_rewards(user)
 
         return Response({
             "invite_code": invite_data.invite_code,

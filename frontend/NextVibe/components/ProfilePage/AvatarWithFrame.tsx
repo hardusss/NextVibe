@@ -32,7 +32,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
     }, []);
 
     const renderFrame = () => {
-        if (invitedCount >= 10) {
+        if (invitedCount >= 3) {
             return (
                 <View
                     pointerEvents="none"
@@ -52,7 +52,7 @@ export const AvatarWithFrame: React.FC<AvatarWithFrameProps> = ({
                     />
                 </View>
             );
-        } else if (invitedCount >= 5) {
+        } else if (invitedCount >= 2) {
             return (
                 <View
                     pointerEvents="none"
