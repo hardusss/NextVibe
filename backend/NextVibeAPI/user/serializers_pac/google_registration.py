@@ -55,6 +55,9 @@ class GoogleRegister(serializers.ModelSerializer):
             from django.db.models import F
             invite_obj.invited_count = F('invited_count') + 1
             invite_obj.save(update_fields=['invited_count'])
+            invite_obj.refresh_from_db()
+            from user.src.grant_invite_reward import check_and_grant_invite_rewards
+            check_and_grant_invite_rewards(invite_obj.owner, new_user=user)
 
         if created and avatar_url:
             try:
