@@ -9,7 +9,7 @@ import {
     useBottomSheet,
     BottomSheetBackdropProps
 } from '@gorhom/bottom-sheet';
-import { Users, Copy, CheckCircle2, Gift, Map, Crown } from "lucide-react-native";
+import { Users, Copy, CheckCircle2, Gift, Sparkles, Crown } from "lucide-react-native";
 import Animated, {
     interpolate, Extrapolation, useAnimatedStyle
 } from 'react-native-reanimated';
@@ -54,8 +54,8 @@ export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProp
 
 const MILESTONES = [
     { target: 1, title: "Basic Frame", desc: "Base profile frame reward", Icon: Gift },
-    { target: 5, title: "VibeMap + Elite Frame", desc: "Unlock map & cooler frame", Icon: Map },
-    { target: 10, title: "OG cNFT + Mythic Frame", desc: "Max supply 25! Ultimate reward", Icon: Crown },
+    { target: 2, title: "+20-50 Rep + Elite Frame", desc: "Random 20-50 rep & cooler frame", Icon: Sparkles },
+    { target: 3, title: "OG cNFT + Mythic Frame", desc: "Max supply 25! Ultimate reward", Icon: Crown },
 ];
 
 export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
@@ -157,7 +157,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
     const accentText = isDark ? '#d8b4fe' : '#7c3aed';
 
     // Clamping the maximum progress value to 100 ensures the animated fill width doesn't overflow the container bounds if invitedCount exceeds the max milestone.
-    const progressPercentage = Math.min((invitedCount / 10) * 100, 100);
+    const progressPercentage = Math.min((invitedCount / 3) * 100, 100);
 
     const claimIsDisabled = claimState !== 'idle';
 
@@ -222,7 +222,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
 
                             <View style={styles.progressHeader}>
                                 <Text style={[styles.sectionLabel, { color: mutedColor, marginBottom: 0 }]}>INVITE PROGRESS</Text>
-                                <Text style={[styles.countText, { color: accentText }]}>{invitedCount} / 10</Text>
+                                <Text style={[styles.countText, { color: accentText }]}>{invitedCount} / 3</Text>
                             </View>
 
                             <View style={[styles.progressBarContainer, { backgroundColor: inputBg }]}>
@@ -280,7 +280,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
                                 })}
                             </View>
 
-                            {invitedCount >= 10 && (
+                            {invitedCount >= 3 && (
                                 <TouchableOpacity
                                     style={[
                                         styles.claimButton,

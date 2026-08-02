@@ -24,6 +24,20 @@ class OgNftMintView(APIView):
         # Basic validation
         if not wallet_address:
             return Response({"error": "Wallet not connected"}, status=status.HTTP_400_BAD_REQUEST)
+
+        from user.models import InviteUser
+        try:
+            invite_data = InviteUser.objects.get(owner=user)
+            if (invite_data.invited_count or 0) < 3:
+                return Response(
+                    {"error": "You need at least 3 invites to claim OG cNFT"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except InviteUser.DoesNotExist:
+            return Response(
+                {"error": "You need at least 3 invites to claim OG cNFT"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         already_claimed = OgAvatarMint.objects.filter(user=user).exists()
 
