@@ -24,3 +24,4 @@ from .save_wallet_address import SaveWalletAddressView
 from .invite_info import GetInviteInfoView
 from .mint_og import OgNftMintView
 from .wallet_singin import WalletSignInView
+from .link_email import LinkEmailView
