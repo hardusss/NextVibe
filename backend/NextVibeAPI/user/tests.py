@@ -74,10 +74,10 @@ class InviteSystemTest(TestCase):
         from rest_framework.test import APIRequestFactory, force_authenticate
         from user.views_pac.link_email import LinkEmailView
 
-        wallet_user = User.objects.create_user(
-            email=None,
+        wallet_user = User.objects.create(
             username="wallet_only_user",
-            wallet_address="0x9999999999999999999999999999999999999999"
+            wallet_address="0x9999999999999999999999999999999999999999",
+            auth_provider="wallet"
         )
 
         factory = APIRequestFactory()
