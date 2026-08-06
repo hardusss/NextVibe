@@ -25,6 +25,7 @@ export interface GroupMember {
   avatar?: string | null;
   is_online?: boolean;
   wallet_address?: string | null;
+  is_you?: boolean;
 }
 
 export default function CherryChatScreen() {
@@ -100,7 +101,7 @@ export default function CherryChatScreen() {
             onPress={openMembersModal}
             style={styles.headerRightButton}
           >
-            <Users size={22} color="#FF5BA8" />
+            <Users size={20} color="#FF5BA8" />
           </TouchableOpacity>
         }
       />
@@ -148,27 +149,31 @@ export default function CherryChatScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Mute Notifications Toggle Card */}
+            {/* Mute Notifications Toggle Card (Fix Alignment) */}
             <View style={styles.settingCard}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {isMuted ? (
-                  <BellOff size={22} color="#EF4444" style={{ marginRight: 12 }} />
-                ) : (
-                  <Bell size={22} color="#10B981" style={{ marginRight: 12 }} />
-                )}
-                <View style={{ flex: 1 }}>
+              <View style={styles.settingCardLeft}>
+                <View style={[styles.iconCircle, { backgroundColor: isMuted ? '#EF444422' : '#10B98122' }]}>
+                  {isMuted ? (
+                    <BellOff size={20} color="#EF4444" />
+                  ) : (
+                    <Bell size={20} color="#10B981" />
+                  )}
+                </View>
+                <View style={styles.settingTextContainer}>
                   <Text style={styles.settingTitle}>Mute Group Notifications</Text>
                   <Text style={styles.settingSubTitle}>
-                    {isMuted ? 'Notifications are disabled' : 'Receive push alerts on new messages'}
+                    {isMuted ? 'Notifications disabled' : 'Receive push notifications'}
                   </Text>
                 </View>
               </View>
-              <Switch
-                value={isMuted}
-                onValueChange={handleMuteToggle}
-                trackColor={{ false: '#374151', true: '#FF5BA8' }}
-                thumbColor="#FFFFFF"
-              />
+              <View style={styles.switchWrapper}>
+                <Switch
+                  value={isMuted}
+                  onValueChange={handleMuteToggle}
+                  trackColor={{ false: '#374151', true: '#FF5BA8' }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
             </View>
 
             {/* Members Section */}
@@ -185,6 +190,7 @@ export default function CherryChatScreen() {
                 <FlatList
                   data={members}
                   keyExtractor={(item) => item.user_id.toString()}
+                  showsVerticalScrollIndicator={false}
                   renderItem={({ item }) => (
                     <View style={styles.memberRow}>
                       <View style={styles.avatarContainer}>
@@ -193,7 +199,7 @@ export default function CherryChatScreen() {
                         ) : (
                           <View style={styles.avatarFallback}>
                             <Text style={styles.avatarInitial}>
-                              {item.username.charAt(0).toUpperCase()}
+                              {item.username ? item.username.charAt(0).toUpperCase() : 'U'}
                             </Text>
                           </View>
                         )}
@@ -208,14 +214,21 @@ export default function CherryChatScreen() {
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <Text style={styles.memberName}>{item.username}</Text>
+                          {item.is_you && (
+                            <View style={styles.youBadge}>
+                              <Text style={styles.youBadgeText}>You</Text>
+                            </View>
+                          )}
                           <ShieldCheck size={14} color="#FF5BA8" style={{ marginLeft: 4 }} />
                         </View>
                         {item.wallet_address ? (
                           <Text style={styles.memberWallet} numberOfLines={1}>
-                            {item.wallet_address.slice(0, 6)}...{item.wallet_address.slice(-4)}
+                            {item.wallet_address.length > 12
+                              ? `${item.wallet_address.slice(0, 6)}...${item.wallet_address.slice(-4)}`
+                              : item.wallet_address}
                           </Text>
                         ) : (
-                          <Text style={styles.memberWallet}>Member</Text>
+                          <Text style={styles.memberWallet}>NextVibe Member</Text>
                         )}
                       </View>
                     </View>
@@ -310,11 +323,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#231032',
-    padding: 14,
-    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
     marginTop: 16,
     borderWidth: 1,
     borderColor: '#3D1D52',
+  },
+  settingCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  settingTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   settingTitle: {
     color: '#FFFFFF',
@@ -323,7 +355,13 @@ const styles = StyleSheet.create({
   },
   settingSubTitle: {
     color: '#9CA3AF',
-    fontSize: 11,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  switchWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 4,
   },
   sectionTitle: {
     color: '#FF5BA8',
@@ -376,8 +414,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Dank Mono Bold',
   },
+  youBadge: {
+    backgroundColor: '#FF5BA833',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 6,
+    borderWidth: 1,
+    borderColor: '#FF5BA866',
+  },
+  youBadgeText: {
+    color: '#FF5BA8',
+    fontSize: 10,
+    fontFamily: 'Dank Mono Bold',
+  },
   memberWallet: {
     color: '#9CA3AF',
     fontSize: 12,
+    marginTop: 2,
   },
 });
