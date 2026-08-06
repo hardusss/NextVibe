@@ -50,7 +50,7 @@ export default function WalletIntroScreen() {
             .finally(() => {
                 isSaving.current = false;
             });
-    }, [wallet?.smartWallet]);
+    }, [wallet?.smartWallet])
 
     const handleActivateWallet = async () => {
         if (useWalletStore.getState().isConnecting) {
