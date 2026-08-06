@@ -9,9 +9,10 @@ import {
   TextInput,
   ScrollView,
   StatusBar,
+  TouchableOpacity,
 } from 'react-native';
 import { storage } from '@/src/utils/storage';
-import { Search, MessageSquareDashed } from 'lucide-react-native';
+import { Search, MessageSquareDashed, Users } from 'lucide-react-native';
 import OnlineUsers from './OnlineUsers';
 import ChatItem, { Chat } from './ChatItem';
 import { getChats, getOnlineUsers, deleteChat } from '@/src/api/chat';
@@ -235,6 +236,69 @@ export default function ChatsList() {
         ) : (
           <OnlineUsers users={onlineUsers} />
         )}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => router.push('/(shared)/cherry-chat' as any)}
+          style={{
+            marginHorizontal: 12,
+            marginVertical: 8,
+            borderRadius: chatRadius.card || 16,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: '#FF5BA844',
+          }}
+        >
+          <LinearGradient
+            colors={['#2A122E', '#16091F']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: '#FF5BA822',
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 2,
+                borderColor: '#FF5BA8',
+                marginRight: 12,
+              }}
+            >
+              <Users size={24} color="#FF5BA8" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 16, fontFamily: 'Dank Mono Bold', marginRight: 6 }}>
+                  NextVibe Group
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: '#FF5BA833',
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: '#FF5BA866',
+                  }}
+                >
+                  <Text style={{ color: '#FF5BA8', fontSize: 10, fontFamily: 'Dank Mono Bold' }}>
+                    Cherry
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ color: '#A0A0B0', fontSize: 12 }} numberOfLines={1}>
+                Shared NextVibe community group for all users
+              </Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
         {chatLoading && chats.length === 0 && (
           <View>
             {[1, 2, 3, 4].map(i => (

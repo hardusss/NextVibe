@@ -321,3 +321,20 @@ export const deleteChat = async (chatId: number): Promise<boolean> => {
     return false;
   }
 };
+
+export const getCherryEmbedToken = async (): Promise<string | null> => {
+  const token = await storage.getItem('access');
+  try {
+    const rawApiUrl = GetApiUrl();
+    const baseUrl = rawApiUrl.endsWith('/v1') ? rawApiUrl.slice(0, -3) : rawApiUrl;
+    const response = await axios.post(`${baseUrl}/cherry-embed-token`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data?.token || null;
+  } catch (error) {
+    console.error('Error fetching Cherry embed token:', error);
+    return null;
+  }
+};
