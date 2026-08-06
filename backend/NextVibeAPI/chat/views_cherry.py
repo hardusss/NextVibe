@@ -57,17 +57,32 @@ class CherryMembersView(APIView):
 
     def get(self, request):
         try:
-            users = User.objects.filter(is_active=True, is_baned=False).order_by('-is_online', 'username')[:100]
-            members = [
-                {
+            current_user = request.user
+
+            query = User.objects.filter(is_active=True, is_baned=False)\
+                        .exclude(username__in=['_', 'test', 'admin'])\
+                        .exclude(username__icontains='test_wallet')
+
+            users = list(query.order_by('-is_online', '-last_activity', 'username')[:100])
+
+            if current_user in users:
+                users.remove(current_user)
+                users.insert(0, current_user)
+            else:
+                users.insert(0, current_user)
+
+            members = []
+            for u in users:
+                is_you = (u.user_id == current_user.user_id)
+                members.append({
                     "user_id": u.user_id,
                     "username": u.username,
                     "avatar": get_avatar_url(u, request),
-                    "is_online": getattr(u, 'is_online', False),
+                    "is_online": True if is_you else getattr(u, 'is_online', False),
                     "wallet_address": u.wallet_address,
-                }
-                for u in users
-            ]
+                    "is_you": is_you,
+                })
+
             return Response({"members": members, "count": len(members)})
         except Exception as e:
             logger.error(f"Error in CherryMembersView: {e}")
@@ -104,7 +119,6 @@ class CherryWebhookView(APIView):
                 sender_wallet = payload.get("sender_wallet") or payload.get("sender")
                 message_text = payload.get("text") or payload.get("content") or payload.get("message") or "New message in NextVibe Group"
 
-                # Send Expo push notifications to users who have push token & didn't mute chat
                 query = User.objects.filter(is_active=True, muted_cherry_chat=False, expo_push_token__isnull=False).exclude(expo_push_token="")
                 if sender_wallet:
                     query = query.exclude(wallet_address=sender_wallet)
