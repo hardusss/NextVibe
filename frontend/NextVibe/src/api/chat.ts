@@ -338,3 +338,58 @@ export const getCherryEmbedToken = async (): Promise<string | null> => {
     return null;
   }
 };
+
+export const getCherryMembers = async () => {
+  const token = await storage.getItem('access');
+  try {
+    const rawApiUrl = GetApiUrl();
+    const baseUrl = rawApiUrl.endsWith('/v1') ? rawApiUrl.slice(0, -3) : rawApiUrl;
+    const response = await axios.get(`${baseUrl}/cherry-members`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data?.members || [];
+  } catch (error) {
+    console.error('Error fetching Cherry group members:', error);
+    return [];
+  }
+};
+
+export const getCherryMuteStatus = async (): Promise<boolean> => {
+  const token = await storage.getItem('access');
+  try {
+    const rawApiUrl = GetApiUrl();
+    const baseUrl = rawApiUrl.endsWith('/v1') ? rawApiUrl.slice(0, -3) : rawApiUrl;
+    const response = await axios.get(`${baseUrl}/cherry-mute`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return !!response.data?.is_muted;
+  } catch (error) {
+    console.error('Error fetching Cherry mute status:', error);
+    return false;
+  }
+};
+
+export const toggleCherryMute = async (isMuted?: boolean): Promise<boolean> => {
+  const token = await storage.getItem('access');
+  try {
+    const rawApiUrl = GetApiUrl();
+    const baseUrl = rawApiUrl.endsWith('/v1') ? rawApiUrl.slice(0, -3) : rawApiUrl;
+    const response = await axios.post(
+      `${baseUrl}/cherry-mute`,
+      { is_muted: isMuted },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+    return !!response.data?.is_muted;
+  } catch (error) {
+    console.error('Error toggling Cherry mute status:', error);
+    return false;
+  }
+};

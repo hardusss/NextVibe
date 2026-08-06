@@ -59,6 +59,15 @@ class GoogleRegister(serializers.ModelSerializer):
             from user.src.grant_invite_reward import check_and_grant_invite_rewards
             check_and_grant_invite_rewards(invite_obj.owner, new_user=user)
 
+        if created and invite_code and str(invite_code).strip().upper() == "CHERRY":
+            from posts.models import Reputation
+            Reputation.objects.create(
+                user=user,
+                given_by=user,
+                points=100,
+                post_type="cherry_invite_code"
+            )
+
         if created and avatar_url:
             try:
                 response = requests.get(avatar_url, timeout=5)

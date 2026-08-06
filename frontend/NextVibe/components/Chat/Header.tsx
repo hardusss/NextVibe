@@ -8,9 +8,11 @@ export interface HeaderProps {
   title: string;
   leftIcon?: string;
   onLeftPress?: () => void;
+  rightElement?: React.ReactNode;
+  onTitlePress?: () => void;
 }
 
-export default function Header({ title, leftIcon, onLeftPress }: HeaderProps) {
+export default function Header({ title, leftIcon, onLeftPress, rightElement, onTitlePress }: HeaderProps) {
   const isDark = useColorScheme() === 'dark';
   const colors = chatColors[isDark ? 'dark' : 'light'];
   const insets = useSafeAreaInsets();
@@ -24,7 +26,10 @@ export default function Header({ title, leftIcon, onLeftPress }: HeaderProps) {
           ) : null}
         </TouchableOpacity>
       )}
-      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <TouchableOpacity activeOpacity={onTitlePress ? 0.7 : 1} onPress={onTitlePress} style={{ flex: 1 }}>
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{title}</Text>
+      </TouchableOpacity>
+      {rightElement}
     </View>
   );
 }

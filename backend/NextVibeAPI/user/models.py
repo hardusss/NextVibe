@@ -58,6 +58,7 @@ class User(AbstractBaseUser):
     last_activity = models.DateTimeField(default=timezone.now)
     wallet_address = models.CharField(unique=True, max_length=50, blank=True, null=True)
     expo_push_token = models.CharField(max_length=100, blank=True, null=True)
+    muted_cherry_chat = models.BooleanField(default=False)
     from_invite_code = models.ForeignKey("InviteUser", on_delete=models.SET_NULL, null=True, blank=True, related_name="invited_users")
     auth_provider = models.CharField(max_length=20, null=True, blank=True, default="email")
     
