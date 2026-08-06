@@ -3,7 +3,6 @@ import { View, Text, ActivityIndicator, StyleSheet, useColorScheme, StatusBar } 
 import { CherryChatWebView } from './CherryChatWebView';
 import { buildCherryHostHtml } from './cherryHostHtml';
 import { getCherryEmbedToken } from '@/src/api/chat';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../Chat/Header';
 import { router } from 'expo-router';
 
@@ -11,7 +10,6 @@ export default function CherryChatScreen() {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const isDark = useColorScheme() === 'dark';
-  const insets = useSafeAreaInsets();
 
   const html = useMemo(
     () => buildCherryHostHtml({ sdkUrl: 'https://embed.cherry.fun/cherry-embed.js' }),
@@ -41,7 +39,7 @@ export default function CherryChatScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: '#0F0919', paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: '#0F0919' }]}>
       <StatusBar barStyle="light-content" backgroundColor="#0F0919" />
       <Header
         title="NextVibe Community Chat"
