@@ -32,11 +32,19 @@ class CherryEmbedTokenView(APIView):
         app_id = os.environ.get("CHERRY_APP_ID", CHERRY_APP_ID)
 
         user = request.user
+        now = datetime.now(timezone.utc)
+
+        # Update last activity timestamp for active chat session
+        try:
+            user.last_activity = now
+            user.save(update_fields=["last_activity"])
+        except Exception:
+            pass
+
         wallet_address = getattr(user, "wallet_address", None)
         if not wallet_address:
             wallet_address = getattr(user, "username", None) or f"user_{getattr(user, 'user_id', 'anon')}"
 
-        now = datetime.now(timezone.utc)
         payload = {
             "sub": str(wallet_address),
             "app_id": str(app_id),
@@ -58,17 +66,31 @@ class CherryMembersView(APIView):
     def get(self, request):
         try:
             current_user = request.user
+            now = datetime.now(timezone.utc)
+
+            # Filter active community members (active in last 7 days or online)
+            active_cutoff = now - timedelta(days=7)
 
             query = User.objects.filter(is_active=True, is_baned=False)\
+                        .filter(last_activity__gte=active_cutoff)\
                         .exclude(username__in=['_', 'test', 'admin'])\
                         .exclude(username__icontains='test_wallet')
 
-            users = list(query.order_by('-is_online', '-last_activity', 'username')[:100])
+            users = list(query.order_by('-is_online', '-last_activity', 'username'))
 
-            if current_user in users:
-                users.remove(current_user)
+            # Fallback to last 30 days if fewer than 3 active users
+            if len(users) < 3:
+                active_cutoff_30 = now - timedelta(days=30)
+                query = User.objects.filter(is_active=True, is_baned=False)\
+                            .filter(last_activity__gte=active_cutoff_30)\
+                            .exclude(username__in=['_', 'test', 'admin'])\
+                            .exclude(username__icontains='test_wallet')
+                users = list(query.order_by('-is_online', '-last_activity', 'username'))
+
+            if current_user not in users:
                 users.insert(0, current_user)
             else:
+                users.remove(current_user)
                 users.insert(0, current_user)
 
             members = []
@@ -111,38 +133,97 @@ class CherryWebhookView(APIView):
 
     def post(self, request):
         try:
-            data = request.data
-            event = data.get("event") or data.get("type")
-            payload = data.get("payload") or data.get("data") or {}
+            data = request.data or {}
+            logger.info(f"Cherry Webhook payload received: {data}")
 
-            if event in ["message.created", "message", "chat_message"]:
-                sender_wallet = payload.get("sender_wallet") or payload.get("sender")
-                message_text = payload.get("text") or payload.get("content") or payload.get("message") or "New message in NextVibe Group"
+            event_type = str(data.get("event") or data.get("type") or data.get("action") or "").lower()
+            payload = data.get("payload") or data.get("data") or data
 
-                query = User.objects.filter(is_active=True, muted_cherry_chat=False, expo_push_token__isnull=False).exclude(expo_push_token="")
-                if sender_wallet:
+            is_msg_event = (
+                not event_type or
+                any(kw in event_type for kw in ["message", "msg", "chat", "create", "send"])
+            )
+
+            if is_msg_event:
+                msg_dict = payload.get("message") if isinstance(payload.get("message"), dict) else payload
+
+                message_text = (
+                    msg_dict.get("text") or
+                    msg_dict.get("content") or
+                    msg_dict.get("body") or
+                    msg_dict.get("message") or
+                    data.get("text") or
+                    data.get("content") or
+                    "New message in NextVibe Group"
+                )
+                if isinstance(message_text, dict):
+                    message_text = message_text.get("text") or message_text.get("content") or "New message in NextVibe Group"
+
+                message_text = str(message_text).strip()
+
+                sender_raw = (
+                    msg_dict.get("sender_wallet") or
+                    msg_dict.get("sender") or
+                    msg_dict.get("user") or
+                    msg_dict.get("author") or
+                    payload.get("sender_wallet") or
+                    payload.get("sender") or
+                    data.get("sender")
+                )
+
+                sender_wallet = None
+                sender_username = None
+
+                if isinstance(sender_raw, dict):
+                    sender_wallet = sender_raw.get("wallet_address") or sender_raw.get("wallet") or sender_raw.get("address") or sender_raw.get("sub")
+                    sender_username = sender_raw.get("username") or sender_raw.get("name")
+                elif isinstance(sender_raw, str):
+                    sender_wallet = sender_raw
+
+                query = User.objects.filter(
+                    is_active=True,
+                    is_baned=False,
+                    muted_cherry_chat=False,
+                    expo_push_token__isnull=False
+                ).exclude(expo_push_token="")
+
+                if sender_wallet and isinstance(sender_wallet, str):
                     query = query.exclude(wallet_address=sender_wallet)
 
-                push_tokens = list(query.values_list("expo_push_token", flat=True))
+                tokens = list(query.values_list("expo_push_token", flat=True))
 
-                if push_tokens:
-                    try:
-                        from exponent_server_sdk import PushClient, PushMessage
+                if tokens:
+                    from exponent_server_sdk import PushClient, PushMessage
+
+                    title = f"NextVibe Group ({sender_username})" if sender_username else "NextVibe Group"
+                    body = message_text
+
+                    valid_tokens = [t for t in tokens if PushClient.is_exponent_push_token(t)]
+
+                    chunk_size = 100
+                    for i in range(0, len(valid_tokens), chunk_size):
+                        chunk = valid_tokens[i:i + chunk_size]
                         messages = [
                             PushMessage(
                                 to=token,
-                                title="NextVibe Group",
-                                body=str(message_text),
-                                data={"type": "cherry_chat", "roomId": "68a27a2f-f26b-4a84-b8d6-55be5cb86122"}
+                                title=title,
+                                body=body,
+                                data={
+                                    "type": "cherry_chat",
+                                    "roomId": "68a27a2f-f26b-4a84-b8d6-55be5cb86122"
+                                },
+                                sound="default",
+                                priority="high"
                             )
-                            for token in push_tokens if PushClient.is_exponent_push_token(token)
+                            for token in chunk
                         ]
-                        if messages:
+                        try:
                             PushClient().publish_multiple(messages)
-                    except Exception as push_err:
-                        logger.error(f"Error sending Expo push notifications: {push_err}")
+                        except Exception as push_err:
+                            logger.error(f"Error sending Expo push chunk: {push_err}")
 
             return Response({"status": "ok"})
         except Exception as e:
-            logger.error(f"Error in CherryWebhookView: {e}")
+            logger.error(f"Error in CherryWebhookView: {e}", exc_info=True)
             return Response({"error": str(e)}, status=400)
+
