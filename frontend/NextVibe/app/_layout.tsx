@@ -92,6 +92,9 @@ function resolveNotificationUrl(data: Record<string, any>): { internal?: string;
     if ((data?.type === 'new_message' || data?.type === 'chat_message') && data?.chat_id) {
         return { internal: `/(shared)/chat-room?id=${data.chat_id}` };
     }
+    if (data?.type === 'cherry_chat') {
+        return { internal: '/(shared)/cherry-chat' };
+    }
     return {};
 }
 
