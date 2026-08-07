@@ -12,7 +12,8 @@ import h3
 class UserEventConnectionsView(APIView):
     """
     GET /posts/user-event-connections/
-    Returns a list of events the user attended, along with the other attendees and reputation earned.
+    Returns a list of events attended, as well as a full breakdown of reputation sources
+    (e.g., event check-ins, event posts, Cherry invite rewards, email verification, and referral bonuses).
     """
     permission_classes = [IsAuthenticated]
 
@@ -103,7 +104,147 @@ class UserEventConnectionsView(APIView):
                 "is_active": is_active, 
             })
 
-        return Response(events_data, status=status.HTTP_200_OK)
+        # 2. Detailed Reputation Breakdown Items
+        reputation_items = []
+        all_reps = Reputation.objects.filter(user=target_user).select_related('event', 'post', 'given_by')
+
+        for rep in all_reps:
+            # Case A: Cherry invite code activation
+            if rep.post_type == "cherry_invite_code":
+                reputation_items.append({
+                    "id": f"rep_{rep.id}",
+                    "type": "cherry_invite_code",
+                    "title": "CHERRY Invite Code Activation",
+                    "description": "Activated account using CHERRY invite code",
+                    "points": rep.points,
+                    "date": rep.created_at,
+                    "icon": "🍒",
+                    "badge_color": "#FF5BA8"
+                })
+            # Case B: Post created at Event
+            elif rep.post or rep.post_type == "event_post":
+                p = rep.post
+                event_title = rep.event.about if rep.event else (p.on_event.about if (p and p.on_event) else "Event")
+                post_image = None
+                if p:
+                    media = p.media.first()
+                    if media and getattr(media, 'file', None):
+                        post_image = media.file_url
+
+                reputation_items.append({
+                    "id": f"rep_{rep.id}",
+                    "type": "event_post",
+                    "title": f"Post at Event: {event_title}",
+                    "description": f"Earned +{rep.points} REP for creating a post at event '{event_title}'",
+                    "points": rep.points,
+                    "date": rep.created_at,
+                    "image": post_image,
+                    "post_id": p.id if p else None,
+                    "event_id": rep.event.id if rep.event else None,
+                    "icon": "📝",
+                    "badge_color": "#A78BFA"
+                })
+            # Case C: Email Verification reward
+            elif rep.post_type == "link_email_reward":
+                reputation_items.append({
+                    "id": f"rep_{rep.id}",
+                    "type": "email_verification",
+                    "title": "Email Linked & Verified",
+                    "description": "Linked and verified account email address",
+                    "points": rep.points,
+                    "date": rep.created_at,
+                    "icon": "✉️",
+                    "badge_color": "#3B82F6"
+                })
+            # Case D: Invite / Referral milestone reward
+            elif rep.post_type and rep.post_type.startswith("invite_reward"):
+                reputation_items.append({
+                    "id": f"rep_{rep.id}",
+                    "type": "invite_reward",
+                    "title": "Community Referral Reward",
+                    "description": "Earned reputation for inviting friends to NextVibe",
+                    "points": rep.points,
+                    "date": rep.created_at,
+                    "icon": "👥",
+                    "badge_color": "#10B981"
+                })
+            # Case E: Event Check-in
+            elif rep.is_checkin and rep.event:
+                reputation_items.append({
+                    "id": f"rep_{rep.id}",
+                    "type": "event_checkin",
+                    "title": f"Checked in: {rep.event.about or 'Event'}",
+                    "description": f"Verified attendance at event '{rep.event.about or 'Event'}'",
+                    "points": rep.points,
+                    "date": rep.created_at,
+                    "event_id": rep.event.id,
+                    "icon": "🎟️",
+                    "badge_color": "#22C55E"
+                })
+            # Case F: Peer interaction / Networking
+            elif rep.event and not rep.is_checkin:
+                other_name = rep.given_by.username if rep.given_by else "Peer"
+                reputation_items.append({
+                    "id": f"rep_{rep.id}",
+                    "type": "networking",
+                    "title": f"Met {other_name} at {rep.event.about or 'Event'}",
+                    "description": f"Networked via tap with {other_name}",
+                    "points": rep.points,
+                    "date": rep.created_at,
+                    "event_id": rep.event.id,
+                    "icon": "🤝",
+                    "badge_color": "#EAB308"
+                })
+            else:
+                reputation_items.append({
+                    "id": f"rep_{rep.id}",
+                    "type": "generic",
+                    "title": "Reputation Reward",
+                    "description": f"Reputation awarded by {rep.given_by.username if rep.given_by else 'NextVibe System'}",
+                    "points": rep.points,
+                    "date": rep.created_at,
+                    "icon": "⭐",
+                    "badge_color": "#F59E0B"
+                })
+
+        # Also collect Posts created on an Event with reputation_earned > 0 that haven't been captured yet
+        user_posts_on_events = Post.objects.filter(
+            author=target_user,
+            on_event__isnull=False,
+            reputation_earned__gt=0
+        ).select_related('on_event')
+
+        existing_post_ids = {r.get("post_id") for r in reputation_items if r.get("post_id")}
+
+        for p in user_posts_on_events:
+            if p.id not in existing_post_ids:
+                event_title = p.on_event.about if p.on_event else "Event"
+                post_image = None
+                media = p.media.first()
+                if media and getattr(media, 'file', None):
+                    post_image = media.file_url
+
+                reputation_items.append({
+                    "id": f"post_rep_{p.id}",
+                    "type": "event_post",
+                    "title": f"Post at Event: {event_title}",
+                    "description": f"Earned +{p.reputation_earned} REP for creating a post at event '{event_title}'",
+                    "points": p.reputation_earned,
+                    "date": p.created_at,
+                    "image": post_image,
+                    "post_id": p.id,
+                    "event_id": p.on_event.id,
+                    "icon": "📝",
+                    "badge_color": "#A78BFA"
+                })
+
+        # Sort reputation items by date (newest first)
+        reputation_items.sort(key=lambda x: str(x.get("date", "")), reverse=True)
+
+        return Response({
+            "events": events_data,
+            "reputation_items": reputation_items,
+        }, status=status.HTTP_200_OK)
 
 
 class EventNFCConnectView(APIView):

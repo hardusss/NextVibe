@@ -24,7 +24,7 @@ import { AvatarWithFrame } from "./AvatarWithFrame";
 import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
-import { Star, Camera, Layers, Calendar } from "lucide-react-native";
+import { Star, Camera, Layers, Calendar, ChevronRight } from "lucide-react-native";
 
 import getUserDetail from "@/src/api/user.detail";
 import { storage } from '@/src/utils/storage';
@@ -377,17 +377,30 @@ const ProfileView = () => {
 
                 <View style={st.repRow}>
                     <TouchableOpacity
-                        activeOpacity={0.7}
+                        activeOpacity={0.75}
                         onPress={() => eventConnectionsSheetRef.current?.present(userData.reputation)}
-                        style={[st.repBadge, {
-                            backgroundColor: isDark ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.1)',
-                            borderColor: isDark ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.25)',
+                        style={[st.repBadgeInteractive, {
+                            backgroundColor: isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.12)',
+                            borderColor: isDark ? 'rgba(34,197,94,0.35)' : 'rgba(34,197,94,0.4)',
                         }]}
                     >
-                        <Star size={12} color="#22c55e" fill="#22c55e" />
-                        <Text style={[st.repText, { color: isDark ? '#22c55e' : '#16a34a' }]}>
-                            {formatNumber(userData.reputation)} rep
-                        </Text>
+                        <View style={st.repBadgeLeft}>
+                            <View style={st.repStarCircle}>
+                                <Star size={11} color="#22c55e" fill="#22c55e" />
+                            </View>
+                            <Text style={[st.repTextMain, { color: isDark ? '#4ade80' : '#16a34a' }]}>
+                                {formatNumber(userData.reputation)} <Text style={st.repTextSub}>REP</Text>
+                            </Text>
+                        </View>
+
+                        <View style={st.repDivider} />
+
+                        <View style={st.repBadgeRight}>
+                            <Text style={[st.repActionTxt, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(17,24,39,0.7)' }]}>
+                                POAPs & History
+                            </Text>
+                            <ChevronRight size={13} color={isDark ? '#4ade80' : '#16a34a'} />
+                        </View>
                     </TouchableOpacity>
                 </View>
 
@@ -679,19 +692,55 @@ const st = StyleSheet.create({
     },
     repRow: {
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
     },
-    repBadge: {
+    repBadgeInteractive: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        borderWidth: 1,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 20,
+        borderWidth: 1.5,
+        shadowColor: '#22c55e',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
     },
-    repText: {
-        fontSize: 12,
+    repBadgeLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    repStarCircle: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: 'rgba(34,197,94,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    repTextMain: {
+        fontSize: 13,
+        fontFamily: 'Dank Mono Bold',
+        includeFontPadding: false,
+    },
+    repTextSub: {
+        fontSize: 11,
+        fontFamily: 'Dank Mono Bold',
+    },
+    repDivider: {
+        width: 1,
+        height: 14,
+        backgroundColor: 'rgba(34,197,94,0.3)',
+        marginHorizontal: 10,
+    },
+    repBadgeRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+    },
+    repActionTxt: {
+        fontSize: 11,
         fontFamily: 'Dank Mono Bold',
         includeFontPadding: false,
     },
