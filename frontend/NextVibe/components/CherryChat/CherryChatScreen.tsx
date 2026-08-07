@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { CherryChatWebView } from './CherryChatWebView';
 import { buildCherryHostHtml } from './cherryHostHtml';
-import { getCherryEmbedToken, getCherryMembers, getCherryMuteStatus, toggleCherryMute } from '@/src/api/chat';
+import { getCherryEmbedToken, getCherryMembers, getCherryMuteStatus, toggleCherryMute, triggerCherryMessageNotification } from '@/src/api/chat';
 import Header from '../Chat/Header';
 import { router } from 'expo-router';
 import { Users, Bell, BellOff, X, ShieldCheck } from 'lucide-react-native';
@@ -120,6 +120,11 @@ export default function CherryChatScreen() {
             mode: 'external-controlled',
             token,
             theme: { mode: 'dark', primaryColor: '#FF5BA8' },
+          }}
+          onEvent={(event, data) => {
+            if (event === 'message' || event === 'message.created') {
+              triggerCherryMessageNotification(data);
+            }
           }}
           style={styles.webView}
         />
