@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 CHERRY_APP_ID = "16e14376-0fce-4536-8891-754fd8fb5748"
+CHERRY_ROOM_ID = "68a27a2f-f26b-4a84-b8d6-55be5cb86122"
+CHERRY_PROJECT_KEY = "cherry_sk_db17307ee465_0e9daca21af1fe0b54a82e688cefcfac8f3dff286f501d44"
 
 def get_avatar_url(user, request=None):
     try:
@@ -68,6 +70,24 @@ class CherryMembersView(APIView):
             current_user = request.user
             now = datetime.now(timezone.utc)
 
+            # Query real-time group information from Cherry API using Project key (cherry_sk_)
+            cherry_count = None
+            try:
+                import requests
+                project_key = os.environ.get("CHERRY_PROJECT_KEY", CHERRY_PROJECT_KEY)
+                resp = requests.get(
+                    f"https://api.cherry.fun/api/v1/apps/groups/{CHERRY_ROOM_ID}",
+                    headers={"Authorization": f"Bearer {project_key}"},
+                    timeout=3
+                )
+                if resp.status_code == 200:
+                    room_data = resp.json().get("room", {})
+                    cherry_count = room_data.get("memberCount")
+            except Exception as cherry_err:
+                logger.warning(f"Failed to fetch member count from Cherry API: {cherry_err}")
+
+            target_limit = cherry_count if (cherry_count and cherry_count > 0) else 6
+
             # Filter active community members (active in last 7 days or online)
             active_cutoff = now - timedelta(days=7)
 
@@ -76,18 +96,20 @@ class CherryMembersView(APIView):
                         .exclude(username__in=['_', 'test', 'admin'])\
                         .exclude(username__icontains='test_wallet')
 
-            users = list(query.order_by('-is_online', '-last_activity', 'username'))
+            users = list(query.order_by('-is_online', '-last_activity', 'username')[:target_limit])
 
-            # Fallback to last 30 days if fewer than 3 active users
-            if len(users) < 3:
+            # Fallback to last 30 days if fewer than target_limit active users
+            if len(users) < target_limit:
                 active_cutoff_30 = now - timedelta(days=30)
                 query = User.objects.filter(is_active=True, is_baned=False)\
                             .filter(last_activity__gte=active_cutoff_30)\
                             .exclude(username__in=['_', 'test', 'admin'])\
                             .exclude(username__icontains='test_wallet')
-                users = list(query.order_by('-is_online', '-last_activity', 'username'))
+                users = list(query.order_by('-is_online', '-last_activity', 'username')[:target_limit])
 
             if current_user not in users:
+                if len(users) >= target_limit and len(users) > 0:
+                    users.pop()
                 users.insert(0, current_user)
             else:
                 users.remove(current_user)
@@ -105,7 +127,7 @@ class CherryMembersView(APIView):
                     "is_you": is_you,
                 })
 
-            return Response({"members": members, "count": len(members)})
+            return Response({"members": members, "count": target_limit})
         except Exception as e:
             logger.error(f"Error in CherryMembersView: {e}")
             return Response({"error": str(e)}, status=500)
