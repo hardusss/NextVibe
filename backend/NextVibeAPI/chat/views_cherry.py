@@ -155,6 +155,9 @@ class CherryWebhookView(APIView):
 
     def post(self, request):
         try:
+            import hashlib
+            from django.core.cache import cache
+
             data = request.data or {}
             logger.info(f"Cherry Webhook payload received: {data}")
 
@@ -202,6 +205,22 @@ class CherryWebhookView(APIView):
                 elif isinstance(sender_raw, str):
                     sender_wallet = sender_raw
 
+                # Set sender_username from authenticated user if available
+                if not sender_username and request.user and request.user.is_authenticated:
+                    sender_username = request.user.username
+
+                # Deduplicate identical message notifications within 15 seconds window
+                user_id_key = request.user.user_id if (request.user and request.user.is_authenticated) else 0
+                msg_fingerprint = f"{message_text}:{sender_wallet}:{user_id_key}"
+                cache_key = f"cherry_push_dedup:{hashlib.md5(msg_fingerprint.encode()).hexdigest()}"
+
+                if cache.get(cache_key):
+                    logger.info(f"Skipping duplicate push notification for key: {cache_key}")
+                    return Response({"status": "duplicate_skipped"})
+
+                cache.set(cache_key, True, timeout=15)
+
+                # Base query: users with push tokens who haven't muted Cherry chat
                 query = User.objects.filter(
                     is_active=True,
                     is_baned=False,
@@ -209,8 +228,16 @@ class CherryWebhookView(APIView):
                     expo_push_token__isnull=False
                 ).exclude(expo_push_token="")
 
+                # Strictly exclude the sender user
+                if request.user and request.user.is_authenticated:
+                    query = query.exclude(user_id=request.user.user_id)
+                    if getattr(request.user, "wallet_address", None):
+                        query = query.exclude(wallet_address=request.user.wallet_address)
+                    if getattr(request.user, "username", None):
+                        query = query.exclude(username=request.user.username)
+
                 if sender_wallet and isinstance(sender_wallet, str):
-                    query = query.exclude(wallet_address=sender_wallet)
+                    query = query.exclude(wallet_address=sender_wallet).exclude(username=sender_wallet)
 
                 tokens = list(query.values_list("expo_push_token", flat=True))
 
