@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,13 @@ import {
   Modal,
   FlatList,
   Image,
-  Switch,
 } from 'react-native';
 import { CherryChatWebView } from './CherryChatWebView';
 import { buildCherryHostHtml } from './cherryHostHtml';
-import { getCherryEmbedToken, getCherryMembers, getCherryMuteStatus, toggleCherryMute, triggerCherryMessageNotification } from '@/src/api/chat';
+import { getCherryEmbedToken, getCherryMembers } from '@/src/api/chat';
 import Header from '../Chat/Header';
 import { router } from 'expo-router';
-import { Users, Bell, BellOff, X, ShieldCheck } from 'lucide-react-native';
+import { Users, X, ShieldCheck } from 'lucide-react-native';
 
 export interface GroupMember {
   user_id: number;
@@ -34,10 +33,7 @@ export default function CherryChatScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const isDark = useColorScheme() === 'dark';
-
-  const mountedTimeRef = useRef<number>(Date.now());
 
   const html = useMemo(
     () => buildCherryHostHtml({ sdkUrl: 'https://embed.cherry.fun/cherry-embed.js' }),
@@ -48,13 +44,9 @@ export default function CherryChatScreen() {
     let isMounted = true;
     const initData = async () => {
       try {
-        const [freshToken, muteState] = await Promise.all([
-          getCherryEmbedToken(),
-          getCherryMuteStatus(),
-        ]);
-        if (isMounted) {
-          if (freshToken) setToken(freshToken);
-          setIsMuted(muteState);
+        const freshToken = await getCherryEmbedToken();
+        if (isMounted && freshToken) {
+          setToken(freshToken);
         }
       } catch (err) {
         console.error('Failed to initialize Cherry screen:', err);
@@ -81,12 +73,6 @@ export default function CherryChatScreen() {
     } finally {
       setLoadingMembers(false);
     }
-  };
-
-  const handleMuteToggle = async (val: boolean) => {
-    setIsMuted(val);
-    const updated = await toggleCherryMute(val);
-    setIsMuted(updated);
   };
 
   return (
@@ -123,22 +109,11 @@ export default function CherryChatScreen() {
             token,
             theme: { mode: 'dark', primaryColor: '#FF5BA8' },
           }}
-          onEvent={(event, data: any) => {
-            if ((event === 'message' || event === 'message.created') && data) {
-              const msgTime = data?.createdAt ? new Date(data.createdAt).getTime() : Date.now();
-              if (msgTime >= mountedTimeRef.current - 5000) {
-                const text = data?.text || data?.content || data?.body || (typeof data === 'string' ? data : null);
-                if (text && typeof text === 'string' && text.trim().length > 0) {
-                  triggerCherryMessageNotification(data);
-                }
-              }
-            }
-          }}
           style={styles.webView}
         />
       )}
 
-      {/* Members & Settings Modal */}
+      {/* Members Modal */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -160,33 +135,6 @@ export default function CherryChatScreen() {
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
                 <X size={22} color="#E0E0E0" />
               </TouchableOpacity>
-            </View>
-
-            {/* Mute Notifications Toggle Card (Fix Alignment) */}
-            <View style={styles.settingCard}>
-              <View style={styles.settingCardLeft}>
-                <View style={[styles.iconCircle, { backgroundColor: isMuted ? '#EF444422' : '#10B98122' }]}>
-                  {isMuted ? (
-                    <BellOff size={20} color="#EF4444" />
-                  ) : (
-                    <Bell size={20} color="#10B981" />
-                  )}
-                </View>
-                <View style={styles.settingTextContainer}>
-                  <Text style={styles.settingTitle}>Mute Group Notifications</Text>
-                  <Text style={styles.settingSubTitle}>
-                    {isMuted ? 'Notifications disabled' : 'Receive push notifications'}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.switchWrapper}>
-                <Switch
-                  value={isMuted}
-                  onValueChange={handleMuteToggle}
-                  trackColor={{ false: '#374151', true: '#FF5BA8' }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
             </View>
 
             {/* Members Section */}
@@ -331,51 +279,6 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 6,
   },
-  settingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#231032',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: '#3D1D52',
-  },
-  settingCardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
-  },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  settingTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  settingTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontFamily: 'Dank Mono Bold',
-  },
-  settingSubTitle: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  switchWrapper: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingLeft: 4,
-  },
   sectionTitle: {
     color: '#FF5BA8',
     fontSize: 14,
@@ -401,11 +304,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FF5BA833',
+    backgroundColor: '#371B54',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FF5BA866',
   },
   avatarInitial: {
     color: '#FF5BA8',
@@ -419,7 +320,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#16091F',
   },
   memberName: {
@@ -431,10 +332,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF5BA833',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 8,
     marginLeft: 6,
-    borderWidth: 1,
-    borderColor: '#FF5BA866',
   },
   youBadgeText: {
     color: '#FF5BA8',
@@ -442,7 +341,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Dank Mono Bold',
   },
   memberWallet: {
-    color: '#9CA3AF',
+    color: '#8A8A9A',
     fontSize: 12,
     marginTop: 2,
   },
