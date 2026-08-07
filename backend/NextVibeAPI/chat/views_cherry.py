@@ -220,8 +220,8 @@ class CherryWebhookView(APIView):
 
                 cache.set(cache_key, True, timeout=15)
 
-                # Target ONLY active Cherry chat members / specified test users (1mshard29 and nxv)
-                TARGET_USERNAMES = ["1mshard29", "nxv"]
+                # Target active Cherry chat test accounts (1mshard29, nxv, nvadmin29)
+                TARGET_USERNAMES = ["1mshard29", "nxv", "nvadmin29"]
 
                 query = User.objects.filter(
                     is_active=True,
@@ -242,15 +242,24 @@ class CherryWebhookView(APIView):
                 if sender_wallet and isinstance(sender_wallet, str):
                     query = query.exclude(wallet_address=sender_wallet).exclude(username=sender_wallet)
 
-                tokens = list(query.values_list("expo_push_token", flat=True))
+                raw_tokens = list(query.values_list("expo_push_token", flat=True))
 
-                if tokens:
+                if raw_tokens:
                     from exponent_server_sdk import PushClient, PushMessage
 
                     title = f"NextVibe Group ({sender_username})" if sender_username else "NextVibe Group"
                     body = message_text
 
-                    valid_tokens = [t for t in tokens if PushClient.is_exponent_push_token(t)]
+                    valid_tokens = []
+                    for t in raw_tokens:
+                        if not t:
+                            continue
+                        if PushClient.is_exponent_push_token(t):
+                            valid_tokens.append(t)
+                        else:
+                            wrapped = f"ExponentPushToken[{t}]"
+                            if PushClient.is_exponent_push_token(wrapped):
+                                valid_tokens.append(wrapped)
 
                     chunk_size = 100
                     for i in range(0, len(valid_tokens), chunk_size):
