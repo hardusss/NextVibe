@@ -220,11 +220,14 @@ class CherryWebhookView(APIView):
 
                 cache.set(cache_key, True, timeout=15)
 
-                # Base query: users with push tokens who haven't muted Cherry chat
+                # Target ONLY active Cherry chat members / specified test users (1mshard29 and nxv)
+                TARGET_USERNAMES = ["1mshard29", "nxv"]
+
                 query = User.objects.filter(
                     is_active=True,
                     is_baned=False,
                     muted_cherry_chat=False,
+                    username__in=TARGET_USERNAMES,
                     expo_push_token__isnull=False
                 ).exclude(expo_push_token="")
 
