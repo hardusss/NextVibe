@@ -85,7 +85,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     const divider = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
     const accent = '#A855F7';
 
-    const fetchData = async (userId?: number) => {
+    const fetchData = async (userId?: number, repHint?: number) => {
         setLoading(true);
         try {
             const token = await storage.getItem('access');
@@ -96,13 +96,71 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                 headers: { Authorization: `Bearer ${token}` },
             });
             
+            let eventsList: EventData[] = [];
+            let itemsList: ReputationItem[] = [];
+
             if (Array.isArray(res.data)) {
-                setData(res.data);
-                setRepItems([]);
+                eventsList = res.data;
             } else if (res.data && typeof res.data === 'object') {
-                setData(res.data.events || []);
-                setRepItems(res.data.reputation_items || []);
+                eventsList = res.data.events || [];
+                itemsList = res.data.reputation_items || [];
             }
+
+            // Fallback derivation if itemsList is empty
+            if (itemsList.length === 0) {
+                const currentRep = repHint !== undefined ? repHint : totalRep;
+                
+                // If user has >= 100 REP, add CHERRY Invite Code bonus
+                if (currentRep >= 100) {
+                    itemsList.push({
+                        id: 'cherry_code_fallback',
+                        type: 'cherry_invite_code',
+                        title: 'CHERRY Invite Code Activation',
+                        description: 'Activated account using CHERRY invite code',
+                        points: 100,
+                        date: new Date().toISOString(),
+                        icon: '🍒',
+                        badge_color: '#FF5BA8',
+                    });
+                }
+
+                // Add Event Check-ins and Peer Networking from eventsList
+                eventsList.forEach((evt) => {
+                    itemsList.push({
+                        id: `evt_chk_${evt.event_id}`,
+                        type: 'event_checkin',
+                        title: `Checked in: ${evt.event_name}`,
+                        description: `Verified attendance & POAP claimed for '${evt.event_name}'`,
+                        points: evt.checkin_rep || 50,
+                        date: evt.checked_in_at || new Date().toISOString(),
+                        image: evt.event_image,
+                        event_id: evt.event_id,
+                        icon: '🎟️',
+                        badge_color: '#22C55E',
+                    });
+
+                    if (evt.connections && evt.connections.length > 0) {
+                        evt.connections.forEach((conn) => {
+                            if (conn.rep_received > 0) {
+                                itemsList.push({
+                                    id: `net_${evt.event_id}_${conn.user_id}`,
+                                    type: 'networking',
+                                    title: `Met ${conn.username} at ${evt.event_name}`,
+                                    description: `Networked via tap with ${conn.username}`,
+                                    points: conn.rep_received,
+                                    date: evt.checked_in_at || new Date().toISOString(),
+                                    event_id: evt.event_id,
+                                    icon: '🤝',
+                                    badge_color: '#EAB308',
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            setData(eventsList);
+            setRepItems(itemsList);
         } catch (e) {
             console.error(e);
         } finally {
@@ -114,7 +172,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
         present: (rep?: number, userId?: number) => {
             if (rep !== undefined) setTotalRep(rep);
             sheetRef.current?.present();
-            fetchData(userId);
+            fetchData(userId, rep);
         },
         dismiss: () => sheetRef.current?.dismiss(),
     }));
