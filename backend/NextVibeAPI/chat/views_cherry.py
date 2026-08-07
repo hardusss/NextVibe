@@ -220,14 +220,11 @@ class CherryWebhookView(APIView):
 
                 cache.set(cache_key, True, timeout=15)
 
-                # Target active Cherry chat test accounts (1mshard29, nxv, nvadmin29)
-                TARGET_USERNAMES = ["1mshard29", "nxv", "nvadmin29"]
-
+                # Query all active community users who haven't muted Cherry chat
                 query = User.objects.filter(
                     is_active=True,
                     is_baned=False,
                     muted_cherry_chat=False,
-                    username__in=TARGET_USERNAMES,
                     expo_push_token__isnull=False
                 ).exclude(expo_push_token="")
 
@@ -274,7 +271,8 @@ class CherryWebhookView(APIView):
                                     "roomId": "68a27a2f-f26b-4a84-b8d6-55be5cb86122"
                                 },
                                 sound="default",
-                                priority="high"
+                                priority="high",
+                                display_in_foreground=True
                             )
                             for token in chunk
                         ]
