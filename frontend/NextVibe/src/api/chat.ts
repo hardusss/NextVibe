@@ -393,3 +393,23 @@ export const toggleCherryMute = async (isMuted?: boolean): Promise<boolean> => {
     return false;
   }
 };
+
+export const triggerCherryMessageNotification = async (messageData: any) => {
+  try {
+    const token = await storage.getItem('access');
+    const rawApiUrl = GetApiUrl();
+    const baseUrl = rawApiUrl.endsWith('/v1') ? rawApiUrl.slice(0, -3) : rawApiUrl;
+    await axios.post(
+      `${baseUrl}/cherry-webhook`,
+      {
+        event: 'message.created',
+        payload: messageData,
+      },
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }
+    );
+  } catch (error) {
+    console.error('Error triggering Cherry push notification:', error);
+  }
+};
