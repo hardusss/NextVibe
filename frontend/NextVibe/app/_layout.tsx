@@ -55,7 +55,6 @@ if (process.env.EXPO_PUBLIC_MAPBOX_TOKEN) {
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
-        shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
         shouldShowBanner: true,
