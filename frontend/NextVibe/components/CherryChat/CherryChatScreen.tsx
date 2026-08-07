@@ -37,6 +37,8 @@ export default function CherryChatScreen() {
   const [isMuted, setIsMuted] = useState(false);
   const isDark = useColorScheme() === 'dark';
 
+  const mountedTimeRef = useRef<number>(Date.now());
+
   const html = useMemo(
     () => buildCherryHostHtml({ sdkUrl: 'https://embed.cherry.fun/cherry-embed.js' }),
     []
@@ -121,9 +123,15 @@ export default function CherryChatScreen() {
             token,
             theme: { mode: 'dark', primaryColor: '#FF5BA8' },
           }}
-          onEvent={(event, data) => {
-            if (event === 'message' || event === 'message.created') {
-              triggerCherryMessageNotification(data);
+          onEvent={(event, data: any) => {
+            if ((event === 'message' || event === 'message.created') && data) {
+              const msgTime = data?.createdAt ? new Date(data.createdAt).getTime() : Date.now();
+              if (msgTime >= mountedTimeRef.current - 5000) {
+                const text = data?.text || data?.content || data?.body || (typeof data === 'string' ? data : null);
+                if (text && typeof text === 'string' && text.trim().length > 0) {
+                  triggerCherryMessageNotification(data);
+                }
+              }
             }
           }}
           style={styles.webView}
