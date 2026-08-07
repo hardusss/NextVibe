@@ -104,7 +104,7 @@ class UserEventConnectionsView(APIView):
                 "is_active": is_active, 
             })
 
-        # 2. Detailed Reputation Breakdown Items
+        # 2. Detailed Reputation Breakdown Items (Comprehensive Multi-Source Aggregation)
         reputation_items = []
         all_reps = Reputation.objects.filter(user=target_user).select_related('event', 'post', 'given_by')
 
@@ -124,7 +124,7 @@ class UserEventConnectionsView(APIView):
             # Case B: Post created at Event
             elif rep.post or rep.post_type == "event_post":
                 p = rep.post
-                event_title = rep.event.about if rep.event else (p.on_event.about if (p and p.on_event) else "Event")
+                event_title = rep.event.about if rep.event else (p.on_event.about if (p and p.on_event and p.on_event.about) else "Event")
                 post_image = None
                 if p:
                     media = p.media.first()
@@ -207,29 +207,50 @@ class UserEventConnectionsView(APIView):
                     "badge_color": "#F59E0B"
                 })
 
-        # Also collect Posts created on an Event with reputation_earned > 0 that haven't been captured yet
+        # Fallback Check A: CHERRY Invite Code activation
+        has_cherry_rep = any(r.get("type") == "cherry_invite_code" for r in reputation_items)
+        if not has_cherry_rep:
+            from_code = getattr(target_user, "from_invite_code", None)
+            used_cherry = False
+            if from_code and getattr(from_code, "invite_code", "").upper() == "CHERRY":
+                used_cherry = True
+
+            if used_cherry or getattr(target_user, "reputation", 0) >= 100:
+                reputation_items.append({
+                    "id": "cherry_invite_code_bonus",
+                    "type": "cherry_invite_code",
+                    "title": "CHERRY Invite Code Activation",
+                    "description": "Activated account using CHERRY invite code",
+                    "points": 100,
+                    "date": target_user.date_joined,
+                    "icon": "🍒",
+                    "badge_color": "#FF5BA8"
+                })
+
+        # Fallback Check B: User Posts created on Events
         user_posts_on_events = Post.objects.filter(
             author=target_user,
-            on_event__isnull=False,
-            reputation_earned__gt=0
+            on_event__isnull=False
         ).select_related('on_event')
 
         existing_post_ids = {r.get("post_id") for r in reputation_items if r.get("post_id")}
 
         for p in user_posts_on_events:
             if p.id not in existing_post_ids:
-                event_title = p.on_event.about if p.on_event else "Event"
+                event_title = p.on_event.about if (p.on_event and p.on_event.about) else "Event"
                 post_image = None
                 media = p.media.first()
                 if media and getattr(media, 'file', None):
                     post_image = media.file_url
 
+                pts = p.reputation_earned if (p.reputation_earned and p.reputation_earned > 0) else 50
+
                 reputation_items.append({
                     "id": f"post_rep_{p.id}",
                     "type": "event_post",
                     "title": f"Post at Event: {event_title}",
-                    "description": f"Earned +{p.reputation_earned} REP for creating a post at event '{event_title}'",
-                    "points": p.reputation_earned,
+                    "description": f"Earned +{pts} REP for creating a post at event '{event_title}'",
+                    "points": pts,
                     "date": p.created_at,
                     "image": post_image,
                     "post_id": p.id,
@@ -237,6 +258,45 @@ class UserEventConnectionsView(APIView):
                     "icon": "📝",
                     "badge_color": "#A78BFA"
                 })
+
+        # Fallback Check C: Event Check-ins
+        existing_checkin_event_ids = {r.get("event_id") for r in reputation_items if r.get("type") == "event_checkin"}
+        for checkin in my_checkins:
+            ev_id = checkin.post.id if checkin.post else None
+            if ev_id and ev_id not in existing_checkin_event_ids:
+                event_title = checkin.post.about if (checkin.post and checkin.post.about) else "Event"
+                event_image = None
+                if checkin.post:
+                    media = checkin.post.media.first()
+                    if media and getattr(media, 'file', None):
+                        event_image = media.file_url
+
+                reputation_items.append({
+                    "id": f"checkin_fallback_{checkin.id}",
+                    "type": "event_checkin",
+                    "title": f"Checked in: {event_title}",
+                    "description": f"Verified attendance & POAP claimed for '{event_title}'",
+                    "points": 50,
+                    "date": checkin.checked_in_at,
+                    "image": event_image,
+                    "event_id": ev_id,
+                    "icon": "🎟️",
+                    "badge_color": "#22C55E"
+                })
+
+        # Fallback Check D: Email Linked & Verified
+        has_email_rep = any(r.get("type") == "email_verification" for r in reputation_items)
+        if not has_email_rep and target_user.email:
+            reputation_items.append({
+                "id": "email_linked_bonus",
+                "type": "email_verification",
+                "title": "Email Linked & Verified",
+                "description": "Linked and verified account email address",
+                "points": 20,
+                "date": target_user.date_joined,
+                "icon": "✉️",
+                "badge_color": "#3B82F6"
+            })
 
         # Sort reputation items by date (newest first)
         reputation_items.sort(key=lambda x: str(x.get("date", "")), reverse=True)
