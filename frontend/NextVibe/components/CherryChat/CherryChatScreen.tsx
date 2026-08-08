@@ -16,7 +16,7 @@ import { buildCherryHostHtml } from './cherryHostHtml';
 import { getCherryEmbedToken, getCherryMembers } from '@/src/api/chat';
 import Header from '../Chat/Header';
 import { router } from 'expo-router';
-import { Users, X, ShieldCheck } from 'lucide-react-native';
+import { Users, X, ShieldCheck, Wallet, RefreshCw } from 'lucide-react-native';
 
 export interface GroupMember {
   user_id: number;
@@ -29,6 +29,8 @@ export interface GroupMember {
 
 export default function CherryChatScreen() {
   const [token, setToken] = useState<string | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [walletRequired, setWalletRequired] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [members, setMembers] = useState<GroupMember[]>([]);
@@ -40,26 +42,30 @@ export default function CherryChatScreen() {
     []
   );
 
-  useEffect(() => {
-    let isMounted = true;
-    const initData = async () => {
-      try {
-        const freshToken = await getCherryEmbedToken();
-        if (isMounted && freshToken) {
-          setToken(freshToken);
-        }
-      } catch (err) {
-        console.error('Failed to initialize Cherry screen:', err);
-      } finally {
-        if (isMounted) setLoading(false);
+  const initData = async () => {
+    setLoading(true);
+    try {
+      const res = await getCherryEmbedToken();
+      if (res.wallet_required) {
+        setWalletRequired(true);
+        setToken(null);
+        setWalletAddress(null);
+      } else if (res.token) {
+        setToken(res.token);
+        setWalletAddress(res.wallet_address);
+        setWalletRequired(false);
+      } else {
+        setWalletRequired(false);
       }
-    };
+    } catch (err) {
+      console.error('Failed to initialize Cherry screen:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     initData();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   const openMembersModal = async () => {
@@ -93,7 +99,35 @@ export default function CherryChatScreen() {
           </TouchableOpacity>
         }
       />
-      {loading || !token ? (
+      {walletRequired ? (
+        <View style={styles.walletRequiredCard}>
+          <View style={styles.walletIconCircle}>
+            <Wallet size={36} color="#FF5BA8" />
+          </View>
+          <Text style={styles.walletRequiredTitle}>Wallet Connection Required</Text>
+          <Text style={styles.walletRequiredDesc}>
+            To participate in NextVibe Cherry Chat and send messages, please connect your Solana Web3 wallet.
+          </Text>
+          
+          <TouchableOpacity
+            style={styles.connectWalletBtn}
+            activeOpacity={0.85}
+            onPress={() => router.push('/wallet-select' as any)}
+          >
+            <Wallet size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.connectWalletBtnText}>Connect Wallet</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.refreshBtn}
+            activeOpacity={0.7}
+            onPress={initData}
+          >
+            <RefreshCw size={15} color="#A78BFA" style={{ marginRight: 6 }} />
+            <Text style={styles.refreshBtnText}>I already connected, refresh</Text>
+          </TouchableOpacity>
+        </View>
+      ) : loading || !token ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FF5BA8" />
           <Text style={styles.loadingText}>Connecting to NextVibe Chat...</Text>
@@ -107,6 +141,7 @@ export default function CherryChatScreen() {
             roomId: '68a27a2f-f26b-4a84-b8d6-55be5cb86122',
             mode: 'external-controlled',
             token,
+            walletAddress: walletAddress || undefined,
             theme: { mode: 'dark', primaryColor: '#FF5BA8' },
           }}
           style={styles.webView}
@@ -218,6 +253,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#FF5BA844',
+  },
+  walletRequiredCard: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    backgroundColor: '#0F0919',
+  },
+  walletIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FF5BA81A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#FF5BA844',
+  },
+  walletRequiredTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontFamily: 'Dank Mono Bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  walletRequiredDesc: {
+    color: '#A0A0B0',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  connectWalletBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF5BA8',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    width: '100%',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#FF5BA8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  connectWalletBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Dank Mono Bold',
+  },
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  refreshBtnText: {
+    color: '#A78BFA',
+    fontSize: 13,
   },
   loadingContainer: {
     flex: 1,

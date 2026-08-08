@@ -44,11 +44,18 @@ class CherryEmbedTokenView(APIView):
             pass
 
         wallet_address = getattr(user, "wallet_address", None)
-        if not wallet_address:
-            wallet_address = getattr(user, "username", None) or f"user_{getattr(user, 'user_id', 'anon')}"
+        if not wallet_address or not str(wallet_address).strip():
+            return Response(
+                {
+                    "error": "wallet_required",
+                    "detail": "Solana wallet connection is required to participate in Cherry Chat."
+                },
+                status=400
+            )
 
+        wallet_str = str(wallet_address).strip()
         payload = {
-            "sub": str(wallet_address),
+            "sub": wallet_str,
             "app_id": str(app_id),
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(minutes=5)).timestamp()),
@@ -59,7 +66,7 @@ class CherryEmbedTokenView(APIView):
         if isinstance(token, bytes):
             token = token.decode("utf-8")
 
-        return Response({"token": token})
+        return Response({"token": token, "wallet_address": wallet_str})
 
 
 class CherryMembersView(APIView):
