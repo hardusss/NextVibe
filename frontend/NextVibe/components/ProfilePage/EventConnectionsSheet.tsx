@@ -159,6 +159,10 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                 });
             }
 
+            if (res.data && res.data.total_reputation !== undefined && res.data.total_reputation > 0) {
+                setTotalRep(res.data.total_reputation);
+            }
+
             setData(eventsList);
             setRepItems(itemsList);
         } catch (e) {
