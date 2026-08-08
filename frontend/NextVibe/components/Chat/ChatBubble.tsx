@@ -286,7 +286,13 @@ const ChatBubbleComponent: React.FC<Props> = ({
               <View style={styles.replyContent}>
                 <Text style={styles.replySender}>{message.reply_to_snippet.sender_name}</Text>
                 <Text numberOfLines={1} style={styles.replyText}>
-                  {message.reply_to_snippet.is_deleted ? '🚫 Deleted message' : message.reply_to_snippet.text}
+                  {message.reply_to_snippet.is_deleted
+                    ? '🚫 Deleted message'
+                    : (typeof message.reply_to_snippet.text === 'string' &&
+                       message.reply_to_snippet.text.trim().startsWith('{') &&
+                       message.reply_to_snippet.text.includes('"ciphertext"'))
+                    ? '🔒 Encrypted message'
+                    : message.reply_to_snippet.text}
                 </Text>
               </View>
             </View>

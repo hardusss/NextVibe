@@ -210,23 +210,35 @@ export const removeReaction = async (chatId: number, messageId: number, emoji: s
   }
 };
 
-export const editMessage = async (chatId: number, messageId: number, text: string) => {
+export const editMessage = async (chatId: number, messageId: number, text: string, targetUserId?: number) => {
   if (!messageId || isNaN(messageId) || messageId <= 0) {
     throw new Error('Invalid message ID');
+  }
+
+  let finalPayload = text;
+  if (text && text.trim()) {
+    try {
+      const currentUserIdStr = await storage.getItem('id');
+      const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : 0;
+      const envelope = await CryptoService.encryptMessage(currentUserId, targetUserId || 0, text.trim());
+      finalPayload = JSON.stringify(envelope);
+    } catch (encryptErr) {
+      console.warn('[E2EE] Edit encryption warning:', encryptErr);
+    }
   }
 
   WebSocketService.send({
     type: 'edit_message',
     chat_id: chatId,
     message_id: messageId,
-    text
+    text: finalPayload
   });
 
   const token = await storage.getItem('access');
   try {
     const res = await axios.patch(
       `${getRealtimeBaseUrl()}/messages/${messageId}`,
-      { text },
+      { text: finalPayload },
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
@@ -234,7 +246,7 @@ export const editMessage = async (chatId: number, messageId: number, text: strin
     if (err?.response) {
       throw err;
     }
-    console.warn('[editMessage] REST fallback failed:', err);
+    console.warn('[editMessage] REST fallback warning:', err);
   }
 };
 
