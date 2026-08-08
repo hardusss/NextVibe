@@ -108,6 +108,8 @@ class UserEventConnectionsView(APIView):
         reputation_items = []
         all_reps = Reputation.objects.filter(user=target_user).select_related('event', 'post', 'given_by')
 
+        user_date = getattr(target_user, 'created_at', None) or timezone.now()
+
         for rep in all_reps:
             # Case A: Cherry invite code activation
             if rep.post_type == "cherry_invite_code" or (rep.points == 100 and not rep.event and not rep.post and not rep.post_type):
@@ -117,7 +119,7 @@ class UserEventConnectionsView(APIView):
                     "title": "CHERRY Invite Code Activation",
                     "description": "Activated account using CHERRY invite code",
                     "points": rep.points,
-                    "date": rep.created_at or target_user.date_joined,
+                    "date": rep.created_at or user_date,
                     "icon": "🍒",
                     "badge_color": "#FF5BA8"
                 })
@@ -129,7 +131,7 @@ class UserEventConnectionsView(APIView):
                     "title": "Email Linked & Verified",
                     "description": "Linked and verified account email address",
                     "points": rep.points,
-                    "date": rep.created_at or target_user.date_joined,
+                    "date": rep.created_at or user_date,
                     "icon": "✉️",
                     "badge_color": "#3B82F6"
                 })
@@ -141,7 +143,7 @@ class UserEventConnectionsView(APIView):
                     "title": "Community Referral Reward",
                     "description": "Earned reputation for inviting friends to NextVibe",
                     "points": rep.points,
-                    "date": rep.created_at or target_user.date_joined,
+                    "date": rep.created_at or user_date,
                     "icon": "👥",
                     "badge_color": "#10B981"
                 })
@@ -153,7 +155,7 @@ class UserEventConnectionsView(APIView):
                     "title": f"Checked in: {rep.event.about or 'Event'}",
                     "description": f"Verified attendance at event '{rep.event.about or 'Event'}'",
                     "points": rep.points,
-                    "date": rep.created_at or target_user.date_joined,
+                    "date": rep.created_at or user_date,
                     "event_id": rep.event.id,
                     "icon": "🎟️",
                     "badge_color": "#22C55E"
@@ -174,7 +176,7 @@ class UserEventConnectionsView(APIView):
                     "title": f"Post at Event: {event_title}",
                     "description": f"Earned +{rep.points} REP for creating a post at event '{event_title}'",
                     "points": rep.points,
-                    "date": rep.created_at or (p.create_at if p else target_user.date_joined),
+                    "date": rep.created_at or (p.create_at if p else user_date),
                     "image": post_image,
                     "post_id": p.id if p else None,
                     "event_id": rep.event.id if rep.event else (p.on_event.id if (p and p.on_event) else None),
@@ -190,7 +192,7 @@ class UserEventConnectionsView(APIView):
                     "title": f"Met {other_name} at {rep.event.about or 'Event'}",
                     "description": f"Networked via tap with {other_name}",
                     "points": rep.points,
-                    "date": rep.created_at or target_user.date_joined,
+                    "date": rep.created_at or user_date,
                     "event_id": rep.event.id,
                     "icon": "🤝",
                     "badge_color": "#EAB308"
@@ -202,7 +204,7 @@ class UserEventConnectionsView(APIView):
                     "title": "Reputation Reward",
                     "description": f"Reputation awarded by {rep.given_by.username if rep.given_by else 'NextVibe System'}",
                     "points": rep.points,
-                    "date": rep.created_at or target_user.date_joined,
+                    "date": rep.created_at or user_date,
                     "icon": "⭐",
                     "badge_color": "#F59E0B"
                 })
@@ -224,7 +226,7 @@ class UserEventConnectionsView(APIView):
                     "title": "CHERRY Invite Code Activation",
                     "description": "Activated account using CHERRY invite code",
                     "points": 100,
-                    "date": target_user.date_joined,
+                    "date": user_date,
                     "icon": "🍒",
                     "badge_color": "#FF5BA8"
                 })
@@ -296,7 +298,7 @@ class UserEventConnectionsView(APIView):
                 "title": "Email Linked & Verified",
                 "description": "Linked and verified account email address",
                 "points": 20,
-                "date": target_user.date_joined,
+                "date": user_date,
                 "icon": "✉️",
                 "badge_color": "#3B82F6"
             })
