@@ -334,7 +334,13 @@ export const deleteChat = async (chatId: number): Promise<boolean> => {
   }
 };
 
-export const getCherryEmbedToken = async (): Promise<string | null> => {
+export interface CherryTokenResponse {
+  token: string | null;
+  wallet_address: string | null;
+  wallet_required?: boolean;
+}
+
+export const getCherryEmbedToken = async (): Promise<CherryTokenResponse> => {
   const token = await storage.getItem('access');
   try {
     const rawApiUrl = GetApiUrl();
@@ -344,10 +350,17 @@ export const getCherryEmbedToken = async (): Promise<string | null> => {
         Authorization: `Bearer ${token}`
       }
     });
-    return response.data?.token || null;
-  } catch (error) {
+    return {
+      token: response.data?.token || null,
+      wallet_address: response.data?.wallet_address || null,
+      wallet_required: false,
+    };
+  } catch (error: any) {
+    if (error?.response?.data?.error === 'wallet_required') {
+      return { token: null, wallet_address: null, wallet_required: true };
+    }
     console.error('Error fetching Cherry embed token:', error);
-    return null;
+    return { token: null, wallet_address: null, wallet_required: false };
   }
 };
 
