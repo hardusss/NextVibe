@@ -65,7 +65,10 @@ def get_current_user(authorization: str = Header(...)):
     auth_user = auth_jwt(token)
     if not auth_user["auth"] or auth_user["token_type"] != "access":
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    return auth_user["user_id"]
+    try:
+        return int(auth_user["user_id"])
+    except (ValueError, TypeError):
+        return auth_user["user_id"]
 
 
 @router.get("/messages/{chat_id}")
@@ -421,7 +424,7 @@ async def edit_message(
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
 
-    if message.sender_id != user_id:
+    if int(message.sender_id) != int(user_id):
         raise HTTPException(status_code=403, detail="Only sender can edit message")
 
     if message.deleted_at is not None:
@@ -479,7 +482,7 @@ async def delete_message(
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
 
-    if message.sender_id != user_id:
+    if int(message.sender_id) != int(user_id):
         raise HTTPException(status_code=403, detail="Only sender can delete message")
 
     if message.deleted_at is None:
