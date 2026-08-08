@@ -32,7 +32,8 @@ class ReactionRequest(BaseModel):
     emoji: str = Field(..., max_length=32)
 
 class EditMessageRequest(BaseModel):
-    text: str
+    text: Optional[str] = None
+    content: Optional[str] = None
 
 def get_messages_cache_key(chat_id: int, last_message_id: Optional[int], user_id: int):
     return f"chat:{chat_id}:user:{user_id}:last:{last_message_id or 0}"
@@ -435,7 +436,8 @@ async def edit_message(
         if time_diff > 900:
             raise HTTPException(status_code=400, detail="Message edit window (15 mins) expired")
 
-    message.text = req.text
+    new_text = req.text if req.text is not None else (req.content or "")
+    message.text = new_text
     message.edited_at = datetime.utcnow()
     db.commit()
 

@@ -268,21 +268,55 @@ export default function CustomChatScreen() {
     };
 
     const decryptMessageItem = useCallback(async (msg: MessageItem): Promise<MessageItem> => {
+        let updated = { ...msg };
+
         const raw = msg.content || msg.text || '';
-        if (!raw || typeof raw !== 'string') return msg;
-        if (!raw.trim().startsWith('{')) return msg;
-        try {
-            const senderId = msg.sender_id || (msg.sender?.user_id) || 0;
-            const dec = await CryptoService.decryptMessage(
-                currentUserId || 0,
-                senderId,
-                raw,
-                otherUser?.user_id
-            );
-            return { ...msg, content: dec, text: dec };
-        } catch {
-            return msg;
+        if (raw && typeof raw === 'string' && raw.trim().startsWith('{')) {
+            try {
+                const senderId = msg.sender_id || (msg.sender?.user_id) || 0;
+                const dec = await CryptoService.decryptMessage(
+                    currentUserId || 0,
+                    senderId,
+                    raw,
+                    otherUser?.user_id
+                );
+                updated.content = dec;
+                updated.text = dec;
+            } catch {
+                if (raw.includes('"ciphertext"')) {
+                    updated.content = '🔒 Encrypted message';
+                    updated.text = '🔒 Encrypted message';
+                }
+            }
         }
+
+        if (updated.reply_to_snippet && updated.reply_to_snippet.text) {
+            const replyRaw = updated.reply_to_snippet.text;
+            if (typeof replyRaw === 'string' && replyRaw.trim().startsWith('{')) {
+                try {
+                    const replySenderId = updated.reply_to_snippet.sender_id || 0;
+                    const decReply = await CryptoService.decryptMessage(
+                        currentUserId || 0,
+                        replySenderId,
+                        replyRaw,
+                        otherUser?.user_id
+                    );
+                    updated.reply_to_snippet = {
+                        ...updated.reply_to_snippet,
+                        text: decReply
+                    };
+                } catch {
+                    if (replyRaw.includes('"ciphertext"')) {
+                        updated.reply_to_snippet = {
+                            ...updated.reply_to_snippet,
+                            text: '🔒 Encrypted message'
+                        };
+                    }
+                }
+            }
+        }
+
+        return updated;
     }, [currentUserId, otherUser]);
 
     const loadInitialMessages = useCallback(async () => {
@@ -451,20 +485,35 @@ export default function CustomChatScreen() {
             } else if (event.type === 'message_edited' || event.type === 'edit_message') {
                 const targetId = String(event.server_msg_id || event.message_id || event.id);
                 const updatedText = event.content || event.text;
-                setMessages(prev =>
-                    prev.map(msg => {
-                        const msgId = String(msg.server_msg_id || (msg as any).message_id || msg.id || msg.client_msg_id);
-                        if (msgId === targetId || (msg.server_msg_id && String(msg.server_msg_id) === targetId)) {
-                            return {
-                                ...msg,
-                                text: updatedText || msg.text || msg.content,
-                                content: updatedText || msg.content || msg.text,
-                                edited_at: event.edited_at || new Date().toISOString(),
-                            };
-                        }
-                        return msg;
-                    })
-                );
+
+                const dummyMsg: MessageItem = {
+                    id: Number(targetId),
+                    server_msg_id: Number(targetId),
+                    content: updatedText,
+                    text: updatedText,
+                    sender_id: event.sender_id || currentUserId || 0,
+                    created_at: event.created_at || new Date().toISOString(),
+                    is_read: true,
+                    media: [],
+                };
+
+                decryptMessageItem(dummyMsg).then(decryptedMsg => {
+                    const finalText = decryptedMsg.content || decryptedMsg.text || updatedText;
+                    setMessages(prev =>
+                        prev.map(msg => {
+                            const msgId = String(msg.server_msg_id || (msg as any).message_id || msg.id || msg.client_msg_id);
+                            if (msgId === targetId || (msg.server_msg_id && String(msg.server_msg_id) === targetId)) {
+                                return {
+                                    ...msg,
+                                    text: finalText,
+                                    content: finalText,
+                                    edited_at: event.edited_at || new Date().toISOString(),
+                                };
+                            }
+                            return msg;
+                        })
+                    );
+                });
             } else if (event.type === 'message_deleted') {
                 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
                     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -634,7 +683,7 @@ export default function CustomChatScreen() {
             );
 
             try {
-                await editMessage(chatId, numMsgId, messageText);
+                await editMessage(chatId, numMsgId, messageText, otherUser?.user_id);
                 setToast({ visible: true, message: 'Message edited', isSuccess: true });
             } catch (err: any) {
                 console.error('Failed to edit message:', err);
