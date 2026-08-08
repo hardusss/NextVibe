@@ -379,7 +379,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_json({"type": "error", "detail": "Message not found"})
                     continue
 
-                if message.sender_id != user_id:
+                if int(message.sender_id) != int(user_id):
                     await websocket.send_json({"type": "error", "detail": "Only sender can edit message"})
                     continue
 
@@ -422,7 +422,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_json({"type": "error", "detail": "Message not found"})
                     continue
 
-                if message.sender_id != user_id:
+                if int(message.sender_id) != int(user_id):
                     await websocket.send_json({"type": "error", "detail": "Only sender can delete message"})
                     continue
 
