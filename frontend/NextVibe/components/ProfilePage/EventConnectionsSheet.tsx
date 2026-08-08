@@ -70,7 +70,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     const router = useRouter();
     const sheetRef = React.useRef<BottomSheetModal>(null);
     const isDark = useColorScheme() === 'dark';
-    const snapPoints = useMemo(() => ['75%', '95%'], []);
+    const snapPoints = useMemo(() => ['88%', '95%'], []);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'poaps'>('history');
     const [data, setData] = useState<EventData[]>([]);
