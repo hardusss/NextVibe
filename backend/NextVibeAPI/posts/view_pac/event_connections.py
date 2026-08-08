@@ -112,7 +112,7 @@ class UserEventConnectionsView(APIView):
 
         for rep in all_reps:
             # Case A: Cherry invite code activation
-            if rep.post_type == "cherry_invite_code" or (rep.points == 100 and not rep.event and not rep.post and not rep.post_type):
+            if rep.post_type == "cherry_invite_code":
                 reputation_items.append({
                     "id": f"rep_{rep.id}",
                     "type": "cherry_invite_code",
@@ -209,29 +209,7 @@ class UserEventConnectionsView(APIView):
                     "badge_color": "#F59E0B"
                 })
 
-        # Fallback Check A: CHERRY Invite Code activation
-        has_cherry_rep = any(r.get("type") == "cherry_invite_code" for r in reputation_items)
-        if not has_cherry_rep:
-            from_code = getattr(target_user, "from_invite_code", None)
-            used_cherry = False
-            if from_code and getattr(from_code, "invite_code", "").upper() == "CHERRY":
-                used_cherry = True
-
-            user_total_rep = Reputation.objects.filter(user=target_user).aggregate(total=Sum('points'))['total'] or 0
-
-            if used_cherry or user_total_rep >= 100:
-                reputation_items.append({
-                    "id": "cherry_invite_code_bonus",
-                    "type": "cherry_invite_code",
-                    "title": "CHERRY Invite Code Activation",
-                    "description": "Activated account using CHERRY invite code",
-                    "points": 100,
-                    "date": user_date,
-                    "icon": "🍒",
-                    "badge_color": "#FF5BA8"
-                })
-
-        # Fallback Check B: User Posts created on Events or earning reputation
+        # Fallback Check B: User Posts created on Events or earning reputation (only for posts in DB)
         user_posts_on_events = Post.objects.filter(
             owner=target_user
         ).filter(
@@ -264,7 +242,7 @@ class UserEventConnectionsView(APIView):
                     "badge_color": "#A78BFA"
                 })
 
-        # Fallback Check C: Event Check-ins
+        # Fallback Check C: Event Check-ins (only for checkin records in DB)
         existing_checkin_event_ids = {r.get("event_id") for r in reputation_items if r.get("type") == "event_checkin"}
         for checkin in my_checkins:
             ev_id = checkin.post.id if checkin.post else None
@@ -288,20 +266,6 @@ class UserEventConnectionsView(APIView):
                     "icon": "🎟️",
                     "badge_color": "#22C55E"
                 })
-
-        # Fallback Check D: Email Linked & Verified
-        has_email_rep = any(r.get("type") == "email_verification" for r in reputation_items)
-        if not has_email_rep and target_user.email:
-            reputation_items.append({
-                "id": "email_linked_bonus",
-                "type": "email_verification",
-                "title": "Email Linked & Verified",
-                "description": "Linked and verified account email address",
-                "points": 20,
-                "date": user_date,
-                "icon": "✉️",
-                "badge_color": "#3B82F6"
-            })
 
         # Sort reputation items by date (newest first)
         reputation_items.sort(key=lambda x: str(x.get("date", "")), reverse=True)
