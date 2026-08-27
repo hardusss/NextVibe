@@ -83,8 +83,29 @@ export function setupAxiosInterceptor() {
     axios.interceptors.response.use(
         (response) => response,
         async (error) => {
+            // 1. Sanitize HTML or 500+ error responses to prevent raw HTML leaking into UI toasts
+            if (error.response) {
+                const status = error.response.status;
+                const data = error.response.data;
+                const contentType = String(error.response.headers?.['content-type'] || '');
+
+                const isHtml = (typeof data === 'string' && (
+                    data.toLowerCase().includes('<!doctype') ||
+                    data.toLowerCase().includes('<html') ||
+                    data.toLowerCase().includes('<head') ||
+                    data.toLowerCase().includes('<body>')
+                )) || contentType.includes('text/html');
+
+                if (isHtml || (typeof status === 'number' && status >= 500)) {
+                    error.response.data = {
+                        detail: "Server error. Please try again later.",
+                        error: "Server error. Please try again later."
+                    };
+                }
+            }
+
             const original = error.config;
-            const isAuthEndpoint = original.url && (
+            const isAuthEndpoint = original?.url && (
                 original.url.includes('/users/login/') ||
                 original.url.includes('/users/register/') ||
                 original.url.includes('/users/wallet-sign-in/') ||
@@ -93,7 +114,7 @@ export function setupAxiosInterceptor() {
                 original.url.includes('/users/token/')
             );
 
-            if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
+            if (error.response?.status === 401 && !original?._retry && !isAuthEndpoint) {
                 original._retry = true;
 
                 try {

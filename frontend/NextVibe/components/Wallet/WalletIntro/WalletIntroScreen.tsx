@@ -58,10 +58,8 @@ export default function WalletIntroScreen() {
             .catch(async (saveError: any) => {
                 const msg = extractErrorMessage(saveError);
                 walletLogger.error(WalletTag.LAZORKIT, `Failed to save smart wallet ${address} to backend: ${msg}`, saveError);
-                walletLogger.error(WalletTag.LAZORKIT, `Failed to save smart wallet ${address} to backend`, saveError);
                 await disconnect();
                 setToast({ message: msg, isSuccess: false });
-                setToast({ message: 'Wallet error', isSuccess: false });
             })
             .finally(() => {
                 isSaving.current = false;
@@ -111,7 +109,6 @@ export default function WalletIntroScreen() {
             useWalletStore.setState({ isConnecting: false });
             walletLogger.error(WalletTag.LAZORKIT, 'LazorKit connection failed with error', error);
             setToast({ message: error.message || "Failed to connect wallet", isSuccess: false });
-            setToast({ message: "Wallet error", isSuccess: false });
         } finally {
             if (appStateSubscription) {
                 appStateSubscription.remove();

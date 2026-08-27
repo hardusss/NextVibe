@@ -20,9 +20,11 @@ class SaveWalletAddressView(APIView):
             wallet_address,
         )
 
-        if not wallet_address:
-            logger.warning("SaveWalletAddressView: Missing walletAddress in request body")
+        if not wallet_address or not isinstance(wallet_address, str):
+            logger.warning("SaveWalletAddressView: Missing or invalid walletAddress in request body")
             return Response({"error": "walletAddress is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        wallet_address = wallet_address.strip()
 
         if len(wallet_address) < 32 or len(wallet_address) > 44:
             logger.warning("SaveWalletAddressView: Invalid address length (%s chars)", len(wallet_address))
@@ -46,20 +48,43 @@ class SaveWalletAddressView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        request.user.wallet_address = wallet_address
-        request.user.save(update_fields=["wallet_address"])
-        logger.info("SaveWalletAddressView: Successfully saved wallet %s for user %s", wallet_address, request.user.user_id)
+        User = request.user.__class__
+        other_user = User.objects.filter(wallet_address=wallet_address).exclude(user_id=request.user.user_id).first()
+        if other_user:
+            logger.warning(
+                "SaveWalletAddressView: Address %s is already linked to another user %s",
+                wallet_address,
+                other_user.user_id,
+            )
+            return Response(
+                {"error": "This wallet address is already linked to another account."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            request.user.wallet_address = wallet_address
+            request.user.save(update_fields=["wallet_address"])
+            logger.info("SaveWalletAddressView: Successfully saved wallet %s for user %s", wallet_address, request.user.user_id)
+        except Exception as e:
+            logger.error("SaveWalletAddressView: Failed to save wallet %s: %s", wallet_address, e, exc_info=True)
+            return Response(
+                {"error": "Failed to link wallet address. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         # Directly call indexer register endpoint to ensure immediate indexing
-        if settings.INDEXER_INTERNAL_SECRET and settings.INDEXER_URL:
+        indexer_secret = getattr(settings, "INDEXER_INTERNAL_SECRET", None)
+        indexer_url = getattr(settings, "INDEXER_URL", None)
+
+        if indexer_secret and indexer_url:
             try:
                 httpx.post(
-                    f"{settings.INDEXER_URL.rstrip('/')}/index/register",
+                    f"{indexer_url.rstrip('/')}/index/register",
                     json={
                         "user_id": request.user.user_id,
                         "wallet_address": wallet_address,
                     },
-                    headers={"x-internal-secret": settings.INDEXER_INTERNAL_SECRET},
+                    headers={"x-internal-secret": indexer_secret},
                     timeout=5.0,
                 )
             except Exception as error:

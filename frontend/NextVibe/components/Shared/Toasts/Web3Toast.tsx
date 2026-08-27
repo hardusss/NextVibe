@@ -60,6 +60,15 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: Web3T
         transform: [{ scaleX: progress.value }],
     }));
 
+    const displayMessage = (() => {
+        if (!message || typeof message !== 'string') return 'Something went wrong';
+        const lower = message.toLowerCase();
+        if (lower.includes('<!doctype') || lower.includes('<html') || lower.includes('<head') || lower.includes('<body>')) {
+            return 'Server error. Please try again later.';
+        }
+        return message;
+    })();
+
     if (!visible) return null;
 
     return (
@@ -100,12 +109,12 @@ export default function Web3Toast({ message, visible, onHide, isSuccess }: Web3T
                     ) : (
                         <Info
                             size={20}
-                            color="#A78BFA"
+                            color="#EF4444"
                         />
                     )}
                 </View>
                 <Text style={[styles.toastText, { color: isDark ? '#F3F4F6' : '#1F2937' }]}>
-                    {message}
+                    {displayMessage}
                 </Text>
                 <TouchableOpacity
                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}

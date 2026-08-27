@@ -29,3 +29,6 @@ urlpatterns = [
     path('api/v1/cherry-webhook/', CherryWebhookView.as_view(), name='cherry-webhook-v1-root-slash'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
+handler500 = 'NextVibeAPI.exceptions.handler500_json'
+
+

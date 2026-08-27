@@ -145,19 +145,45 @@ export function serializeError(error: unknown): Record<string, any> {
  */
 export function extractErrorMessage(error: unknown): string {
     if (!error) return 'Unknown wallet error';
-    if (typeof error === 'string') return error;
+    if (typeof error === 'string') {
+        const lower = error.toLowerCase();
+        if (lower.includes('<!doctype') || lower.includes('<html') || lower.includes('<head') || lower.includes('<body>')) {
+            return 'Server error. Please try again later.';
+        }
+        return error;
+    }
 
     const anyErr = error as any;
 
+    if (typeof anyErr?.response?.status === 'number' && anyErr.response.status >= 500) {
+        return 'Server error. Please try again later.';
+    }
+
     if (anyErr?.response?.data) {
         const data = anyErr.response.data;
-        if (typeof data === 'string') return data;
-        if (data.error) return String(data.error);
-        if (data.detail) {
-            if (anyErr.response.status === 401) {
-                return `Auth required: ${data.detail}`;
+        if (typeof data === 'string') {
+            const lower = data.toLowerCase();
+            if (lower.includes('<!doctype') || lower.includes('<html') || lower.includes('<head') || lower.includes('<body>')) {
+                return 'Server error. Please try again later.';
             }
-            return String(data.detail);
+            return data;
+        }
+        if (data.error) {
+            const str = String(data.error);
+            if (str.toLowerCase().includes('<!doctype') || str.toLowerCase().includes('<html')) {
+                return 'Server error. Please try again later.';
+            }
+            return str;
+        }
+        if (data.detail) {
+            const str = String(data.detail);
+            if (str.toLowerCase().includes('<!doctype') || str.toLowerCase().includes('<html')) {
+                return 'Server error. Please try again later.';
+            }
+            if (anyErr.response?.status === 401) {
+                return `Auth required: ${str}`;
+            }
+            return str;
         }
         if (data.message) return String(data.message);
         try {
@@ -170,7 +196,11 @@ export function extractErrorMessage(error: unknown): string {
     }
 
     if (anyErr?.message) {
-        return String(anyErr.message);
+        const msg = String(anyErr.message);
+        if (msg.toLowerCase().includes('<!doctype') || msg.toLowerCase().includes('<html')) {
+            return 'Server error. Please try again later.';
+        }
+        return msg;
     }
 
     return 'Wallet error';
@@ -222,13 +252,10 @@ export const walletLogger = {
         const serialized = error ? serializeError(error) : undefined;
         recordLog({ timestamp, level: 'error', tag, message, data, error: serialized });
 
-        const errStr = serialized ? ` | Error: ${safeStringify(serialized)}` : '';
-        const dataStr = data !== undefined ? ` | Data: ${safeStringify(data)}` : '';
-        const output = `[WALLET_LOG] [${timestamp}] [${tag}] [ERROR] ${message}${errStr}${dataStr}`;
-        const errStr = serialized ? `\n[FULL_ERROR_DETAILS]:\n${safeStringify(serialized, 2)}` : '';
-        const dataStr = data !== undefined ? `\n[DATA_DETAILS]:\n${safeStringify(data, 2)}` : '';
-        const output = `🚨 [WALLET_LOG] [${timestamp}] [${tag}] [ERROR] ${message}${errStr}${dataStr}`;
-        console.error(output);
+        const errorDetailsStr = serialized ? `\n[FULL_ERROR_DETAILS]:\n${safeStringify(serialized, 2)}` : '';
+        const dataDetailsStr = data !== undefined ? `\n[DATA_DETAILS]:\n${safeStringify(data, 2)}` : '';
+        const logLine = `🚨 [WALLET_LOG] [${timestamp}] [${tag}] [ERROR] ${message}${errorDetailsStr}${dataDetailsStr}`;
+        console.error(logLine);
     },
 
     /**
