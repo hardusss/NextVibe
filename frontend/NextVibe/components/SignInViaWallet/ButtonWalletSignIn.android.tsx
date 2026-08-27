@@ -7,6 +7,7 @@ import walletSignIn from "@/src/api/wallet.sign.in";
 import { storage } from "@/src/utils/storage";
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import InviteCodeSheet from '../oauth-components/InviteCodeSheet';
+import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 
 export interface SignInPayload {
     pubkey: string;
@@ -51,29 +52,37 @@ export default function ButtonWalletSignIn({
     const handleConnectAndSign = async () => {
         if (isLoading) return;
         setIsLoading(true);
+        walletLogger.info(WalletTag.MWA_ANDROID, 'ButtonWalletSignIn: Initiating MWA connect & sign flow');
 
         try {
             const connectedAccount = await connect();
 
             if (!connectedAccount) {
-                throw new Error("Wallet connection failed or was cancelled.");
+                const cancelErr = new Error("Wallet connection failed or was cancelled.");
+                walletLogger.warn(WalletTag.MWA_ANDROID, 'ButtonWalletSignIn: Wallet connect returned null or cancelled');
+                throw cancelErr;
             }
 
             const pubkeyString = connectedAccount.publicKey.toBase58();
             const nativeLabel = connectedAccount.label || `vibe_${pubkeyString.slice(0, 6)}.skr`;
+            walletLogger.info(WalletTag.MWA_ANDROID, `ButtonWalletSignIn: Connected account: ${pubkeyString} (${nativeLabel})`);
 
             const nonce = Date.now().toString();
             const messageToSign = `Sign in to NextVibe.\nNonce: ${nonce}`;
             const messageBytes = new TextEncoder().encode(messageToSign);
 
+            walletLogger.debug(WalletTag.MWA_ANDROID, 'ButtonWalletSignIn: Requesting signMessage from wallet...', { messageToSign });
             await new Promise(resolve => setTimeout(resolve, 500));
             
             const signature = await signMessage(messageBytes);
 
             if (!signature) {
-                throw new Error("Message signing was rejected.");
+                const signErr = new Error("Message signing was rejected.");
+                walletLogger.warn(WalletTag.MWA_ANDROID, 'ButtonWalletSignIn: User rejected message signing');
+                throw signErr;
             }
 
+            walletLogger.info(WalletTag.MWA_ANDROID, `ButtonWalletSignIn: Signature received (${signature.length} bytes), calling walletSignIn...`);
             const backendResponse = await walletSignIn({
                 pubkey: pubkeyString,
                 signature: signature,
@@ -82,6 +91,7 @@ export default function ButtonWalletSignIn({
             });
 
             if (backendResponse?.token) {
+                walletLogger.info(WalletTag.MWA_ANDROID, `ButtonWalletSignIn: Auth tokens received for user_id: ${backendResponse.user_id}`);
                 await storage.setItem("id", `${backendResponse.user_id}`);
                 await storage.setItem("access", backendResponse.token.access);
                 await storage.setItem("refresh", backendResponse.token.refresh);
@@ -96,6 +106,7 @@ export default function ButtonWalletSignIn({
             setIsLoading(false);
 
             if (error?.response?.data?.error === 'invite_code_required') {
+                walletLogger.info(WalletTag.MWA_ANDROID, 'ButtonWalletSignIn: invite_code_required from backend, opening invite sheet');
                 const pubkeyString = JSON.parse(error.config.data).wallet_address;
                 const messageToSign = JSON.parse(error.config.data).message;
                 const signature = new Uint8Array(JSON.parse(error.config.data).signature);
@@ -111,7 +122,7 @@ export default function ButtonWalletSignIn({
                 return;
             }
 
-            console.error("Wallet Sign-In Error:", error);
+            walletLogger.error(WalletTag.MWA_ANDROID, "ButtonWalletSignIn: Error in connect and sign flow", error);
             onError?.(error);
         }
     };
@@ -120,10 +131,12 @@ export default function ButtonWalletSignIn({
         const pending = pendingRef.current;
         if (!pending) return;
 
+        walletLogger.info(WalletTag.MWA_ANDROID, `ButtonWalletSignIn: Submitting invite code registration for ${pending.pubkey}`);
         try {
             const backendResponse = await walletSignIn(pending, inviteCode);
 
             if (backendResponse?.token) {
+                walletLogger.info(WalletTag.MWA_ANDROID, `ButtonWalletSignIn: Invite auth success! user_id: ${backendResponse.user_id}`);
                 await storage.setItem("id", `${backendResponse.user_id}`);
                 await storage.setItem("access", backendResponse.token.access);
                 await storage.setItem("refresh", backendResponse.token.refresh);
@@ -133,8 +146,8 @@ export default function ButtonWalletSignIn({
             sheetRef.current?.dismiss();
             onSuccess(backendResponse);
         } catch (error: any) {
-            console.error("Wallet Sign-In Error (Invite Code):", error);
-            throw error; // Let the InviteCodeSheet handle the display
+            walletLogger.error(WalletTag.MWA_ANDROID, "ButtonWalletSignIn: Invite code registration error", error);
+            throw error;
         }
     };
 

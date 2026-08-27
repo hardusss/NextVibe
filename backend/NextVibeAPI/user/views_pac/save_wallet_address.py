@@ -14,18 +14,33 @@ class SaveWalletAddressView(APIView):
     def post(self, request) -> Response:
         wallet_address = request.data.get("walletAddress")
 
+        logger.info(
+            "SaveWalletAddressView: Request for user_id=%s with address=%s",
+            request.user.user_id,
+            wallet_address,
+        )
+
         if not wallet_address:
+            logger.warning("SaveWalletAddressView: Missing walletAddress in request body")
             return Response({"error": "walletAddress is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         if len(wallet_address) < 32 or len(wallet_address) > 44:
+            logger.warning("SaveWalletAddressView: Invalid address length (%s chars)", len(wallet_address))
             return Response({"error": "Invalid Solana address."}, status=status.HTTP_400_BAD_REQUEST)
 
         if request.user.wallet_address == wallet_address:
+            logger.info("SaveWalletAddressView: User %s already has matching address %s", request.user.user_id, wallet_address)
             return Response({"success": True}, status=status.HTTP_200_OK)
         
         if request.user.wallet_address:
             existing = request.user.wallet_address
             short = f"{existing[:6]}...{existing[-6:]}"
+            logger.warning(
+                "SaveWalletAddressView: User %s already has linked wallet %s, rejecting new address %s",
+                request.user.user_id,
+                existing,
+                wallet_address,
+            )
             return Response(
                 {"error": f"Wallet already linked to your account: {short}. Use it to continue."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -33,6 +48,7 @@ class SaveWalletAddressView(APIView):
 
         request.user.wallet_address = wallet_address
         request.user.save(update_fields=["wallet_address"])
+        logger.info("SaveWalletAddressView: Successfully saved wallet %s for user %s", wallet_address, request.user.user_id)
 
         # Directly call indexer register endpoint to ensure immediate indexing
         if settings.INDEXER_INTERNAL_SECRET and settings.INDEXER_URL:

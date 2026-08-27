@@ -20,6 +20,7 @@ import saveWallet from '@/src/api/save.wallet';
 import { storage } from '@/src/utils/storage';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import InviteCodeSheet from '../oauth-components/InviteCodeSheet';
+import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 
 const CANCELLATION_DETECTION_DELAY = 15000;
 
@@ -64,6 +65,7 @@ export default function ButtonLazorKitSignIn({
         const address = wallet?.smartWallet?.toString() ?? null;
         if (!address || !isLoading) return;
 
+        walletLogger.info(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Smart wallet received (${address}), proceeding with sign-in`);
         handleWalletConnected(address);
     }, [wallet?.smartWallet]);
 
@@ -78,6 +80,7 @@ export default function ButtonLazorKitSignIn({
 
     const handleWalletConnected = async (address: string) => {
         try {
+            walletLogger.info(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Calling walletSignIn for address: ${address}`);
             const backendResponse = await walletSignIn({
                 pubkey: address,
                 signature: new Uint8Array(64),
@@ -87,14 +90,16 @@ export default function ButtonLazorKitSignIn({
             });
 
             if (backendResponse?.token) {
+                walletLogger.info(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Authentication successful! User ID: ${backendResponse.user_id}`);
                 await storage.setItem('id', `${backendResponse.user_id}`);
                 await storage.setItem('access', backendResponse.token.access);
                 await storage.setItem('refresh', backendResponse.token.refresh);
 
                 try {
                     await saveWallet(address);
+                    walletLogger.info(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: saveWallet succeeded for ${address}`);
                 } catch (saveErr) {
-                    console.warn('Failed to call saveWallet after wallet connection:', saveErr);
+                    walletLogger.warn(WalletTag.LAZORKIT, 'ButtonLazorKitSignIn: Failed to call saveWallet after wallet connection:', saveErr);
                 }
             }
 
@@ -107,12 +112,13 @@ export default function ButtonLazorKitSignIn({
             setIsLoading(false);
 
             if (error?.response?.data?.error === 'invite_code_required') {
+                walletLogger.info(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Invite code required for ${address}, opening sheet`);
                 pendingAddressRef.current = address;
                 sheetRef.current?.present();
                 return;
             }
 
-            console.error('LazorKit Sign-In Error:', error);
+            walletLogger.error(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Sign-In error for ${address}`, error);
             await disconnect();
             onError?.(error);
         }
@@ -121,8 +127,10 @@ export default function ButtonLazorKitSignIn({
     const handleConnect = async () => {
         if (isLoading) return;
         setIsLoading(true);
+        walletLogger.info(WalletTag.LAZORKIT, 'ButtonLazorKitSignIn: handleConnect clicked, starting connection');
 
         if (useWalletStore.getState().isConnecting) {
+            walletLogger.debug(WalletTag.LAZORKIT, 'ButtonLazorKitSignIn: Clearing existing isConnecting flag');
             await useWalletStore.setState({ isConnecting: false });
         }
 
@@ -131,9 +139,11 @@ export default function ButtonLazorKitSignIn({
         const userCancelRace = new Promise<void>((_, reject) => {
             let returnCount = 0;
             appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+                walletLogger.debug(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: AppState change=${nextAppState}, returnCount=${returnCount}`);
                 if (nextAppState === 'active') {
                     returnCount++;
                     if (returnCount > 1) {
+                        walletLogger.warn(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Return count > 1. Arming cancellation timeout (${CANCELLATION_DETECTION_DELAY}ms)`);
                         setTimeout(() => {
                             reject(new Error('USER_CANCELLED'));
                         }, CANCELLATION_DETECTION_DELAY);
@@ -143,14 +153,17 @@ export default function ButtonLazorKitSignIn({
         });
 
         try {
+            walletLogger.info(WalletTag.LAZORKIT, 'ButtonLazorKitSignIn: Calling connect({ redirectUrl: "nextvibe://home" })');
             await Promise.race([
                 connect({ redirectUrl: 'nextvibe://home' }),
                 userCancelRace,
             ]);
+            walletLogger.info(WalletTag.LAZORKIT, 'ButtonLazorKitSignIn: LazorKit connect returned successfully');
         } catch (error: any) {
             if (!isMounted.current) return;
 
             if (error.message === 'USER_CANCELLED') {
+                walletLogger.warn(WalletTag.LAZORKIT, 'ButtonLazorKitSignIn: Connection cancelled by user return timeout');
                 useWalletStore.setState({ isConnecting: false });
                 setIsLoading(false);
                 return;
@@ -158,7 +171,7 @@ export default function ButtonLazorKitSignIn({
 
             useWalletStore.setState({ isConnecting: false });
             setIsLoading(false);
-            console.error('LazorKit Connection Error:', error);
+            walletLogger.error(WalletTag.LAZORKIT, 'ButtonLazorKitSignIn: Connection error during connect', error);
             onError?.(error);
         } finally {
             if (appStateSubscription) {
@@ -171,6 +184,7 @@ export default function ButtonLazorKitSignIn({
         const address = pendingAddressRef.current;
         if (!address) return;
 
+        walletLogger.info(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Submitting invite code registration for ${address}`);
         try {
             const backendResponse = await walletSignIn(
                 {
@@ -184,14 +198,16 @@ export default function ButtonLazorKitSignIn({
             );
 
             if (backendResponse?.token) {
+                walletLogger.info(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Invite sign-in successful! User ID: ${backendResponse.user_id}`);
                 await storage.setItem('id', `${backendResponse.user_id}`);
                 await storage.setItem('access', backendResponse.token.access);
                 await storage.setItem('refresh', backendResponse.token.refresh);
 
                 try {
                     await saveWallet(address);
+                    walletLogger.info(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: saveWallet succeeded after invite for ${address}`);
                 } catch (saveErr) {
-                    console.warn('Failed to call saveWallet after invite registration:', saveErr);
+                    walletLogger.warn(WalletTag.LAZORKIT, 'ButtonLazorKitSignIn: Failed to call saveWallet after invite registration:', saveErr);
                 }
             }
 
@@ -199,7 +215,7 @@ export default function ButtonLazorKitSignIn({
             sheetRef.current?.dismiss();
             onSuccess(backendResponse);
         } catch (error: any) {
-            console.error('LazorKit Sign-In Error (Invite Code):', error);
+            walletLogger.error(WalletTag.LAZORKIT, `ButtonLazorKitSignIn: Sign-In with Invite Code error for ${address}`, error);
             throw error;
         }
     };

@@ -14,6 +14,7 @@ import FeatureRow from '@/components/Wallet/WalletIntro/FeatureRow';
 import SwipeButton from '@/components/Wallet/WalletIntro/SwipeButton';
 import saveWallet from '@/src/api/save.wallet';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
+import { walletLogger, WalletTag, extractErrorMessage } from '@/src/utils/walletLogger';
 
 const CANCELLATION_DETECTION_DELAY = 15000;
 
@@ -32,28 +33,46 @@ export default function WalletIntroScreen() {
     const isSaving = useRef(false);
 
     useEffect(() => {
+        walletLogger.info(WalletTag.LAZORKIT, 'WalletIntroScreen mounted', {
+            targetReturnPage: page,
+            currentSmartWallet: wallet?.smartWallet?.toString() ?? null,
+            isConnecting: useWalletStore.getState().isConnecting,
+        });
+        return () => {
+            walletLogger.debug(WalletTag.LAZORKIT, 'WalletIntroScreen unmounted');
+        };
+    }, []);
+
+    useEffect(() => {
         const address = wallet?.smartWallet?.toString() ?? null;
         if (!address || isSaving.current) return;
 
         isSaving.current = true;
+        walletLogger.info(WalletTag.LAZORKIT, `Detected smart wallet address: ${address}. Registering with backend...`);
 
         saveWallet(address)
             .then((response) => {
-                console.log(response);
+                walletLogger.info(WalletTag.LAZORKIT, `Successfully saved smart wallet address ${address}`, response);
                 router.replace(page ? `/${page}` as RelativePathString : '/wallet-dash');
             })
             .catch(async (saveError: any) => {
-                const msg: string = saveError?.response?.data?.error ?? 'Wallet error';
+                const msg = extractErrorMessage(saveError);
+                walletLogger.error(WalletTag.LAZORKIT, `Failed to save smart wallet ${address} to backend: ${msg}`, saveError);
+                walletLogger.error(WalletTag.LAZORKIT, `Failed to save smart wallet ${address} to backend`, saveError);
                 await disconnect();
                 setToast({ message: msg, isSuccess: false });
+                setToast({ message: 'Wallet error', isSuccess: false });
             })
             .finally(() => {
                 isSaving.current = false;
             });
-    }, [wallet?.smartWallet])
+    }, [wallet?.smartWallet]);
 
     const handleActivateWallet = async () => {
+        walletLogger.info(WalletTag.LAZORKIT, 'User triggered LazorKit activation swipe button');
+
         if (useWalletStore.getState().isConnecting) {
+            walletLogger.warn(WalletTag.LAZORKIT, 'Resetting stale isConnecting flag before launching new session');
             await useWalletStore.setState({ isConnecting: false });
         }
 
@@ -62,9 +81,11 @@ export default function WalletIntroScreen() {
         const userCancelRace = new Promise<void>((_, reject) => {
             let returnCount = 0;
             appStateSubscription = AppState.addEventListener("change", (nextAppState) => {
+                walletLogger.debug(WalletTag.LAZORKIT, `AppState changed during connect: ${nextAppState}, returnCount=${returnCount}`);
                 if (nextAppState === "active") {
                     returnCount++;
                     if (returnCount > 1) {
+                        walletLogger.warn(WalletTag.LAZORKIT, `Detected return to app (${returnCount} times) without callback. Arming cancellation timeout (${CANCELLATION_DETECTION_DELAY}ms)`);
                         setTimeout(() => {
                             reject(new Error("USER_CANCELLED"));
                         }, CANCELLATION_DETECTION_DELAY);
@@ -74,19 +95,23 @@ export default function WalletIntroScreen() {
         });
 
         try {
+            walletLogger.info(WalletTag.LAZORKIT, 'Calling LazorKit connect({ redirectUrl: "nextvibe://wallet-init" })');
             await Promise.race([
                 connect({ redirectUrl: 'nextvibe://wallet-init' }),
                 userCancelRace,
             ]);
+            walletLogger.info(WalletTag.LAZORKIT, 'LazorKit connect call finished without immediate errors');
         } catch (error: any) {
             if (error.message === "USER_CANCELLED") {
+                walletLogger.warn(WalletTag.LAZORKIT, 'LazorKit connection cancelled by user return timeout');
                 useWalletStore.setState({ isConnecting: false });
                 setToast({ message: "Connection cancelled", isSuccess: false });
                 return;
             }
             useWalletStore.setState({ isConnecting: false });
-            console.error("Connection Error:", error);
+            walletLogger.error(WalletTag.LAZORKIT, 'LazorKit connection failed with error', error);
             setToast({ message: error.message || "Failed to connect wallet", isSuccess: false });
+            setToast({ message: "Wallet error", isSuccess: false });
         } finally {
             if (appStateSubscription) {
                 appStateSubscription.remove();
