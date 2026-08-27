@@ -116,6 +116,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'NextVibeAPI.middleware.RequestTimingMiddleware', 
+    'NextVibeAPI.middleware.JsonExceptionMiddleware',
 ]
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
@@ -224,7 +225,8 @@ REST_FRAMEWORK = {
     },
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'user.auth.CustomJWTAuthentication',
-    ]
+    ],
+    'EXCEPTION_HANDLER': 'NextVibeAPI.exceptions.custom_api_exception_handler',
 }
 
 

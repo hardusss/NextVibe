@@ -108,6 +108,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'NextVibeAPI.middleware.RequestTimingMiddleware', 
+    'NextVibeAPI.middleware.JsonExceptionMiddleware',
 ]
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
@@ -210,7 +211,8 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'user.auth.CustomJWTAuthentication',
-    ]
+    ],
+    'EXCEPTION_HANDLER': 'NextVibeAPI.exceptions.custom_api_exception_handler',
 }
 
 

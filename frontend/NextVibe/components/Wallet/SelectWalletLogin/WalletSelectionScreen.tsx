@@ -113,10 +113,8 @@ const WalletSelectionScreen = () => {
         if (!isMounted.current) return;
         const msg = extractErrorMessage(saveError);
         walletLogger.error(WalletTag.MWA, `WalletSelectionScreen: saveWallet failed for ${walletAddr}: ${msg}`, saveError);
-        walletLogger.error(WalletTag.MWA, `WalletSelectionScreen: saveWallet failed for ${walletAddr}`, saveError);
         disconnect();
         setToast({ message: msg, isSuccess: false });
-        setToast({ message: 'Wallet error', isSuccess: false });
       });
   }, [account, isConnecting]);
 
@@ -144,8 +142,6 @@ const WalletSelectionScreen = () => {
       const msg = extractErrorMessage(error);
       walletLogger.error(WalletTag.MWA_ANDROID, `WalletSelectionScreen: MWA Connection failed: ${msg}`, error);
       setToast({ message: msg, isSuccess: false });
-      walletLogger.error(WalletTag.MWA_ANDROID, 'WalletSelectionScreen: MWA Connection failed', error);
-      setToast({ message: 'Wallet error', isSuccess: false });
     }
   }, [account, connect, disconnect]);
 
@@ -171,8 +167,6 @@ const WalletSelectionScreen = () => {
       const msg = extractErrorMessage(error);
       walletLogger.error(WalletTag.MWA_IOS, `WalletSelectionScreen: ${walletType} connection failed: ${msg}`, error);
       Alert.alert("Connection Failed", msg);
-      walletLogger.error(WalletTag.MWA_IOS, `WalletSelectionScreen: ${walletType} connection failed`, error);
-      Alert.alert("Connection Failed", "Could not connect wallet. Please try again.");
     } finally {
       setIsConnecting(false);
     }
