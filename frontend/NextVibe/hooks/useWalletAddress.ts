@@ -3,8 +3,9 @@
  * LazorKit-only — same as iOS variant.
  */
 import { useWallet } from "@lazorkit/wallet-mobile-adapter";
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { Connection, Transaction, VersionedTransaction, TransactionSignature } from "@solana/web3.js";
+import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
 // 1. Define strict, mutually exclusive states
 export type WalletState = 
@@ -41,12 +42,15 @@ export default function useWalletAddress(): WalletState {
             signAndSendTransaction: lazorSignAndSendTransaction
         } = useWallet();
 
-    return useMemo(() => {
+    const activeState = useMemo(() => {
         if (lazorPubkey && lazorConnection) {
             return { 
                 address: lazorPubkey.toString(), 
                 connection: lazorConnection,
-                disconnect: lazorDisconnect,
+                disconnect: async () => {
+                    walletLogger.info(WalletTag.STATE, 'useWalletAddress (fallback): Disconnecting active LazorKit wallet');
+                    await lazorDisconnect();
+                },
                 signAndSendTransaction: lazorSignAndSendTransaction,
                 signTransaction: null,
                 walletType: 'lazorkit'
@@ -56,8 +60,21 @@ export default function useWalletAddress(): WalletState {
         return { 
             address: null, 
             connection: null, 
+            disconnect: async () => {},
+            signAndSendTransaction: async () => '',
             signTransaction: null,
             walletType: 'none' 
         } as WalletState;
     }, [lazorPubkey, lazorConnection, lazorDisconnect]);
+
+    const prevWalletRef = useRef<string | null>(null);
+    useEffect(() => {
+        const currentDescriptor = `${activeState.walletType}:${activeState.address || 'none'}`;
+        if (prevWalletRef.current !== currentDescriptor) {
+            walletLogger.info(WalletTag.STATE, `useWalletAddress (fallback): State transition -> ${activeState.walletType} (${activeState.address || 'no-address'})`);
+            prevWalletRef.current = currentDescriptor;
+        }
+    }, [activeState.walletType, activeState.address]);
+
+    return activeState;
 }

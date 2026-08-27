@@ -1,8 +1,9 @@
 // @ts-ignore
 import { useMobileWallet } from "@wallet-ui/react-native-web3js/dist/index.native.mjs";
 import { useWallet } from "@lazorkit/wallet-mobile-adapter";
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { Connection, Transaction, VersionedTransaction, TransactionSignature } from "@solana/web3.js";
+import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
 // 1. Define strict, mutually exclusive states
 export type WalletState = 
@@ -47,12 +48,15 @@ export default function useWalletAddress(): WalletState {
             signAndSendTransaction: lazorSignAndSendTransaction
         } = useWallet();
 
-    return useMemo(() => {
+    const activeState = useMemo(() => {
         if (mwaAccount && mwaConnection) {
             return { 
                 address: (mwaAccount.publicKey).toString(), 
                 connection: mwaConnection,
-                disconnect: mwaDisconnect,
+                disconnect: async () => {
+                    walletLogger.info(WalletTag.STATE, 'useWalletAddress: Disconnecting active MWA wallet');
+                    await mwaDisconnect();
+                },
                 signAndSendTransaction: mwaSignAndSendTransaction,
                 signTransaction: mwaSignTransaction,
                 walletType: 'mwa'
@@ -63,7 +67,10 @@ export default function useWalletAddress(): WalletState {
             return { 
                 address: lazorPubkey.toString(), 
                 connection: lazorConnection,
-                disconnect: lazorDisconnect,
+                disconnect: async () => {
+                    walletLogger.info(WalletTag.STATE, 'useWalletAddress: Disconnecting active LazorKit wallet');
+                    await lazorDisconnect();
+                },
                 signAndSendTransaction: lazorSignAndSendTransaction,
                 signTransaction: null,
                 walletType: 'lazorkit'
@@ -73,8 +80,21 @@ export default function useWalletAddress(): WalletState {
         return { 
             address: null, 
             connection: null, 
+            disconnect: async () => {},
+            signAndSendTransaction: async () => '',
             signTransaction: null,
             walletType: 'none' 
         } as WalletState;
     }, [mwaAccount, mwaConnection, lazorPubkey, lazorConnection, mwaDisconnect, lazorDisconnect, mwaSignTransaction]);
+
+    const prevWalletRef = useRef<string | null>(null);
+    useEffect(() => {
+        const currentDescriptor = `${activeState.walletType}:${activeState.address || 'none'}`;
+        if (prevWalletRef.current !== currentDescriptor) {
+            walletLogger.info(WalletTag.STATE, `useWalletAddress (Android): State transition -> ${activeState.walletType} (${activeState.address || 'no-address'})`);
+            prevWalletRef.current = currentDescriptor;
+        }
+    }, [activeState.walletType, activeState.address]);
+
+    return activeState;
 }

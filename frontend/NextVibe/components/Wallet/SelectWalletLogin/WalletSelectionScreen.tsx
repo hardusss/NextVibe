@@ -20,6 +20,7 @@ import { WalletOptionCard } from './WalletOptionCard';
 import type { WalletType, WalletCardConfig } from './WalletOptionCard';
 import saveWallet from '@/src/api/save.wallet';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
+import { walletLogger, WalletTag, extractErrorMessage } from '@/src/utils/walletLogger';
 
 const COLORS = {
   dark: {
@@ -83,8 +84,13 @@ const WalletSelectionScreen = () => {
 
   useEffect(() => {
     isMounted.current = true;
+    walletLogger.info(WalletTag.MWA, 'WalletSelectionScreen mounted', {
+      platform: Platform.OS,
+      currentAccount: account?.address?.toString() ?? null,
+    });
     return () => {
       isMounted.current = false;
+      walletLogger.debug(WalletTag.MWA, 'WalletSelectionScreen unmounted');
     };
   }, []);
 
@@ -92,6 +98,7 @@ const WalletSelectionScreen = () => {
     if (!isConnecting || !account?.address) return;
 
     const walletAddr = account.address.toString();
+    walletLogger.info(WalletTag.MWA, `WalletSelectionScreen: Account detected (${walletAddr}), calling saveWallet...`);
 
     if (!isMounted.current) return;
     setIsConnecting(false);
@@ -99,58 +106,86 @@ const WalletSelectionScreen = () => {
     saveWallet(walletAddr)
       .then(() => {
         if (!isMounted.current) return;
+        walletLogger.info(WalletTag.MWA, `WalletSelectionScreen: saveWallet succeeded for ${walletAddr}, redirecting to /wallet-dash`);
         router.push('/wallet-dash');
       })
       .catch((saveError: any) => {
         if (!isMounted.current) return;
-        const msg: string = saveError?.response?.data?.error ?? 'Wallet error';
+        const msg = extractErrorMessage(saveError);
+        walletLogger.error(WalletTag.MWA, `WalletSelectionScreen: saveWallet failed for ${walletAddr}: ${msg}`, saveError);
+        walletLogger.error(WalletTag.MWA, `WalletSelectionScreen: saveWallet failed for ${walletAddr}`, saveError);
         disconnect();
         setToast({ message: msg, isSuccess: false });
+        setToast({ message: 'Wallet error', isSuccess: false });
       });
   }, [account, isConnecting]);
 
   const handleCardPress = useCallback((id: WalletType) => {
+    walletLogger.debug(WalletTag.MWA, `WalletSelectionScreen: Card press toggle for ${id}`);
     setSelectedWallet((prev) => (prev === id ? null : id));
   }, []);
 
   const handleMwaConnect = useCallback(async (_id: WalletType) => {
+    walletLogger.info(WalletTag.MWA_ANDROID, 'WalletSelectionScreen: handleMwaConnect triggered');
     try {
-      if (account) await disconnect();
+      if (account) {
+        walletLogger.info(WalletTag.MWA_ANDROID, 'Disconnecting existing account before connecting');
+        await disconnect();
+      }
       setIsConnecting(true);
-      await connect();
+      const connectedAcc = await connect();
+      walletLogger.info(WalletTag.MWA_ANDROID, 'WalletSelectionScreen: MWA connect call returned', {
+        address: connectedAcc?.address?.toString(),
+        label: connectedAcc?.label,
+      });
     } catch (error) {
       if (!isMounted.current) return;
       setIsConnecting(false);
-      console.error('MWA Connection failed:', error);
+      const msg = extractErrorMessage(error);
+      walletLogger.error(WalletTag.MWA_ANDROID, `WalletSelectionScreen: MWA Connection failed: ${msg}`, error);
+      setToast({ message: msg, isSuccess: false });
+      walletLogger.error(WalletTag.MWA_ANDROID, 'WalletSelectionScreen: MWA Connection failed', error);
+      setToast({ message: 'Wallet error', isSuccess: false });
     }
   }, [account, connect, disconnect]);
 
   const handleIosWalletConnect = useCallback(async (walletType: 'phantom' | 'solflare' | 'backpack') => {
+    walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: handleIosWalletConnect selected: ${walletType}`);
     try {
       setIsConnecting(true);
       const connectedAccount = await connect(walletType);
       if (connectedAccount) {
         const walletAddr = connectedAccount.publicKey.toBase58();
+        walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: iOS wallet connected (${walletType}): ${walletAddr}`);
         await storage.setItem("deeplink_wallet_address", walletAddr);
         await storage.setItem("deeplink_wallet_type", walletType);
         
+        walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: Calling saveWallet for ${walletAddr}`);
         await saveWallet(walletAddr);
+        walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: saveWallet succeeded, navigating to /wallet-dash`);
         router.push('/wallet-dash');
+      } else {
+        walletLogger.warn(WalletTag.MWA_IOS, `WalletSelectionScreen: connect returned null for ${walletType}`);
       }
     } catch (error: any) {
-      console.error(`${walletType} connection failed:`, error);
-      Alert.alert("Connection Failed", error.message || `Could not connect to ${walletType}.`);
+      const msg = extractErrorMessage(error);
+      walletLogger.error(WalletTag.MWA_IOS, `WalletSelectionScreen: ${walletType} connection failed: ${msg}`, error);
+      Alert.alert("Connection Failed", msg);
+      walletLogger.error(WalletTag.MWA_IOS, `WalletSelectionScreen: ${walletType} connection failed`, error);
+      Alert.alert("Connection Failed", "Could not connect wallet. Please try again.");
     } finally {
       setIsConnecting(false);
     }
   }, [connect]);
 
   const handleLazorKitConnect = useCallback((_id: WalletType) => {
+    walletLogger.info(WalletTag.LAZORKIT, `WalletSelectionScreen: Routing to /wallet-init (target page: ${page ? page : 'wallet-dash'})`);
     router.push(`/wallet-init?page=${page ? page : 'wallet-dash'}`);
   }, [page]);
 
   const handleCtaPress = useCallback(
     (id: WalletType) => {
+      walletLogger.info(WalletTag.MWA, `WalletSelectionScreen: CTA pressed for ${id} on ${Platform.OS}`);
       if (id === 'mwa') {
         if (Platform.OS === 'ios') {
           Alert.alert(
@@ -160,7 +195,7 @@ const WalletSelectionScreen = () => {
               { text: "Phantom", onPress: () => handleIosWalletConnect('phantom') },
               { text: "Solflare", onPress: () => handleIosWalletConnect('solflare') },
               { text: "Backpack", onPress: () => handleIosWalletConnect('backpack') },
-              { text: "Cancel", style: "cancel" }
+              { text: "Cancel", style: "cancel", onPress: () => walletLogger.debug(WalletTag.MWA_IOS, 'User cancelled wallet selection alert') }
             ]
           );
         } else {
