@@ -155,8 +155,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         console = Console()
         
-        users_with_wallets = User.objects.filter(wallet_address__isnull=False).exclude(wallet_address="")
-        total_users = users_with_wallets.count()
         users_with_wallets = list(User.objects.filter(wallet_address__isnull=False).exclude(wallet_address=""))
         total_users = len(users_with_wallets)
         
@@ -170,18 +168,6 @@ class Command(BaseCommand):
             console.print("[yellow]No linked wallets found in database.[/yellow]")
             return
 
-        # 1. Fetch current prices from Jupiter API v3
-        console.print("[cyan]Fetching live token prices from Jupiter API...[/cyan]")
-        mints = ",".join([t["mint"] for t in TOKENS.values()])
-        prices = {}
-        try:
-            price_resp = requests.get(f"https://api.jup.ag/price/v3?ids={mints}", timeout=10).json()
-            response_data = price_resp.get("data", price_resp) if isinstance(price_resp, dict) else price_resp
-            for k, v in response_data.items():
-                if isinstance(v, dict):
-                    prices[k] = v.get("usdPrice", v.get("price", 0.0))
-        except Exception as e:
-            console.print(f"[bold red]Failed to fetch prices: {e}[/bold red]")
         # 1. Resolve RPC URL
         helius_key = (
             os.getenv("HELIUS_API_KEY") or
@@ -189,8 +175,6 @@ class Command(BaseCommand):
             os.getenv("RPC_KEY", "")
         ).strip()
 
-        rpc_url = os.getenv("RPC_KEY")
-        rpc_url = f"https://mainnet.helius-rpc.com/?api-key={rpc_url}" if rpc_url else "https://api.mainnet-beta.solana.com"
         if helius_key:
             rpc_url = f"https://mainnet.helius-rpc.com/?api-key={helius_key}"
             delay_between_wallets = 0.08  # Fast & safe for Helius
@@ -219,8 +203,6 @@ class Command(BaseCommand):
         # Data structures for Excel and Analytics
         excel_data = []
         token_tvl = {symbol: 0.0 for symbol in TOKENS.keys()}
-        
-        # 2. Progress Bar for fetching data
         running_tvl = 0.0
         active_count = 0
 
@@ -235,7 +217,6 @@ class Command(BaseCommand):
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
-            BarColumn(bar_width=40, style="magenta", complete_style="cyan"),
             BarColumn(bar_width=30, style="magenta", complete_style="cyan"),
             "[progress.percentage]{task.percentage:>3.0f}%",
             TextColumn("• {task.completed}/{task.total} wallets"),
@@ -243,23 +224,14 @@ class Command(BaseCommand):
             console=console
         ) as progress:
             
-            task = progress.add_task("[cyan]Scanning blockchain...", total=total_users)
             task = progress.add_task("[cyan]Scanning...", total=total_users)
             
-            for user in users_with_wallets:
-                wallet = user.wallet_address
             for idx, user in enumerate(users_with_wallets, start=1):
                 wallet = user.wallet_address.strip()
                 user_record = {"Username": user.username, "Wallet Address": wallet}
                 user_total_usd = 0.0
                 
                 # --- Fetch SOL Balance ---
-                try:
-                    sol_res = requests.post(rpc_url, json={"jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [wallet]}, timeout=10).json()
-                    sol_lamports = sol_res.get("result", {}).get("value", 0) if "error" not in sol_res else 0
-                    sol_amount = sol_lamports / (10 ** TOKENS["SOL"]["decimals"]) if isinstance(sol_lamports, int) else 0
-                except Exception:
-                    sol_amount = 0
                 sol_amount = 0.0
                 sol_res = make_rpc_request(session, rpc_url, "getBalance", [wallet])
                 if sol_res and "result" in sol_res:
@@ -267,26 +239,9 @@ class Command(BaseCommand):
                     if isinstance(lamports, (int, float)):
                         sol_amount = lamports / (10 ** TOKENS["SOL"]["decimals"])
 
-                # --- Fetch SPL Balances (Checking Standard & Token-2022) ---
                 # --- Fetch SPL Balances ---
                 spl_balances = {}
-                programs = [
-                    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", # Standard SPL
-                    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"  # Token-2022 (e.g., PYUSD)
-                ]
-                
                 for prog_id in programs:
-                    try:
-                        spl_payload = {
-                            "jsonrpc": "2.0", "id": 2,
-                            "method": "getTokenAccountsByOwner",
-                            "params": [wallet, {"programId": prog_id}, {"encoding": "jsonParsed"}]
-                        }
-                        spl_res = requests.post(rpc_url, json=spl_payload, timeout=10).json()
-                        if "error" not in spl_res:
-                            accounts = spl_res.get("result", {}).get("value", [])
-                            if isinstance(accounts, list):
-                                for acc in accounts:
                     spl_res = make_rpc_request(
                         session,
                         rpc_url,
@@ -300,13 +255,6 @@ class Command(BaseCommand):
                                 try:
                                     info = acc.get("account", {}).get("data", {}).get("parsed", {}).get("info", {})
                                     mint = info.get("mint")
-                                    amount = info.get("tokenAmount", {}).get("uiAmount", 0)
-                                    if mint and amount:
-                                        spl_balances[mint] = spl_balances.get(mint, 0) + amount
-                    except Exception:
-                        pass
-                
-                # --- Compile User Data ---
                                     token_amount_obj = info.get("tokenAmount", {})
                                     amount = token_amount_obj.get("uiAmount") or 0.0
                                     if mint and amount > 0:
@@ -325,8 +273,6 @@ class Command(BaseCommand):
                     user_record[f"{symbol} Amount"] = amount
                     user_record[f"{symbol} Value ($)"] = usd_val
                     
-                    token_tvl[symbol] += usd_val
-                    user_total_usd += usd_val
                     if amount > 0:
                         token_tvl[symbol] += usd_val
                         user_total_usd += usd_val
@@ -351,26 +297,18 @@ class Command(BaseCommand):
                     description=f"[cyan]Scanning... (TVL: [bold green]${running_tvl:,.2f}[/bold green] | Active: {active_count})"
                 )
                 
-                progress.advance(task)
-                time.sleep(0.2) # Avoid RPC rate limits
                 time.sleep(delay_between_wallets)
 
-        # 3. Perform Deep Analytics
         # 4. Perform Deep Analytics
         df = pd.DataFrame(excel_data)
         
         total_network_tvl = df["Total USD"].sum()
-        avg_wallet = df["Total USD"].mean()
-        median_wallet = df["Total USD"].median()
         avg_wallet = df["Total USD"].mean() if total_users > 0 else 0
         median_wallet = df["Total USD"].median() if total_users > 0 else 0
         active_wallets = df[df["Total USD"] > 0].shape[0]
         
-        # Sort to find whales
         whales_df = df.sort_values(by="Total USD", ascending=False).head(5)
 
-        # 4. Console Analytics Output
-        console.print("\n[bold cyan]=== NETWORK ANALYTICS ===[/bold cyan]")
         # 5. Console Analytics Output
         console.print("\n[bold cyan]=== NETWORK ANALYTICS REPORT ===[/bold cyan]")
         
@@ -386,44 +324,19 @@ class Command(BaseCommand):
 
         console.print("\n[bold yellow]🏆 Top 5 Network Whales:[/bold yellow]")
         for idx, row in whales_df.iterrows():
-            console.print(f" 👤 [cyan]{row['Username']}[/cyan] ({row['Wallet Address'][:8]}...): [green]${row['Total USD']:,.2f}[/green]")
             if row['Total USD'] > 0:
                 console.print(f" 👤 [cyan]{row['Username']}[/cyan] ({row['Wallet Address'][:6]}...{row['Wallet Address'][-4]}): [green]${row['Total USD']:,.2f}[/green]")
             else:
                 console.print(f" 👤 [cyan]{row['Username']}[/cyan] ({row['Wallet Address'][:6]}...): [dim]$0.00[/dim]")
 
-        # 5. Generate Beautiful Excel Report
         # 6. Generate Beautiful Excel Report
         excel_path = "nextvibe_wallets_report.xlsx"
         console.print(f"\n[cyan]Exporting rich data to Excel -> {excel_path}[/cyan]")
         
-        writer = pd.ExcelWriter(excel_path, engine='xlsxwriter')
-        df.to_excel(writer, sheet_name='Wallets', index=False)
-        
-        workbook = writer.book
-        worksheet = writer.sheets['Wallets']
-        
-        # Excel Styling
-        header_format = workbook.add_format({'bold': True, 'bg_color': '#0A0410', 'font_color': '#FFFFFF', 'border': 1})
-        money_format = workbook.add_format({'num_format': '$#,##0.00'})
-        num_format = workbook.add_format({'num_format': '#,##0.0000'})
-        
-        for col_num, value in enumerate(df.columns.values):
-            worksheet.write(0, col_num, value, header_format)
         try:
             writer = pd.ExcelWriter(excel_path, engine='xlsxwriter')
             df.to_excel(writer, sheet_name='Wallets', index=False)
             
-            # Auto-adjust column width based on column name length
-            col_width = max(len(str(value)), 12)
-            if "Value ($)" in value or "Total USD" in value:
-                worksheet.set_column(col_num, col_num, col_width, money_format)
-            elif "Amount" in value:
-                worksheet.set_column(col_num, col_num, col_width, num_format)
-            else:
-                worksheet.set_column(col_num, col_num, 25) # Fixed width for usernames/wallets
-                
-        writer.close()
             workbook = writer.book
             worksheet = writer.sheets['Wallets']
             
@@ -447,11 +360,8 @@ class Command(BaseCommand):
         except Exception as e:
             console.print(f"[red]Failed to generate Excel report: {e}[/red]")
 
-        # 6. Generate Analytics Charts (PNG)
         # 7. Generate Analytics Charts (PNG)
         console.print("[cyan]Generating analytics charts...[/cyan]")
-        self.generate_charts(token_tvl, df)
-        console.print("\n[bold green]✅ Task completed successfully![/bold green]")
         try:
             self.generate_charts(token_tvl, df)
             console.print("[green]✓ Charts saved to nextvibe_analytics_charts.png[/green]")
@@ -466,33 +376,26 @@ class Command(BaseCommand):
         Generates a PNG image containing analytics plots.
         Uses the preferred dark theme hex #0A0410.
         """
-        # Filter out tokens with zero TVL
         active_tokens = {k: v for k, v in token_tvl.items() if v > 0}
         
         if not active_tokens:
-            return # Nothing to plot
             return
             
-        # Sort for the pie chart
         sorted_tokens = dict(sorted(active_tokens.items(), key=lambda item: item[1], reverse=True))
         labels = list(sorted_tokens.keys())
         sizes = list(sorted_tokens.values())
 
-        # Setup Matplotlib style targeting the custom #0A0410 dark theme
         plt.style.use('dark_background')
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
         fig.patch.set_facecolor('#0A0410')
         ax1.set_facecolor('#0A0410')
         ax2.set_facecolor('#0A0410')
 
-        # Custom colors for the charts
-        theme_colors = ['#00FF9D', '#00B8FF', '#FF0055', '#FFB800', '#A200FF']
         theme_colors = ['#00FF9D', '#00B8FF', '#FF0055', '#FFB800', '#A200FF', '#00E5FF', '#E040FB']
 
         # Plot 1: Token Dominance (Pie Chart)
         wedges, texts, autotexts = ax1.pie(
             sizes, labels=labels, autopct='%1.1f%%', startangle=140, 
-            colors=theme_colors, textprops={'color': "w", 'family': 'monospace'}
             colors=theme_colors[:len(labels)], textprops={'color': "w", 'family': 'monospace'}
         )
         ax1.set_title('Protocol Token Dominance (TVL)', color='white', family='monospace', fontsize=14, pad=20)
@@ -504,7 +407,6 @@ class Command(BaseCommand):
         # Plot 2: Wealth Distribution (Top 10 vs Rest)
         sorted_users = df.sort_values(by="Total USD", ascending=False)
         top_10_tvl = sorted_users.head(10)["Total USD"].sum()
-        rest_tvl = sorted_users.iloc[10:]["Total USD"].sum()
         rest_tvl = sorted_users.iloc[10:]["Total USD"].sum() if len(sorted_users) > 10 else 0
         
         ax2.bar(["Top 10 Users", "All Other Users"], [top_10_tvl, rest_tvl], color=['#00FF9D', '#333333'])
@@ -515,9 +417,7 @@ class Command(BaseCommand):
         ax2.spines['left'].set_color('#333333')
         ax2.spines['bottom'].set_color('#333333')
         
-        # Add value labels on bars
         for i, v in enumerate([top_10_tvl, rest_tvl]):
-            ax2.text(i, v + (v*0.02), f'${v:,.0f}', color='white', ha='center', family='monospace', fontweight='bold')
             ax2.text(i, v + (v * 0.02 + 0.1), f'${v:,.0f}', color='white', ha='center', family='monospace', fontweight='bold')
 
         plt.tight_layout()
