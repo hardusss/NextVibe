@@ -6,6 +6,7 @@ import useWalletAddress from './useWalletAddress';
 import usePaymaster from './usePaymaster';
 import { TOKEN_MINT_CONSTANTS } from '@/constants/Tokens';
 import { Buffer } from 'buffer';
+import { verifyTimeoutTransaction } from '@/src/utils/solana/transactionConfirmation';
 
 export default function useJupiterSwap() {
     const wallet = useWalletAddress();
@@ -132,6 +133,11 @@ export default function useJupiterSwap() {
 
             return { signature };
         } catch (err: any) {
+            const confirmedSig = await verifyTimeoutTransaction(wallet.connection, err);
+            if (confirmedSig) {
+                return { signature: confirmedSig };
+            }
+
             console.error('[useJupiterSwap] Swap error:', err);
             let errMsg: string;
 

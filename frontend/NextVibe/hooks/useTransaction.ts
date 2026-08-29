@@ -8,6 +8,7 @@ import {
     Transaction,
     TransactionInstruction,
 } from "@solana/web3.js";
+import { verifyTimeoutTransaction } from "@/src/utils/solana/transactionConfirmation";
 import { parsePaymasterError } from "@/src/utils/solana/paymasterErrors";
 
 export default function useTransaction() {
@@ -91,6 +92,12 @@ export default function useTransaction() {
             return txSignature;
 
         } catch (err: any) {
+            const confirmedSig = await verifyTimeoutTransaction(wallet.connection, err);
+            if (confirmedSig) {
+                setSignature(confirmedSig);
+                return confirmedSig;
+            }
+
             console.error("Transaction failed:", err);
             const parsed = classifyError(err);
             setError(parsed.userMessage);
@@ -156,6 +163,12 @@ export default function useTransaction() {
             return txSignature;
 
         } catch (err: any) {
+            const confirmedSig = await verifyTimeoutTransaction(wallet.connection, err);
+            if (confirmedSig) {
+                setSignature(confirmedSig);
+                return confirmedSig;
+            }
+
             console.error("sendInstructions failed:", err);
             const parsed = classifyError(err);
             setError(parsed.userMessage);
