@@ -162,7 +162,8 @@ export default function RootLayout() {
     }, [theme]);
 
     function handleRegistrationError(errorMessage: string) {
-        console.warn('[PushNotifications] Registration error:', errorMessage);
+        setToastMessage(errorMessage);
+        setVisible(true);
     }
 
     async function registerForPushNotifications() {
