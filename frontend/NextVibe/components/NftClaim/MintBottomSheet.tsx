@@ -51,6 +51,7 @@ export interface MintBottomSheetProps {
     defaultPrice: string | null;
     page: string;
     isFocused?: boolean;
+    useModal?: boolean;
 }
 
 type MintStatus = 'idle' | 'minting' | 'success' | 'error';
@@ -327,18 +328,19 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
             : `Swipe to set price · ${price} SOL`;
     };
 
-    return (
-        <Modal visible={visible && (props.isFocused ?? true)} transparent animationType="none" statusBarTranslucent onRequestClose={handleDismiss}>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-                <Animated.View style={[styles.backdrop, { opacity: backdropOpacity, backgroundColor: c.backdrop }]}>
-                    <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleDismiss} activeOpacity={1} />
-                </Animated.View>
+    if (!visible) return null;
 
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView} pointerEvents="box-none">
-                    <Animated.View style={[
-                        styles.sheet,
-                        { backgroundColor: c.bg, transform: [{ translateY: Animated.add(translateY, dragY) }] },
-                    ]}>
+    const content = (
+        <GestureHandlerRootView style={StyleSheet.absoluteFillObject}>
+            <Animated.View style={[styles.backdrop, { opacity: backdropOpacity, backgroundColor: c.backdrop }]}>
+                <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleDismiss} activeOpacity={1} />
+            </Animated.View>
+
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView} pointerEvents="box-none">
+                <Animated.View style={[
+                    styles.sheet,
+                    { backgroundColor: c.bg, transform: [{ translateY: Animated.add(translateY, dragY) }] },
+                ]}>
 
                         <View style={styles.handleArea} {...sheetDragResponder.panHandlers}>
                             <View style={[styles.handle, { backgroundColor: c.handle }]} />
@@ -552,6 +554,21 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                     </Animated.View>
                 </KeyboardAvoidingView>
             </GestureHandlerRootView>
+    );
+
+    if (props.useModal === false) {
+        return content;
+    }
+
+    return (
+        <Modal
+            visible={visible && (props.isFocused ?? true)}
+            transparent
+            animationType="none"
+            statusBarTranslucent
+            onRequestClose={handleDismiss}
+        >
+            {content}
         </Modal>
     );
 });

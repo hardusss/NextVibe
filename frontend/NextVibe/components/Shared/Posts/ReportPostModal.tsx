@@ -15,10 +15,11 @@ const REPORT_OPTIONS = [
     { key: 'other', label: 'Other' },
 ];
 
-export default function ReportPostModal({ postId, visible, onClose }: {
+export default function ReportPostModal({ postId, visible, onClose, useModal = true }: {
     postId: number;
     visible: boolean;
     onClose: (reported?: boolean, message?: string) => void;
+    useModal?: boolean;
 }) {
     const [selected, setSelected] = useState<string | null>(null);
     const [description, setDescription] = useState('');
@@ -70,122 +71,134 @@ export default function ReportPostModal({ postId, visible, onClose }: {
 
     const handleClose = () => { reset(); onClose(false); };
 
+    if (!visible) return null;
+
+    const modalContent = (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+            <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
+
+            <View style={styles.center} pointerEvents="box-none">
+                <View style={styles.card}>
+                    {/* Top purple line */}
+                    <LinearGradient
+                        colors={['#A855F7', '#7C3AED']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.topLine}
+                    />
+
+                    {/* Close */}
+                    <TouchableOpacity style={styles.closeBtn} onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                        <X size={16} color="rgba(255,255,255,0.4)" strokeWidth={2} />
+                    </TouchableOpacity>
+
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={styles.iconRing}>
+                            <LinearGradient colors={['#A855F722', '#7C3AED11']} style={styles.iconBg}>
+                                <Flag size={22} color="#C4B5FD" strokeWidth={1.8} />
+                            </LinearGradient>
+                        </View>
+                        <Text style={styles.title}>Report Post</Text>
+                        <Text style={styles.subtitle}>The author won't know who submitted this report.</Text>
+                    </View>
+
+                    {step === 1 && (
+                        <View>
+                            {REPORT_OPTIONS.map(opt => (
+                                <TouchableOpacity
+                                    key={opt.key}
+                                    style={[styles.option, selected === opt.key && styles.optionSelected]}
+                                    onPress={() => setSelected(opt.key)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[styles.optionText, selected === opt.key && styles.optionTextSelected]}>
+                                        {opt.label}
+                                    </Text>
+                                    {selected === opt.key && (
+                                        <View style={styles.optionDot} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+
+                            <View style={styles.actions}>
+                                <TouchableOpacity style={styles.cancelBtn} onPress={handleClose} activeOpacity={0.7}>
+                                    <Text style={styles.cancelLabel}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.primaryBtn, !selected && styles.disabled]}
+                                    onPress={() => selected && setStep(2)}
+                                    activeOpacity={0.8}
+                                    disabled={!selected}
+                                >
+                                    <LinearGradient
+                                        colors={selected ? ['#A855F7', '#7C3AED'] : ['#2a2a2a', '#2a2a2a']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.primaryGradient}
+                                    >
+                                        <Text style={[styles.primaryLabel, !selected && styles.primaryLabelDisabled]}>Next</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {step === 2 && (
+                        <View>
+                            <Text style={styles.detailsTitle}>Additional details</Text>
+                            <Text style={styles.detailsHint}>Optional — helps us review faster</Text>
+                            <TextInput
+                                placeholder="Describe the issue..."
+                                placeholderTextColor="rgba(255,255,255,0.2)"
+                                value={description}
+                                onChangeText={setDescription}
+                                style={styles.textInput}
+                                multiline
+                                textAlignVertical="top"
+                                maxLength={500}
+                            />
+
+                            <View style={styles.actions}>
+                                <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
+                                    <ChevronLeft size={14} color="rgba(255,255,255,0.4)" strokeWidth={2} />
+                                    <Text style={styles.cancelLabel}>Back</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.primaryBtn, loading && styles.disabled]}
+                                    onPress={() => setConfirmVisible(true)}
+                                    activeOpacity={0.8}
+                                    disabled={loading}
+                                >
+                                    <LinearGradient
+                                        colors={['#A855F7', '#7C3AED']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.primaryGradient}
+                                    >
+                                        {loading
+                                            ? <ActivityIndicator color="#fff" size="small" />
+                                            : <Text style={styles.primaryLabel}>Send report</Text>
+                                        }
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </View>
+    );
+
     return (
         <>
-            <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={handleClose}>
-                <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
-
-                <View style={styles.center} pointerEvents="box-none">
-                    <View style={styles.card}>
-                        {/* Top purple line */}
-                        <LinearGradient
-                            colors={['#A855F7', '#7C3AED']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.topLine}
-                        />
-
-                        {/* Close */}
-                        <TouchableOpacity style={styles.closeBtn} onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                            <X size={16} color="rgba(255,255,255,0.4)" strokeWidth={2} />
-                        </TouchableOpacity>
-
-                        {/* Header */}
-                        <View style={styles.header}>
-                            <View style={styles.iconRing}>
-                                <LinearGradient colors={['#A855F722', '#7C3AED11']} style={styles.iconBg}>
-                                    <Flag size={22} color="#C4B5FD" strokeWidth={1.8} />
-                                </LinearGradient>
-                            </View>
-                            <Text style={styles.title}>Report Post</Text>
-                            <Text style={styles.subtitle}>The author won't know who submitted this report.</Text>
-                        </View>
-
-                        {step === 1 && (
-                            <View>
-                                {REPORT_OPTIONS.map(opt => (
-                                    <TouchableOpacity
-                                        key={opt.key}
-                                        style={[styles.option, selected === opt.key && styles.optionSelected]}
-                                        onPress={() => setSelected(opt.key)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={[styles.optionText, selected === opt.key && styles.optionTextSelected]}>
-                                            {opt.label}
-                                        </Text>
-                                        {selected === opt.key && (
-                                            <View style={styles.optionDot} />
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
-
-                                <View style={styles.actions}>
-                                    <TouchableOpacity style={styles.cancelBtn} onPress={handleClose} activeOpacity={0.7}>
-                                        <Text style={styles.cancelLabel}>Cancel</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.primaryBtn, !selected && styles.disabled]}
-                                        onPress={() => selected && setStep(2)}
-                                        activeOpacity={0.8}
-                                        disabled={!selected}
-                                    >
-                                        <LinearGradient
-                                            colors={selected ? ['#A855F7', '#7C3AED'] : ['#2a2a2a', '#2a2a2a']}
-                                            start={{ x: 0, y: 0 }}
-                                            end={{ x: 1, y: 0 }}
-                                            style={styles.primaryGradient}
-                                        >
-                                            <Text style={[styles.primaryLabel, !selected && styles.primaryLabelDisabled]}>Next</Text>
-                                        </LinearGradient>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
-
-                        {step === 2 && (
-                            <View>
-                                <Text style={styles.detailsTitle}>Additional details</Text>
-                                <Text style={styles.detailsHint}>Optional — helps us review faster</Text>
-                                <TextInput
-                                    placeholder="Describe the issue..."
-                                    placeholderTextColor="rgba(255,255,255,0.2)"
-                                    value={description}
-                                    onChangeText={setDescription}
-                                    style={styles.textInput}
-                                    multiline
-                                    textAlignVertical="top"
-                                    maxLength={500}
-                                />
-
-                                <View style={styles.actions}>
-                                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
-                                        <ChevronLeft size={14} color="rgba(255,255,255,0.4)" strokeWidth={2} />
-                                        <Text style={styles.cancelLabel}>Back</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.primaryBtn, loading && styles.disabled]}
-                                        onPress={() => setConfirmVisible(true)}
-                                        activeOpacity={0.8}
-                                        disabled={loading}
-                                    >
-                                        <LinearGradient
-                                            colors={['#A855F7', '#7C3AED']}
-                                            start={{ x: 0, y: 0 }}
-                                            end={{ x: 1, y: 0 }}
-                                            style={styles.primaryGradient}
-                                        >
-                                            {loading
-                                                ? <ActivityIndicator color="#fff" size="small" />
-                                                : <Text style={styles.primaryLabel}>Send report</Text>
-                                            }
-                                        </LinearGradient>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
-                    </View>
-                </View>
-            </Modal>
+            {useModal ? (
+                <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={handleClose}>
+                    {modalContent}
+                </Modal>
+            ) : (
+                modalContent
+            )}
 
             <ConfirmDialog
                 visible={confirmVisible}
@@ -198,6 +211,7 @@ export default function ReportPostModal({ postId, visible, onClose }: {
                 confirmGradient={["#A855F7", "#7C3AED"]}
                 iconName="flag"
                 iconColor="#C4B5FD"
+                useModal={useModal}
             />
         </>
     );

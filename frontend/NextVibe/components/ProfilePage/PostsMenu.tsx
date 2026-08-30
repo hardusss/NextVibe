@@ -23,12 +23,6 @@ import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-
 import { LinearGradient } from "expo-linear-gradient";
 import { storage } from '@/src/utils/storage';
 import PostPopup from "./PostModal";
-import PopupModal from "../Comments/CommentPopup";
-import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
-import useWalletAddress from "@/hooks/useWalletAddress";
-import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
-import useTransaction from "@/hooks/useTransaction";
-import mintNFT from "@/src/api/mint.nft";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 20;
@@ -301,19 +295,6 @@ const PostGallery = ({
 
     const [popupVisible, setPopupVisible] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-    const [commentsPostId, setCommentsPostId] = useState<number | null>(null);
-
-    const mintSheetRef = useRef<MintBottomSheetRef>(null);
-    const [mintPostId, setMintPostId] = useState<number | null>(null);
-    const [mintImageUrl, setMintImageUrl] = useState<string | null>(null);
-    const [mintCreator, setMintCreator] = useState<string>("");
-    const [mintIsOwner, setMintIsOwner] = useState(false);
-    const [mintDefaultPrice, setMintDefaultPrice] = useState<string | null>(null);
-    const [mintOwnerWallet, setMintOwnerWallet] = useState<string | null>(null);
-    const [mintMintedCount, setMintMintedCount] = useState<number>(0);
-    const { sendInstructions } = useTransaction();
-    const { address } = useWalletAddress();
-    const [mintSuccessId, setMintSuccessId] = useState<number | null>(null);
 
     useEffect(() => {
         if (!isFocused) {
@@ -322,8 +303,6 @@ const PostGallery = ({
                 if (!storedId) {
                     setPopupVisible(false);
                     setSelectedPostId(null);
-                    setCommentsPostId(null);
-                    setMintPostId(null);
                 }
             };
             checkLogout();
@@ -402,47 +381,6 @@ const PostGallery = ({
         setPopupVisible(true);
     }, []);
 
-    const handleOpenMint = (
-        postId: number,
-        imageUrl: string | null,
-        creator: string,
-        nftPrice: string | null,
-        isOwner: boolean,
-        alreadyClaimed: boolean,
-        ownerWallet: string | null,
-        mintedCount: number
-    ) => {
-        setMintPostId(postId);
-        setMintImageUrl(imageUrl);
-        setMintCreator(creator);
-        setMintIsOwner(isOwner);
-        setMintDefaultPrice(nftPrice);
-        setMintOwnerWallet(ownerWallet);
-        setMintMintedCount(mintedCount);
-        setTimeout(() => mintSheetRef.current?.present(), 50);
-    };
-
-    const handleMint = async (postId: number, price: number) => {
-        if (!address) throw new Error("Wallet not connected");
-
-        let paymentSignature: string | null = null;
-
-        if (mintMintedCount === 0 && mintIsOwner) {
-            paymentSignature = null;
-        } else if (!mintIsOwner) {
-            if (!mintOwnerWallet) throw new Error("Owner wallet not found");
-
-            const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
-            paymentSignature = await sendInstructions(ixs, `user-profile?id=${id}`);
-
-            if (!paymentSignature) throw new Error("Payment was not confirmed");
-        }
-
-        await mintNFT(address, postId, price, paymentSignature as string);
-        // Signal PostPopup to update collect button state
-        setMintSuccessId(postId);
-    };
-
     const keyExtractor = useCallback((item: Post, index: number) => item.post_id?.toString() ?? `post-${index}`, []);
 
     const renderItem = useCallback(({ item }: { item: Post }) => (
@@ -468,33 +406,11 @@ const PostGallery = ({
             <PostPopup
                 visible={popupVisible}
                 postId={selectedPostId}
-                onClose={() => setPopupVisible(false)}
+                onClose={() => {
+                    setPopupVisible(false);
+                    setSelectedPostId(null);
+                }}
                 currentUserId={userID ?? undefined}
-                onOpenComments={(id) => setCommentsPostId(id)}
-                onOpenMint={handleOpenMint}
-                mintSuccessPostId={mintSuccessId}
-                isFocused={isFocused}
-            />
-
-            {commentsPostId !== null && (
-                <PopupModal
-                    post_id={commentsPostId}
-                    onClose={() => setCommentsPostId(null)}
-                    isCommentsEnabled={true}
-                    isFocused={isFocused}
-                />
-            )}
-
-            <MintBottomSheet
-                ref={mintSheetRef}
-                postId={mintPostId ?? 0}
-                imageUrl={mintImageUrl}
-                creatorUsername={mintCreator}
-                walletConnected={!!address}
-                onMint={handleMint}
-                isOwner={mintIsOwner}
-                defaultPrice={mintDefaultPrice}
-                page={`user-profile?id=${id}`}
                 isFocused={isFocused}
             />
 

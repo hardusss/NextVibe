@@ -80,9 +80,10 @@ interface PopupModalProps {
     isCommentsEnabled?: boolean;
     onClose: () => void;
     isFocused?: boolean;
+    useModal?: boolean;
 }
 
-const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused }: PopupModalProps) => {
+const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, useModal = true }: PopupModalProps) => {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === "dark";
     const colors = isDark ? themeColors.dark : themeColors.light;
@@ -374,14 +375,8 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused }: P
 
     const totalCount = comments.reduce((total, c) => total + 1 + (c.replies?.length || 0), 0);
 
-    return (
-        <Modal
-            visible={isFocused ?? true}
-            transparent
-            animationType="none"
-            statusBarTranslucent
-            onRequestClose={handleClose}
-        >
+    const content = (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
             <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
 
             <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
@@ -470,6 +465,22 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused }: P
                     )}
                 </KeyboardAvoidingView>
             </Animated.View>
+        </View>
+    );
+
+    if (!useModal) {
+        return content;
+    }
+
+    return (
+        <Modal
+            visible={isFocused ?? true}
+            transparent
+            animationType="none"
+            statusBarTranslucent
+            onRequestClose={handleClose}
+        >
+            {content}
         </Modal>
     );
 };

@@ -37,6 +37,12 @@ import VerifyBadge from "../VerifyBadge";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
+import PopupModal from "../Comments/CommentPopup";
+import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
+import useWalletAddress from "@/hooks/useWalletAddress";
+import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
+import useTransaction from "@/hooks/useTransaction";
+import mintNFT from "@/src/api/mint.nft";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
@@ -139,6 +145,11 @@ const PostPopup: React.FC<PostPopupProps> = ({
     const [showHeart, setShowHeart] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [toastConfig, setToastConfig] = useState({ visible: false, message: "", isSuccess: true });
+    const [showComments, setShowComments] = useState(false);
+
+    const mintSheetRef = useRef<MintBottomSheetRef>(null);
+    const { sendInstructions } = useTransaction();
+    const { address } = useWalletAddress();
 
     const translateY = useRef(new Animated.Value(OPEN_TRANSLATE_Y)).current;
     const scale = useRef(new Animated.Value(OPEN_SCALE_FROM)).current;
@@ -276,11 +287,14 @@ const PostPopup: React.FC<PostPopupProps> = ({
     };
 
     const handleClose = () => {
+        setShowComments(false);
+        mintSheetRef.current?.dismiss();
         runCloseAnimation(() => { setModalVisible(false); onClose(); });
     };
 
     const handleOpenMint = () => {
         if (!post) return;
+        mintSheetRef.current?.present();
         onOpenMint?.(
             post.post_id,
             post.media?.[0]?.media_url ?? null,
@@ -291,6 +305,30 @@ const PostPopup: React.FC<PostPopupProps> = ({
             post.owner_wallet,
             post.minted_count
         );
+    };
+
+    const handleMint = async (targetPostId: number, price: number) => {
+        if (!address) throw new Error("Wallet not connected");
+
+        let paymentSignature: string | null = null;
+
+        if (post?.minted_count === 0 && post?.is_owner) {
+            paymentSignature = null;
+        } else if (!post?.is_owner) {
+            if (!post?.owner_wallet) throw new Error("Owner wallet not found");
+
+            const ixs = buildMintPaymentInstructions(address, post.owner_wallet, price);
+            paymentSignature = await sendInstructions(ixs, `user-profile?id=${post.user_id}`);
+
+            if (!paymentSignature) throw new Error("Payment was not confirmed");
+        }
+
+        await mintNFT(address, targetPostId, price, paymentSignature as string);
+        setPost(prev => prev ? {
+            ...prev,
+            already_claimed: true,
+            minted_count: (prev.minted_count ?? 0) + 1,
+        } : null);
     };
 
     const resolveCollectState = (p: PostData): CollectState | null => {
@@ -390,6 +428,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                             onPostDeleted={() => { setDropdownVisible(false); handleClose(); }}
                                             onPostDeletedFail={() => setDropdownVisible(false)}
                                             onReportResult={() => setDropdownVisible(false)}
+                                            useModal={false}
                                         />
                                     )}
                                 </View>
@@ -597,7 +636,10 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                         {post.is_comments_enabled && (
                                             <TouchableOpacity
                                                 style={styles.actionButton}
-                                                onPress={() => postId !== null && onOpenComments?.(postId)}
+                                                onPress={() => {
+                                                    setShowComments(true);
+                                                    if (postId !== null) onOpenComments?.(postId);
+                                                }}
                                                 activeOpacity={0.7}
                                             >
                                                 <MessageCircle size={22} color="#999" />
@@ -619,6 +661,32 @@ const PostPopup: React.FC<PostPopupProps> = ({
                     </GlassModalCard>
                 </View>
             </Animated.View>
+
+            {showComments && post && (
+                <PopupModal
+                    post_id={post.post_id}
+                    onClose={() => setShowComments(false)}
+                    isCommentsEnabled={post.is_comments_enabled}
+                    useModal={false}
+                    isFocused={isFocused}
+                />
+            )}
+
+            {post && (
+                <MintBottomSheet
+                    ref={mintSheetRef}
+                    postId={post.post_id}
+                    imageUrl={mediaUrl}
+                    creatorUsername={post.username}
+                    walletConnected={!!address}
+                    onMint={handleMint}
+                    isOwner={post.is_owner}
+                    defaultPrice={post.nft_price}
+                    page={`user-profile?id=${post.user_id}`}
+                    isFocused={isFocused}
+                    useModal={false}
+                />
+            )}
         </Modal>
     );
 };
