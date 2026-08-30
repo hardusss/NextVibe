@@ -14,6 +14,7 @@ export default function ConfirmDialog({
     confirmGradient = ['#EF4444', '#DC2626'],
     iconName,
     iconColor = '#f87171',
+    useModal = true,
 }: {
     visible: boolean,
     onConfirm: () => void,
@@ -25,6 +26,7 @@ export default function ConfirmDialog({
     confirmGradient?: readonly string[],
     iconName?: string,
     iconColor?: string,
+    useModal?: boolean,
 }) {
     const scaleAnim = useRef(new Animated.Value(0.88)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -52,14 +54,8 @@ export default function ConfirmDialog({
 
     if (!visible) return null;
 
-    return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="none"
-            statusBarTranslucent
-            onRequestClose={onCancel}
-        >
+    const content = (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
             {/* Backdrop */}
             <TouchableOpacity
                 style={styles.backdrop}
@@ -134,6 +130,22 @@ export default function ConfirmDialog({
                     </View>
                 </Animated.View>
             </View>
+        </View>
+    );
+
+    if (!useModal) {
+        return content;
+    }
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="none"
+            statusBarTranslucent
+            onRequestClose={onCancel}
+        >
+            {content}
         </Modal>
     );
 }

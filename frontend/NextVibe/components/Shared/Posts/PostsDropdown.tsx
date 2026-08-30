@@ -14,6 +14,7 @@ export default function DropDown({
     onPostDeleted,
     onPostDeletedFail,
     onReportResult,
+    useModal = true,
 }: {
     isVisible: boolean,
     isOwner: boolean,
@@ -22,6 +23,7 @@ export default function DropDown({
     onPostDeleted?: () => void,
     onPostDeletedFail?: () => void,
     onReportResult?: (reported: boolean, message?: string) => void,
+    useModal?: boolean,
 }) {
     const [showConfirm, setShowConfirm] = useState(false);
     const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -95,6 +97,7 @@ export default function DropDown({
                 visible={showConfirm}
                 onConfirm={handleConfirmDelete}
                 onCancel={() => setShowConfirm(false)}
+                useModal={useModal}
             />
             <ReportPostModal
                 postId={postId}
@@ -103,6 +106,7 @@ export default function DropDown({
                     setReportModalVisible(false);
                     onReportResult?.(!!reported, message);
                 }}
+                useModal={useModal}
             />
         </>
     );
