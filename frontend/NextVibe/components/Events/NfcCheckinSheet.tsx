@@ -23,6 +23,7 @@ import Animated, {
 import { getCheckinList } from "@/src/api/event.checkin";
 import { startSharing, stopSharing, addNfcReadListener } from "@/modules/nfc-send";
 import { startBroadcasting, stopBroadcasting, addBleReadListener } from "@/modules/ble-share";
+import { useProximityToken } from '@/hooks/useProximityToken';
 
 export interface NfcCheckinSheetRef {
     presentForPost: (postId: number, eventTitle?: string) => void;
@@ -39,6 +40,8 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const [eventTitle, setEventTitle] = useState<string | undefined>(undefined);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [tapCount, setTapCount] = useState(0);
+
+    const { generateToken, startAutoRenewal, stopAutoRenewal } = useProximityToken();
 
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const removeListenerRef = useRef<{ remove: () => void } | null>(null);
@@ -119,27 +122,44 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
         if (postId !== null) fetchCheckins(postId);
     }, [postId, fetchCheckins]);
 
-    const startNfcBroadcast = useCallback((pid: number) => {
+    const startNfcBroadcast = useCallback(async (pid: number) => {
         if (isBroadcasting) return;
         try {
-            const url = `https://nextvibe.io/event-checkin?postId=${pid}`;
+            const tokenUrl = await generateToken('checkin', pid);
+            if (!tokenUrl) {
+                console.warn("Failed to generate proximity token");
+                return;
+            }
 
             if (Platform.OS === 'ios') {
-                // iOS: BLE read dedup is per-central per broadcast session (native layer)
                 removeListenerRef.current = addBleReadListener(handleBleRead);
-                startBroadcasting(url);
+                startBroadcasting(tokenUrl);
             } else {
-                // Android: Use NFC HCE
                 lastReadTimestamp.current = 0;
                 removeListenerRef.current = addNfcReadListener(handleNfcRead);
-                startSharing(url);
+                startSharing(tokenUrl);
             }
             setIsBroadcasting(true);
+
+            // Start auto-renewal to keep token fresh
+            startAutoRenewal('checkin', pid, (newUrl) => {
+                try {
+                    if (Platform.OS === 'ios') {
+                        stopBroadcasting();
+                        startBroadcasting(newUrl);
+                    } else {
+                        stopSharing();
+                        startSharing(newUrl);
+                    }
+                } catch (e) {
+                    console.warn('Error updating broadcast URL:', e);
+                }
+            });
         } catch (error) {
             console.warn("Broadcasting not available:", error);
             setIsBroadcasting(false);
         }
-    }, [isBroadcasting, handleBleRead, handleNfcRead]);
+    }, [isBroadcasting, handleBleRead, handleNfcRead, generateToken, startAutoRenewal]);
 
     const stopNfcBroadcast = useCallback(() => {
         try {
@@ -152,12 +172,13 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             } else {
                 stopSharing();
             }
+            stopAutoRenewal();
         } catch (e) {
             console.warn("Error stopping broadcast:", e);
         } finally {
             setIsBroadcasting(false);
         }
-    }, []);
+    }, [stopAutoRenewal]);
 
     const cleanup = useCallback(() => {
         stopNfcBroadcast();
