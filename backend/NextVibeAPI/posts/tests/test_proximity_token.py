@@ -141,8 +141,8 @@ class ProximityTokenTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("invalid", response.data["error"].lower())
 
-    def test_verify_token_single_use(self):
-        """Test that a token can only be used once (strict single-use)."""
+    def test_verify_token_valid_during_ttl(self):
+        """Test that a temporary token remains valid during its TTL window."""
         # Generate a token
         gen_response = self.broadcaster_client.post(
             "/api/v1/posts/proximity/generate-token/",
@@ -151,23 +151,13 @@ class ProximityTokenTests(TestCase):
         )
         token = gen_response.data["token"]
 
-        # First verification should succeed (or return a business logic error, but not "invalid token")
-        first_response = self.scanner_client.post(
+        # Verification should succeed (not return "invalid or expired token")
+        response = self.scanner_client.post(
             "/api/v1/posts/proximity/verify-token/",
             {"token": token},
             format="json",
         )
-        # Token was consumed regardless of business logic outcome
-        self.assertNotEqual(first_response.data.get("error", ""), "Token is invalid, expired, or already used.")
-
-        # Second verification must fail with "invalid/expired" error
-        second_response = self.scanner_client.post(
-            "/api/v1/posts/proximity/verify-token/",
-            {"token": token},
-            format="json",
-        )
-        self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("invalid", second_response.data["error"].lower())
+        self.assertNotEqual(response.data.get("error", ""), "Token is invalid or expired.")
 
     def test_verify_token_self_interaction_prevented(self):
         """Test that a user cannot verify their own token."""
