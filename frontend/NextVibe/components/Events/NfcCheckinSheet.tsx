@@ -24,6 +24,7 @@ import { getCheckinList } from "@/src/api/event.checkin";
 import { startSharing, stopSharing, addNfcReadListener } from "@/modules/nfc-send";
 import { startBroadcasting, stopBroadcasting, addBleReadListener } from "@/modules/ble-share";
 import { useProximityToken } from '@/hooks/useProximityToken';
+import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
 
 export interface NfcCheckinSheetRef {
     presentForPost: (postId: number, eventTitle?: string) => void;
@@ -41,7 +42,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [tapCount, setTapCount] = useState(0);
 
-    const { generateToken, startAutoRenewal, stopAutoRenewal } = useProximityToken();
+    const { generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing } = useProximityToken();
 
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const removeListenerRef = useRef<{ remove: () => void } | null>(null);
@@ -333,6 +334,15 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                         }
                     </Text>
                 </View>
+
+                {isBroadcasting && (
+                    <TokenExpiryBadge
+                        secondsLeft={secondsLeft}
+                        totalDuration={totalDuration}
+                        isRenewing={isRenewing}
+                        label="Active Check-in Token"
+                    />
+                )}
 
                 {Platform.OS === 'ios' && isBroadcasting && (
                     <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.05)', borderColor: 'rgba(168,85,247,0.2)' }]}>
