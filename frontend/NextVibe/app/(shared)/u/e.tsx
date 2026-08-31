@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, Vibration, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, Vibration, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
@@ -7,6 +8,7 @@ import { verifyProximityToken } from '@/src/api/proximity.token';
 import { ShieldX } from 'lucide-react-native';
 
 export default function ProximityTokenScreen() {
+    const insets = useSafeAreaInsets();
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
     const params = useLocalSearchParams<{ t?: string; id?: string }>();
@@ -89,7 +91,7 @@ export default function ProximityTokenScreen() {
     const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)';
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+        <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             <View style={styles.center}>
                 {errorMessage ? (
                     <View style={styles.errorContainer}>
@@ -127,7 +129,7 @@ export default function ProximityTokenScreen() {
                     </>
                 )}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
