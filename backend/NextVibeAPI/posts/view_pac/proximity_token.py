@@ -1,7 +1,6 @@
 import secrets
 import json
 from django.core.cache import cache
-from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,18 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest, EventCheckin
 from user.models import User
-import django_redis
 
-# Lua script for atomic GET + DEL (single-use token guarantee)
-ATOMIC_GET_DEL_SCRIPT = """
-local val = redis.call('GET', KEYS[1])
-if val then
-    redis.call('DEL', KEYS[1])
-end
-return val
-"""
-
-TOKEN_TTL = 60  # seconds
+TOKEN_TTL = 120  # seconds (time-limited window)
 TOKEN_PREFIX = "proximity:"
 
 
@@ -60,12 +49,12 @@ class GenerateProximityTokenView(APIView):
         # Generate cryptographically secure token
         token = secrets.token_urlsafe(6)  # Produces 8 chars
 
-        # Store in Redis with TTL
-        payload = json.dumps({
+        # Store in Cache with TTL (temporary, non-single-use)
+        payload = {
             "user_id": str(request.user.user_id),
-            "event_id": event_id,
-            "interaction_type": interaction_type,
-        })
+            "event_id": int(event_id),
+            "interaction_type": str(interaction_type),
+        }
 
         cache_key = f"{TOKEN_PREFIX}{token}"
         cache.set(cache_key, payload, timeout=TOKEN_TTL)
@@ -78,7 +67,7 @@ class VerifyProximityTokenView(APIView):
     POST /api/v1/posts/proximity/verify-token/
     Body: { "token": str, "latitude": float (optional), "longitude": float (optional) }
     
-    Atomically retrieves and deletes the token (single-use).
+    Retrieves the temporary token from cache.
     Dispatches to the appropriate business logic based on interaction_type.
     """
     permission_classes = [IsAuthenticated]
@@ -95,19 +84,22 @@ class VerifyProximityTokenView(APIView):
         latitude = request.data.get('latitude')
         longitude = request.data.get('longitude')
 
-        # Atomic GET + DEL via Lua script
         cache_key = f"{TOKEN_PREFIX}{token}"
-        payload_json = self._atomic_get_del(cache_key)
+        payload = cache.get(cache_key)
 
-        if payload_json is None:
+        if not payload:
             return Response(
-                {"error": "Token is invalid, expired, or already used."},
+                {"error": "Token is invalid or expired."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            payload = json.loads(payload_json)
-        except (json.JSONDecodeError, TypeError):
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except Exception:
+                pass
+
+        if not isinstance(payload, dict):
             return Response(
                 {"error": "Invalid token payload."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -137,26 +129,6 @@ class VerifyProximityTokenView(APIView):
                 {"error": "Unknown interaction type."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-    def _atomic_get_del(self, cache_key):
-        """Atomically GET and DEL a key from Redis using a Lua script."""
-        try:
-            redis_client = django_redis.get_redis_connection("default")
-            # django_redis prepends a version prefix to cache keys
-            # We need to use the make_key method to get the actual Redis key
-            from django.core.cache import cache as django_cache
-            real_key = django_cache.make_key(cache_key)
-            result = redis_client.eval(ATOMIC_GET_DEL_SCRIPT, 1, real_key)
-            if result is not None:
-                return result.decode('utf-8') if isinstance(result, bytes) else result
-            return None
-        except Exception as e:
-            print(f"Redis atomic GET+DEL error: {e}")
-            # Fallback to non-atomic get+delete
-            val = cache.get(cache_key)
-            if val:
-                cache.delete(cache_key)
-            return val
 
     def _handle_networking(self, scanner_user, event_id, broadcaster_user_id, latitude, longitude):
         """Delegate to the extracted networking logic."""
