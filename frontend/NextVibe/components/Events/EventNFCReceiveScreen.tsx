@@ -25,7 +25,16 @@ type ConnectionState = "idle" | "locating" | "connecting" | "success" | "error";
 export default function EventNFCReceiveScreen() {
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
-    const params = useLocalSearchParams<{ eventId: string; userId: string; t: string }>();
+    const params = useLocalSearchParams<{
+        eventId?: string;
+        userId?: string;
+        t?: string;
+        _verified?: string;
+        _earned_points?: string;
+        _username?: string;
+        _avatar?: string;
+        _is_official?: string;
+    }>();
     const eventId = params.eventId ? parseInt(params.eventId, 10) : null;
     const scannedUserId = params.userId ? parseInt(params.userId, 10) : null;
     const proximityToken = params.t || null;
@@ -62,12 +71,21 @@ export default function EventNFCReceiveScreen() {
     }));
 
     useEffect(() => {
-        if (proximityToken && state === "idle") {
+        if (params._verified === "1") {
+            setEarnedPoints(params._earned_points ? parseInt(params._earned_points, 10) : 2);
+            setScannedUser({
+                username: params._username || "Attendee",
+                avatar: params._avatar || null,
+                is_official: params._is_official === "1",
+            });
+            setState("success");
+            Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+        } else if (proximityToken && state === "idle") {
             handleTokenConnect();
         } else if (eventId && scannedUserId && state === "idle") {
             handleConnect();
         }
-    }, [eventId, scannedUserId, proximityToken]);
+    }, [eventId, scannedUserId, proximityToken, params._verified]);
 
     const handleTokenConnect = async () => {
         if (!proximityToken) {
