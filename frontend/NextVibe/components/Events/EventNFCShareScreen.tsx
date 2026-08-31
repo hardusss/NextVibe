@@ -35,6 +35,7 @@ export default function EventNFCShareScreen() {
     const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)';
 
     const startSharingSession = (url: string) => {
+        console.log('Starting sharing session with URL:', url);
         if (isBroadcastingRef.current) return;
         isBroadcastingRef.current = true;
         if (Platform.OS === 'ios') {
@@ -60,7 +61,10 @@ export default function EventNFCShareScreen() {
             const res = await axios.get(`${GetApiUrl()}/posts/user-event-connections/`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const eventData = res.data.find((e: any) => e.event_id === Number(eventId));
+
+            const eventsArray = res.data.events || [];
+            const eventData = eventsArray.find((e: any) => e.event_id === Number(eventId));
+            
             if (!eventData) return currentKnownIds;
 
             const currentConns = eventData.connections || [];
@@ -69,7 +73,7 @@ export default function EventNFCShareScreen() {
             if (newConn) {
                 stopSharingSession();
 
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
                 Vibration.vibrate([0, 50, 50, 50, 50, 100]);
 
                 setSuccessUser({
@@ -146,7 +150,10 @@ export default function EventNFCShareScreen() {
                 const res = await axios.get(`${GetApiUrl()}/posts/user-event-connections/`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const eventData = res.data.find((e: any) => e.event_id === Number(eventId));
+
+                const eventsArray = res.data.events || [];
+                const eventData = eventsArray.find((e: any) => e.event_id === Number(eventId));
+
                 if (eventData && eventData.connections) {
                     knownIds = eventData.connections.map((c: any) => c.user_id);
                     setInitialConnections(knownIds);
