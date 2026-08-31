@@ -12,6 +12,7 @@ import { startBroadcasting, stopBroadcasting } from '@/modules/ble-share';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
 import { useProximityToken } from '@/hooks/useProximityToken';
+import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
 
 export default function EventNFCShareScreen() {
     const router = useRouter();
@@ -29,7 +30,7 @@ export default function EventNFCShareScreen() {
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const isBroadcastingRef = useRef<boolean>(false);
 
-    const { generateToken, startAutoRenewal, stopAutoRenewal } = useProximityToken();
+    const { generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing } = useProximityToken();
 
     const bg = isDark ? '#0A0410' : '#FFFFFF';
     const main = isDark ? '#FFFFFF' : '#111827';
@@ -312,6 +313,13 @@ export default function EventNFCShareScreen() {
                             <Text style={[styles.description, { color: muted }]}>
                                 Hold your phone near another attendee's phone to connect and share reputation via {broadcastLabel}!
                             </Text>
+
+                            <TokenExpiryBadge
+                                secondsLeft={secondsLeft}
+                                totalDuration={totalDuration}
+                                isRenewing={isRenewing}
+                                label="Active Networking Token"
+                            />
 
                             {Platform.OS === 'ios' ? (
                                 <View style={[styles.warningCard, { backgroundColor: 'rgba(168,85,247,0.1)', borderColor: 'rgba(168,85,247,0.2)' }]}>
