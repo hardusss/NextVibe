@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, useColorScheme, ActivityIndicator, Platform, Vibration } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, ActivityIndicator, Platform, Vibration } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Radio, AlertTriangle, Star, Users } from 'lucide-react-native';
 import LottieView from 'lottie-react-native';
@@ -15,6 +16,7 @@ import { useProximityToken } from '@/hooks/useProximityToken';
 import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
 
 export default function EventNFCShareScreen() {
+    const insets = useSafeAreaInsets();
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
     const params = useLocalSearchParams<{ eventId: string }>();
@@ -208,16 +210,16 @@ export default function EventNFCShareScreen() {
 
     if (!eventId) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+            <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
                 <Text style={{ color: main }}>Invalid Event</Text>
-            </SafeAreaView>
+            </View>
         );
     }
 
     const broadcastLabel = Platform.OS === 'ios' ? 'Bluetooth' : 'NFC';
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+        <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             <View style={styles.header}>
                 <TouchableOpacity
                     activeOpacity={0.8}
@@ -340,14 +342,13 @@ export default function EventNFCShareScreen() {
                     )
                 )}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: 6,
     },
     header: {
         flexDirection: 'row',

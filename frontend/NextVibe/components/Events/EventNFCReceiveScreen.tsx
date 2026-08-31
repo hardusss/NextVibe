@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -10,6 +9,7 @@ import {
     Vibration,
     Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, ShieldX, Radio, Users, Star } from "lucide-react-native";
 import Animated, { FadeInDown, FadeInUp, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, withSpring } from "react-native-reanimated";
@@ -23,6 +23,7 @@ import { verifyProximityToken } from '@/src/api/proximity.token';
 type ConnectionState = "idle" | "locating" | "connecting" | "success" | "error";
 
 export default function EventNFCReceiveScreen() {
+    const insets = useSafeAreaInsets();
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
     const params = useLocalSearchParams<{
@@ -320,7 +321,7 @@ export default function EventNFCReceiveScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+        <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             <View style={styles.header}>
                 <TouchableOpacity
                     activeOpacity={0.8}
@@ -338,14 +339,13 @@ export default function EventNFCReceiveScreen() {
             <View style={styles.main}>
                 {renderContent()}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: 6,
     },
     header: {
         flexDirection: "row",
