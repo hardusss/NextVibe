@@ -15,6 +15,7 @@ import { Wifi, WifiOff, Users, CheckCircle, AlertTriangle } from 'lucide-react-n
 
 import { startSharing, stopSharing, addNfcReadListener } from '../../../modules/nfc-send';
 import { startBroadcasting, stopBroadcasting, addBleReadListener } from '../../../modules/ble-share';
+import { storage } from '@/src/utils/storage';
 
 export interface ShareModalRef {
     present: () => void;
@@ -227,7 +228,18 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const startHceBroadcast = async () => {
         if (isBroadcasting) return;
         try {
-            const urlToShare = props.profileUrl || "https://nextvibe.io/u/39";
+            let urlToShare = props.profileUrl;
+            if (!urlToShare || urlToShare.includes('undefined')) {
+                const storedId = await storage.getItem('id');
+                if (storedId) {
+                    urlToShare = `https://nextvibe.io/u/${storedId}`;
+                }
+            }
+
+            if (!urlToShare || urlToShare.includes('undefined')) {
+                console.warn('[ShareModal] Cannot broadcast: no user ID available');
+                return;
+            }
 
             if (Platform.OS === 'ios') {
                 // Listener always calls ref.current — never stale even after re-renders
