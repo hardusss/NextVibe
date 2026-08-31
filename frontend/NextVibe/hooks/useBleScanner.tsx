@@ -65,21 +65,19 @@ function parseScannedPath(path: string): ScannedInfo {
 
     const [pathname, queryString] = cleanPath.split('?');
 
-    // Proximity Token: /u/e?t=[token] or /e?t=[token]
-    if (pathname === '/u/e' || pathname === '/e') {
-        const tokenMatch = queryString?.match(/[?&]t=([^&#]*)/i) || cleanPath.match(/[?&]t=([^&#]*)/i);
-        if (tokenMatch) {
-            return { type: 'proximity_token', token: decodeURIComponent(tokenMatch[1]) };
-        }
+    // 1. Proximity Token: any path with ?t=[token] or /u/e or /e
+    const tokenMatch = queryString?.match(/[?&]t=([^&#]*)/i) || cleanPath.match(/[?&]t=([^&#]*)/i);
+    if (tokenMatch) {
+        return { type: 'proximity_token', token: decodeURIComponent(tokenMatch[1]) };
     }
 
-    // Profile: /u/[id]
+    // 2. Profile: /u/[id]
     const uMatch = pathname.match(/^\/u\/([^/]+)$/);
     if (uMatch) {
         return { type: 'profile', id: uMatch[1] };
     }
 
-    // Check-in: /event-checkin?postId=[id]
+    // 3. Check-in: /event-checkin?postId=[id]
     if (pathname === '/event-checkin') {
         const postIdMatch = queryString?.match(/[?&]postId=([^&#]*)/i) || cleanPath.match(/[?&]postId=([^&#]*)/i);
         if (postIdMatch) {
@@ -87,7 +85,7 @@ function parseScannedPath(path: string): ScannedInfo {
         }
     }
 
-    // Networking: /event-nfc-receive?eventId=[eventId]&userId=[userId]
+    // 4. Networking: /event-nfc-receive?eventId=[eventId]&userId=[userId]
     if (pathname === '/event-nfc-receive') {
         const eventIdMatch = queryString?.match(/[?&]eventId=([^&#]*)/i) || cleanPath.match(/[?&]eventId=([^&#]*)/i);
         const userIdMatch = queryString?.match(/[?&]userId=([^&#]*)/i) || cleanPath.match(/[?&]userId=([^&#]*)/i);
@@ -297,7 +295,38 @@ export function useBleScanner() {
     const handleAccept = () => {
         setModalVisible(false);
         const info = parseScannedPath(scannedPath);
-        if (info.type !== 'proximity_token') {
+        if (info.type === 'proximity_token') {
+            if (details?.data?.flow === 'networking' && details?.data?.success) {
+                try {
+                    router.push({
+                        pathname: '/event-nfc-receive',
+                        params: {
+                            _verified: '1',
+                            _earned_points: String(details.data.earned_points || 0),
+                            _username: details.data.scanned_user?.username || '',
+                            _avatar: details.data.scanned_user?.avatar || '',
+                            _is_official: details.data.scanned_user?.is_official ? '1' : '0',
+                        }
+                    } as any);
+                } catch (err) {
+                    console.error("[useBleScanner] Navigation error:", err);
+                }
+            } else if (details?.data?.flow === 'checkin' && details?.data?.verified) {
+                try {
+                    router.push({
+                        pathname: '/event-checkin',
+                        params: {
+                            _verified: '1',
+                            _post_name: details.data.post_name || '',
+                            _message: details.data.message || '',
+                            _post_image: details.data.post_image || '',
+                        }
+                    } as any);
+                } catch (err) {
+                    console.error("[useBleScanner] Navigation error:", err);
+                }
+            }
+        } else {
             try {
                 router.push(scannedPath as any);
             } catch (err) {

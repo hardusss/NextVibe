@@ -32,7 +32,15 @@ export default function EventCheckinScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const isDark = useColorScheme() === "dark";
-    const params = useLocalSearchParams<{ postId: string; t: string }>();
+    const params = useLocalSearchParams<{
+        postId?: string;
+        t?: string;
+        _verified?: string;
+        _post_name?: string;
+        _message?: string;
+        _post_image?: string;
+        _username?: string;
+    }>();
     const postId = params.postId ? parseInt(params.postId, 10) : null;
     const proximityToken = params.t || null;
 
@@ -70,10 +78,23 @@ export default function EventCheckinScreen() {
     }));
 
     useEffect(() => {
-        if ((postId || proximityToken) && state === "idle") {
+        if (params._verified === "1") {
+            setPostName(params._post_name || "Event");
+            setMessage(params._message || "You're verified! Welcome to the event.");
+            setPostImage(params._post_image || null);
+            setUsername(params._username || "");
+            setState("verified");
+            Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+        } else if (params._verified === "0") {
+            setPostName(params._post_name || "Event");
+            setMessage(params._message || "You are not registered for this event.");
+            setPostImage(params._post_image || null);
+            setState("not_registered");
+            Vibration.vibrate([0, 200]);
+        } else if ((postId || proximityToken) && state === "idle") {
             handleVerify();
         }
-    }, [postId, proximityToken]);
+    }, [postId, proximityToken, params._verified]);
 
     const handleVerify = async () => {
         if (!postId && !proximityToken) {
