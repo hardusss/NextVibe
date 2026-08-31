@@ -4,6 +4,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { startScanning, stopScanning, addBleDiscoveredListener } from "@/modules/ble-share";
+import { verifyProximityToken, VerifyTokenResponse } from '@/src/api/proximity.token';
+import * as Location from 'expo-location';
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { User, Calendar, Users, Scan, X } from "lucide-react-native";
@@ -48,10 +50,11 @@ async function requestAndroidPermissions(): Promise<boolean> {
 }
 
 interface ScannedInfo {
-    type: 'profile' | 'checkin' | 'networking' | 'unknown';
+    type: 'profile' | 'checkin' | 'networking' | 'proximity_token' | 'unknown';
     id?: string;
     eventId?: string;
     userId?: string;
+    token?: string;
 }
 
 function parseScannedPath(path: string): ScannedInfo {
@@ -61,6 +64,14 @@ function parseScannedPath(path: string): ScannedInfo {
     }
 
     const [pathname, queryString] = cleanPath.split('?');
+
+    // Proximity Token: /u/e?t=[token] or /e?t=[token]
+    if (pathname === '/u/e' || pathname === '/e') {
+        const tokenMatch = queryString?.match(/[?&]t=([^&#]*)/i) || cleanPath.match(/[?&]t=([^&#]*)/i);
+        if (tokenMatch) {
+            return { type: 'proximity_token', token: decodeURIComponent(tokenMatch[1]) };
+        }
+    }
 
     // Profile: /u/[id]
     const uMatch = pathname.match(/^\/u\/([^/]+)$/);
@@ -100,7 +111,7 @@ export function useBleScanner() {
     const [scannedPath, setScannedPath] = useState("");
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [details, setDetails] = useState<{
-        type: 'profile' | 'checkin' | 'networking' | 'unknown' | 'error';
+        type: 'profile' | 'checkin' | 'networking' | 'proximity_token' | 'unknown' | 'error';
         data: any;
     } | null>(null);
 
@@ -224,7 +235,39 @@ export function useBleScanner() {
 
             const info = parseScannedPath(path);
             try {
-                if (info.type === 'profile' && info.id) {
+                if (info.type === 'proximity_token' && info.token) {
+                    // For token-based interactions, verify the token directly
+                    try {
+                        // Get location for geo-verification
+                        let lat: number | undefined;
+                        let lng: number | undefined;
+                        try {
+                            const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+                            if (locStatus === 'granted') {
+                                const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                                if (!location.mocked) {
+                                    lat = location.coords.latitude;
+                                    lng = location.coords.longitude;
+                                }
+                            }
+                        } catch (locErr) {
+                            console.warn('[useBleScanner] Location error:', locErr);
+                        }
+
+                        const result = await verifyProximityToken(info.token, lat, lng);
+                        if (result.interaction_type === 'networking') {
+                            setDetails({ type: 'proximity_token', data: { ...result, flow: 'networking' } });
+                        } else if (result.interaction_type === 'checkin') {
+                            setDetails({ type: 'proximity_token', data: { ...result, flow: 'checkin' } });
+                        } else {
+                            setDetails({ type: 'proximity_token', data: result });
+                        }
+                    } catch (verifyErr: any) {
+                        console.error('[useBleScanner] Token verification error:', verifyErr);
+                        const errorMsg = verifyErr?.response?.data?.error || 'Verification failed';
+                        setDetails({ type: 'error', data: { error: errorMsg } });
+                    }
+                } else if (info.type === 'profile' && info.id) {
                     const res = await getUserDetail(Number(info.id));
                     setDetails({ type: 'profile', data: res });
                 } else if (info.type === 'checkin' && info.id) {
@@ -253,12 +296,14 @@ export function useBleScanner() {
 
     const handleAccept = () => {
         setModalVisible(false);
-        try {
-            router.push(scannedPath as any);
-        } catch (err) {
-            console.error("[useBleScanner] Navigation error:", err);
+        const info = parseScannedPath(scannedPath);
+        if (info.type !== 'proximity_token') {
+            try {
+                router.push(scannedPath as any);
+            } catch (err) {
+                console.error("[useBleScanner] Navigation error:", err);
+            }
         }
-        // Small timeout to allow native transition to initiate before scanning resumes
         setTimeout(() => {
             startScannerRef.current();
         }, 800);
@@ -302,6 +347,22 @@ export function useBleScanner() {
                 isOfficial = !!details.data?.official;
                 message = "Would you like to connect and start exchanging contacts?";
                 confirmLabel = "Connect";
+            } else if (details.type === 'proximity_token') {
+                const flow = details.data?.flow;
+                if (flow === 'networking') {
+                    modalTitle = "Connected!";
+                    detailName = details.data?.scanned_user?.username ? `@${details.data.scanned_user.username}` : "";
+                    avatarUrl = details.data?.scanned_user?.avatar || null;
+                    isOfficial = !!details.data?.scanned_user?.is_official;
+                    const points = details.data?.earned_points || 0;
+                    message = points > 0 ? `You earned +${points} reputation for networking!` : "Connected successfully!";
+                    confirmLabel = "Awesome";
+                } else if (flow === 'checkin') {
+                    modalTitle = details.data?.verified ? "Checked In!" : "Not Registered";
+                    detailName = details.data?.post_name || "Event";
+                    message = details.data?.message || (details.data?.verified ? "Welcome to the event!" : "You are not registered.");
+                    confirmLabel = details.data?.verified ? "Continue" : "OK";
+                }
             } else if (details.type === 'error') {
                 message = "Failed to load details. Would you like to open the link anyway?";
             }

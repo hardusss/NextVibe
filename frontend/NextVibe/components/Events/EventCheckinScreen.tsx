@@ -24,6 +24,7 @@ import Animated, {
 import { Image } from "expo-image";
 import { checkinEvent, claimEventNft } from "@/src/api/event.checkin";
 import * as Location from "expo-location";
+import { verifyProximityToken } from '@/src/api/proximity.token';
 
 type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error" | "claiming" | "claim_success" | "claim_failed";
 
@@ -31,8 +32,9 @@ export default function EventCheckinScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const isDark = useColorScheme() === "dark";
-    const params = useLocalSearchParams<{ postId: string }>();
+    const params = useLocalSearchParams<{ postId: string; t: string }>();
     const postId = params.postId ? parseInt(params.postId, 10) : null;
+    const proximityToken = params.t || null;
 
     const [state, setState] = useState<CheckinState>("idle");
     const [message, setMessage] = useState("");
@@ -68,13 +70,13 @@ export default function EventCheckinScreen() {
     }));
 
     useEffect(() => {
-        if (postId && state === "idle") {
+        if ((postId || proximityToken) && state === "idle") {
             handleVerify();
         }
-    }, [postId]);
+    }, [postId, proximityToken]);
 
     const handleVerify = async () => {
-        if (!postId) {
+        if (!postId && !proximityToken) {
             setState("error");
             setMessage("Invalid event link.");
             return;
@@ -98,11 +100,17 @@ export default function EventCheckinScreen() {
                 return;
             }
 
-            const result = await checkinEvent(postId, {
-                lat: locData.coords.latitude,
-                lng: locData.coords.longitude
-            });
-            if (result.verified) {
+            let result: any;
+            if (proximityToken) {
+                result = await verifyProximityToken(proximityToken, locData.coords.latitude, locData.coords.longitude);
+            } else if (postId) {
+                result = await checkinEvent(postId, {
+                    lat: locData.coords.latitude,
+                    lng: locData.coords.longitude
+                });
+            }
+
+            if (result.verified || result.interaction_type === 'checkin') {
                 if (result.post_image) {
                     setPostImage(result.post_image.startsWith("http") ? result.post_image : `https://nextvibe.s3.amazonaws.com/${result.post_image}`);
                 }
@@ -113,7 +121,7 @@ export default function EventCheckinScreen() {
                 Vibration.vibrate([0, 100, 80, 100]);
             } else {
                 setState("not_registered");
-                setMessage(result.message || "You are not registered for this event.");
+                setMessage(result.message || result.error || "You are not registered for this event.");
                 Vibration.vibrate([0, 200]);
             }
         } catch (error: any) {
