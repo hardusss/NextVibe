@@ -11,6 +11,7 @@ import { startSharing, stopSharing } from '@/modules/nfc-send';
 import { startBroadcasting, stopBroadcasting } from '@/modules/ble-share';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
+import { useProximityToken } from '@/hooks/useProximityToken';
 
 export default function EventNFCShareScreen() {
     const router = useRouter();
@@ -27,6 +28,8 @@ export default function EventNFCShareScreen() {
 
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const isBroadcastingRef = useRef<boolean>(false);
+
+    const { generateToken, startAutoRenewal, stopAutoRenewal } = useProximityToken();
 
     const bg = isDark ? '#0A0410' : '#FFFFFF';
     const main = isDark ? '#FFFFFF' : '#111827';
@@ -104,9 +107,13 @@ export default function EventNFCShareScreen() {
         setSuccessPoints(0);
         setDisplayPoints(0);
 
-        if (userId) {
-            const shareUrl = `https://nextvibe.io/event-nfc-receive?eventId=${eventId}&userId=${userId}`;
-            startSharingSession(shareUrl);
+        const tokenUrl = await generateToken('networking', Number(eventId));
+        if (tokenUrl) {
+            startSharingSession(tokenUrl);
+            startAutoRenewal('networking', Number(eventId), (newUrl) => {
+                stopSharingSession();
+                startSharingSession(newUrl);
+            });
         }
 
         if (pollingRef.current) {
@@ -161,8 +168,15 @@ export default function EventNFCShareScreen() {
 
                 if (!active) return;
 
-                const shareUrl = `https://nextvibe.io/event-nfc-receive?eventId=${eventId}&userId=${storedId}`;
-                startSharingSession(shareUrl);
+                const tokenUrl = await generateToken('networking', Number(eventId));
+                if (!active || !tokenUrl) return;
+                startSharingSession(tokenUrl);
+
+                // Start auto-renewal to keep token fresh
+                startAutoRenewal('networking', Number(eventId), (newUrl) => {
+                    stopSharingSession();
+                    startSharingSession(newUrl);
+                });
 
                 pollingRef.current = setInterval(async () => {
                     if (active) {
@@ -183,6 +197,7 @@ export default function EventNFCShareScreen() {
         return () => {
             active = false;
             stopSharingSession();
+            stopAutoRenewal();
             if (pollingRef.current) {
                 clearInterval(pollingRef.current);
                 pollingRef.current = null;
