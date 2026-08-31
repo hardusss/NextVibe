@@ -13,7 +13,8 @@ from .view_pac import (
     EventRequestCreateView, EventRequestListView, EventRequestActionView, EventAttendeesView,
     EventCheckinView, EventCheckinListView, UserEventConnectionsView, ClaimEventNftView, EventNFCConnectView,
     EventAnalyticsView, EventTopUsersView, EventUpdateView, EventTapsView, EventSocialGraphView, EventBroadcastView,
-    EventPostsView
+    EventPostsView,
+    GenerateProximityTokenView, VerifyProximityTokenView,
     )
 from rest_framework.routers import DefaultRouter
 
@@ -61,5 +62,7 @@ urlpatterns = [
     path("event-social-graph/<int:post_id>/", EventSocialGraphView.as_view(), name="event_social_graph"),
     path("event-broadcast/<int:post_id>/", EventBroadcastView.as_view(), name="event_broadcast"),
     path("event-posts/<int:post_id>/", EventPostsView.as_view(), name="event_posts"),
+    path("proximity/generate-token/", GenerateProximityTokenView.as_view(), name="proximity_generate_token"),
+    path("proximity/verify-token/", VerifyProximityTokenView.as_view(), name="proximity_verify_token"),
 ]
 
