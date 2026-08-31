@@ -18,15 +18,17 @@ import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
 import * as Location from 'expo-location';
+import { verifyProximityToken } from '@/src/api/proximity.token';
 
 type ConnectionState = "idle" | "locating" | "connecting" | "success" | "error";
 
 export default function EventNFCReceiveScreen() {
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
-    const params = useLocalSearchParams<{ eventId: string; userId: string }>();
+    const params = useLocalSearchParams<{ eventId: string; userId: string; t: string }>();
     const eventId = params.eventId ? parseInt(params.eventId, 10) : null;
     const scannedUserId = params.userId ? parseInt(params.userId, 10) : null;
+    const proximityToken = params.t || null;
 
     const [state, setState] = useState<ConnectionState>("idle");
     const [message, setMessage] = useState("");
@@ -60,10 +62,70 @@ export default function EventNFCReceiveScreen() {
     }));
 
     useEffect(() => {
-        if (eventId && scannedUserId && state === "idle") {
+        if (proximityToken && state === "idle") {
+            handleTokenConnect();
+        } else if (eventId && scannedUserId && state === "idle") {
             handleConnect();
         }
-    }, [eventId, scannedUserId]);
+    }, [eventId, scannedUserId, proximityToken]);
+
+    const handleTokenConnect = async () => {
+        if (!proximityToken) {
+            setState("error");
+            setMessage("Invalid token.");
+            return;
+        }
+
+        setState("locating");
+        let location = null;
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setState("error");
+                setMessage("Location permission is required to connect with other attendees.");
+                Vibration.vibrate([0, 200]);
+                return;
+            }
+
+            location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            if (location.mocked) {
+                setState("error");
+                setMessage("Fake GPS detected. Real moments only.");
+                Vibration.vibrate([0, 200]);
+                return;
+            }
+        } catch (e) {
+            console.warn("Location error:", e);
+            setState("error");
+            setMessage("Failed to get location coordinates.");
+            Vibration.vibrate([0, 200]);
+            return;
+        }
+
+        setState("connecting");
+        try {
+            const result = await verifyProximityToken(
+                proximityToken,
+                location.coords.latitude,
+                location.coords.longitude
+            );
+
+            if (result.success || result.interaction_type === 'networking') {
+                setEarnedPoints(result.earned_points || 0);
+                setScannedUser(result.scanned_user || null);
+                setState("success");
+                Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+            } else {
+                setState("error");
+                setMessage(result.error || "Connection failed.");
+                Vibration.vibrate([0, 200]);
+            }
+        } catch (error: any) {
+            setState("error");
+            setMessage(error?.response?.data?.error || "Failed to connect. Please try again.");
+            Vibration.vibrate([0, 200]);
+        }
+    };
 
     const handleConnect = async () => {
         if (!eventId || !scannedUserId) {
