@@ -19,6 +19,16 @@ export type AccountData = {
   tokenBalanceChanges: any[];
 };
 
+export type CompressedNftEvent = {
+  type: string;        // "COMPRESSED_NFT_MINT" | "COMPRESSED_NFT_TRANSFER" | "COMPRESSED_NFT_BURN"
+  assetId: string;
+  treeId: string;
+  leafIndex: number;
+  newLeafOwner: string | null;
+  oldLeafOwner: string | null;
+  metadata?: { name?: string; symbol?: string; uri?: string };
+};
+
 export type EnhancedTransaction = {
   signature: string;
   timestamp: number;
@@ -31,5 +41,6 @@ export type EnhancedTransaction = {
   nativeTransfers: NativeTransfer[];
   tokenTransfers: TokenTransfer[];
   accountData: AccountData[];
+  events?: { compressed?: CompressedNftEvent[] };
   transactionError: string | null;
 };

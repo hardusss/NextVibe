@@ -307,7 +307,7 @@ export default function TransactionsHistoryScreen() {
                 />
                 <SectionList
                     sections={groupedTransactions}
-                    keyExtractor={(item) => item.signature}
+                    keyExtractor={(item) => `${item.signature}:${item.token}:${item.nft?.assetId ?? ''}`}
                     renderItem={renderItem}
                     renderSectionHeader={renderSectionHeader}
                     contentContainerStyle={styles.listContent}

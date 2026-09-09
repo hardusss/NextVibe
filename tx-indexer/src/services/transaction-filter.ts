@@ -12,7 +12,14 @@ export function shouldKeepTransaction(tx: EnhancedTransaction, walletAddress: st
     return false;
   }
 
-  // 2. Ensure the transaction actually involves the wallet address
-  const involvesWallet = (tx.accountData && tx.accountData.some(a => a.account === walletAddress)) || tx.feePayer === walletAddress;
+  // 2. Ensure the transaction actually involves the wallet address.
+  // Compressed-NFT leaf owners are checked explicitly — accountData usually
+  // includes them, but the events are the authoritative source.
+  const involvesWallet =
+    (tx.accountData && tx.accountData.some(a => a.account === walletAddress)) ||
+    tx.feePayer === walletAddress ||
+    (tx.events?.compressed?.some(
+      e => e.newLeafOwner === walletAddress || e.oldLeafOwner === walletAddress
+    ) ?? false);
   return !!involvesWallet;
 }

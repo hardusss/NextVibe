@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, useColorScheme, TouchableOpacity, Animated, StatusBar, Linking, ScrollView } from 'react-native';
 import WalletHeader from '@/components/Wallet/Shared/WalletHeader';
-import { ArrowLeftRight, Copy, ExternalLink, CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeftRight, Copy, ExternalLink, CheckCircle2, Gem, ChevronRight } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useRef, useCallback, useState } from 'react';
 import { Image } from 'expo-image';
@@ -36,12 +36,25 @@ export default function TransactionDetailScreen() {
         swap_output_token,   // Symbol of the received token
         swap_output_amount,  // Amount of the received token
         swap_output_logo,    // Logo URL of the received token
+        // cNFT-specific params
+        nft_asset_id,        // DAS asset id
+        nft_name,            // Display name from metadata
+        nft_kind,            // claimed | received | sent | burned
+        nft_memo,            // Decoded SPL Memo text (may be empty)
+        nft_image,           // Resolved thumbnail URL (may be empty)
+        nft_fee,             // Network fee in SOL paid by this wallet
     } = useLocalSearchParams();
-    
+
     const isDark = useColorScheme() === 'dark';
     const router = useRouter();
     const isIncoming = direction === 'received';
     const isSwap = direction === 'swap';
+    const isCnft = typeof nft_asset_id === 'string' && nft_asset_id.length > 0;
+    const cnftTitle =
+        nft_kind === 'claimed' ? 'Collected' :
+        nft_kind === 'burned' ? 'Burned' :
+        nft_kind === 'sent' ? 'Sent' : 'Received';
+    const cnftFeeSol = Number(nft_fee) || 0;
     
     // Animation references for smooth entrance effects
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -337,6 +350,42 @@ export default function TransactionDetailScreen() {
             backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
             marginVertical: 4,
         },
+        // ─── cNFT-specific styles ────────────────────────
+        cnftHeaderContainer: {
+            alignItems: 'center',
+            marginBottom: 24,
+        },
+        cnftImage: {
+            width: 160,
+            height: 160,
+            borderRadius: 20,
+            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+            marginBottom: 14,
+        },
+        cnftImageFallback: {
+            width: 160,
+            height: 160,
+            borderRadius: 20,
+            backgroundColor: isDark ? 'rgba(167,139,250,0.12)' : 'rgba(88,86,214,0.08)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 14,
+        },
+        cnftName: {
+            color: isDark ? '#FFFFFF' : '#000',
+            fontSize: 20,
+            fontFamily: 'Dank Mono Bold',
+            includeFontPadding: false,
+            textAlign: 'center',
+            paddingHorizontal: 20,
+        },
+        cnftKind: {
+            color: isDark ? '#A78BFA' : '#5856D6',
+            fontSize: 14,
+            marginTop: 6,
+            fontFamily: 'Dank Mono Bold',
+            includeFontPadding: false,
+        },
     });
 
     /**
@@ -396,11 +445,41 @@ export default function TransactionDetailScreen() {
     };
 
     /**
+     * Renders the cNFT header: large thumbnail, name, and event kind.
+     */
+    const renderCnftHeader = () => {
+        if (!isCnft) return null;
+
+        return (
+            <Animated.View style={[
+                styles.cnftHeaderContainer,
+                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+            ]}>
+                {typeof nft_image === 'string' && nft_image.length > 0 ? (
+                    <Image
+                        source={{ uri: nft_image }}
+                        style={styles.cnftImage}
+                        contentFit="cover"
+                    />
+                ) : (
+                    <View style={styles.cnftImageFallback}>
+                        <Gem size={56} color={isDark ? '#A78BFA' : '#5856D6'} />
+                    </View>
+                )}
+                <Text style={styles.cnftName}>
+                    {(nft_name as string) || 'Compressed NFT'}
+                </Text>
+                <Text style={styles.cnftKind}>{cnftTitle}</Text>
+            </Animated.View>
+        );
+    };
+
+    /**
      * Renders the standard (non-swap) transaction header
      * with single token icon, amount, and USD value.
      */
     const renderStandardHeader = () => {
-        if (isSwap) return null;
+        if (isSwap || isCnft) return null;
 
         return (
             <Animated.View style={[
@@ -434,13 +513,14 @@ export default function TransactionDetailScreen() {
                 <StatusBar backgroundColor={isDark ? "#0A0410" : "#fff"}/> 
 
                 <WalletHeader
-                    title={isSwap ? 'Swap Details' : 'Transaction Details'}
+                    title={isSwap ? 'Swap Details' : isCnft ? 'Collectible Details' : 'Transaction Details'}
                     isDark={isDark}
                 />
 
                 <ScrollView contentContainerStyle={styles.scrollContainer}>
-                    {/* Conditional header: swap vs standard */}
+                    {/* Conditional header: swap vs cNFT vs standard */}
                     {renderSwapHeader()}
+                    {renderCnftHeader()}
                     {renderStandardHeader()}
 
                     {/* Transaction details card with glassmorphism effect */}
@@ -492,6 +572,41 @@ export default function TransactionDetailScreen() {
                                     <Text style={styles.label}>Pair</Text>
                                     <Text style={styles.value}>
                                         {swap_input_token} → {swap_output_token}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* cNFT event kind */}
+                            {isCnft && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.label}>Type</Text>
+                                    <View style={styles.valueContainer}>
+                                        <Gem size={16} color={isDark ? '#A78BFA' : '#5856D6'} />
+                                        <Text style={[styles.value, { color: isDark ? '#A78BFA' : '#5856D6' }]}>
+                                            {cnftTitle} cNFT
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* cNFT memo (MWA path attaches one; gasless path does not) */}
+                            {isCnft && typeof nft_memo === 'string' && nft_memo.length > 0 && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.label}>Memo</Text>
+                                    <Text style={styles.value} numberOfLines={3}>
+                                        {nft_memo}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* cNFT network fee */}
+                            {isCnft && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.label}>Network Fee</Text>
+                                    <Text style={styles.value}>
+                                        {cnftFeeSol === 0
+                                            ? '$0.00 · paid by NextVibe'
+                                            : `≈ ${parseFloat(cnftFeeSol.toFixed(6))} SOL`}
                                     </Text>
                                 </View>
                             )}
@@ -583,17 +698,39 @@ export default function TransactionDetailScreen() {
 
                             {/* Blockchain explorer link */}
                             {tx_url && (
-                                <TouchableOpacity 
-                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
-                                    style={[styles.infoRow, styles.infoRowLast]} 
+                                <TouchableOpacity
+                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                    style={[styles.infoRow, !isCnft && styles.infoRowLast]}
                                     onPress={() => handleOpenURL(tx_url)}
                                 >
                                     <Text style={styles.label}>View on Explorer</Text>
                                     <View style={styles.valueContainer}>
                                         <Text style={styles.urlText}>Open Solscan</Text>
-                                        <ExternalLink 
-                                            size={18} 
-                                            color={isDark ? '#A78BFA' : '#5856D6'} 
+                                        <ExternalLink
+                                            size={18}
+                                            color={isDark ? '#A78BFA' : '#5856D6'}
+                                            style={{marginLeft: 4}}
+                                        />
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Deep link to the wallet Collectibles tab */}
+                            {isCnft && (
+                                <TouchableOpacity
+                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                    style={[styles.infoRow, styles.infoRowLast]}
+                                    onPress={() => router.push({
+                                        pathname: '/wallet-dash',
+                                        params: { tab: 'collectibles', asset: nft_asset_id as string },
+                                    })}
+                                >
+                                    <Text style={styles.label}>Collectibles</Text>
+                                    <View style={styles.valueContainer}>
+                                        <Text style={styles.urlText}>Open in Collectibles</Text>
+                                        <ChevronRight
+                                            size={18}
+                                            color={isDark ? '#A78BFA' : '#5856D6'}
                                             style={{marginLeft: 4}}
                                         />
                                     </View>

@@ -95,9 +95,10 @@ const truncate = (str: string, len: number = 16): string =>
     str.length > len ? `${str.slice(0, len / 2)}…${str.slice(-len / 2)}` : str;
 
 /**
- * Row component for displaying a label + value pair with optional copy button
+ * Row component for displaying a label + value pair with optional copy button.
+ * Exported so the wallet's CollectibleDetailSheet renders the same rows.
  */
-const InfoRow = ({
+export const InfoRow = ({
     icon,
     label,
     value,

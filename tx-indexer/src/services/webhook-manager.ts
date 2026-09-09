@@ -73,6 +73,7 @@ export async function syncWebhookAddresses(addresses: string[]): Promise<{
         "NFT_SALE",
         "COMPRESSED_NFT_MINT",
         "COMPRESSED_NFT_TRANSFER",
+        "COMPRESSED_NFT_BURN",
       ],
       webhookType: "enhanced",
       authHeader: `Bearer ${env.HELIUS_WEBHOOK_SECRET}`,

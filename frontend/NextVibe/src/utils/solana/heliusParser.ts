@@ -1,5 +1,103 @@
-import { FormattedTransaction, SwapDetails } from "@/src/types/solana";
+import { FormattedTransaction, NftDetails, SwapDetails } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
+
+// SPL Memo program ids (v2 and v1)
+const MEMO_PROGRAM_IDS = [
+    "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
+    "Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo",
+];
+
+const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+/**
+ * Decodes a base58 string to bytes. Returns null on invalid input.
+ */
+function base58Decode(str: string): Uint8Array | null {
+    if (!str) return null;
+    const bytes: number[] = [0];
+    for (const char of str) {
+        const value = BASE58_ALPHABET.indexOf(char);
+        if (value === -1) return null;
+        let carry = value;
+        for (let i = 0; i < bytes.length; i++) {
+            carry += bytes[i] * 58;
+            bytes[i] = carry & 0xff;
+            carry >>= 8;
+        }
+        while (carry > 0) {
+            bytes.push(carry & 0xff);
+            carry >>= 8;
+        }
+    }
+    // Leading '1's encode leading zero bytes
+    for (const char of str) {
+        if (char !== "1") break;
+        bytes.push(0);
+    }
+    return Uint8Array.from(bytes.reverse());
+}
+
+/**
+ * Minimal UTF-8 decoder (Hermes may lack TextDecoder).
+ */
+function utf8Decode(bytes: Uint8Array): string {
+    let out = "";
+    for (let i = 0; i < bytes.length; ) {
+        const b = bytes[i];
+        if (b < 0x80) {
+            out += String.fromCharCode(b);
+            i += 1;
+        } else if (b < 0xe0) {
+            out += String.fromCharCode(((b & 0x1f) << 6) | (bytes[i + 1] & 0x3f));
+            i += 2;
+        } else if (b < 0xf0) {
+            out += String.fromCharCode(((b & 0x0f) << 12) | ((bytes[i + 1] & 0x3f) << 6) | (bytes[i + 2] & 0x3f));
+            i += 3;
+        } else {
+            const cp = ((b & 0x07) << 18) | ((bytes[i + 1] & 0x3f) << 12) | ((bytes[i + 2] & 0x3f) << 6) | (bytes[i + 3] & 0x3f);
+            out += String.fromCodePoint(cp);
+            i += 4;
+        }
+    }
+    return out;
+}
+
+/**
+ * True when the string is readable text (no control characters).
+ */
+function isPrintableText(str: string): boolean {
+    if (!str) return false;
+    let printable = 0;
+    for (const char of str) {
+        const code = char.codePointAt(0)!;
+        if (code === 9 || code === 10 || code === 13 || (code >= 32 && code !== 127 && (code < 0x80 || code > 0x9f))) {
+            printable++;
+        }
+    }
+    return printable / [...str].length > 0.9;
+}
+
+/**
+ * Extracts the SPL Memo text from a Helius enhanced transaction, if present.
+ * Helius encodes instruction data as base58 or raw utf-8 depending on version,
+ * so both are handled.
+ */
+export function extractMemo(tx: any): string | null {
+    const instructions: any[] = [
+        ...(tx.instructions ?? []),
+        ...(tx.instructions ?? []).flatMap((ix: any) => ix.innerInstructions ?? []),
+    ];
+    for (const ix of instructions) {
+        if (!MEMO_PROGRAM_IDS.includes(ix?.programId) || typeof ix?.data !== "string") continue;
+        const decoded = base58Decode(ix.data);
+        if (decoded && decoded.length > 0) {
+            const text = utf8Decode(decoded);
+            if (isPrintableText(text)) return text;
+        }
+        if (isPrintableText(ix.data)) return ix.data;
+    }
+    return null;
+}
 
 /**
  * Finds token info from TOKENS constant by mint address or "SOL"
@@ -22,7 +120,43 @@ export function parseHeliusTransactions(walletAddress: string, heliusTxs: any[])
         try {
             const signature = tx.signature;
             const time = tx.timestamp ? new Date(tx.timestamp * 1000) : null;
-            
+
+            // 0. Compressed NFT events (Bubblegum mint / transfer / burn).
+            // These move no SOL and no SPL tokens for the user, so they must be
+            // handled before the balance-diff branches below.
+            const compressed: any[] = tx.events?.compressed ?? [];
+            const myCompressed = compressed.filter(
+                e => e && (e.newLeafOwner === walletAddress || e.oldLeafOwner === walletAddress)
+            );
+            if (myCompressed.length > 0) {
+                const memo = extractMemo(tx);
+                for (const e of myCompressed) {
+                    const incoming = e.newLeafOwner === walletAddress;
+                    const kind: NftDetails["kind"] =
+                        e.type === "COMPRESSED_NFT_MINT" ? "claimed" :
+                        e.type === "COMPRESSED_NFT_BURN" ? "burned" :
+                        incoming ? "received" : "sent";
+                    formatted.push({
+                        signature,
+                        type: incoming ? "received" : "sent",
+                        token: "cNFT",
+                        amount: 1,
+                        from: incoming ? (e.oldLeafOwner ?? "external") : walletAddress,
+                        to: incoming ? walletAddress : (e.newLeafOwner ?? "external"),
+                        time,
+                        nft: {
+                            assetId: e.assetId,
+                            name: e.metadata?.name ?? null,
+                            uri: e.metadata?.uri ?? null,
+                            kind,
+                            memo,
+                        },
+                        fee: tx.feePayer === walletAddress ? (tx.fee ?? 0) / 1e9 : 0,
+                    });
+                }
+                continue;
+            }
+
             // Calculate net balance changes for the wallet
             let solDiff = 0;
             const tokenDiffs: Record<string, number> = {};

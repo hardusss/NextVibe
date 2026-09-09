@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { View, StatusBar, Animated, Platform, StyleSheet, ScrollView, RefreshControl } from "react-native";
+import { View, Text, StatusBar, Animated, Platform, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useColorScheme } from "react-native";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
@@ -14,6 +14,9 @@ import BalanceSection from "./BalanceSection";
 import QuickActions from "./QuickActions";
 import LastTransaction from "./LastTransaction";
 import PortfolioList from "./PortfolioList";
+import CollectiblesScreen from "@/components/Wallet/Collectibles/CollectiblesScreen";
+import CollectibleDetailSheet from "@/components/Wallet/Collectibles/CollectibleDetailSheet";
+import useOwnedAssets, { OwnedAsset } from "@/components/Wallet/Collectibles/useOwnedAssets";
 import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
 
 import { createWalletStyles } from "@/styles/wallet.styles";
@@ -68,6 +71,35 @@ export default function WalletDashboardScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [isToastVisible, setIsToastVisible] = useState(false);
 
+    // Tokens | Collectibles segmented view + owned NFTs (Helius DAS)
+    const params = useLocalSearchParams<{ tab?: string; asset?: string }>();
+    const [activeTab, setActiveTab] = useState<"tokens" | "collectibles">(
+        params.tab === "collectibles" ? "collectibles" : "tokens"
+    );
+    const {
+        assets: ownedAssets,
+        loading: assetsLoading,
+        error: assetsError,
+        refresh: refreshAssets,
+    } = useOwnedAssets(address ? address.toString() : null);
+    const [selectedAsset, setSelectedAsset] = useState<OwnedAsset | null>(null);
+    const handledAssetParamRef = useRef<string | null>(null);
+
+    // Deep link from transaction history: /wallet-dash?tab=collectibles&asset=<id>
+    useEffect(() => {
+        if (params.tab === "collectibles") setActiveTab("collectibles");
+    }, [params.tab]);
+
+    useEffect(() => {
+        const assetId = typeof params.asset === "string" ? params.asset : null;
+        if (!assetId || handledAssetParamRef.current === assetId || ownedAssets.length === 0) return;
+        const match = ownedAssets.find(a => a.id === assetId);
+        if (match) {
+            handledAssetParamRef.current = assetId;
+            setSelectedAsset(match);
+        }
+    }, [params.asset, ownedAssets]);
+
     // Bottom Sheet Ref
     const depositSheetRef = useRef<DepositSheetRef>(null);
 
@@ -108,9 +140,9 @@ export default function WalletDashboardScreen() {
      */
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
-        await Promise.all([refresh(), refetchActivity()]);
+        await Promise.all([refresh(), refetchActivity(), refreshAssets()]);
         setRefreshing(false);
-    }, [refresh, refetchActivity]);
+    }, [refresh, refetchActivity, refreshAssets]);
 
     /**
      * Toggles balance visibility across all components
@@ -251,18 +283,92 @@ export default function WalletDashboardScreen() {
 
                         <View style={styles.portfolioBottom}>
                             <FadeIn delay={MOTION.stagger.step * 4} from="bottom" style={{ flex: 1 }}>
-                                <PortfolioList
-                                    isDarkMode={isDarkMode}
-                                    isBalanceHidden={isBalanceHidden}
-                                    tokens={data.tokens}
-                                    isLoading={showPortfolioSkeleton}
-                                />
+                                {/* Tokens | Collectibles segmented header */}
+                                <View style={segmentedStyles.container}>
+                                    {(["tokens", "collectibles"] as const).map(tab => {
+                                        const isActive = activeTab === tab;
+                                        return (
+                                            <TouchableOpacity
+                                                key={tab}
+                                                style={[
+                                                    segmentedStyles.segment,
+                                                    isActive && {
+                                                        backgroundColor: isDarkMode
+                                                            ? "rgba(139,92,246,0.25)"
+                                                            : "rgba(124,58,237,0.12)",
+                                                    },
+                                                ]}
+                                                activeOpacity={0.8}
+                                                onPress={() => setActiveTab(tab)}
+                                            >
+                                                <Text
+                                                    style={[
+                                                        segmentedStyles.segmentText,
+                                                        {
+                                                            color: isActive
+                                                                ? (isDarkMode ? "#d8b4fe" : "#7c3aed")
+                                                                : (isDarkMode ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)"),
+                                                        },
+                                                    ]}
+                                                >
+                                                    {tab === "tokens" ? "Tokens" : "Collectibles"}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+
+                                {activeTab === "tokens" ? (
+                                    <PortfolioList
+                                        isDarkMode={isDarkMode}
+                                        isBalanceHidden={isBalanceHidden}
+                                        tokens={data.tokens}
+                                        isLoading={showPortfolioSkeleton}
+                                    />
+                                ) : (
+                                    <CollectiblesScreen
+                                        isDarkMode={isDarkMode}
+                                        assets={ownedAssets}
+                                        loading={assetsLoading}
+                                        error={assetsError}
+                                        onSelect={setSelectedAsset}
+                                    />
+                                )}
                             </FadeIn>
                         </View>
                     </View>
                 </ScrollView>
             </View>
             <DepositBottomSheet ref={depositSheetRef} />
+            <CollectibleDetailSheet
+                visible={selectedAsset !== null}
+                asset={selectedAsset}
+                onClose={() => setSelectedAsset(null)}
+            />
         </View>
     );
 }
+
+// ─── Segmented control styles ────────────────────────────────────────────────
+
+const segmentedStyles = StyleSheet.create({
+    container: {
+        flexDirection: "row",
+        alignSelf: "center",
+        gap: 6,
+        marginBottom: 10,
+        padding: 3,
+        borderRadius: 16,
+    },
+    segment: {
+        paddingHorizontal: 18,
+        paddingVertical: 7,
+        borderRadius: 13,
+    },
+    segmentText: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: 13,
+        letterSpacing: 0.3,
+        includeFontPadding: false,
+    },
+});

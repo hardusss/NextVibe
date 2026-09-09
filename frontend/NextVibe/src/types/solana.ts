@@ -26,6 +26,29 @@ export interface SwapDetails {
 }
 
 /**
+ * Compressed-NFT details attached to a transaction when the wallet
+ * claimed, received, sent, or burned a cNFT (Bubblegum leaf change).
+ *
+ * @interface NftDetails
+ */
+export interface NftDetails {
+    /** DAS asset id (leaf asset PDA) */
+    assetId: string;
+
+    /** Display name from on-chain metadata (null when the event carries none) */
+    name: string | null;
+
+    /** Off-chain metadata URI (null when the event carries none) */
+    uri: string | null;
+
+    /** What happened to the cNFT from this wallet's perspective */
+    kind: "claimed" | "received" | "sent" | "burned";
+
+    /** Decoded SPL Memo attached to the transaction, if any */
+    memo: string | null;
+}
+
+/**
  * Formatted transaction object for display in UI.
  * Represents a single SOL or SPL token transfer with human-readable data.
  * For swap transactions, includes detailed input/output token information.
@@ -56,4 +79,10 @@ export type FormattedTransaction = {
 
     /** Detailed swap information (only present when type === "swap") */
     swapDetails?: SwapDetails;
+
+    /** Compressed-NFT details (only present when token === "cNFT") */
+    nft?: NftDetails;
+
+    /** Network fee in SOL paid by this wallet (0 when someone else paid) */
+    fee?: number;
 };
