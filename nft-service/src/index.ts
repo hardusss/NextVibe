@@ -239,7 +239,7 @@ new Elysia()
                         uri: metaUrl,
                         sellerFeeBasisPoints: 500,
                         collection: { key: publicKey(OG_COLLECTION_ADDRESS), verified: false },
-                        creators: [],
+                        creators: [{ address: umi.identity.publicKey, verified: true, share: 100 }],
                     },
                 }).sendAndConfirm(umi, {
                     send: { skipPreflight: true, maxRetries: 3 },
