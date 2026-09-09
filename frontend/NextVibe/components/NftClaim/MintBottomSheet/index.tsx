@@ -1,11 +1,19 @@
 import React, { useCallback, useRef, forwardRef, useImperativeHandle, useState } from 'react';
 import {
     Text, StyleSheet, View, useColorScheme,
-    TouchableOpacity, Animated, Linking,
+    TouchableOpacity, Linking,
     Modal, Dimensions, Platform, KeyboardAvoidingView,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useReducedMotion } from 'react-native-reanimated';
+import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Reanimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withSpring,
+    withTiming,
+    withSequence,
+    runOnJS,
+    useReducedMotion,
+} from 'react-native-reanimated';
 import { X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -105,45 +113,12 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
             ? FIRST_OPEN_EDITION
             : info.minted + 1;
 
-    const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
-    const backdropOpacity = useRef(new Animated.Value(0)).current;
-    const dragY = useRef(new Animated.Value(0)).current;
-    const shakeX = useRef(new Animated.Value(0)).current;
+    const translateY = useSharedValue(SHEET_HEIGHT);
+    const backdropOpacity = useSharedValue(0);
+    const dragY = useSharedValue(0);
+    const shakeX = useSharedValue(0);
     const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const swipeRef = useRef<SwipeToCollectRef>(null);
-
-    const playError = () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Animated.sequence([
-            Animated.timing(shakeX, { toValue: -10, duration: 55, useNativeDriver: true }),
-            Animated.timing(shakeX, { toValue: 10, duration: 55, useNativeDriver: true }),
-            Animated.timing(shakeX, { toValue: -7, duration: 55, useNativeDriver: true }),
-            Animated.timing(shakeX, { toValue: 7, duration: 55, useNativeDriver: true }),
-            Animated.timing(shakeX, { toValue: 0, duration: 55, useNativeDriver: true }),
-        ]).start();
-    };
-
-    const openSheet = () => {
-        setVisible(true);
-        reset();
-        translateY.setValue(SHEET_HEIGHT);
-        backdropOpacity.setValue(0);
-        Animated.parallel([
-            Animated.spring(translateY, { toValue: 0, damping: 18, stiffness: 180, useNativeDriver: true }),
-            Animated.timing(backdropOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-        ]).start();
-    };
-
-    const closeSheet = useCallback((onDone?: () => void) => {
-        Animated.parallel([
-            Animated.timing(translateY, { toValue: SHEET_HEIGHT, duration: 300, useNativeDriver: true }),
-            Animated.timing(backdropOpacity, { toValue: 0, duration: 230, useNativeDriver: true }),
-        ]).start(() => {
-            setVisible(false);
-            dragY.setValue(0);
-            onDone?.();
-        });
-    }, []);
 
     const isBusy = status === 'preparing' || status === 'signing' || status === 'minting';
 
@@ -154,6 +129,17 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         }
     };
 
+    const closeSheet = useCallback((onDone?: () => void) => {
+        backdropOpacity.value = withTiming(0, { duration: 230 });
+        translateY.value = withTiming(SHEET_HEIGHT, { duration: 300 }, (finished) => {
+            if (finished) {
+                runOnJS(setVisible)(false);
+                dragY.value = 0;
+                if (onDone) runOnJS(onDone)();
+            }
+        });
+    }, [backdropOpacity, translateY, dragY]);
+
     const handleDismiss = useCallback(() => {
         if (isBusy) return;
         clearSuccessTimer();
@@ -161,27 +147,59 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
             reset();
             swipeRef.current?.reset();
         });
-    }, [isBusy]);
+    }, [isBusy, closeSheet, reset]);
+
+    const playError = () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        shakeX.value = withSequence(
+            withTiming(-10, { duration: 55 }),
+            withTiming(10, { duration: 55 }),
+            withTiming(-7, { duration: 55 }),
+            withTiming(7, { duration: 55 }),
+            withTiming(0, { duration: 55 }),
+        );
+    };
+
+    const openSheet = () => {
+        setVisible(true);
+        reset();
+        translateY.value = SHEET_HEIGHT;
+        backdropOpacity.value = 0;
+        dragY.value = 0;
+        translateY.value = withSpring(0, { damping: 18, stiffness: 180 });
+        backdropOpacity.value = withTiming(1, { duration: 250 });
+    };
 
     useImperativeHandle(ref, () => ({
         present: openSheet,
         dismiss: handleDismiss,
     }));
 
-    const sheetDragResponder = useRef(
-        require('react-native').PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_: any, g: any) => Math.abs(g.dy) > Math.abs(g.dx) && g.dy > 4,
-            onPanResponderMove: (_: any, g: any) => { if (g.dy > 0) dragY.setValue(g.dy); },
-            onPanResponderRelease: (_: any, g: any) => {
-                if (g.dy > DRAG_THRESHOLD) {
-                    handleDismiss();
-                } else {
-                    Animated.spring(dragY, { toValue: 0, useNativeDriver: true }).start();
-                }
-            },
+    const sheetPan = Gesture.Pan()
+        .activeOffsetY(10)
+        .failOffsetX([-14, 14])
+        .onUpdate((e) => {
+            'worklet';
+            if (e.translationY > 0) {
+                dragY.value = e.translationY;
+            }
         })
-    ).current;
+        .onEnd((e) => {
+            'worklet';
+            if (e.translationY > DRAG_THRESHOLD || e.velocityY > 500) {
+                runOnJS(handleDismiss)();
+            } else {
+                dragY.value = withSpring(0, { damping: 18 });
+            }
+        });
+
+    const sheetAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: translateY.value + dragY.value }],
+    }));
+
+    const backdropAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: backdropOpacity.value,
+    }));
 
     const canCollect = props.walletConnected
         && status === 'idle'
@@ -208,8 +226,6 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
 
     const handleViewInWallet = async () => {
         clearSuccessTimer();
-        // Best effort: open the wallet app; otherwise land on the profile
-        // where the Collectibles menu lives.
         const schemes = ['solflare://', 'phantom://'];
         for (const scheme of schemes) {
             try {
@@ -242,7 +258,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
     const busyLabel = () => {
         if (status === 'preparing') return 'Preparing…';
         if (status === 'signing') return 'Confirm in your wallet';
-        return isCollector ? 'Minting on Solana…' : 'Publishing…';
+        return isCollector ? 'Minting on Solana…' : 'Publishing to Solana…';
     };
 
     const swipeLabel = () => {
@@ -267,22 +283,24 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
 
     const content = (
         <GestureHandlerRootView style={StyleSheet.absoluteFillObject}>
-            <Animated.View style={[styles.backdrop, { opacity: backdropOpacity, backgroundColor: c.backdrop }]}>
+            <Reanimated.View style={[styles.backdrop, backdropAnimatedStyle, { backgroundColor: c.backdrop }]}>
                 <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleDismiss} activeOpacity={1} />
-            </Animated.View>
+            </Reanimated.View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView} pointerEvents="box-none">
-                <Animated.View
+                <Reanimated.View
                     style={[
                         styles.sheet,
-                        { backgroundColor: c.bg, transform: [{ translateY: Animated.add(translateY, dragY) }] },
+                        sheetAnimatedStyle,
+                        { backgroundColor: c.bg },
                     ]}
                     onTouchStart={() => { if (status === 'success') clearSuccessTimer(); }}
                 >
-
-                    <View style={styles.handleArea} {...sheetDragResponder.panHandlers}>
-                        <View style={[styles.handle, { backgroundColor: c.handle }]} />
-                    </View>
+                    <GestureDetector gesture={sheetPan}>
+                        <View style={styles.handleArea}>
+                            <View style={[styles.handle, { backgroundColor: c.handle }]} />
+                        </View>
+                    </GestureDetector>
 
                     {/* Header */}
                     <View style={styles.headerRow}>
@@ -372,7 +390,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                         />
                     )}
 
-                </Animated.View>
+                </Reanimated.View>
             </KeyboardAvoidingView>
         </GestureHandlerRootView>
     );

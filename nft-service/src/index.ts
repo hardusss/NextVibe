@@ -4,9 +4,11 @@ import {
     mplBubblegum,
     mintToCollectionV1,
     parseLeafFromMintToCollectionV1Transaction,
+    fetchTreeConfigFromSeeds,
+    findLeafAssetIdPda,
 } from '@metaplex-foundation/mpl-bubblegum'
 import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata'
-import { publicKey, keypairIdentity, createNoopSigner } from '@metaplex-foundation/umi'
+import { publicKey, keypairIdentity, createNoopSigner, PublicKey } from '@metaplex-foundation/umi'
 import { createHash } from 'node:crypto'
 import { fromWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
 import { Keypair } from '@solana/web3.js'
@@ -14,12 +16,6 @@ import bs58 from 'bs58'
 import { config } from 'dotenv'
 
 config()
-
-/**
- * Helper function to pause execution for a given number of milliseconds.
- * This is used to give the RPC node time to index transaction logs.
- */
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /**
  * Backend fee payer keypair loaded from a base58-encoded private key.
@@ -34,6 +30,18 @@ const umi = createUmi(process.env.HELIUS_RPC_URL!, 'confirmed')
     .use(mplBubblegum())
     .use(mplTokenMetadata())
     .use(keypairIdentity(fromWeb3JsKeypair(keypair)))
+
+/**
+ * Umi wrapper with explicit 'confirmed' commitment for one-shot transaction log parsing.
+ */
+const umiConfirmed = {
+    ...umi,
+    rpc: {
+        ...umi.rpc,
+        getTransaction: (sig: Uint8Array, o?: any) =>
+            umi.rpc.getTransaction(sig, { ...o, commitment: 'confirmed' }),
+    },
+} as typeof umi
 
 /** Verified collection NFT address */
 const COLLECTION_ADDRESS = process.env.COLLECTION_ADDRESS!;
@@ -63,13 +71,30 @@ const logError = (event: string, error: unknown, fields: Record<string, unknown>
 };
 
 /**
+ * Single in-process mutex so leaf indices cannot interleave.
+ */
+let mintChain: Promise<unknown> = Promise.resolve()
+function withMintLock<T>(fn: () => Promise<T>): Promise<T> {
+    const run = mintChain.then(fn, fn)
+    mintChain = run.catch(() => {})
+    return run
+}
+
+/**
+ * Reads numMinted and deterministically derives the cNFT asset ID for the next leaf.
+ */
+async function nextLeaf(merkleTree: PublicKey) {
+    const cfg = await fetchTreeConfigFromSeeds(umi, { merkleTree })
+    const leafIndex = Number(cfg.numMinted)
+    const [assetId] = findLeafAssetIdPda(umi, { merkleTree, leafIndex })
+    return { leafIndex, assetId }
+}
+
+/**
  * Builds an SPL Memo instruction that lists the user's wallet as a required
  * signer. The Memo program verifies every account on the instruction has
  * signed the transaction, which makes the collect a user-signed transaction
  * while the backend identity stays the fee payer.
- *
- * Note: mpl-toolbox's addMemo() does not expose signer accounts, so the
- * instruction is built directly with umi primitives.
  */
 const memoWithUserSigner = (memo: string, userPubkey: string) => {
     const user = publicKey(userPubkey);
@@ -90,8 +115,8 @@ new Elysia()
      * POST /mint
      *
      * Mints a compressed NFT (cNFT) and verifies it against the NextVibe 
-     * collection in a single transaction. The recipient receives the NFT 
-     * without needing to sign.
+     * collection in a single transaction. Deterministic asset ID computation
+     * via nextLeaf under withMintLock eliminates transaction parsing latency.
      *
      * @body recipient  - Solana wallet address of the user receiving the cNFT
      * @body postId     - NextVibe post ID to mint as an NFT
@@ -122,75 +147,45 @@ new Elysia()
             return { success: false, error: "METADATA_FETCH_FAILED" }
         }
 
-        /**
-         * Step 1: Mint and Verify in a Single Transaction
-         * mintToCollectionV1 handles both inserting the leaf into the Merkle tree
-         * and verifying it against the collection in one go.
-         */
-        let signature: Uint8Array
         try {
             const startedAt = Date.now()
-            const result = await mintToCollectionV1(umi, {
-                leafOwner: publicKey(recipient),
-                merkleTree: publicKey(MERKLE_TREE_ADDRESS),
-                collectionMint: publicKey(COLLECTION_ADDRESS),
-                collectionAuthority: umi.identity,
-                metadata: {
-                    name: meta.name,
-                    uri: `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`,
-                    sellerFeeBasisPoints: 500,
-                    collection: { key: publicKey(COLLECTION_ADDRESS), verified: false },
-                    creators: [],
-                },
-            }).sendAndConfirm(umi, {
-                confirm: { commitment: "confirmed" },
+            const { signature, assetId } = await withMintLock(async () => {
+                const leafInfo = await nextLeaf(publicKey(MERKLE_TREE_ADDRESS))
+                const result = await mintToCollectionV1(umi, {
+                    leafOwner: publicKey(recipient),
+                    merkleTree: publicKey(MERKLE_TREE_ADDRESS),
+                    collectionMint: publicKey(COLLECTION_ADDRESS),
+                    collectionAuthority: umi.identity,
+                    metadata: {
+                        name: meta.name,
+                        uri: `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`,
+                        sellerFeeBasisPoints: 500,
+                        collection: { key: publicKey(COLLECTION_ADDRESS), verified: false },
+                        creators: [],
+                    },
+                }).sendAndConfirm(umi, {
+                    send: { skipPreflight: true, maxRetries: 3 },
+                    confirm: { commitment: "confirmed" },
+                })
+                return { signature: result.signature, assetId: leafInfo.assetId.toString() }
             })
-            signature = result.signature
+
             log("mint.confirmed", {
                 postId, edition,
                 signature: bs58.encode(signature),
+                assetId,
                 ms: Date.now() - startedAt,
             })
+
+            return {
+                success: true,
+                signature: Buffer.from(signature).toString('base64'),
+                assetId,
+            }
         } catch (error) {
             logError("mint.send_failed", error, { postId, edition, recipient })
             set.status = 502
             return { success: false, error: "MINT_SEND_FAILED" }
-        }
-
-        /**
-         * Step 2: Extract the Asset ID with a Retry Mechanism
-         * Even with 'finalized' commitment, RPC nodes often need a moment 
-         * to index the transaction logs. We retry parsing to avoid race conditions.
-         */
-        let assetId = null;
-        let retries = 6;
-        let delayMs = 500;
-
-        while (retries > 0) {
-            try {
-                // Wait before attempting to parse the transaction logs
-                await delay(delayMs);
-
-                const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, signature);
-                assetId = leaf.id;
-
-                // Break out of the loop if parsing is successful
-                break;
-            } catch (error) {
-                retries--;
-                delayMs = 1500; // Increase delay for subsequent retries
-                log("mint.parse_retry", { postId, edition, retriesLeft: retries })
-                if (retries === 0) {
-                    logError("mint.parse_failed", error, { postId, edition, signature: bs58.encode(signature) })
-                }
-            }
-        }
-
-        log("mint.done", { postId, edition, assetId: assetId ?? "unparsed" })
-        return {
-            success: true,
-            signature: Buffer.from(signature).toString('base64'),
-            assetId: assetId || "Minted successfully, but RPC delayed asset ID parsing",
         }
     })
 
@@ -198,15 +193,13 @@ new Elysia()
      * POST /mint/og
      *
      * Mints a compressed OG NFT (cNFT) and verifies it against the NextVibe
-     * OG collection in a single transaction. Intended for early/founding users
-     * receiving a special OG edition badge. The recipient receives the NFT
-     * without needing to sign.
+     * OG collection in a single transaction with deterministic asset ID computation.
      *
      * @body recipient  - Solana wallet address of the user receiving the OG cNFT
      * @body userId     - NextVibe user ID used to generate personalized OG metadata
      * @body edition    - Edition number of the OG NFT
      */
-    .post("/mint/og", async ({ body }: { body: any }) => {
+    .post("/mint/og", async ({ body, set }: { body: any, set: any }) => {
         const { recipient, userId, edition } = body;
 
         if (edition > 25){
@@ -215,60 +208,63 @@ new Elysia()
                 error: "Edition can't be > 25."
             }
         }
-        /**
-         * Fetch dynamic og metadata from the NextVibe API.
-         */
+
         const metaUrl = `https://api.nextvibe.io/api/v1/posts/0/metadata/${edition}?isOg=true&userId=${userId}`
-        const metaResponse = await fetch(
-            metaUrl
-        );
-        const meta = await metaResponse.json();
-
-        const { signature } = await mintToCollectionV1(umi, {
-            leafOwner: publicKey(recipient),
-            merkleTree: publicKey(MERKLE_TREE_ADDRESS),
-            collectionMint: publicKey(OG_COLLECTION_ADDRESS),
-            collectionAuthority: umi.identity,
-            metadata: {
-                name: meta.name,
-                uri: metaUrl,
-                sellerFeeBasisPoints: 500,
-                collection: { key: publicKey(OG_COLLECTION_ADDRESS), verified: false },
-                creators: [],
-            },
-        }).sendAndConfirm(umi, {
-            confirm: { commitment: "confirmed" },
-        });
-
-        let assetId = null;
-        let retries = 6;
-        let delayMs = 500;
-
-        while (retries > 0) {
-            try {
-                // Wait before attempting to parse the transaction logs
-                await delay(delayMs);
-
-                const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, signature);
-                assetId = leaf.id;
-
-                // Break out of the loop if parsing is successful
-                break;
-            } catch (error) {
-                retries--;
-                delayMs = 1500; // Increase delay for subsequent retries
-                if (retries === 0) {
-                    console.error("Failed to parse leaf from transaction after all attempts.", error);
-                }
+        let meta: any
+        try {
+            const metaResponse = await fetch(metaUrl);
+            if (!metaResponse.ok) {
+                logError("mint_og.metadata_failed", `HTTP ${metaResponse.status}`, { userId, edition })
+                set.status = 502
+                return { success: false, error: "METADATA_FETCH_FAILED" }
             }
+            meta = await metaResponse.json();
+        } catch (error) {
+            logError("mint_og.metadata_failed", error, { userId, edition })
+            set.status = 502
+            return { success: false, error: "METADATA_FETCH_FAILED" }
         }
 
-        return {
-            success: true,
-            signature: Buffer.from(signature).toString('base64'),
-            assetId: assetId || "Minted successfully, but RPC delayed asset ID parsing",
-        }
+        try {
+            const startedAt = Date.now()
+            const { signature, assetId } = await withMintLock(async () => {
+                const leafInfo = await nextLeaf(publicKey(MERKLE_TREE_ADDRESS))
+                const result = await mintToCollectionV1(umi, {
+                    leafOwner: publicKey(recipient),
+                    merkleTree: publicKey(MERKLE_TREE_ADDRESS),
+                    collectionMint: publicKey(OG_COLLECTION_ADDRESS),
+                    collectionAuthority: umi.identity,
+                    metadata: {
+                        name: meta.name,
+                        uri: metaUrl,
+                        sellerFeeBasisPoints: 500,
+                        collection: { key: publicKey(OG_COLLECTION_ADDRESS), verified: false },
+                        creators: [],
+                    },
+                }).sendAndConfirm(umi, {
+                    send: { skipPreflight: true, maxRetries: 3 },
+                    confirm: { commitment: "confirmed" },
+                })
+                return { signature: result.signature, assetId: leafInfo.assetId.toString() }
+            })
 
+            log("mint_og.confirmed", {
+                userId, edition,
+                signature: bs58.encode(signature),
+                assetId,
+                ms: Date.now() - startedAt,
+            })
+
+            return {
+                success: true,
+                signature: Buffer.from(signature).toString('base64'),
+                assetId,
+            }
+        } catch (error) {
+            logError("mint_og.send_failed", error, { userId, edition, recipient })
+            set.status = 502
+            return { success: false, error: "MINT_SEND_FAILED" }
+        }
     })
 
     /**
@@ -276,9 +272,8 @@ new Elysia()
      *
      * Builds a free-collect transaction: mintToCollectionV1 (backend pays,
      * backend is collection authority) plus an SPL Memo instruction that
-     * requires the collecting user's signature. The transaction is partially
-     * signed by the backend identity and returned base64-encoded so the
-     * client can add the user's signature via MWA / Seed Vault.
+     * requires the collecting user's signature. Derives the expected leafIndex
+     * and assetId for zero-delay persistence on the Django backend.
      *
      * @body recipient  - Wallet address receiving the cNFT (leaf owner)
      * @body postId     - NextVibe post ID being collected
@@ -325,9 +320,8 @@ new Elysia()
             .add(memoWithUserSigner(memo, userPubkey))
             .setFeePayer(umi.identity)
 
-        // Fetch the blockhash as late as possible so the client gets the
-        // full ~60-90s lifetime to sign and submit.
         try {
+            const { leafIndex, assetId } = await nextLeaf(publicKey(MERKLE_TREE_ADDRESS))
             const tx = await builder.buildWithLatestBlockhash(umi)
             const partiallySigned = await umi.identity.signTransaction(tx)
             const messageHash = sha256Hex(tx.serializedMessage)
@@ -337,6 +331,8 @@ new Elysia()
                 postId, edition,
                 blockhash: tx.message.blockhash,
                 messageHash,
+                assetId: assetId.toString(),
+                leafIndex,
                 expiresAt,
                 memoLen: memo.length,
             })
@@ -347,6 +343,8 @@ new Elysia()
                 messageHash,
                 blockhash: tx.message.blockhash,
                 expiresAt,
+                assetId: assetId.toString(),
+                leafIndex,
             }
         } catch (error) {
             logError("collect.prepare.build_failed", error, { postId, edition })
@@ -360,16 +358,17 @@ new Elysia()
      *
      * Receives the fully signed collect transaction back from the client,
      * verifies it was not tampered with (message hash) and that every
-     * required signer — backend fee payer and user — actually signed,
-     * then broadcasts and confirms it and parses the minted asset ID.
+     * required signer signed, then broadcasts with skipPreflight: true and confirms.
+     * Verifies the minted asset ID in a single confirmed parse attempt.
      *
      * @body signedTransaction - base64 transaction signed by backend + user
      * @body messageHash       - hash returned by /collect/prepare
+     * @body expectedAssetId   - (optional) precalculated asset ID from /collect/prepare
      * @body postId            - (optional) post ID, for logging only
      * @body edition           - (optional) edition number, for logging only
      */
     .post("/collect/submit", async ({ body, set }: { body: any, set: any }) => {
-        const { signedTransaction, messageHash, postId, edition } = body
+        const { signedTransaction, messageHash, expectedAssetId, postId, edition } = body
         log("collect.submit.request", { postId, edition })
 
         if (!signedTransaction || !messageHash) {
@@ -417,10 +416,10 @@ new Elysia()
         }
         log("collect.submit.verified", { postId, edition, signers: requiredSigners.length })
 
-        let signature
+        let signature: Uint8Array
         try {
             const startedAt = Date.now()
-            signature = await umi.rpc.sendTransaction(tx, { skipPreflight: false })
+            signature = await umi.rpc.sendTransaction(tx, { skipPreflight: true, maxRetries: 3 })
             log("collect.submit.sent", { postId, edition, signature: bs58.encode(signature) })
             const latest = await umi.rpc.getLatestBlockhash()
             await umi.rpc.confirmTransaction(signature, {
@@ -444,39 +443,81 @@ new Elysia()
             return { success: false, error: "SEND_FAILED" }
         }
 
-        let assetId = null;
-        let retries = 6;
-        let delayMs = 500;
-
-        while (retries > 0) {
-            try {
-                // Wait before attempting to parse the transaction logs
-                await delay(delayMs);
-
-                const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, signature);
-                assetId = leaf.id;
-
-                break;
-            } catch (error) {
-                retries--;
-                delayMs = 1500;
-                log("collect.submit.parse_retry", { postId, edition, retriesLeft: retries })
-                if (retries === 0) {
-                    logError("collect.submit.parse_failed", error, {
-                        postId, edition, signature: bs58.encode(signature),
-                    });
-                }
+        // One-shot verification against confirmed RPC wrapper without retry delays
+        let assetId: string | null = expectedAssetId ?? null;
+        try {
+            const leaf = await parseLeafFromMintToCollectionV1Transaction(umiConfirmed, signature);
+            const parsedId = leaf.id.toString();
+            if (expectedAssetId && parsedId !== expectedAssetId) {
+                log("collect.assetid.mismatch", {
+                    postId, edition,
+                    expected: expectedAssetId,
+                    actual: parsedId,
+                });
             }
+            assetId = parsedId;
+        } catch (error) {
+            log("collect.submit.parse_delayed", {
+                postId, edition,
+                signature: bs58.encode(signature),
+            });
         }
 
-        log("collect.submit.done", { postId, edition, assetId: assetId ?? "unparsed", signature: bs58.encode(signature) })
+        log("collect.submit.done", { postId, edition, assetId: assetId ?? "null", signature: bs58.encode(signature) })
 
         return {
             success: true,
             signature: Buffer.from(signature).toString('base64'),
-            assetId: assetId || "Minted successfully, but RPC delayed asset ID parsing",
+            assetId,
         }
     })
+
+    /**
+     * POST /asset-id-from-signature
+     *
+     * Parses the cNFT asset ID and leaf index from a confirmed transaction signature.
+     * Used by the backfill command to resolve any unparsed historic records.
+     *
+     * @body signature - base64 or base58 encoded transaction signature
+     */
+    .post("/asset-id-from-signature", async ({ body, set }: { body: any, set: any }) => {
+        const { signature } = body || {};
+        if (!signature) {
+            set.status = 400;
+            return { success: false, error: "MISSING_SIGNATURE" };
+        }
+        try {
+            let sigBytes: Uint8Array;
+            if (typeof signature === 'string') {
+                if (signature.length > 64 && !signature.includes('/') && !signature.includes('+')) {
+                    sigBytes = bs58.decode(signature);
+                } else {
+                    try {
+                        sigBytes = new Uint8Array(Buffer.from(signature, 'base64'));
+                        if (sigBytes.length !== 64) {
+                            sigBytes = bs58.decode(signature);
+                        }
+                    } catch {
+                        sigBytes = bs58.decode(signature);
+                    }
+                }
+            } else {
+                sigBytes = new Uint8Array(signature);
+            }
+
+            const leaf = await parseLeafFromMintToCollectionV1Transaction(umiConfirmed, sigBytes);
+            return {
+                success: true,
+                assetId: leaf.id.toString(),
+                nonce: Number(leaf.nonce),
+            };
+        } catch (error) {
+            logError("asset_id_from_signature.failed", error, { signature });
+            set.status = 404;
+            return { success: false, error: "ASSET_ID_NOT_FOUND" };
+        }
+    })
+
     .listen(3000)
 
 console.log("NFT service running on port 3000")

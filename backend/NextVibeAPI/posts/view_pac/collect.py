@@ -14,6 +14,7 @@ get the legacy fully-backend mint in a single prepare call.
 """
 
 import logging
+import threading
 from datetime import timedelta, timezone as dt_timezone
 from decimal import Decimal
 
@@ -59,10 +60,35 @@ def _next_utc_midnight(now):
     return day_start, day_start + timedelta(days=1)
 
 
+def _send_push_async(owner, username, edition, total, post_id):
+    push_token = getattr(owner, "expo_push_token", None)
+    if not push_token:
+        logger.info("collect.push_skipped post=%s author=%s reason=no_token", post_id, getattr(owner, "id", None))
+        return
+    try:
+        send(
+            token=push_token,
+            title="Your post was collected",
+            body=f"{username} collected edition {edition}/{total} of your post.",
+        )
+        logger.info("collect.push_sent post=%s author=%s edition=%s", post_id, getattr(owner, "id", None), edition)
+    except Exception:
+        logger.warning("collect.push_failed post=%s author=%s", post_id, getattr(owner, "id", None), exc_info=True)
+
+
+def _send_push_in_background(owner, username, edition, total, post_id):
+    t = threading.Thread(
+        target=_send_push_async,
+        args=(owner, username, edition, total, post_id),
+        daemon=True,
+    )
+    t.start()
+
+
 def _finalize_collect(user, post_id, edition, asset_id, signature):
-    """Record a confirmed mint: collection row, counters, claim cleanup."""
+    """Record a confirmed mint: collection row, counters, claim cleanup, background push."""
     with transaction.atomic():
-        post = Post.objects.select_for_update().select_related("owner").get(id=post_id)
+        post = Post.objects.select_for_update().select_related("owner", "on_event").get(id=post_id)
         collection = UserCollection.objects.create(
             user=user,
             post=post,
@@ -75,45 +101,32 @@ def _finalize_collect(user, post_id, edition, asset_id, signature):
         post.is_nft = True
         post.save(update_fields=["minted_count", "is_nft"])
         PendingClaim.objects.filter(user=user, post=post).delete()
+
+        if is_irl_connected(user, post):
+            Reputation.objects.create(
+                user=user,
+                given_by=post.owner,
+                points=COLLECT_IRL_REP_BONUS,
+                is_checkin=False,
+                event=post.on_event,
+                post=post,
+                post_type="collect",
+            )
+            logger.info(
+                "collect.rep_bonus user=%s post=%s points=%s given_by=%s",
+                user.pk, post.id, COLLECT_IRL_REP_BONUS, post.owner_id,
+            )
+
+        total = post.total_supply or COLLECT_MAX_EDITIONS
+        owner = post.owner
+        username = user.username or "Someone"
+        transaction.on_commit(lambda: _send_push_in_background(owner, username, edition, total, post.id))
+
     logger.info(
         "collect.finalized user=%s post=%s edition=%s asset=%s minted_count=%s",
         user.pk, post.id, edition, asset_id, post.minted_count,
     )
     return post, collection
-
-
-def _after_collect(user, post, edition):
-    """Post-mint side effects: IRL reputation bonus and author push."""
-    total = post.total_supply or COLLECT_MAX_EDITIONS
-
-    if is_irl_connected(user, post):
-        Reputation.objects.create(
-            user=user,
-            given_by=post.owner,
-            points=COLLECT_IRL_REP_BONUS,
-            is_checkin=False,
-            event=post.on_event,
-            post=post,
-            post_type="collect",
-        )
-        logger.info(
-            "collect.rep_bonus user=%s post=%s points=%s given_by=%s",
-            user.pk, post.id, COLLECT_IRL_REP_BONUS, post.owner_id,
-        )
-
-    push_token = getattr(post.owner, "expo_push_token", None)
-    if push_token:
-        try:
-            send(
-                token=push_token,
-                title="Your post was collected",
-                body=f"{user.username or 'Someone'} collected edition {edition}/{total} of your post.",
-            )
-            logger.info("collect.push_sent post=%s author=%s edition=%s", post.id, post.owner_id, edition)
-        except Exception:
-            logger.warning("collect.push_failed post=%s author=%s", post.id, post.owner_id, exc_info=True)
-    else:
-        logger.info("collect.push_skipped post=%s author=%s reason=no_token", post.id, post.owner_id)
 
 
 class CollectPrepareView(APIView):
@@ -241,18 +254,17 @@ class CollectPrepareView(APIView):
                 return _error("MINT_FAILED", mint_res.get("error") or "Mint failed on service side.", status.HTTP_502_BAD_GATEWAY,
                               user=request.user, post_id=post_id)
 
-            finalized_post, _ = _finalize_collect(
+            finalized_post, collection = _finalize_collect(
                 request.user, post.id, next_edition, mint_res.get("assetId"), mint_res.get("signature")
             )
-            _after_collect(request.user, finalized_post, next_edition)
             logger.info("collect.prepare.none_path_done user=%s post=%s edition=%s",
                         request.user.pk, post.id, next_edition)
             return Response({
                 "success": True,
                 "edition": next_edition,
                 "totalSupply": total,
-                "assetId": mint_res.get("assetId"),
-                "signature": mint_res.get("signature"),
+                "assetId": collection.asset_id,
+                "signature": collection.signature,
             }, status=status.HTTP_201_CREATED)
 
         # MWA path: build the partially signed transaction.
@@ -285,13 +297,14 @@ class CollectPrepareView(APIView):
 
         claim.message_hash = prep_res["messageHash"]
         claim.tx_base64 = prep_res["transaction"]
+        claim.asset_id = prep_res.get("assetId")
         claim.expires_at = timezone.now() + timedelta(seconds=COLLECT_CLAIM_TTL_SECONDS)
-        claim.save(update_fields=["message_hash", "tx_base64", "expires_at"])
+        claim.save(update_fields=["message_hash", "tx_base64", "expires_at", "asset_id"])
 
         logger.info(
-            "collect.prepare.ready user=%s post=%s edition=%s claim=%s hash=%s expires=%s memo=%r",
+            "collect.prepare.ready user=%s post=%s edition=%s claim=%s hash=%s asset=%s expires=%s memo=%r",
             request.user.pk, post.id, next_edition, claim.claim_id,
-            claim.message_hash, claim.expires_at.isoformat(), memo,
+            claim.message_hash, claim.asset_id, claim.expires_at.isoformat(), memo,
         )
         return Response({
             "claimId": str(claim.claim_id),
@@ -340,6 +353,7 @@ class CollectSubmitView(APIView):
                 json={
                     "signedTransaction": signed_tx,
                     "messageHash": claim.message_hash,
+                    "expectedAssetId": getattr(claim, "asset_id", None),
                     "postId": claim.post_id,
                     "edition": claim.edition,
                 },
@@ -371,7 +385,6 @@ class CollectSubmitView(APIView):
         post, collection = _finalize_collect(
             request.user, claim.post_id, edition, submit_res.get("assetId"), submit_res.get("signature")
         )
-        _after_collect(request.user, post, edition)
 
         return Response({
             "success": True,

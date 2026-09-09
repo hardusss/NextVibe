@@ -115,10 +115,10 @@ export function useCollectFlow(postId: number, isOwner: boolean) {
         setResult(null);
     }, []);
 
-    const mwaAttempt = useCallback(async (): Promise<CollectResult> => {
-        setStatus("preparing");
+    const mwaAttempt = useCallback(async (t_swipe: number): Promise<CollectResult> => {
         walletLogger.info(WalletTag.COLLECT, "prepare: requesting transaction", { postId });
         const prep = await collectPrepare(postId, "mwa");
+        const t_prepare_done = Date.now();
         walletLogger.info(WalletTag.COLLECT, "prepare: transaction ready", {
             postId,
             claimId: prep.claimId,
@@ -128,18 +128,28 @@ export function useCollectFlow(postId: number, isOwner: boolean) {
             memo: prep.memo,
         });
 
+        // Show reserved edition from prepare immediately in UI
+        setResult((prev) => ({
+            edition: prep.edition,
+            totalSupply: prep.totalSupply,
+            assetId: prev?.assetId,
+            signature: prev?.signature,
+        }));
+
         setStatus("signing");
         walletLogger.info(WalletTag.COLLECT, "signing: opening wallet prompt", { postId, claimId: prep.claimId });
         const signedB64 = await signWithMwa(prep.transaction!);
+        const t_signed = Date.now();
         walletLogger.info(WalletTag.COLLECT, "signing: user signed", { postId, claimId: prep.claimId });
 
         setStatus("minting");
         const res = await collectSubmit(prep.claimId!, signedB64);
-        walletLogger.info(WalletTag.COLLECT, "submit: mint confirmed", {
-            postId,
-            edition: res.edition,
-            assetId: res.assetId,
-        });
+        const t_submit_done = Date.now();
+        walletLogger.info(
+            WalletTag.COLLECT,
+            `timing: swipe -> done in ${t_submit_done - t_swipe}ms (prepare: ${t_prepare_done - t_swipe}ms, sign: ${t_signed - t_prepare_done}ms, submit: ${t_submit_done - t_signed}ms)`,
+            { postId, edition: res.edition, assetId: res.assetId }
+        );
         return {
             edition: res.edition,
             totalSupply: prep.totalSupply,
@@ -149,7 +159,10 @@ export function useCollectFlow(postId: number, isOwner: boolean) {
     }, [postId]);
 
     const run = useCallback(async (): Promise<CollectOutcome> => {
+        const t_swipe = Date.now();
         setError(null);
+        // Start the minting animation immediately upon swipe so prepare time is perceived as part of the animation
+        setStatus("minting");
         const signer = resolveSigner(wallet.walletType);
         walletLogger.info(WalletTag.COLLECT, "flow: started", {
             postId, isOwner, walletType: wallet.walletType, platform: Platform.OS, signer,
@@ -158,9 +171,9 @@ export function useCollectFlow(postId: number, isOwner: boolean) {
             let r: CollectResult;
 
             if (isOwner) {
-                setStatus("minting");
                 walletLogger.info(WalletTag.COLLECT, "publish: owner mint via backend", { postId });
                 const res = await mintNFT(wallet.address ?? "", postId);
+                const t_done = Date.now();
                 if (!res?.success) {
                     throw new CollectApiError(res?.error || "Publish failed", res?.code || "PUBLISH_FAILED");
                 }
@@ -170,27 +183,37 @@ export function useCollectFlow(postId: number, isOwner: boolean) {
                     assetId: res.assetId,
                     signature: res.signature,
                 };
+                walletLogger.info(
+                    WalletTag.COLLECT,
+                    `timing: swipe -> done in ${t_done - t_swipe}ms (publish: ${t_done - t_swipe}ms)`,
+                    { postId, edition: r.edition, assetId: r.assetId }
+                );
             } else if (signer === "none") {
-                // The prepare response is already final — never enter "signing".
-                setStatus("minting");
+                // The prepare response is already final on the gasless path — no signing state, no submit.
                 walletLogger.info(WalletTag.COLLECT, "flow: gasless backend-signed mint", {
                     postId, platform: Platform.OS, walletType: wallet.walletType,
                 });
                 const res = await collectPrepare(postId, "none");
+                const t_done = Date.now();
                 r = {
                     edition: res.edition,
                     totalSupply: res.totalSupply,
                     assetId: res.assetId,
                     signature: res.signature,
                 };
+                walletLogger.info(
+                    WalletTag.COLLECT,
+                    `timing: swipe -> done in ${t_done - t_swipe}ms (prepare/mint: ${t_done - t_swipe}ms)`,
+                    { postId, edition: r.edition, assetId: r.assetId }
+                );
             } else {
                 try {
-                    r = await mwaAttempt();
+                    r = await mwaAttempt(t_swipe);
                 } catch (e: any) {
                     // Blockhash lifetime is short; re-prepare once silently.
                     if (e instanceof CollectApiError && e.code === "CLAIM_EXPIRED") {
                         walletLogger.warn(WalletTag.COLLECT, "flow: claim expired, retrying once", { postId });
-                        r = await mwaAttempt();
+                        r = await mwaAttempt(t_swipe);
                     } else {
                         throw e;
                     }

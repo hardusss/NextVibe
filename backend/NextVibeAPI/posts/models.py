@@ -140,7 +140,7 @@ class UserCollection(models.Model):
         on_delete=models.CASCADE,
         related_name='mints'
     )
-    asset_id = models.CharField(max_length=64, unique=True)   # cNFT assetId (PublicKey)
+    asset_id = models.CharField(max_length=64, unique=True, null=True, blank=True)   # cNFT assetId (PublicKey)
     signature = models.CharField(max_length=128, null=True, blank=True)  # base64 tx sig
     edition = models.PositiveIntegerField(default=1)           # edition number (1 of 50)
     price = models.DecimalField(max_digits=10, decimal_places=6, default=Decimal('0'))  # SOL price
@@ -169,6 +169,7 @@ class PendingClaim(models.Model):
     claim_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     message_hash = models.CharField(max_length=128, blank=True, default="")
     tx_base64 = models.TextField(blank=True, default="")
+    asset_id = models.CharField(max_length=64, blank=True, null=True, default=None)
     expires_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 
