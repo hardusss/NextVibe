@@ -41,7 +41,7 @@ import PopupModal from "../Comments/CommentPopup";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import useWalletAddress from "@/hooks/useWalletAddress";
 import { CollectInfo } from "@/src/api/collect";
-import { CollectResult } from "../NftClaim/useCollectFlow";
+import { CollectResult } from "../NftClaim/MintBottomSheet/useCollectFlow";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
@@ -630,6 +630,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                     postId={post.post_id}
                     imageUrl={mediaUrl}
                     creatorUsername={post.username}
+                    creatorAvatar={post.avatar}
                     walletConnected={!!address}
                     onCollected={handleCollected}
                     isOwner={post.is_owner}

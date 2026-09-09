@@ -38,7 +38,7 @@ import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import useWalletAddress from "@/hooks/useWalletAddress";
 import { CollectInfo } from "@/src/api/collect";
-import { CollectResult } from "../NftClaim/useCollectFlow";
+import { CollectResult } from "../NftClaim/MintBottomSheet/useCollectFlow";
 import {
     Heart, MessageCircle, MapPin,
     Sparkles, Clock, Calendar, Link2, MoreVertical, Share2
@@ -872,6 +872,7 @@ export default function MainPage() {
     const [mintPostId, setMintPostId] = useState<number>(0);
     const [mintImageUrl, setMintImageUrl] = useState<string | null>(null);
     const [mintCreator, setMintCreator] = useState<string>("");
+    const [mintCreatorAvatar, setMintCreatorAvatar] = useState<string | null>(null);
     const [mintIsOwner, setMintIsOwner] = useState(false);
     const [mintCollect, setMintCollect] = useState<CollectInfo | null>(null);
 
@@ -901,6 +902,7 @@ export default function MainPage() {
         setMintPostId(post.id);
         setMintImageUrl(post.media?.[0]?.media_url ?? null);
         setMintCreator(post.owner__username);
+        setMintCreatorAvatar(post.owner__avatar ?? null);
         setMintIsOwner(post.is_owner);
         setMintCollect(post.collect ?? null);
         setTimeout(() => mintSheetRef.current?.present(), 50);
@@ -1148,6 +1150,7 @@ export default function MainPage() {
                 postId={mintPostId}
                 imageUrl={mintImageUrl}
                 creatorUsername={mintCreator}
+                creatorAvatar={mintCreatorAvatar}
                 walletConnected={!!address}
                 onCollected={handleCollected}
                 isOwner={mintIsOwner}

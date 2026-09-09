@@ -40,7 +40,7 @@ import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import VerifyBadge from "../VerifyBadge";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
-import { CollectResult } from "../NftClaim/useCollectFlow";
+import { CollectResult } from "../NftClaim/MintBottomSheet/useCollectFlow";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 
@@ -362,6 +362,7 @@ export default function PostDetailsScreen() {
                 postId={post.post_id}
                 imageUrl={mediaItems[0]?.media_url ?? null}
                 creatorUsername={post.username}
+                creatorAvatar={post.avatar}
                 walletConnected={!!address}
                 onCollected={handleCollected}
                 isOwner={post.is_owner}
