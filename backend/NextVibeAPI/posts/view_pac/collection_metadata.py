@@ -10,11 +10,7 @@ class CollectionMetadataView(APIView):
             metadata = {
                 "name": "NextVibe OG Status",
                 "symbol": "NVOG",
-                "description": (
-                "Proof-of-attendance and collected posts from NextVibe, the IRL networking "
-                "layer on Solana. Every item is minted when someone checks in to an event "
-                "or collects a post in the app."
-            ),
+                "description": "NextVibe OG Status is a special NFT collection that grants exclusive access to the NextVibe platform. Holders of this NFT enjoy unique privileges, including early access to features, special events, and more.",
             "image": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
             "type": "image/jpeg",
             "properties": {
@@ -31,7 +27,11 @@ class CollectionMetadataView(APIView):
         metadata = {
             "name": "NextVibe Collection",
             "symbol": "NVIBE",
-            "description": "Official NextVibe post collection on Solana",
+            "description": (
+                "Proof-of-attendance and collected posts from NextVibe, the IRL networking "
+                "layer on Solana. Every item is minted when someone checks in to an event "
+                "or collects a post in the app."
+            ),
             "image": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
             "type": "image/jpeg",
             "properties": {
