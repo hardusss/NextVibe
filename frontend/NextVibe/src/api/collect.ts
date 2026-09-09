@@ -1,4 +1,5 @@
 import axios from "axios";
+import { Platform } from "react-native";
 import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 
@@ -49,7 +50,11 @@ async function postJson<T>(path: string, body: object): Promise<T> {
     const TOKEN = await storage.getItem("access");
     try {
         const response = await axios.post(`${GetApiUrl()}/posts/${path}`, body, {
-            headers: { "Authorization": `Bearer ${TOKEN}` },
+            headers: {
+                "Authorization": `Bearer ${TOKEN}`,
+                // Lets the backend refuse the MWA path for platforms without MWA.
+                "X-Client-Platform": Platform.OS,
+            },
         });
         return response.data as T;
     } catch (e: any) {

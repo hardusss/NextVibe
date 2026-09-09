@@ -122,7 +122,21 @@ class CollectPrepareView(APIView):
     def post(self, request) -> Response:
         post_id = request.data.get("postId")
         signer = request.data.get("signer", "mwa")
-        logger.info("collect.prepare user=%s post=%s signer=%s", request.user.pk, post_id, signer)
+
+        # MWA only exists on Android. If an iOS client still asks for the MWA
+        # path (older builds selected the signer from wallet state), downgrade
+        # to the backend-signed mint instead of handing out a transaction the
+        # client can never sign.
+        platform = (request.headers.get("X-Client-Platform") or "").lower()
+        if signer == "mwa" and platform and platform != "android":
+            logger.warning(
+                "collect.prepare.signer_downgraded user=%s post=%s platform=%s",
+                request.user.pk, post_id, platform,
+            )
+            signer = "none"
+
+        logger.info("collect.prepare user=%s post=%s signer=%s platform=%s",
+                    request.user.pk, post_id, signer, platform or "unknown")
         if not post_id:
             return _error("POST_NOT_FOUND", "Missing postId.", status.HTTP_404_NOT_FOUND,
                           user=request.user)

@@ -250,10 +250,26 @@ export const walletLogger = {
 
     error(tag: WalletTagType, message: string, error?: unknown, data?: any) {
         const timestamp = formatTimestamp();
-        const serialized = error ? serializeError(error) : undefined;
+        const serialized = serializeError(error);
+        // Wallet libraries sometimes throw null/undefined or bare objects with
+        // no message — attach a raw dump so the log never reads as just
+        // "ERROR null" with nothing to diagnose.
+        if (error == null || (typeof error === 'object' && !(error instanceof Error) && !('message' in (error as object)))) {
+            let raw: string;
+            if (error == null) {
+                raw = String(error);
+            } else {
+                try {
+                    raw = JSON.stringify(error, Object.getOwnPropertyNames(error as object));
+                } catch {
+                    raw = safeStringify(error);
+                }
+            }
+            serialized.raw = raw;
+        }
         recordLog({ timestamp, level: 'error', tag, message, data, error: serialized });
 
-        const errorDetailsStr = serialized ? `\n[FULL_ERROR_DETAILS]:\n${safeStringify(serialized, 2)}` : '';
+        const errorDetailsStr = `\n[FULL_ERROR_DETAILS]:\n${safeStringify(serialized, 2)}`;
         const dataDetailsStr = data !== undefined ? `\n[DATA_DETAILS]:\n${safeStringify(data, 2)}` : '';
         const logLine = `🚨 [WALLET_LOG] [${timestamp}] [${tag}] [ERROR] ${message}${errorDetailsStr}${dataDetailsStr}`;
         console.error(logLine);

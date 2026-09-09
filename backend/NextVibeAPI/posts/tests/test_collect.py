@@ -264,6 +264,25 @@ class CollectTestCase(TestCase):
         # The legacy /mint endpoint was used
         self.assertIn("/mint", mock_post.call_args.kwargs["url"])
 
+    @patch("posts.view_pac.collect.requests.post")
+    def test_ios_client_requesting_mwa_is_downgraded_to_none(self, mock_post):
+        # MWA does not exist on iOS — the backend must fall back to the
+        # finalized backend-signed mint instead of returning a transaction
+        # the client can never sign.
+        mock_post.return_value = service_response(MINT_OK)
+        self.age_post(hours=25)
+
+        response = self.client.post(
+            PREPARE_URL, {"postId": self.post.id, "signer": "mwa"},
+            format="json", HTTP_X_CLIENT_PLATFORM="ios",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(response.data["success"])
+        self.assertIn("/mint", mock_post.call_args.kwargs["url"])
+        self.assertTrue(
+            UserCollection.objects.filter(user=self.collector, post=self.post).exists()
+        )
+
     # ── misc guards ────────────────────────────────────────────────────────
 
     @patch("posts.view_pac.collect.requests.post")
