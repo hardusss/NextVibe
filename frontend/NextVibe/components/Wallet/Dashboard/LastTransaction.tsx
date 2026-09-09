@@ -2,11 +2,12 @@ import React, { memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { Image } from "expo-image";
 import { ShimmerSkeleton } from "@/components/Shared/motion";
-import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft } from "lucide-react-native";
+import { AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, Sparkles } from "lucide-react-native";
 import { GlassSurface } from "@/components/Shared/GlassSurface";
 import { FormattedTransaction } from "@/src/types/solana";
 import { TOKENS } from "@/constants/Tokens";
 import timeAgo from "@/src/utils/formatTime";
+import NftTxRow from "@/components/Wallet/Shared/NftTxRow";
 
 /**
  * Props for the LastTransaction dashboard widget.
@@ -59,6 +60,12 @@ function getTxMeta(type: string, isDarkMode: boolean) {
                 Icon: ArrowRightLeft,
                 accent: isDarkMode ? "#60A5FA" : "#3B82F6",
                 accentBg: isDarkMode ? "rgba(96,165,250,0.15)" : "rgba(59,130,246,0.1)",
+            };
+        case "cnft":
+            return {
+                Icon: Sparkles,
+                accent: isDarkMode ? "rgba(196,167,255,0.85)" : "rgba(124,58,237,0.85)",
+                accentBg: isDarkMode ? "rgba(196,167,255,0.12)" : "rgba(124,58,237,0.08)",
             };
         default:
             return {
@@ -300,9 +307,12 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
     const bg = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
     const border = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
 
+    /** cNFT items get the same row body as history (no amount, no price) */
+    const isCnftTransaction = transaction?.token === "cNFT" && !!transaction.nft;
+
     // Accent bar color when we have a real transaction
     const accentBarColor = transaction
-        ? getTxMeta(transaction.type, isDarkMode).accent
+        ? getTxMeta(isCnftTransaction ? "cnft" : transaction.type, isDarkMode).accent
         : "transparent";
 
     const isDisabled = isLoading || (!error && !transaction);
@@ -340,14 +350,22 @@ const LastTransaction: React.FC<LastTransactionProps> = ({
                     {isLoading && <LoadingSkeleton isDarkMode={isDarkMode} />}
                     {!isLoading && error && <ErrorState isDarkMode={isDarkMode} />}
                     {!isLoading && !error && !transaction && <EmptyState isDarkMode={isDarkMode} />}
-                    {!isLoading && !error && transaction && isSwapTransaction && (
+                    {!isLoading && !error && transaction && isCnftTransaction && (
+                        // Nothing to mask when the balance is hidden — render normally.
+                        <NftTxRow
+                            nft={transaction.nft!}
+                            isDark={isDarkMode}
+                            time={transaction.time}
+                        />
+                    )}
+                    {!isLoading && !error && transaction && !isCnftTransaction && isSwapTransaction && (
                         <SwapContent
                             isDarkMode={isDarkMode}
                             isBalanceHidden={isBalanceHidden}
                             transaction={transaction}
                         />
                     )}
-                    {!isLoading && !error && transaction && !isSwapTransaction && (
+                    {!isLoading && !error && transaction && !isCnftTransaction && !isSwapTransaction && (
                         <TransactionContent
                             isDarkMode={isDarkMode}
                             isBalanceHidden={isBalanceHidden}

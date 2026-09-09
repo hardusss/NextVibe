@@ -18,6 +18,8 @@ import CollectiblesScreen from "@/components/Wallet/Collectibles/CollectiblesScr
 import CollectibleDetailSheet from "@/components/Wallet/Collectibles/CollectibleDetailSheet";
 import useOwnedAssets, { OwnedAsset } from "@/components/Wallet/Collectibles/useOwnedAssets";
 import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
+import { buildCnftDetailParams } from "@/components/Wallet/Shared/NftTxRow";
+import { useCnftDisplayData } from "@/src/utils/solana/cnftMetadata";
 
 import { createWalletStyles } from "@/styles/wallet.styles";
 import { FadeIn } from "@/components/Shared/motion";
@@ -72,7 +74,7 @@ export default function WalletDashboardScreen() {
     const [isToastVisible, setIsToastVisible] = useState(false);
 
     // Tokens | Collectibles segmented view + owned NFTs (Helius DAS)
-    const params = useLocalSearchParams<{ tab?: string; asset?: string }>();
+    const params = useLocalSearchParams<{ tab?: string; asset?: string; assetName?: string; assetImage?: string }>();
     const [activeTab, setActiveTab] = useState<"tokens" | "collectibles">(
         params.tab === "collectibles" ? "collectibles" : "tokens"
     );
@@ -85,23 +87,45 @@ export default function WalletDashboardScreen() {
     const [selectedAsset, setSelectedAsset] = useState<OwnedAsset | null>(null);
     const handledAssetParamRef = useRef<string | null>(null);
 
-    // Deep link from transaction history: /wallet-dash?tab=collectibles&asset=<id>
+    // Deep link from transaction history or the collect sheet:
+    // /wallet-dash?tab=collectibles&asset=<id>[&assetName=..&assetImage=..]
     useEffect(() => {
         if (params.tab === "collectibles") setActiveTab("collectibles");
     }, [params.tab]);
 
     useEffect(() => {
         const assetId = typeof params.asset === "string" ? params.asset : null;
-        if (!assetId || handledAssetParamRef.current === assetId || ownedAssets.length === 0) return;
+        if (!assetId || handledAssetParamRef.current === assetId) return;
+
+        const openAsset = (asset: OwnedAsset) => {
+            handledAssetParamRef.current = assetId;
+            setSelectedAsset(asset);
+            scrollRef.current?.scrollToEnd({ animated: true });
+        };
+
         const match = ownedAssets.find(a => a.id === assetId);
         if (match) {
-            handledAssetParamRef.current = assetId;
-            setSelectedAsset(match);
+            openAsset(match);
+        } else if (typeof params.assetName === "string" && params.assetName) {
+            // Just-minted asset not indexed by DAS yet — open with the data
+            // the collect flow passed along instead of waiting.
+            openAsset({
+                id: assetId,
+                name: params.assetName,
+                image: typeof params.assetImage === "string" && params.assetImage ? params.assetImage : null,
+                jsonUri: null,
+                compressed: true,
+                collection: null,
+                collectionName: null,
+                isNextVibe: true,
+                pill: "Post",
+            });
         }
-    }, [params.asset, ownedAssets]);
+    }, [params.asset, params.assetName, params.assetImage, ownedAssets]);
 
     // Bottom Sheet Ref
     const depositSheetRef = useRef<DepositSheetRef>(null);
+    const scrollRef = useRef<ScrollView>(null);
 
     const transX = useRef(new Animated.Value(0)).current;
     const transY = useRef(new Animated.Value(0)).current;
@@ -165,6 +189,33 @@ export default function WalletDashboardScreen() {
         router.push("/transactions");
     };
 
+    // cNFT last-transaction card opens the same detail screen as history,
+    // so resolve its display name/image (memory-cached, shared with rows).
+    const isCnftLastTx = lastTransaction?.token === "cNFT" && !!lastTransaction.nft;
+    const lastTxCnftDisplay = useCnftDisplayData(
+        isCnftLastTx ? lastTransaction!.nft!.assetId : null,
+        isCnftLastTx ? lastTransaction!.nft!.uri : null,
+    );
+
+    /**
+     * Handles a tap on the Last Transaction card — cNFT items open the
+     * transaction detail screen with the same params as a history row,
+     * everything else goes to the history list.
+     */
+    const handleLastTransactionPress = () => {
+        if (activityError) {
+            handleRefresh();
+        } else if (lastTransaction && isCnftLastTx) {
+            router.push(buildCnftDetailParams(
+                lastTransaction,
+                lastTransaction.nft!.name ?? lastTxCnftDisplay.name,
+                lastTxCnftDisplay.image,
+            ));
+        } else if (lastTransaction) {
+            navigateToTransactions();
+        }
+    };
+
     /**
      * Navigates to deposit screen
      */
@@ -211,6 +262,7 @@ export default function WalletDashboardScreen() {
                 ]}
             >
                 <ScrollView
+                    ref={scrollRef}
                     style={styles.container}
                     contentContainerStyle={{ flexGrow: 1 }}
                     showsVerticalScrollIndicator={false}
@@ -270,13 +322,7 @@ export default function WalletDashboardScreen() {
                                     tokenPrice={lastTransactionTokenPrice}
                                     isLoading={isLoadTransaction}
                                     error={activityError}
-                                    onPress={() => {
-                                        if (activityError) {
-                                            handleRefresh();
-                                        } else if (lastTransaction) {
-                                            navigateToTransactions();
-                                        }
-                                    }}
+                                    onPress={handleLastTransactionPress}
                                 />
                             </FadeIn>
                         </View>

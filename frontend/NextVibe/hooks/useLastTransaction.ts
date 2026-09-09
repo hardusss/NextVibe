@@ -64,6 +64,13 @@ export function useLastTransaction(
       const transaction = transactions[0];
       let price = 0;
 
+      // cNFT items have no token price — return them as-is.
+      if (transaction.token === "cNFT") {
+        setLastTransactionTokenPrice(0);
+        setLastTransaction(transaction);
+        return;
+      }
+
       // Retrieve token information and price
       let tokenInfo = TOKENS[transaction.token as keyof typeof TOKENS];
       if (!tokenInfo) {

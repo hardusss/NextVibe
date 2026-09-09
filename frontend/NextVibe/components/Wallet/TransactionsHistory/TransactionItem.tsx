@@ -5,17 +5,10 @@ import FrostedView from '@/components/Shared/FrostedView';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
-import { FormattedTransaction, NftDetails } from '@/src/types/solana';
+import { FormattedTransaction } from '@/src/types/solana';
 import { TOKENS } from '@/constants/Tokens';
 import { useCnftDisplayData } from '@/src/utils/solana/cnftMetadata';
-
-/** Row titles per cNFT event kind */
-const CNFT_TITLES: Record<NftDetails['kind'], string> = {
-    claimed: 'Collected',
-    received: 'Received',
-    sent: 'Sent',
-    burned: 'Burned',
-};
+import NftTxRow, { CNFT_LOGO_URL, buildCnftDetailParams } from '@/components/Wallet/Shared/NftTxRow';
 
 /**
  * Props for a single transaction row in the history list.
@@ -47,7 +40,7 @@ const getTokenInfo = (token: string) => {
         symbol: 'cNFT',
         name: 'Compressed NFT',
         priceKey: 'cnft' as const,
-        logoURL: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+        logoURL: CNFT_LOGO_URL,
     };
 
     const found = Object.values(TOKENS).find(t => t.mint === token || t.symbol === token);
@@ -140,18 +133,6 @@ const swapStyles = StyleSheet.create({
     },
 });
 
-// ─── cNFT-specific internal styles ──────────────────────────────────────────
-
-const cnftStyles = StyleSheet.create({
-    /** Square thumbnail on the right side of the row */
-    thumbnail: {
-        width: 44,
-        height: 44,
-        borderRadius: 8,
-        backgroundColor: 'rgba(128,128,128,0.15)',
-    },
-});
-
 /**
  * Renders a single transaction row with glassmorphism effect.
  * Supports three visual layouts:
@@ -183,6 +164,10 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
      * passing all relevant params via search params.
      */
     const handlePress = () => {
+        if (isCnft && item.nft) {
+            router.push(buildCnftDetailParams(item, cnftName, cnftImage));
+            return;
+        }
         router.push({
             pathname: "/transaction-detail",
             params: {
@@ -204,15 +189,6 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                     swap_output_token: item.swapDetails.outputToken,
                     swap_output_amount: item.swapDetails.outputAmount,
                     swap_output_logo: item.swapDetails.outputLogoURL ?? '',
-                } : {}),
-                // cNFT-specific params
-                ...(isCnft && item.nft ? {
-                    nft_asset_id: item.nft.assetId,
-                    nft_name: cnftName ?? '',
-                    nft_kind: item.nft.kind,
-                    nft_memo: item.nft.memo ?? '',
-                    nft_image: cnftImage ?? '',
-                    nft_fee: item.fee ?? 0,
                 } : {}),
             }
         });
@@ -297,7 +273,34 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
         );
     }
 
-    // ─── Default (send / receive / cNFT) layout ─────────────────
+    // ─── cNFT layout — row body shared with the dashboard card ──
+
+    if (isCnft && item.nft) {
+        return (
+            <TouchableOpacity
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                style={styles.transactionItem}
+                onPress={handlePress}
+                activeOpacity={0.7}
+            >
+                {Platform.OS === 'android' ? (
+                    <View style={[styles.blurViewAbsolute, { backgroundColor: isDark ? 'rgba(15, 2, 28, 0.7)' : 'rgba(255, 255, 255, 0.85)' }]} />
+                ) : (
+                    <FrostedView
+                        intensity={isDark ? 30 : 90}
+                        tint={isDark ? 'dark' : 'light'}
+                        style={styles.blurViewAbsolute}
+                        fallbackBackgroundColor={isDark ? 'rgba(15, 2, 28, 0.7)' : 'rgba(255, 255, 255, 0.85)'}
+                    />
+                )}
+                <View style={styles.transactionItemContent}>
+                    <NftTxRow nft={item.nft} isDark={isDark} />
+                </View>
+            </TouchableOpacity>
+        );
+    }
+
+    // ─── Default (send / receive) layout ────────────────────────
 
     return (
         <TouchableOpacity 
@@ -339,53 +342,31 @@ function TransactionItem({ item, prices, isDark, styles }: TransactionItemProps)
                 {/* Info Section */}
                 <View style={styles.transactionInfo}>
                     <Text style={styles.transactionType}>
-                        {isCnft && item.nft
-                            ? CNFT_TITLES[item.nft.kind]
-                            : item.token === 'cNFT'
-                                ? (isIncoming ? 'cNFT Claimed' : 'cNFT Sent')
-                                : (isIncoming ? 'Received' : 'Sent')}
+                        {item.token === 'cNFT'
+                            ? (isIncoming ? 'cNFT Claimed' : 'cNFT Sent')
+                            : (isIncoming ? 'Received' : 'Sent')}
                     </Text>
                     <Text style={styles.transactionAddress} numberOfLines={1} ellipsizeMode="middle">
-                        {isCnft
-                            ? (cnftName ?? 'cNFT')
-                            : (isIncoming ? `From: ${item.from}` : `To: ${item.to}`)}
+                        {isIncoming ? `From: ${item.from}` : `To: ${item.to}`}
                     </Text>
                 </View>
 
-                {/* Amount Section — cNFT rows show the thumbnail instead of an amount */}
-                {isCnft ? (
-                    <View style={styles.transactionDetails}>
-                        {cnftImage ? (
-                            <Image
-                                source={{ uri: cnftImage }}
-                                style={cnftStyles.thumbnail}
-                                contentFit="cover"
-                            />
-                        ) : (
-                            <Text style={[styles.transactionAmount, {
-                                color: isIncoming ? '#2ECC71' : isDark ? '#FF6B6B' : '#E74C3C'
-                            }]}>
-                                {isIncoming ? '+' : '-'}{item.amount} cNFT
-                            </Text>
-                        )}
-                    </View>
-                ) : (
-                    <View style={styles.transactionDetails}>
-                        <Text style={[styles.transactionAmount, {
-                            color: isIncoming ? '#2ECC71' : isDark ? '#FF6B6B' : '#E74C3C'
-                        }]}>
-                            {isIncoming ? '+' : '-'}
-                            {item.token === 'cNFT'
-                                ? `${item.amount} cNFT`
-                                : `${item.amount.toFixed(item.token === 'SOL' ? 4 : 2)} ${tokenInfo.symbol}`}
+                {/* Amount Section */}
+                <View style={styles.transactionDetails}>
+                    <Text style={[styles.transactionAmount, {
+                        color: isIncoming ? '#2ECC71' : isDark ? '#FF6B6B' : '#E74C3C'
+                    }]}>
+                        {isIncoming ? '+' : '-'}
+                        {item.token === 'cNFT'
+                            ? `${item.amount} cNFT`
+                            : `${item.amount.toFixed(item.token === 'SOL' ? 4 : 2)} ${tokenInfo.symbol}`}
+                    </Text>
+                    {item.token !== 'cNFT' && (
+                        <Text style={styles.transactionUsdAmount}>
+                            $ {usdValue}
                         </Text>
-                        {item.token !== 'cNFT' && (
-                            <Text style={styles.transactionUsdAmount}>
-                                $ {usdValue}
-                            </Text>
-                        )}
-                    </View>
-                )}
+                    )}
+                </View>
             </View>
         </TouchableOpacity>
     );

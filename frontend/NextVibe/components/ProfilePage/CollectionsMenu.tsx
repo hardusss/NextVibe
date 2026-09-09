@@ -4,11 +4,11 @@ import {
     FlatListProps,
     TouchableOpacity,
     StyleSheet,
-    Dimensions,
     Text,
     ActivityIndicator as RNActivityIndicator,
     Vibration,
     Platform,
+    useWindowDimensions,
 } from "react-native";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import getCollectionsMenu from "@/src/api/get.collections.menu";
@@ -23,10 +23,7 @@ import setAvatar from "@/src/api/set.avatar";
 import CollectiblesModal, { CollectionItemData } from "./CollectiblesModal";
 import { storage } from "@/src/utils/storage";
 
-const screenWidth = Dimensions.get("window").width;
-const padding = 20;
-const imageSize = (screenWidth - padding * 2) / 3;
-const ROW_HEIGHT = imageSize + 4;
+const GRID_PADDING = 20;
 const POSTS_PER_PAGE = 9;
 
 interface PostMedia {
@@ -269,17 +266,19 @@ interface CollectionGridCellProps {
     item: CollectionItem;
     isFocused: boolean;
     accentColor: string;
+    /** Square cell side, computed from the live window width */
+    size: number;
     onPress: (item: CollectionItem) => void;
 }
 
-const CollectionGridCell = memo(({ item, isFocused, accentColor, onPress }: CollectionGridCellProps) => {
+const CollectionGridCell = memo(({ item, isFocused, accentColor, size, onPress }: CollectionGridCellProps) => {
     const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
     const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
     const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
 
     return (
         <TouchableOpacity
-            style={styles.postContainer}
+            style={[styles.postContainer, { width: size, height: size }]}
             activeOpacity={0.8}
             onPress={() => onPress(item)}
         >
@@ -373,6 +372,12 @@ const CollectionsGallery = ({
 }: CollectionsGalleryProps) => {
     const isDark = useColorScheme() === "dark";
     const isFocused = useIsFocused();
+
+    // Responsive 3-column sizing — floored so three cells (each with 2px
+    // margins) never overflow the row by a sub-pixel and wrap to 2 columns.
+    const { width } = useWindowDimensions();
+    const imageSize = Math.floor((width - GRID_PADDING * 2) / 3);
+    const rowHeight = imageSize + 4;
 
     const cached = collectionsCache.get(id) ?? null;
     const cachedOg = ogAvatarCache.get(id) ?? null;
@@ -470,9 +475,10 @@ const CollectionsGallery = ({
             item={item}
             isFocused={isFocused}
             accentColor={accentColor}
+            size={imageSize}
             onPress={handleItemPress}
         />
-    ), [accentColor, handleItemPress, isFocused]);
+    ), [accentColor, handleItemPress, isFocused, imageSize]);
 
     const handleEndReached = useCallback(() => {
         fetchItems(true);
@@ -480,8 +486,8 @@ const CollectionsGallery = ({
 
     const getItemLayout = useCallback((_data: ArrayLike<CollectionItem> | null | undefined, index: number) => {
         const row = Math.floor(index / 3);
-        return { length: ROW_HEIGHT, offset: ROW_HEIGHT * row, index };
-    }, []);
+        return { length: rowHeight, offset: rowHeight * row, index };
+    }, [rowHeight]);
 
     return (
         <View style={styles.container}>
@@ -641,8 +647,6 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
     },
     postContainer: {
-        width: imageSize,
-        height: imageSize,
         margin: 2,
         position: "relative",
         overflow: "hidden",

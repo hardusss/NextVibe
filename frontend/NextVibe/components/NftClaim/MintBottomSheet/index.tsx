@@ -100,7 +100,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
     };
 
     const [visible, setVisible] = useState(false);
-    const { status, error, result, run, reset } = useCollectFlow(props.postId, props.isOwner);
+    const { status, error, result, run, reset, walletType } = useCollectFlow(props.postId, props.isOwner);
 
     const info: CollectInfo = props.collect ?? {
         minted: 0, total: 50, claimedByMe: false, irlEligible: false, reservedEditionsActive: false,
@@ -225,17 +225,48 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         }
     };
 
-    const handleViewInWallet = async () => {
+    /**
+     * Opens the in-app wallet on the Collectibles tab with the minted asset
+     * focused. The asset may not be indexed by DAS yet, so the name/image we
+     * already have ride along for the detail sheet to use immediately.
+     */
+    const handleViewInWallet = () => {
         clearSuccessTimer();
-        const schemes = ['solflare://', 'phantom://'];
+        const assetId = result?.assetId ?? null;
+        const assetName = `Post by @${props.creatorUsername} #${result?.edition ?? upcomingEdition}`;
+        const imageUrl = props.imageUrl;
+        closeSheet(() => {
+            reset();
+            swipeRef.current?.reset();
+            router.push({
+                pathname: '/wallet-dash',
+                params: {
+                    tab: 'collectibles',
+                    // assetId can be null while the backfill resolves — navigate without it.
+                    ...(assetId ? {
+                        asset: assetId,
+                        assetName,
+                        ...(imageUrl ? { assetImage: imageUrl } : {}),
+                    } : {}),
+                },
+            });
+        });
+    };
+
+    /**
+     * Android + MWA only: hand off to the external wallet app (Seed Vault
+     * Wallet on Seeker). iOS deep links into Phantom/Solflare are unreliable,
+     * so the link is hidden there.
+     */
+    const handleOpenExternalWallet = async () => {
+        clearSuccessTimer();
+        const schemes = ['solanawallet://', 'solflare://', 'phantom://'];
         for (const scheme of schemes) {
             try {
                 await Linking.openURL(scheme);
                 return;
             } catch { /* try next */ }
         }
-        handleDismiss();
-        router.push('/profile');
     };
 
     const isCollector = !props.isOwner;
@@ -367,7 +398,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                                 style={[styles.primaryBtn, { backgroundColor: c.accent }]}
                                 onPress={handleViewInWallet}
                             >
-                                <Text style={styles.primaryBtnText}>View in wallet</Text>
+                                <Text style={styles.primaryBtnText}>View in Wallet</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.secondaryBtn, { borderColor: c.border }]}
@@ -375,6 +406,17 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                             >
                                 <Text style={[styles.secondaryBtnText, { color: c.sub }]}>Done</Text>
                             </TouchableOpacity>
+                            {Platform.OS === 'android' && walletType === 'mwa' && (
+                                <TouchableOpacity
+                                    onPress={handleOpenExternalWallet}
+                                    hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+                                    style={styles.externalWalletLink}
+                                >
+                                    <Text style={[styles.externalWalletText, { color: c.sub }]}>
+                                        Open in Seed Vault Wallet
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     ) : (
                         <SwipeToCollect
@@ -491,6 +533,16 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: 'Dank Mono',
         includeFontPadding: false,
+    },
+    externalWalletLink: {
+        alignItems: 'center',
+        paddingTop: 4,
+    },
+    externalWalletText: {
+        fontSize: 12,
+        fontFamily: 'Dank Mono',
+        includeFontPadding: false,
+        textDecorationLine: 'underline',
     },
 });
 

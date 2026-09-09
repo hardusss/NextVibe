@@ -3,19 +3,26 @@ import {
     View,
     Text,
     StyleSheet,
-    TouchableOpacity,
-    Dimensions,
     ActivityIndicator,
+    useWindowDimensions,
 } from "react-native";
-import { Image as ExpoImage } from "expo-image";
 import { GlassSurface } from "@/components/Shared/GlassSurface";
-import { Gem, ImageOff } from "lucide-react-native";
+import { Gem } from "lucide-react-native";
 import { OwnedAsset } from "./useOwnedAssets";
+import CollectibleTile from "./CollectibleTile";
 
-const screenWidth = Dimensions.get("window").width;
+const COLS = 3;
 const GRID_PADDING = 16;
 const CELL_GAP = 8;
-const CELL_SIZE = (screenWidth - GRID_PADDING * 2 - CELL_GAP * 2) / 3;
+
+/** Splits assets into rows of COLS for the manual grid layout. */
+function chunkRows(items: OwnedAsset[]): OwnedAsset[][] {
+    const rows: OwnedAsset[][] = [];
+    for (let i = 0; i < items.length; i += COLS) {
+        rows.push(items.slice(i, i + COLS));
+    }
+    return rows;
+}
 
 interface CollectiblesScreenProps {
     isDarkMode: boolean;
@@ -25,45 +32,11 @@ interface CollectiblesScreenProps {
     onSelect: (asset: OwnedAsset) => void;
 }
 
-const PILL_COLORS: Record<string, string> = {
-    OG: "#f0abfc",
-    POAP: "#6ee7b7",
-    Post: "#d8b4fe",
-};
-
-const CollectibleCell = React.memo(({ asset, nameColor, onSelect }: {
-    asset: OwnedAsset;
-    nameColor: string;
-    onSelect: (a: OwnedAsset) => void;
-}) => (
-    <TouchableOpacity style={styles.cell} activeOpacity={0.8} onPress={() => onSelect(asset)}>
-        {asset.image ? (
-            <ExpoImage source={{ uri: asset.image }} style={styles.cellImage} contentFit="cover" />
-        ) : (
-            <View style={styles.cellPlaceholder}>
-                <ImageOff size={22} color="#666" />
-            </View>
-        )}
-        {asset.pill && (
-            <View style={[styles.pill, { borderColor: PILL_COLORS[asset.pill] ?? "#d8b4fe" }]}>
-                <Text style={[styles.pillText, { color: PILL_COLORS[asset.pill] ?? "#d8b4fe" }]}>
-                    {asset.pill}
-                </Text>
-            </View>
-        )}
-        <Text style={[styles.cellName, { color: nameColor }]} numberOfLines={1}>
-            {asset.name}
-        </Text>
-    </TouchableOpacity>
-));
-
-CollectibleCell.displayName = "CollectibleCell";
-
 /**
  * Collectibles panel for the wallet dashboard's Tokens | Collectibles
  * segmented view. Renders a 3-column grid — NextVibe-minted items first,
  * anything else under "Other". Scrolling is owned by the dashboard's
- * ScrollView, so rows are plain views rather than a nested list.
+ * ScrollView, so rows are plain views rather than a nested virtualized list.
  */
 function CollectiblesScreen({ isDarkMode, assets, loading, error, onSelect }: CollectiblesScreenProps) {
     const titleColor = isDarkMode ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.85)";
@@ -72,7 +45,10 @@ function CollectiblesScreen({ isDarkMode, assets, loading, error, onSelect }: Co
     const sheetBg = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
     const border = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
 
-    const nameColor = isDarkMode ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.7)";
+    // Recomputed on rotation / split-screen resizes — floor keeps three
+    // tiles + two gaps from overflowing the row by a sub-pixel and wrapping.
+    const { width } = useWindowDimensions();
+    const itemSize = Math.floor((width - GRID_PADDING * 2 - CELL_GAP * (COLS - 1)) / COLS);
 
     const { nextVibe, other } = useMemo(() => ({
         nextVibe: assets.filter(a => a.isNextVibe),
@@ -80,9 +56,13 @@ function CollectiblesScreen({ isDarkMode, assets, loading, error, onSelect }: Co
     }), [assets]);
 
     const renderGrid = (items: OwnedAsset[]) => (
-        <View style={styles.grid}>
-            {items.map(asset => (
-                <CollectibleCell key={asset.id} asset={asset} nameColor={nameColor} onSelect={onSelect} />
+        <View>
+            {chunkRows(items).map(row => (
+                <View key={row[0].id} style={styles.row}>
+                    {row.map(asset => (
+                        <CollectibleTile key={asset.id} asset={asset} size={itemSize} onPress={onSelect} />
+                    ))}
+                </View>
             ))}
         </View>
     );
@@ -186,48 +166,10 @@ const styles = StyleSheet.create({
     body: {
         paddingHorizontal: GRID_PADDING,
     },
-    grid: {
+    row: {
         flexDirection: "row",
-        flexWrap: "wrap",
         gap: CELL_GAP,
-    },
-    cell: {
-        width: CELL_SIZE,
-    },
-    cellImage: {
-        width: CELL_SIZE,
-        height: CELL_SIZE,
-        borderRadius: 12,
-        backgroundColor: "#1a1a1a",
-    },
-    cellPlaceholder: {
-        width: CELL_SIZE,
-        height: CELL_SIZE,
-        borderRadius: 12,
-        backgroundColor: "#222",
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    pill: {
-        position: "absolute",
-        top: 6,
-        left: 6,
-        borderRadius: 8,
-        borderWidth: 1,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        backgroundColor: "rgba(0,0,0,0.6)",
-    },
-    pillText: {
-        fontSize: 9,
-        fontFamily: "Dank Mono Bold",
-        includeFontPadding: false,
-    },
-    cellName: {
-        marginTop: 5,
-        fontSize: 11,
-        fontFamily: "Dank Mono",
-        includeFontPadding: false,
+        marginBottom: CELL_GAP,
     },
     sectionLabel: {
         fontFamily: "Dank Mono Bold",
