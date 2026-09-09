@@ -10,29 +10,35 @@ class CollectionMetadataView(APIView):
             metadata = {
                 "name": "NextVibe OG Status",
                 "symbol": "NVOG",
-                "description": "Official NextVibe og collection limited 25 cNFTs",
-                "image": "https://nextvibe.io/logo.png",
-                "properties": {
-                    "files": [
-                        {
-                            "uri": "https://nextvibe.io/logo.png",  
-                            "type": "image/png"                     
-                        }
-                    ],
-                    "category": "image",
-                },
+                "description": (
+                "Proof-of-attendance and collected posts from NextVibe, the IRL networking "
+                "layer on Solana. Every item is minted when someone checks in to an event "
+                "or collects a post in the app."
+            ),
+            "image": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
+            "type": "image/jpeg",
+            "properties": {
+                "files": [
+                    {
+                        "uri": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
+                        "type": "image/jpeg"
+                    }
+                ],
+                "category": "image",
+            },
             }
             return Response(metadata, status=status.HTTP_200_OK)
         metadata = {
             "name": "NextVibe Collection",
             "symbol": "NVIBE",
             "description": "Official NextVibe post collection on Solana",
-            "image": "https://nextvibe.io/logo.png",
+            "image": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
+            "type": "image/jpeg",
             "properties": {
                 "files": [
                     {
-                        "uri": "https://nextvibe.io/logo.png",  
-                        "type": "image/png"                     
+                        "uri": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
+                        "type": "image/jpeg"                     
                     }
                 ],
                 "category": "image",
