@@ -249,7 +249,7 @@ const AddLumaEventSheet = forwardRef<AddLumaEventSheetRef, Props>(({ onSaved }, 
             if (postCreateResponse.success) {
                 setCreateEventState("minting");
                 while (true) {
-                    const mintNftResponse = await mintNFT("", Number(postCreateResponse.postId), 0, "");
+                    const mintNftResponse = await mintNFT("", Number(postCreateResponse.postId));
                     if (mintNftResponse.success) {
                         setCreateEventState("success");
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

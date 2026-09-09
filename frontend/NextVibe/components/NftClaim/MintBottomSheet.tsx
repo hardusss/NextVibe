@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, forwardRef, useImperativeHandle, useState, useEffect } from 'react';
 import {
     Text, StyleSheet, View, useColorScheme,
-    TouchableOpacity, Animated, TextInput,
+    TouchableOpacity, Animated,
     Modal, Dimensions, KeyboardAvoidingView,
     Platform, Vibration, ActivityIndicator,
 } from 'react-native';
@@ -16,8 +16,10 @@ import Reanimated, {
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image as ImageIcon, CheckCircle, AlertCircle, X, ChevronRight, Tag, Coins } from 'lucide-react-native';
+import { Image as ImageIcon, CheckCircle, AlertCircle, X, ChevronRight, Handshake } from 'lucide-react-native';
 import ButtonWallet from '../ProfilePage/ButtonWallet';
+import { CollectInfo } from '@/src/api/collect';
+import { useCollectFlow, CollectError, CollectResult } from './useCollectFlow';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.72;
@@ -26,7 +28,9 @@ const SWIPE_KNOB_SIZE = 54;
 const SWIPE_TRACK_WIDTH = SCREEN_WIDTH - 48;
 const SWIPE_MAX = SWIPE_TRACK_WIDTH - SWIPE_KNOB_SIZE - 8;
 const SWIPE_TRIGGER = SWIPE_MAX * 0.85;
-const SUCCESS_CLOSE_DELAY = 2200;
+const SUCCESS_CLOSE_DELAY = 4000;
+/** First edition a non-IRL collector can get while the reservation window is open. */
+const FIRST_OPEN_EDITION = 12;
 
 export interface MintBottomSheetRef {
     present: () => void;
@@ -38,23 +42,38 @@ export interface MintBottomSheetProps {
     imageUrl: string | null;
     creatorUsername: string;
     walletConnected: boolean;
-    onMint: (postId: number, price: number) => Promise<void>;
     /**
-     * True if the current user is the post owner setting up the NFT drop.
-     * False if they are a collector paying the fixed price.
+     * True if the current user is the post owner publishing the drop.
+     * False if they are collecting it for free.
      */
     isOwner: boolean;
-    /**
-     * Pre-filled price from the server (edition #1 price).
-     * Shown as read-only for collectors. Null for first-time owner setup.
-     */
-    defaultPrice: string | null;
+    /** Per-post collect state from the backend (`collect` object). */
+    collect: CollectInfo | null;
+    /** Called once the mint is confirmed on-chain. */
+    onCollected: (result: CollectResult) => void;
     page: string;
     isFocused?: boolean;
     useModal?: boolean;
 }
 
-type MintStatus = 'idle' | 'minting' | 'success' | 'error';
+const errorCopy = (error: CollectError, total: number): string => {
+    switch (error.code) {
+        case 'DAILY_LIMIT': {
+            const time = error.resetsAt
+                ? ` at ${new Date(error.resetsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : '';
+            return `You've collected 10 posts today. Back tomorrow${time}.`;
+        }
+        case 'SOLD_OUT':
+            return `All ${total} editions are gone.`;
+        case 'RESERVED_FOR_IRL':
+            return `Early editions are for people who met the author IRL. Try again from #${FIRST_OPEN_EDITION}.`;
+        case 'CLAIM_EXPIRED':
+            return 'Took too long — swipe again.';
+        default:
+            return "Couldn't collect. Try again.";
+    }
+};
 
 const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((props, ref) => {
     const isDark = useColorScheme() === 'dark';
@@ -68,24 +87,24 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         accent: '#a855f7',
         accentDim: isDark ? 'rgba(168,85,247,0.12)' : 'rgba(168,85,247,0.08)',
         border: isDark ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.15)',
-        borderFocus: '#a855f7',
         errorBg: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.08)',
         errorText: isDark ? '#fca5a5' : '#ef4444',
         successBg: isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.08)',
         successText: isDark ? '#86efac' : '#22c55e',
-        warnBg: isDark ? 'rgba(251,191,36,0.1)' : 'rgba(251,191,36,0.08)',
-        warnText: isDark ? '#fde047' : '#d97706',
         backdrop: 'rgba(0,0,0,0.75)',
         swipeTrack: isDark ? 'rgba(168,85,247,0.08)' : '#f3e8ff',
         swipeBorder: isDark ? 'rgba(168,85,247,0.3)' : 'rgba(168,85,247,0.25)',
-        priceLocked: isDark ? 'rgba(168,85,247,0.08)' : 'rgba(168,85,247,0.05)',
     };
 
     const [visible, setVisible] = useState(false);
-    const [status, setStatus] = useState<MintStatus>('idle');
-    const [errorMsg, setErrorMsg] = useState('');
-    const [priceInput, setPriceInput] = useState('');
-    const [inputFocused, setInputFocused] = useState(false);
+    const { status, error, result, run, reset } = useCollectFlow(props.postId, props.isOwner);
+
+    const info: CollectInfo = props.collect ?? {
+        minted: 0, total: 50, claimedByMe: false, irlEligible: false, reservedEditionsActive: false,
+    };
+    const total = info.total;
+    const editionsLeft = Math.max(0, total - info.minted);
+    const showIrlNote = !props.isOwner && info.reservedEditionsActive && !info.irlEligible;
 
     const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
     const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -158,13 +177,8 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
     };
 
     const openSheet = () => {
-        // Pre-fill price for collectors from server data
-        const initialPrice = !props.isOwner && props.defaultPrice ? props.defaultPrice : '';
-        setPriceInput(initialPrice);
-
         setVisible(true);
-        setStatus('idle');
-        setErrorMsg('');
+        reset();
         swipeX.value = 0;
         swipeTriggered.value = false;
         successScale.setValue(0);
@@ -188,16 +202,16 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         });
     }, []);
 
+    const isBusy = status === 'preparing' || status === 'signing' || status === 'minting';
+
     const handleDismiss = useCallback(() => {
-        if (status === 'minting') return;
+        if (isBusy) return;
         closeSheet(() => {
-            setStatus('idle');
-            setErrorMsg('');
-            setPriceInput('');
+            reset();
             resetSwipe();
             stopPulse();
         });
-    }, [status]);
+    }, [isBusy]);
 
     useImperativeHandle(ref, () => ({
         present: openSheet,
@@ -219,68 +233,45 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         })
     ).current;
 
-    const price = parseFloat(priceInput) || 0;
-    const royalty = +(price * 0.05).toFixed(6);
-    const youReceive = +(price - royalty).toFixed(6);
-    const isValidPrice = price > 0;
-    const canMint = props.walletConnected && isValidPrice && status === 'idle';
+    const canCollect = props.walletConnected
+        && status === 'idle'
+        && !info.claimedByMe
+        && (props.isOwner || editionsLeft > 0);
 
-    const handlePriceChange = (raw: string) => {
-        // Collectors cannot change the price
-        if (!props.isOwner) return;
-        let cleaned = raw.replace(/[^0-9.]/g, '');
-        const parts = cleaned.split('.');
-        if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
-        if (parts[1] && parts[1].length > 6) cleaned = parts[0] + '.' + parts[1].slice(0, 6);
-        if (cleaned.length > 1 && cleaned[0] === '0' && cleaned[1] !== '.') {
-            cleaned = cleaned.replace(/^0+/, '');
-        }
-        setPriceInput(cleaned);
-        if (status === 'error') { setStatus('idle'); setErrorMsg(''); }
-    };
-
-    const executeMint = async () => {
-        if (!canMint) { resetSwipe(); return; }
-        setStatus('minting');
-        setErrorMsg('');
+    const executeCollect = async () => {
+        if (!canCollect) { resetSwipe(); return; }
         startPulse();
-        try {
-            await props.onMint(props.postId, price);
-            stopPulse();
-            setStatus('success');
+        const outcome = await run();
+        stopPulse();
+        if (outcome.kind === 'success') {
             playSuccess();
+            props.onCollected(outcome.result);
             successTimerRef.current = setTimeout(() => {
                 closeSheet(() => {
-                    setStatus('idle');
-                    setErrorMsg('');
-                    setPriceInput('');
+                    reset();
                     resetSwipe();
                 });
             }, SUCCESS_CLOSE_DELAY);
-        } catch (e: any) {
-            stopPulse();
-            setStatus('error');
+        } else {
             resetSwipe();
-            const msg = e?.response?.data?.error || e?.message || 'Transaction failed';
-            setErrorMsg(msg);
-            playError();
+            if (outcome.kind === 'error') playError();
         }
     };
 
     const panGesture = Gesture.Pan()
         .hitSlop({ top: 15, bottom: 15, left: 10, right: 10 })
         .onBegin(() => {
-            if (!canMint) return;
+            if (!canCollect) return;
             runOnJS(Vibration.vibrate)(8);
         })
         .onUpdate((e) => {
-            if (swipeTriggered.value || !canMint) return;
+            if (swipeTriggered.value || !canCollect) return;
             swipeX.value = Math.max(0, Math.min(e.translationX, SWIPE_MAX));
             if (swipeX.value >= SWIPE_TRIGGER) {
                 swipeTriggered.value = true;
                 swipeX.value = withSpring(SWIPE_MAX, { damping: 12 });
                 runOnJS(Vibration.vibrate)(25);
-                runOnJS(executeMint)();
+                runOnJS(executeCollect)();
             }
         })
         .onEnd(() => {
@@ -304,28 +295,36 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
     const arrowOpacity1 = arrowAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.9, 0.2] });
     const arrowOpacity2 = arrowAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.1, 0.5, 0.1] });
 
-    // Derived display values
     const isCollector = !props.isOwner;
+    const resultEdition = result?.edition ?? info.minted + 1;
+    const resultTotal = result?.totalSupply ?? total;
 
     const headerTitle = () => {
-        if (status === 'success') return isCollector ? 'Collected! 🎉' : 'Drop Created! 🎉';
-        return isCollector ? 'Collect Post' : 'Monetize Post';
+        if (status === 'success') {
+            return isCollector ? `Collected · edition ${resultEdition}/${resultTotal}` : 'Published! 🎉';
+        }
+        return isCollector ? 'Collect this post' : 'Publish as cNFT';
     };
 
     const headerSubtitle = () => {
-        if (status === 'success') return isCollector ? 'cNFT minted to your wallet' : 'Users can now collect your post';
-        if (status === 'minting') return isCollector ? 'Minting on Solana...' : 'Publishing to Solana...';
+        if (status === 'success') return 'cNFT minted to your wallet';
+        if (isBusy) return isCollector ? 'Minting on Solana...' : 'Publishing to Solana...';
         return isCollector
-            ? `Pay ${props.defaultPrice ?? '—'} SOL to mint this post as a cNFT`
-            : 'Set the price for others to collect';
+            ? '≈ free (network fee only)'
+            : 'Others can collect it for free (network fee only)';
+    };
+
+    const busyLabel = () => {
+        if (status === 'preparing') return 'Preparing…';
+        if (status === 'signing') return 'Confirm in your wallet';
+        return isCollector ? 'Minting on Solana…' : 'Publishing…';
     };
 
     const swipeLabel = () => {
         if (!props.walletConnected) return 'Connect wallet first';
-        if (!isValidPrice) return isCollector ? 'Price not set yet' : 'Enter price to continue';
-        return isCollector
-            ? `Swipe to pay · ${price} SOL`
-            : `Swipe to set price · ${price} SOL`;
+        if (info.claimedByMe) return 'Already collected';
+        if (isCollector && editionsLeft <= 0) return 'All editions are gone';
+        return isCollector ? 'Swipe to collect' : 'Swipe to publish';
     };
 
     if (!visible) return null;
@@ -356,7 +355,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                                 onPress={handleDismiss}
                                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                 style={[styles.closeBtn, { backgroundColor: c.card, borderColor: c.border }]}
-                                disabled={status === 'minting'}
+                                disabled={isBusy}
                             >
                                 <X size={16} color={c.sub} />
                             </TouchableOpacity>
@@ -373,91 +372,24 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                             )}
                             <View style={styles.previewInfo}>
                                 <Text style={[styles.postLabel, { color: c.sub }]}>
-                                    {isCollector ? 'Collecting from' : 'Creating drop for'}
+                                    {isCollector ? 'Collecting from' : 'Publishing'}
                                 </Text>
                                 <Text style={[styles.postCreator, { color: c.text }]}>@{props.creatorUsername}</Text>
                             </View>
-                            {status === 'success' && (
-                                <Animated.View style={{ transform: [{ scale: successScale }], opacity: successOpacity }}>
-                                    <CheckCircle size={28} color={c.successText} />
-                                </Animated.View>
-                            )}
+                            <View style={[styles.editionBadge, { backgroundColor: c.accentDim }]}>
+                                <Text style={[styles.editionBadgeText, { color: c.accent }]}>
+                                    {status === 'success' ? `#${resultEdition} / ${resultTotal}` : `${editionsLeft} / ${total} left`}
+                                </Text>
+                            </View>
                         </View>
 
-                        {/* Price section */}
-                        {isCollector ? (
-                            // Collector: locked price display
-                            <View style={[styles.priceLockedCard, { backgroundColor: c.priceLocked, borderColor: c.border }]}>
-                                <View style={styles.priceLockedLeft}>
-                                    <Coins size={18} color={c.accent} />
-                                    <View>
-                                        <Text style={[styles.inputLabel, { color: c.sub }]}>Mint price</Text>
-                                        <Text style={[styles.priceLockedValue, { color: c.text }]}>
-                                            {props.defaultPrice ?? '—'} SOL
-                                        </Text>
-                                    </View>
-                                </View>
-                                <View style={[styles.lockedBadge, { backgroundColor: c.accentDim }]}>
-                                    <Text style={[styles.lockedBadgeText, { color: c.accent }]}>Fixed</Text>
-                                </View>
-                            </View>
-                        ) : (
-                            // Owner: editable price input
-                            <Animated.View style={[
-                                styles.inputCard,
-                                {
-                                    backgroundColor: inputFocused ? c.accentDim : c.card,
-                                    borderColor: inputFocused ? c.borderFocus : 'transparent',
-                                    borderWidth: 1,
-                                    transform: [{ translateX: shakeX }],
-                                }
-                            ]}>
-                                <View style={styles.inputLabelRow}>
-                                    <Tag size={12} color={c.sub} style={{ marginRight: 6 }} />
-                                    <Text style={[styles.inputLabel, { color: c.sub }]}>Price for collectors</Text>
-                                </View>
-                                <View style={styles.inputRow}>
-                                    <TextInput
-                                        value={priceInput}
-                                        onChangeText={handlePriceChange}
-                                        onFocus={() => setInputFocused(true)}
-                                        onBlur={() => setInputFocused(false)}
-                                        placeholder="0.00"
-                                        placeholderTextColor={c.sub}
-                                        keyboardType="decimal-pad"
-                                        style={[styles.input, { color: c.text }]}
-                                        editable={status !== 'minting' && status !== 'success'}
-                                    />
-                                    <View style={[styles.currencyBadge, { backgroundColor: isDark ? '#1e1133' : '#f3e8ff' }]}>
-                                        <Text style={[styles.inputCurrency, { color: c.accent }]}>SOL</Text>
-                                    </View>
-                                </View>
-                            </Animated.View>
-                        )}
-
-                        {/* Fee breakdown — shown for both owner and collector */}
-                        {isValidPrice && status !== 'success' && (
-                            <View style={[styles.feeCard, { borderColor: c.border }]}>
-                                <View style={styles.feeRow}>
-                                    <Text style={[styles.feeLabel, { color: c.text, fontFamily: 'Dank Mono Bold' }]}>
-                                        {isCollector ? 'You pay' : 'Your profit per collect'}
-                                    </Text>
-                                    <Text style={[styles.feeValue, {
-                                        color: isCollector ? c.errorText : c.successText,
-                                        fontSize: 14,
-                                    }]}>
-                                        {isCollector ? `${price} SOL` : `+${youReceive} SOL`}
-                                    </Text>
-                                </View>
-                                <View style={[styles.feeDivider, { backgroundColor: c.border }]} />
-                                <View style={styles.feeRow}>
-                                    <Text style={[styles.feeLabel, { color: c.sub }]}>
-                                        {isCollector ? 'Goes to creator' : 'Platform fee (5%)'}
-                                    </Text>
-                                    <Text style={[styles.feeValue, { color: c.sub }]}>
-                                        {isCollector ? `${youReceive} SOL` : `${royalty} SOL`}
-                                    </Text>
-                                </View>
+                        {/* IRL reservation note */}
+                        {showIrlNote && status !== 'success' && (
+                            <View style={styles.irlNoteRow}>
+                                <Handshake size={14} color={c.sub} />
+                                <Text style={[styles.irlNoteText, { color: c.sub }]}>
+                                    Early editions are reserved for people who met the author IRL — you can still collect from #{FIRST_OPEN_EDITION}
+                                </Text>
                             </View>
                         )}
 
@@ -465,10 +397,12 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                             <ButtonWallet widthButton={"100%"} page={props.page}/>
                         )}
 
-                        {status === 'error' && !!errorMsg && (
+                        {status === 'error' && !!error && (
                             <Animated.View style={[styles.alertCard, { backgroundColor: c.errorBg, transform: [{ translateX: shakeX }] }]}>
                                 <AlertCircle size={15} color={c.errorText} />
-                                <Text style={[styles.alertText, { color: c.errorText }]} numberOfLines={2}>{errorMsg}</Text>
+                                <Text style={[styles.alertText, { color: c.errorText }]} numberOfLines={2}>
+                                    {errorCopy(error, total)}
+                                </Text>
                             </Animated.View>
                         )}
 
@@ -476,13 +410,13 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
 
                         {/* Swipe button */}
                         {status !== 'success' && (
-                            <Animated.View style={{ opacity: status === 'minting' ? pulseAnim : 1 }}>
+                            <Animated.View style={{ opacity: isBusy ? pulseAnim : 1 }}>
                                 <View style={[
                                     styles.swipeTrack,
                                     {
                                         backgroundColor: c.swipeTrack,
-                                        borderColor: canMint ? c.swipeBorder : c.card,
-                                        opacity: canMint || status === 'minting' ? 1 : 0.5,
+                                        borderColor: canCollect ? c.swipeBorder : c.card,
+                                        opacity: canCollect || isBusy ? 1 : 0.5,
                                     }
                                 ]}>
                                     <Reanimated.View style={[styles.swipeFill, fillAnimStyle]} pointerEvents="none">
@@ -494,14 +428,14 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                                     </Reanimated.View>
 
                                     <Reanimated.View style={[styles.swipeLabelRow, labelAnimStyle]} pointerEvents="none">
-                                        {status === 'minting' ? (
+                                        {isBusy ? (
                                             <Text style={[styles.swipeLabel, { color: c.accent, fontFamily: 'Dank Mono Bold' }]}>
-                                                {isCollector ? 'Minting...' : 'Confirming Drop...'}
+                                                {busyLabel()}
                                             </Text>
                                         ) : (
                                             <>
                                                 <Text style={[styles.swipeLabel, { color: c.sub }]}>{swipeLabel()}</Text>
-                                                {canMint && (
+                                                {canCollect && (
                                                     <>
                                                         <Animated.View style={{ opacity: arrowOpacity1 }}>
                                                             <ChevronRight size={18} color={c.accent} />
@@ -518,11 +452,11 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                                     <GestureDetector gesture={panGesture}>
                                         <Reanimated.View style={[styles.swipeKnob, knobAnimStyle]}>
                                             <LinearGradient
-                                                colors={status === 'minting' ? ['#6d28d9', '#4c1d95'] : ['#a855f7', '#7c3aed']}
+                                                colors={isBusy ? ['#6d28d9', '#4c1d95'] : ['#a855f7', '#7c3aed']}
                                                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                                                 style={styles.knobGradient}
                                             >
-                                                {status === 'minting'
+                                                {isBusy
                                                     ? <ActivityIndicator color="white" size="small" />
                                                     : <ChevronRight size={24} color="white" strokeWidth={2.5} />
                                                 }
@@ -542,10 +476,10 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                                 <CheckCircle size={28} color={c.successText} />
                                 <View style={{ flex: 1 }}>
                                     <Text style={[styles.successTitle, { color: c.successText }]}>
-                                        {isCollector ? 'NFT minted successfully!' : 'Drop Created!'}
+                                        {isCollector ? `Collected · edition ${resultEdition}/${resultTotal}` : 'Published!'}
                                     </Text>
                                     <Text style={[styles.successSub, { color: c.successText, opacity: 0.8 }]}>
-                                        {isCollector ? 'Check your wallet on Solflare' : 'Users can now collect your post'}
+                                        {isCollector ? 'cNFT is in your wallet' : 'Others can now collect your post for free'}
                                     </Text>
                                 </View>
                             </Animated.View>
@@ -620,62 +554,24 @@ const styles = StyleSheet.create({
     previewInfo: { flex: 1, gap: 4 },
     postLabel: { fontSize: 12, fontFamily: 'Dank Mono', includeFontPadding: false },
     postCreator: { fontSize: 16, fontFamily: 'Dank Mono Bold', includeFontPadding: false },
-    // Owner price input
-    inputCard: { borderRadius: 24, paddingHorizontal: 20, paddingVertical: 16, marginBottom: 14 },
-    inputLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    inputLabel: {
-        fontSize: 12,
-        fontFamily: 'Dank Mono Bold',
-        includeFontPadding: false,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    inputRow: { flexDirection: 'row', alignItems: 'center' },
-    input: { flex: 1, fontSize: 38, fontFamily: 'Dank Mono Bold', includeFontPadding: false, padding: 0 },
-    currencyBadge: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-    inputCurrency: { fontSize: 15, fontFamily: 'Dank Mono Bold', includeFontPadding: false },
-    // Collector locked price
-    priceLockedCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderRadius: 20,
-        borderWidth: 1,
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        marginBottom: 14,
-    },
-    priceLockedLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-    priceLockedValue: {
-        fontSize: 32,
-        fontFamily: 'Dank Mono Bold',
-        includeFontPadding: false,
-        marginTop: 2,
-    },
-    lockedBadge: {
+    editionBadge: {
         borderRadius: 10,
         paddingHorizontal: 10,
         paddingVertical: 5,
     },
-    lockedBadgeText: {
+    editionBadgeText: {
         fontSize: 12,
         fontFamily: 'Dank Mono Bold',
         includeFontPadding: false,
     },
-    // Fee breakdown
-    feeCard: {
-        borderRadius: 18,
-        borderWidth: 1,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+    irlNoteRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 4,
         marginBottom: 14,
-        gap: 10,
-        borderStyle: 'dashed',
     },
-    feeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    feeLabel: { fontSize: 13, fontFamily: 'Dank Mono', includeFontPadding: false },
-    feeValue: { fontSize: 13, fontFamily: 'Dank Mono Bold', includeFontPadding: false },
-    feeDivider: { height: 1, opacity: 0.5 },
+    irlNoteText: { fontSize: 12, fontFamily: 'Dank Mono', includeFontPadding: false, flex: 1 },
     alertCard: {
         flexDirection: 'row',
         alignItems: 'center',

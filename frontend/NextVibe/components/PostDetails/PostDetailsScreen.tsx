@@ -24,7 +24,6 @@ import Hyperlink from "react-native-hyperlink";
 import getPost from "@/src/api/get.post";
 import getComments from "@/src/api/get.comments";
 import likePost from "@/src/api/like.post";
-import mintNFT from "@/src/api/mint.nft";
 import commentLike from "@/src/api/comment.like";
 import createComment from "@/src/api/create.comment";
 import createCommentReply from "@/src/api/comment.reply";
@@ -34,8 +33,6 @@ import formatNumber from "@/src/utils/formatNumber";
 import timeAgo from "@/src/utils/formatTime";
 import { storage } from "@/src/utils/storage";
 import useWalletAddress from "@/hooks/useWalletAddress";
-import useTransaction from "@/hooks/useTransaction";
-import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
 
 
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
@@ -43,6 +40,7 @@ import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import VerifyBadge from "../VerifyBadge";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
+import { CollectResult } from "../NftClaim/useCollectFlow";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 
@@ -134,7 +132,6 @@ export default function PostDetailsScreen() {
     const mintSheetRef = useRef<MintBottomSheetRef>(null);
     const likingRef = useRef(false);
     const { address } = useWalletAddress();
-    const { sendInstructions } = useTransaction();
 
     useEffect(() => {
         if (!isFocused) {
@@ -310,25 +307,18 @@ export default function PostDetailsScreen() {
         }
     };
 
-    /**
-     * Two distinct payment paths depending on who is minting:
-     * - Owner minting their own post → no SOL transfer, call the API directly.
-     * - Collector → build on-chain payment instructions, send the transaction, then
-     *   confirm the mint on the backend with the transaction signature as proof of payment.
-     */
-    const handleMint = async (postId: number, price: number) => {
-        if (!address || !post) throw new Error("Wallet not connected");
-        if (post.is_owner) {
-            await mintNFT(address, postId, price);
-        } else {
-            if (!post.owner_wallet) throw new Error("Owner wallet not found");
-            const ixs = buildMintPaymentInstructions(address, post.owner_wallet, price);
-            const sig = await sendInstructions(ixs, "post_detail");
-            if (!sig) throw new Error("Payment not confirmed");
-            await mintNFT(address, postId, price, sig);
-        }
-        setPost((p) => p ? { ...p, already_claimed: true, minted_count: (p.minted_count ?? 0) + 1 } : null);
-    };
+    /** The sheet runs the whole collect flow — just reflect the confirmed mint locally. */
+    const handleCollected = useCallback((_result: CollectResult) => {
+        setPost((p) => p ? {
+            ...p,
+            already_claimed: true,
+            is_nft: true,
+            minted_count: (p.minted_count ?? 0) + 1,
+            collect: p.collect
+                ? { ...p.collect, minted: p.collect.minted + 1, claimedByMe: true }
+                : p.collect,
+        } : null);
+    }, []);
 
     if (loading) {
         return (
@@ -373,9 +363,9 @@ export default function PostDetailsScreen() {
                 imageUrl={mediaItems[0]?.media_url ?? null}
                 creatorUsername={post.username}
                 walletConnected={!!address}
-                onMint={handleMint}
+                onCollected={handleCollected}
                 isOwner={post.is_owner}
-                defaultPrice={post.nft_price}
+                collect={post.collect ?? null}
                 page="post_detail"
                 isFocused={isFocused}
             />

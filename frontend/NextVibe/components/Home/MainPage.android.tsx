@@ -39,9 +39,8 @@ import Hyperlink from "react-native-hyperlink";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import useWalletAddress from "@/hooks/useWalletAddress";
-import mintNFT from "@/src/api/mint.nft";
-import useTransaction from "@/hooks/useTransaction";
-import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
+import { CollectInfo } from "@/src/api/collect";
+import { CollectResult } from "../NftClaim/useCollectFlow";
 import {
     Heart, MessageCircle, MapPin,
     Sparkles, Clock, Calendar, Link2, MoreVertical, Share2
@@ -299,12 +298,12 @@ interface Post {
     moderation_status: string;
     // NFT
     is_nft: boolean;
-    nft_price: string | null;
     is_owner: boolean;
     already_claimed: boolean;
     sold_out: boolean;
     minted_count: number;
     total_supply: number;
+    collect?: CollectInfo | null;
     owner_wallet: string | null;
     is_luma_event?: boolean;
     luma_event_url?: string;
@@ -871,8 +870,7 @@ export default function MainPage() {
     const [mintImageUrl, setMintImageUrl] = useState<string | null>(null);
     const [mintCreator, setMintCreator] = useState<string>("");
     const [mintIsOwner, setMintIsOwner] = useState(false);
-    const [mintDefaultPrice, setMintDefaultPrice] = useState<string | null>(null);
-    const [mintOwnerWallet, setMintOwnerWallet] = useState<string | null>(null);
+    const [mintCollect, setMintCollect] = useState<CollectInfo | null>(null);
 
     useEffect(() => {
         if (!isFocused) {
@@ -895,36 +893,33 @@ export default function MainPage() {
     const [photoModalMedia, setPhotoModalMedia] = useState<MediaItem[]>([]);
 
     const { address } = useWalletAddress();
-    const { sendInstructions } = useTransaction();
 
     const handleOpenMint = useCallback((post: Post) => {
         setMintPostId(post.id);
         setMintImageUrl(post.media?.[0]?.media_url ?? null);
         setMintCreator(post.owner__username);
         setMintIsOwner(post.is_owner);
-        setMintDefaultPrice(post.nft_price);
-        setMintOwnerWallet(post.owner_wallet);
+        setMintCollect(post.collect ?? null);
         setTimeout(() => mintSheetRef.current?.present(), 50);
     }, []);
 
-    const handleMint = useCallback(async (postId: number, price: number) => {
-        if (!address) throw new Error("Wallet not connected");
-        if (mintIsOwner) {
-            await mintNFT(address, postId, price);
-        } else {
-            if (!mintOwnerWallet) throw new Error("Owner wallet not found");
-            const ixs = buildMintPaymentInstructions(address, mintOwnerWallet, price);
-            const paymentSignature = await sendInstructions(ixs, "home");
-            if (!paymentSignature) throw new Error("Payment was not confirmed");
-            await mintNFT(address, postId, price, paymentSignature);
-        }
-        // Update local state so the Collect button switches to "Collected"
+    /** The sheet runs the whole collect flow — just reflect the confirmed mint locally. */
+    const handleCollected = useCallback((_result: CollectResult) => {
         setPosts(prev => prev.map(p =>
-            p.id === postId
-                ? { ...p, already_claimed: true, minted_count: (p.minted_count ?? 0) + 1 }
+            p.id === mintPostId
+                ? {
+                    ...p,
+                    already_claimed: true,
+                    is_nft: true,
+                    minted_count: (p.minted_count ?? 0) + 1,
+                    collect: p.collect
+                        ? { ...p.collect, minted: p.collect.minted + 1, claimedByMe: true }
+                        : p.collect,
+                }
                 : p
         ));
-    }, [address, mintIsOwner, mintOwnerWallet, sendInstructions]);
+        setMintCollect(prev => prev ? { ...prev, minted: prev.minted + 1, claimedByMe: true } : prev);
+    }, [mintPostId]);
 
     const getUserID = async () => {
         const id = await storage.getItem("id");
@@ -1151,9 +1146,9 @@ export default function MainPage() {
                 imageUrl={mintImageUrl}
                 creatorUsername={mintCreator}
                 walletConnected={!!address}
-                onMint={handleMint}
+                onCollected={handleCollected}
                 isOwner={mintIsOwner}
-                defaultPrice={mintDefaultPrice}
+                collect={mintCollect}
                 page="home"
                 isFocused={isFocused}
             />

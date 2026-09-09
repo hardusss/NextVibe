@@ -1,4 +1,5 @@
 import { PostMedia } from "@/components/PostDetails/PostMediaItem";
+import { CollectInfo } from "@/src/api/collect";
 
 export interface PostData {
     user_id: number;
@@ -20,12 +21,12 @@ export interface PostData {
     liked_posts: number[];
     comments_count: number;
     is_nft: boolean;
-    nft_price: string | null;
     is_owner: boolean;
     already_claimed: boolean;
     sold_out: boolean;
     minted_count: number;
     total_supply: number;
+    collect?: CollectInfo | null;
     owner_wallet: string | null;
     is_luma_event?: boolean;
     luma_event_url?: string;

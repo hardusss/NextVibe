@@ -40,9 +40,8 @@ import Web3Toast from "../Shared/Toasts/Web3Toast";
 import PopupModal from "../Comments/CommentPopup";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import useWalletAddress from "@/hooks/useWalletAddress";
-import { buildMintPaymentInstructions } from "@/hooks/buildPaymentInstructions";
-import useTransaction from "@/hooks/useTransaction";
-import mintNFT from "@/src/api/mint.nft";
+import { CollectInfo } from "@/src/api/collect";
+import { CollectResult } from "../NftClaim/useCollectFlow";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_HORIZONTAL_MARGIN = 16;
@@ -80,12 +79,12 @@ interface PostData {
     liked_posts: number[];
     comments_count: number;
     is_nft: boolean;
-    nft_price: string | null;
     is_owner: boolean;
     already_claimed: boolean;
     sold_out: boolean;
     minted_count: number;
     total_supply: number;
+    collect?: CollectInfo | null;
     owner_wallet: string | null;
     is_luma_event?: boolean;
     luma_event_url?: string;
@@ -101,18 +100,6 @@ interface PostPopupProps {
     onClose: () => void;
     currentUserId?: number;
     onOpenComments?: (postId: number) => void;
-    onOpenMint?: (
-        postId: number,
-        imageUrl: string | null,
-        creator: string,
-        nftPrice: string | null,
-        isOwner: boolean,
-        alreadyClaimed: boolean,
-        ownerWallet: string | null,
-        mintedCount: number
-    ) => void;
-    /** Set to the postId after a successful mint so PostModal updates its button state */
-    mintSuccessPostId?: number | null;
     isFocused?: boolean;
 }
 
@@ -133,8 +120,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
     onClose,
     currentUserId,
     onOpenComments,
-    onOpenMint,
-    mintSuccessPostId,
     isFocused,
 }) => {
     const [post, setPost] = useState<PostData | null>(null);
@@ -148,7 +133,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
     const [showComments, setShowComments] = useState(false);
 
     const mintSheetRef = useRef<MintBottomSheetRef>(null);
-    const { sendInstructions } = useTransaction();
     const { address } = useWalletAddress();
 
     const translateY = useRef(new Animated.Value(OPEN_TRANSLATE_Y)).current;
@@ -295,39 +279,18 @@ const PostPopup: React.FC<PostPopupProps> = ({
     const handleOpenMint = () => {
         if (!post) return;
         mintSheetRef.current?.present();
-        onOpenMint?.(
-            post.post_id,
-            post.media?.[0]?.media_url ?? null,
-            post.username,
-            post.nft_price,
-            post.is_owner,
-            post.already_claimed,
-            post.owner_wallet,
-            post.minted_count
-        );
     };
 
-    const handleMint = async (targetPostId: number, price: number) => {
-        if (!address) throw new Error("Wallet not connected");
-
-        let paymentSignature: string | null = null;
-
-        if (post?.minted_count === 0 && post?.is_owner) {
-            paymentSignature = null;
-        } else if (!post?.is_owner) {
-            if (!post?.owner_wallet) throw new Error("Owner wallet not found");
-
-            const ixs = buildMintPaymentInstructions(address, post.owner_wallet, price);
-            paymentSignature = await sendInstructions(ixs, `user-profile?id=${post.user_id}`);
-
-            if (!paymentSignature) throw new Error("Payment was not confirmed");
-        }
-
-        await mintNFT(address, targetPostId, price, paymentSignature as string);
+    /** The sheet runs the whole collect flow — just reflect the confirmed mint locally. */
+    const handleCollected = (_result: CollectResult) => {
         setPost(prev => prev ? {
             ...prev,
             already_claimed: true,
+            is_nft: true,
             minted_count: (prev.minted_count ?? 0) + 1,
+            collect: prev.collect
+                ? { ...prev.collect, minted: prev.collect.minted + 1, claimedByMe: true }
+                : prev.collect,
         } : null);
     };
 
@@ -337,17 +300,6 @@ const PostPopup: React.FC<PostPopupProps> = ({
         if (p.is_nft || p.is_owner) return "collect";
         return null;
     };
-
-    // When the parent signals a successful mint for this post, update local state
-    useEffect(() => {
-        if (mintSuccessPostId && post && mintSuccessPostId === post.post_id) {
-            setPost(prev => prev ? {
-                ...prev,
-                already_claimed: true,
-                minted_count: (prev.minted_count ?? 0) + 1,
-            } : null);
-        }
-    }, [mintSuccessPostId]);
 
     const mediaUrl = post?.media?.[0]?.media_url ?? null;
     const collectState = post ? resolveCollectState(post) : null;
@@ -679,9 +631,9 @@ const PostPopup: React.FC<PostPopupProps> = ({
                     imageUrl={mediaUrl}
                     creatorUsername={post.username}
                     walletConnected={!!address}
-                    onMint={handleMint}
+                    onCollected={handleCollected}
                     isOwner={post.is_owner}
-                    defaultPrice={post.nft_price}
+                    collect={post.collect ?? null}
                     page={`user-profile?id=${post.user_id}`}
                     isFocused={isFocused}
                     useModal={false}

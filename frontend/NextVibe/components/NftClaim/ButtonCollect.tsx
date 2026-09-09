@@ -11,7 +11,7 @@ interface ButtonCollectProps {
     onPress: () => void;
     /** Current NFT state — controls appearance and interactivity */
     state?: CollectState;
-    /** e.g. "50/50" shown on sold out */
+    /** e.g. "7/50" — shown as a small badge on collect and sold out states */
     supplyLabel?: string;
 }
 
@@ -100,6 +100,9 @@ const ButtonCollect = ({ onPress, state = "collect", supplyLabel }: ButtonCollec
                     )}
                     {icon}
                     <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+                    {state === "collect" && !!supplyLabel && (
+                        <Text style={styles.supplyBadge}>{supplyLabel}</Text>
+                    )}
                 </LinearGradient>
             </TouchableOpacity>
         </Animated.View>
@@ -129,6 +132,17 @@ const styles = StyleSheet.create({
         fontSize: 13,
         includeFontPadding: false,
         zIndex: 1,
+    },
+    supplyBadge: {
+        fontSize: 10,
+        includeFontPadding: false,
+        zIndex: 1,
+        color: "rgba(255,255,255,0.75)",
+        backgroundColor: "rgba(255,255,255,0.14)",
+        borderRadius: 8,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        overflow: "hidden",
     },
 });
 
