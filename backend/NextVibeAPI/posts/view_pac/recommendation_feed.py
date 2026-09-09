@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from posts.models import Post, Comment, UserCollection, EventRequest
 from posts.serializers_pac.recommendation_feed_serializer import PostFeedSerializer
+from posts.src.collect_eligibility import irl_connected_map
 from user.models import HistorySearch, InviteUser
 from django.db.models import Case, When, Value, IntegerField
 from django.core.cache import cache
@@ -101,12 +102,6 @@ class RecommendationFeedView(APIView):
         post_ids = [p.id for p in final_batch]
         owner_ids = [p.owner.user_id for p in final_batch]
 
-        edition_ones = UserCollection.objects.filter(
-            post_id__in=post_ids,
-            edition=1,
-        ).values('post_id', 'price')
-        nft_prices = {e['post_id']: str(e['price']) for e in edition_ones}
-
         claimed_post_ids = set(
             UserCollection.objects
             .filter(user=user, post_id__in=post_ids)
@@ -129,8 +124,8 @@ class RecommendationFeedView(APIView):
             many=True,
             context={
                 'request': request,
-                'nft_prices': nft_prices,
                 'claimed_post_ids': claimed_post_ids,
+                'collect_irl_map': irl_connected_map(user, final_batch),
                 'invite_counts': invite_counts,
                 'event_request_statuses': event_request_statuses,
             }

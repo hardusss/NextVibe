@@ -16,6 +16,7 @@ from .get_post import GetPostView
 from .get_metadata import PostMetadataView
 from .collection_metadata import CollectionMetadataView
 from .mint_nft import MintNftView
+from .collect import CollectPrepareView, CollectSubmitView
 from .get_nfts_menu import UserCollectionView
 from .get_vibemap_nfts import GetVibemapNFTsView
 from .get_vibemap_events import GetVibemapEventsView

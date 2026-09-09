@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import Post, Comment, UserCollection
+from ..constants import COLLECT_MAX_EDITIONS
+from ..src.collect_eligibility import is_irl_connected, reserved_editions_active
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
 from user.models import InviteUser
@@ -44,16 +46,22 @@ class GetPostView(APIView):
         )
         comments_count = comments.count()
 
-        nft_price = None
         is_owner = post.owner == request.user
         already_claimed = False
         if post.is_nft:
-            edition_one = UserCollection.objects.filter(post=post, edition=1).first()
-            nft_price = str(edition_one.price) if edition_one else None
             already_claimed = UserCollection.objects.filter(
                 user=request.user,
                 post=post
             ).exists()
+
+        total_supply = post.total_supply or COLLECT_MAX_EDITIONS
+        collect_info = {
+            "minted": post.minted_count,
+            "total": total_supply,
+            "claimedByMe": already_claimed,
+            "irlEligible": is_irl_connected(request.user, post),
+            "reservedEditionsActive": reserved_editions_active(post),
+        }
 
         og = getattr(owner, 'og_avatar', None)
 
@@ -95,11 +103,11 @@ class GetPostView(APIView):
                 "is_comments_enabled": post.is_comments_enabled,
                 "is_owner": is_owner,
                 "is_nft": post.is_nft,
-                "nft_price": nft_price,
                 "minted_count": post.minted_count,
                 "total_supply": post.total_supply,
                 "already_claimed": already_claimed,
-                "sold_out": post.minted_count >= (post.total_supply or 50),
+                "sold_out": post.minted_count >= total_supply,
+                "collect": collect_info,
                 "owner_wallet": getattr(post.owner, "wallet_address", None),
                 "is_luma_event": post.is_luma_event,
                 "luma_event_url": post.luma_event_url,

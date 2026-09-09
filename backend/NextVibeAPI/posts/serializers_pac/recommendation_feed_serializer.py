@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from posts.models import Post, PostsMedia
+from posts.src.collect_eligibility import reserved_editions_active
 from django.conf import settings
 
 
@@ -33,8 +34,8 @@ class PostFeedSerializer(serializers.ModelSerializer):
     owner__avatar   = serializers.SerializerMethodField()
     owner__official = serializers.BooleanField(source='owner.official')
     media           = serializers.SerializerMethodField()
-    nft_price       = serializers.SerializerMethodField()
     already_claimed = serializers.SerializerMethodField()
+    collect         = serializers.SerializerMethodField()
     sold_out        = serializers.SerializerMethodField()
     is_owner        = serializers.SerializerMethodField()
     owner_wallet    = serializers.SerializerMethodField()
@@ -52,7 +53,7 @@ class PostFeedSerializer(serializers.ModelSerializer):
             'is_ai_generated', 'moderation_status',
             # NFT
             'is_nft', 'minted_count', 'total_supply',
-            'nft_price', 'already_claimed', 'sold_out',
+            'already_claimed', 'sold_out', 'collect',
             'is_owner', 'owner_wallet',
             # OG / invite
             'owner__is_og', 'owner__edition', 'owner__invited_count',
@@ -74,13 +75,17 @@ class PostFeedSerializer(serializers.ModelSerializer):
         media_items = obj.media.all() if hasattr(obj, 'media') else PostsMedia.objects.filter(post=obj)
         return MediaItemSerializer(media_items, many=True).data
 
-    def get_nft_price(self, obj):
-        if not obj.is_nft:
-            return None
-        return self.context.get('nft_prices', {}).get(obj.id)
-
     def get_already_claimed(self, obj):
         return obj.id in self.context.get('claimed_post_ids', set())
+
+    def get_collect(self, obj):
+        return {
+            'minted': obj.minted_count,
+            'total': obj.total_supply or 50,
+            'claimedByMe': self.get_already_claimed(obj),
+            'irlEligible': self.context.get('collect_irl_map', {}).get(obj.id, False),
+            'reservedEditionsActive': reserved_editions_active(obj),
+        }
 
     def get_sold_out(self, obj):
         return obj.minted_count >= (obj.total_supply or 50)

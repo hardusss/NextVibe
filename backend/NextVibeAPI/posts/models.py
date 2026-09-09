@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from .managers import PostsManager, CommentManager, CommentReplyManager
 from decimal import Decimal
+import uuid
 
 
 class Post(models.Model):
@@ -152,6 +153,34 @@ class UserCollection(models.Model):
 
     def __str__(self):
         return f"NFT #{self.edition} of post {self.post.id} owned by {self.user.username}"
+
+class PendingClaim(models.Model):
+    """
+    A reserved edition for an in-flight free collect (two-phase mint).
+
+    Created by collect/prepare when the edition is reserved and the partially
+    signed transaction is handed to the client; deleted by collect/submit on
+    success. Rows past `expires_at` are ignored for edition counting and
+    swept lazily on the next prepare for the same post.
+    """
+    user = models.ForeignKey("user.User", on_delete=models.CASCADE, related_name="pending_claims")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="pending_claims")
+    edition = models.PositiveIntegerField()
+    claim_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    message_hash = models.CharField(max_length=128, blank=True, default="")
+    tx_base64 = models.TextField(blank=True, default="")
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["post", "edition"]),
+        ]
+
+    def __str__(self):
+        return f"Pending claim {self.claim_id} for post {self.post_id} ed.{self.edition} by {self.user_id}"
+
 
 class EventRequest(models.Model):
     class Status(models.TextChoices):
