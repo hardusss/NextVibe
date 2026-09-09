@@ -73,9 +73,9 @@ const HeroCard = ({
 
     useEffect(() => {
         if (reduceMotion) return;
-        // 6s float loop: translateY ±4, rotateZ ±1°
+        // Float loop: translateY ±5
         float.value = withRepeat(
-            withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
+            withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
             -1,
             true,
         );
@@ -85,7 +85,7 @@ const HeroCard = ({
     useEffect(() => {
         flip.value = reduceMotion
             ? withTiming(flipped ? 1 : 0, { duration: 0 })
-            : withSpring(flipped ? 1 : 0, { damping: 14, stiffness: 120 });
+            : withTiming(flipped ? 1 : 0, { duration: 380, easing: Easing.bezier(0.25, 1, 0.5, 1) });
     }, [flipped, reduceMotion]);
 
     useEffect(() => {
@@ -95,22 +95,37 @@ const HeroCard = ({
         return () => cancelAnimation(shimmer);
     }, [flipped, reduceMotion]);
 
-    const cardStyle = useAnimatedStyle(() => ({
+    const cardContainerStyle = useAnimatedStyle(() => ({
         transform: [
-            { perspective: 900 },
-            { translateY: interpolate(float.value, [0, 1], [-4, 4]) },
-            { rotateZ: `${interpolate(float.value, [0, 1], [-1, 1])}deg` },
-            { rotateY: `${8 + flip.value * 172}deg` },
+            { translateY: interpolate(float.value, [0, 1], [-5, 5]) },
         ],
     }));
 
-    const backFaceStyle = useAnimatedStyle(() => ({
-        opacity: flip.value > 0.5 ? 1 : 0,
-    }));
+    const frontFaceStyle = useAnimatedStyle(() => {
+        const rotate = interpolate(flip.value, [0, 1], [0, 180]);
+        return {
+            transform: [
+                { perspective: 1000 },
+                { rotateY: `${rotate}deg` },
+            ],
+            backfaceVisibility: 'hidden',
+            opacity: flip.value >= 0.5 ? 0 : 1,
+            zIndex: flip.value < 0.5 ? 2 : 1,
+        };
+    });
 
-    const frontFaceStyle = useAnimatedStyle(() => ({
-        opacity: flip.value > 0.5 ? 0 : 1,
-    }));
+    const backFaceStyle = useAnimatedStyle(() => {
+        const rotate = interpolate(flip.value, [0, 1], [180, 0]);
+        return {
+            transform: [
+                { perspective: 1000 },
+                { rotateY: `${rotate}deg` },
+            ],
+            backfaceVisibility: 'hidden',
+            opacity: flip.value < 0.5 ? 0 : 1,
+            zIndex: flip.value >= 0.5 ? 2 : 1,
+        };
+    });
 
     const shimmerStyle = useAnimatedStyle(() => ({
         transform: [{ translateX: interpolate(shimmer.value, [0, 1], [-CARD_WIDTH, CARD_WIDTH]) }],
@@ -121,7 +136,7 @@ const HeroCard = ({
             {/* Glow */}
             <View style={[styles.glow, { backgroundColor: 'rgba(168,85,247,0.35)' }]} />
 
-            <Reanimated.View style={[styles.card, cardStyle]}>
+            <Reanimated.View style={[styles.card, cardContainerStyle]}>
                 {/* Front */}
                 <Reanimated.View style={[StyleSheet.absoluteFillObject, frontFaceStyle]}>
                     <LinearGradient
@@ -161,7 +176,7 @@ const HeroCard = ({
                 </Reanimated.View>
 
                 {/* Back — shown while minting */}
-                <Reanimated.View style={[StyleSheet.absoluteFillObject, styles.backFlip, backFaceStyle]}>
+                <Reanimated.View style={[StyleSheet.absoluteFillObject, backFaceStyle]}>
                     <LinearGradient
                         colors={[c.accent, 'transparent']}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -193,18 +208,14 @@ const styles = StyleSheet.create({
     },
     glow: {
         position: 'absolute',
-        width: CARD_WIDTH * 1.05,
-        height: CARD_HEIGHT * 0.9,
-        borderRadius: 40,
-        opacity: 0.55,
-        transform: [{ scale: 1.08 }],
+        width: CARD_WIDTH + 20,
+        height: CARD_HEIGHT + 16,
+        borderRadius: 32,
+        opacity: 0.35,
     },
     card: {
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
-    },
-    backFlip: {
-        transform: [{ rotateY: '180deg' }],
     },
     borderGradient: {
         flex: 1,

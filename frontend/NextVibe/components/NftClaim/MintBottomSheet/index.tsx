@@ -13,6 +13,7 @@ import Reanimated, {
     withSequence,
     runOnJS,
     useReducedMotion,
+    Easing,
 } from 'react-native-reanimated';
 import { X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -130,8 +131,8 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
     };
 
     const closeSheet = useCallback((onDone?: () => void) => {
-        backdropOpacity.value = withTiming(0, { duration: 230 });
-        translateY.value = withTiming(SHEET_HEIGHT, { duration: 300 }, (finished) => {
+        backdropOpacity.value = withTiming(0, { duration: 220 });
+        translateY.value = withTiming(SHEET_HEIGHT, { duration: 260, easing: Easing.in(Easing.cubic) }, (finished) => {
             if (finished) {
                 runOnJS(setVisible)(false);
                 dragY.value = 0;
@@ -166,8 +167,8 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         translateY.value = SHEET_HEIGHT;
         backdropOpacity.value = 0;
         dragY.value = 0;
-        translateY.value = withSpring(0, { damping: 18, stiffness: 180 });
-        backdropOpacity.value = withTiming(1, { duration: 250 });
+        translateY.value = withTiming(0, { duration: 280, easing: Easing.bezier(0.25, 1, 0.5, 1) });
+        backdropOpacity.value = withTiming(1, { duration: 240 });
     };
 
     useImperativeHandle(ref, () => ({
@@ -189,7 +190,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
             if (e.translationY > DRAG_THRESHOLD || e.velocityY > 500) {
                 runOnJS(handleDismiss)();
             } else {
-                dragY.value = withSpring(0, { damping: 18 });
+                dragY.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
             }
         });
 
