@@ -50,6 +50,19 @@ const CLAIM_TTL_SECONDS = 75;
 const sha256Hex = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
 /**
+ * Timestamped structured logging for mint diagnostics.
+ * Never pass a serialized transaction to these.
+ */
+const log = (event: string, fields: Record<string, unknown> = {}) => {
+    const parts = Object.entries(fields).map(([k, v]) => `${k}=${v}`).join(' ');
+    console.log(`[${new Date().toISOString()}] ${event}${parts ? ' ' + parts : ''}`);
+};
+const logError = (event: string, error: unknown, fields: Record<string, unknown> = {}) => {
+    const parts = Object.entries(fields).map(([k, v]) => `${k}=${v}`).join(' ');
+    console.error(`[${new Date().toISOString()}] ${event}${parts ? ' ' + parts : ''}`, error);
+};
+
+/**
  * Builds an SPL Memo instruction that lists the user's wallet as a required
  * signer. The Memo program verifies every account on the instruction has
  * signed the transaction, which makes the collect a user-signed transaction
@@ -84,37 +97,65 @@ new Elysia()
      * @body postId     - NextVibe post ID to mint as an NFT
      * @body edition    - Edition number
      */
-    .post("/mint", async ({ body }: { body: any }) => {
+    .post("/mint", async ({ body, set }: { body: any, set: any }) => {
         const { recipient, postId, edition } = body
+        log("mint.request", { postId, edition, recipient })
 
         /**
          * Fetch dynamic metadata from the NextVibe API.
          */
-        const metaResponse = await fetch(
-            `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`
-        )
-        const meta = await metaResponse.json()
+        let meta: any
+        try {
+            const metaResponse = await fetch(
+                `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`
+            )
+            if (!metaResponse.ok) {
+                logError("mint.metadata_failed", `HTTP ${metaResponse.status}`, { postId, edition })
+                set.status = 502
+                return { success: false, error: "METADATA_FETCH_FAILED" }
+            }
+            meta = await metaResponse.json()
+            log("mint.metadata_ok", { postId, edition, name: meta.name })
+        } catch (error) {
+            logError("mint.metadata_failed", error, { postId, edition })
+            set.status = 502
+            return { success: false, error: "METADATA_FETCH_FAILED" }
+        }
 
         /**
          * Step 1: Mint and Verify in a Single Transaction
          * mintToCollectionV1 handles both inserting the leaf into the Merkle tree
          * and verifying it against the collection in one go.
          */
-        const { signature } = await mintToCollectionV1(umi, {
-            leafOwner: publicKey(recipient),
-            merkleTree: publicKey(MERKLE_TREE_ADDRESS),
-            collectionMint: publicKey(COLLECTION_ADDRESS),
-            collectionAuthority: umi.identity,
-            metadata: {
-                name: meta.name,
-                uri: `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`,
-                sellerFeeBasisPoints: 500,
-                collection: { key: publicKey(COLLECTION_ADDRESS), verified: false },
-                creators: [],
-            },
-        }).sendAndConfirm(umi, {
-            confirm: { commitment: "confirmed" },
-        })
+        let signature: Uint8Array
+        try {
+            const startedAt = Date.now()
+            const result = await mintToCollectionV1(umi, {
+                leafOwner: publicKey(recipient),
+                merkleTree: publicKey(MERKLE_TREE_ADDRESS),
+                collectionMint: publicKey(COLLECTION_ADDRESS),
+                collectionAuthority: umi.identity,
+                metadata: {
+                    name: meta.name,
+                    uri: `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`,
+                    sellerFeeBasisPoints: 500,
+                    collection: { key: publicKey(COLLECTION_ADDRESS), verified: false },
+                    creators: [],
+                },
+            }).sendAndConfirm(umi, {
+                confirm: { commitment: "confirmed" },
+            })
+            signature = result.signature
+            log("mint.confirmed", {
+                postId, edition,
+                signature: bs58.encode(signature),
+                ms: Date.now() - startedAt,
+            })
+        } catch (error) {
+            logError("mint.send_failed", error, { postId, edition, recipient })
+            set.status = 502
+            return { success: false, error: "MINT_SEND_FAILED" }
+        }
 
         /**
          * Step 2: Extract the Asset ID with a Retry Mechanism
@@ -138,12 +179,14 @@ new Elysia()
             } catch (error) {
                 retries--;
                 delayMs = 1500; // Increase delay for subsequent retries
+                log("mint.parse_retry", { postId, edition, retriesLeft: retries })
                 if (retries === 0) {
-                    console.error("Failed to parse leaf from transaction after all attempts.", error);
+                    logError("mint.parse_failed", error, { postId, edition, signature: bs58.encode(signature) })
                 }
             }
         }
 
+        log("mint.done", { postId, edition, assetId: assetId ?? "unparsed" })
         return {
             success: true,
             signature: Buffer.from(signature).toString('base64'),
@@ -245,16 +288,26 @@ new Elysia()
      */
     .post("/collect/prepare", async ({ body, set }: { body: any, set: any }) => {
         const { recipient, postId, edition, memo, userPubkey } = body
+        log("collect.prepare.request", { postId, edition, recipient })
 
         if (!recipient || !postId || !edition || !memo || !userPubkey) {
+            logError("collect.prepare.rejected", "MISSING_FIELDS", { postId, edition })
             set.status = 400
             return { success: false, error: "MISSING_FIELDS" }
         }
 
-        const metaResponse = await fetch(
-            `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`
-        )
-        const meta = await metaResponse.json()
+        let meta: any
+        try {
+            const metaResponse = await fetch(
+                `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`
+            )
+            if (!metaResponse.ok) throw new Error(`HTTP ${metaResponse.status}`)
+            meta = await metaResponse.json()
+        } catch (error) {
+            logError("collect.prepare.metadata_failed", error, { postId, edition })
+            set.status = 502
+            return { success: false, error: "METADATA_FETCH_FAILED" }
+        }
 
         const builder = mintToCollectionV1(umi, {
             leafOwner: publicKey(recipient),
@@ -274,15 +327,31 @@ new Elysia()
 
         // Fetch the blockhash as late as possible so the client gets the
         // full ~60-90s lifetime to sign and submit.
-        const tx = await builder.buildWithLatestBlockhash(umi)
-        const partiallySigned = await umi.identity.signTransaction(tx)
+        try {
+            const tx = await builder.buildWithLatestBlockhash(umi)
+            const partiallySigned = await umi.identity.signTransaction(tx)
+            const messageHash = sha256Hex(tx.serializedMessage)
+            const expiresAt = new Date(Date.now() + CLAIM_TTL_SECONDS * 1000).toISOString()
 
-        return {
-            success: true,
-            transaction: Buffer.from(umi.transactions.serialize(partiallySigned)).toString('base64'),
-            messageHash: sha256Hex(tx.serializedMessage),
-            blockhash: tx.message.blockhash,
-            expiresAt: new Date(Date.now() + CLAIM_TTL_SECONDS * 1000).toISOString(),
+            log("collect.prepare.built", {
+                postId, edition,
+                blockhash: tx.message.blockhash,
+                messageHash,
+                expiresAt,
+                memoLen: memo.length,
+            })
+
+            return {
+                success: true,
+                transaction: Buffer.from(umi.transactions.serialize(partiallySigned)).toString('base64'),
+                messageHash,
+                blockhash: tx.message.blockhash,
+                expiresAt,
+            }
+        } catch (error) {
+            logError("collect.prepare.build_failed", error, { postId, edition })
+            set.status = 502
+            return { success: false, error: "PREPARE_FAILED" }
         }
     })
 
@@ -301,8 +370,10 @@ new Elysia()
      */
     .post("/collect/submit", async ({ body, set }: { body: any, set: any }) => {
         const { signedTransaction, messageHash, postId, edition } = body
+        log("collect.submit.request", { postId, edition })
 
         if (!signedTransaction || !messageHash) {
+            logError("collect.submit.rejected", "MISSING_FIELDS", { postId, edition })
             set.status = 400
             return { success: false, error: "MISSING_FIELDS" }
         }
@@ -310,13 +381,18 @@ new Elysia()
         let tx
         try {
             tx = umi.transactions.deserialize(new Uint8Array(Buffer.from(signedTransaction, 'base64')))
-        } catch {
+        } catch (error) {
+            logError("collect.submit.deserialize_failed", error, { postId, edition })
             set.status = 400
             return { success: false, error: "INVALID_TRANSACTION" }
         }
 
         // The signed message must be byte-identical to what /collect/prepare built.
-        if (sha256Hex(tx.serializedMessage) !== messageHash) {
+        const actualHash = sha256Hex(tx.serializedMessage)
+        if (actualHash !== messageHash) {
+            logError("collect.submit.rejected", "TX_TAMPERED", {
+                postId, edition, expectedHash: messageHash, actualHash,
+            })
             set.status = 400
             return { success: false, error: "TX_TAMPERED" }
         }
@@ -329,26 +405,41 @@ new Elysia()
                 && sig.some((byte) => byte !== 0)
                 && umi.eddsa.verify(tx.serializedMessage, sig, requiredSigners[i])
             if (!valid) {
+                logError("collect.submit.rejected", "USER_SIGNATURE_MISSING", {
+                    postId, edition,
+                    signerIndex: i,
+                    signer: requiredSigners[i],
+                    signaturePresent: !!(sig && sig.some((byte: number) => byte !== 0)),
+                })
                 set.status = 400
                 return { success: false, error: "USER_SIGNATURE_MISSING" }
             }
         }
+        log("collect.submit.verified", { postId, edition, signers: requiredSigners.length })
 
         let signature
         try {
+            const startedAt = Date.now()
             signature = await umi.rpc.sendTransaction(tx, { skipPreflight: false })
+            log("collect.submit.sent", { postId, edition, signature: bs58.encode(signature) })
             const latest = await umi.rpc.getLatestBlockhash()
             await umi.rpc.confirmTransaction(signature, {
                 strategy: { type: 'blockhash', ...latest },
                 commitment: 'confirmed',
             })
+            log("collect.submit.confirmed", {
+                postId, edition,
+                signature: bs58.encode(signature),
+                ms: Date.now() - startedAt,
+            })
         } catch (error: any) {
             const msg = String(error?.message ?? error)
             if (/blockhash/i.test(msg) || /block height exceeded/i.test(msg)) {
+                logError("collect.submit.expired", msg, { postId, edition })
                 set.status = 410
                 return { success: false, error: "CLAIM_EXPIRED" }
             }
-            console.error(`Collect submit failed for tx: ${msg}`)
+            logError("collect.submit.send_failed", error, { postId, edition })
             set.status = 502
             return { success: false, error: "SEND_FAILED" }
         }
@@ -369,13 +460,16 @@ new Elysia()
             } catch (error) {
                 retries--;
                 delayMs = 1500;
+                log("collect.submit.parse_retry", { postId, edition, retriesLeft: retries })
                 if (retries === 0) {
-                    console.error("Failed to parse leaf from transaction after all attempts.", error);
+                    logError("collect.submit.parse_failed", error, {
+                        postId, edition, signature: bs58.encode(signature),
+                    });
                 }
             }
         }
 
-        console.log(`Collect confirmed: postId=${postId} edition=${edition} signature=${bs58.encode(signature)}`)
+        log("collect.submit.done", { postId, edition, assetId: assetId ?? "unparsed", signature: bs58.encode(signature) })
 
         return {
             success: true,

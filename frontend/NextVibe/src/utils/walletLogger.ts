@@ -13,6 +13,7 @@ export const WalletTag = {
     STATE: 'Wallet:State',
     API: 'Wallet:API',
     AUTH: 'Wallet:Auth',
+    COLLECT: 'Collect:Flow',
 } as const;
 
 export type WalletTagType = typeof WalletTag[keyof typeof WalletTag] | string;

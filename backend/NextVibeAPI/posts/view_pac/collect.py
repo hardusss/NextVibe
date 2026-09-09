@@ -13,6 +13,7 @@ Wallets without MWA (LazorKit / passkey sessions) pass signer="none" and
 get the legacy fully-backend mint in a single prepare call.
 """
 
+import logging
 from datetime import timedelta, timezone as dt_timezone
 from decimal import Decimal
 
@@ -40,7 +41,14 @@ from ..src.collect_eligibility import is_irl_connected
 from ..src.collect_memo import build_memo
 
 
-def _error(code, message, http_status, **extra):
+logger = logging.getLogger("posts.collect")
+
+
+def _error(code, message, http_status, *, user=None, post_id=None, **extra):
+    logger.info(
+        "collect.rejected code=%s status=%s user=%s post=%s",
+        code, http_status, getattr(user, "pk", None), post_id,
+    )
     payload = {"error": message, "code": code}
     payload.update(extra)
     return Response(payload, status=http_status)
@@ -67,6 +75,10 @@ def _finalize_collect(user, post_id, edition, asset_id, signature):
         post.is_nft = True
         post.save(update_fields=["minted_count", "is_nft"])
         PendingClaim.objects.filter(user=user, post=post).delete()
+    logger.info(
+        "collect.finalized user=%s post=%s edition=%s asset=%s minted_count=%s",
+        user.pk, post.id, edition, asset_id, post.minted_count,
+    )
     return post, collection
 
 
@@ -84,6 +96,10 @@ def _after_collect(user, post, edition):
             post=post,
             post_type="collect",
         )
+        logger.info(
+            "collect.rep_bonus user=%s post=%s points=%s given_by=%s",
+            user.pk, post.id, COLLECT_IRL_REP_BONUS, post.owner_id,
+        )
 
     push_token = getattr(post.owner, "expo_push_token", None)
     if push_token:
@@ -93,8 +109,11 @@ def _after_collect(user, post, edition):
                 title="Your post was collected",
                 body=f"{user.username or 'Someone'} collected edition {edition}/{total} of your post.",
             )
-        except Exception as e:
-            print(f"Push notification failed: {e}")
+            logger.info("collect.push_sent post=%s author=%s edition=%s", post.id, post.owner_id, edition)
+        except Exception:
+            logger.warning("collect.push_failed post=%s author=%s", post.id, post.owner_id, exc_info=True)
+    else:
+        logger.info("collect.push_skipped post=%s author=%s reason=no_token", post.id, post.owner_id)
 
 
 class CollectPrepareView(APIView):
@@ -103,21 +122,27 @@ class CollectPrepareView(APIView):
     def post(self, request) -> Response:
         post_id = request.data.get("postId")
         signer = request.data.get("signer", "mwa")
+        logger.info("collect.prepare user=%s post=%s signer=%s", request.user.pk, post_id, signer)
         if not post_id:
-            return _error("POST_NOT_FOUND", "Missing postId.", status.HTTP_404_NOT_FOUND)
+            return _error("POST_NOT_FOUND", "Missing postId.", status.HTTP_404_NOT_FOUND,
+                          user=request.user)
 
         post = Post.objects.select_related("owner", "on_event").filter(id=post_id).first()
         if not post or not post.is_approved or post.is_hide:
-            return _error("POST_NOT_FOUND", "Post not found.", status.HTTP_404_NOT_FOUND)
+            return _error("POST_NOT_FOUND", "Post not found.", status.HTTP_404_NOT_FOUND,
+                          user=request.user, post_id=post_id)
 
         if not request.user.wallet_address:
-            return _error("WALLET_REQUIRED", "Connect a wallet to collect.", status.HTTP_400_BAD_REQUEST)
+            return _error("WALLET_REQUIRED", "Connect a wallet to collect.", status.HTTP_400_BAD_REQUEST,
+                          user=request.user, post_id=post_id)
 
         if post.owner == request.user:
-            return _error("OWNER_USE_PUBLISH", "Owners publish their post instead of collecting it.", status.HTTP_400_BAD_REQUEST)
+            return _error("OWNER_USE_PUBLISH", "Owners publish their post instead of collecting it.", status.HTTP_400_BAD_REQUEST,
+                          user=request.user, post_id=post_id)
 
         if UserCollection.objects.filter(user=request.user, post=post).exists():
-            return _error("ALREADY_CLAIMED", "You already collected this post.", status.HTTP_409_CONFLICT)
+            return _error("ALREADY_CLAIMED", "You already collected this post.", status.HTTP_409_CONFLICT,
+                          user=request.user, post_id=post_id)
 
         now = timezone.now()
         day_start, resets_at = _next_utc_midnight(now)
@@ -129,6 +154,7 @@ class CollectPrepareView(APIView):
                 "DAILY_LIMIT",
                 f"You've collected {COLLECT_DAILY_LIMIT} posts today.",
                 status.HTTP_429_TOO_MANY_REQUESTS,
+                user=request.user, post_id=post_id,
                 resetsAt=resets_at.isoformat(),
             )
 
@@ -146,7 +172,8 @@ class CollectPrepareView(APIView):
             next_edition = locked.minted_count + pending + 1
 
             if next_edition > total:
-                return _error("SOLD_OUT", "All editions are gone.", status.HTTP_410_GONE)
+                return _error("SOLD_OUT", "All editions are gone.", status.HTTP_410_GONE,
+                              user=request.user, post_id=post_id)
 
             reserve_window_open = (now - locked.create_at) < timedelta(hours=COLLECT_IRL_RESERVE_HOURS)
             if (
@@ -158,6 +185,7 @@ class CollectPrepareView(APIView):
                     "RESERVED_FOR_IRL",
                     "Early editions are reserved for people who met the author IRL",
                     status.HTTP_403_FORBIDDEN,
+                    user=request.user, post_id=post_id,
                 )
 
             claim = PendingClaim.objects.create(
@@ -166,6 +194,11 @@ class CollectPrepareView(APIView):
                 edition=next_edition,
                 expires_at=now + timedelta(seconds=COLLECT_CLAIM_TTL_SECONDS),
             )
+
+        logger.info(
+            "collect.prepare.reserved user=%s post=%s edition=%s claim=%s pending=%s",
+            request.user.pk, post.id, next_edition, claim.claim_id, pending + 1,
+        )
 
         # LazorKit / no-MWA sessions: legacy fully-backend mint, finalized
         # immediately, same response shape as submit.
@@ -181,17 +214,25 @@ class CollectPrepareView(APIView):
                     timeout=90,
                 ).json()
             except Exception:
+                logger.error("collect.prepare.mint_service_unreachable user=%s post=%s edition=%s",
+                             request.user.pk, post.id, next_edition, exc_info=True)
                 claim.delete()
-                return _error("MINT_FAILED", "Mint service connection error.", status.HTTP_502_BAD_GATEWAY)
+                return _error("MINT_FAILED", "Mint service connection error.", status.HTTP_502_BAD_GATEWAY,
+                              user=request.user, post_id=post_id)
 
             if not mint_res.get("success"):
+                logger.error("collect.prepare.mint_service_error user=%s post=%s edition=%s error=%s",
+                             request.user.pk, post.id, next_edition, mint_res.get("error"))
                 claim.delete()
-                return _error("MINT_FAILED", mint_res.get("error") or "Mint failed on service side.", status.HTTP_502_BAD_GATEWAY)
+                return _error("MINT_FAILED", mint_res.get("error") or "Mint failed on service side.", status.HTTP_502_BAD_GATEWAY,
+                              user=request.user, post_id=post_id)
 
             finalized_post, _ = _finalize_collect(
                 request.user, post.id, next_edition, mint_res.get("assetId"), mint_res.get("signature")
             )
             _after_collect(request.user, finalized_post, next_edition)
+            logger.info("collect.prepare.none_path_done user=%s post=%s edition=%s",
+                        request.user.pk, post.id, next_edition)
             return Response({
                 "success": True,
                 "edition": next_edition,
@@ -215,18 +256,29 @@ class CollectPrepareView(APIView):
                 timeout=60,
             ).json()
         except Exception:
+            logger.error("collect.prepare.service_unreachable user=%s post=%s edition=%s",
+                         request.user.pk, post.id, next_edition, exc_info=True)
             claim.delete()
-            return _error("MINT_FAILED", "Mint service connection error.", status.HTTP_502_BAD_GATEWAY)
+            return _error("MINT_FAILED", "Mint service connection error.", status.HTTP_502_BAD_GATEWAY,
+                          user=request.user, post_id=post_id)
 
         if not prep_res.get("success"):
+            logger.error("collect.prepare.service_error user=%s post=%s edition=%s error=%s",
+                         request.user.pk, post.id, next_edition, prep_res.get("error"))
             claim.delete()
-            return _error("MINT_FAILED", prep_res.get("error") or "Could not prepare the transaction.", status.HTTP_502_BAD_GATEWAY)
+            return _error("MINT_FAILED", prep_res.get("error") or "Could not prepare the transaction.", status.HTTP_502_BAD_GATEWAY,
+                          user=request.user, post_id=post_id)
 
         claim.message_hash = prep_res["messageHash"]
         claim.tx_base64 = prep_res["transaction"]
         claim.expires_at = timezone.now() + timedelta(seconds=COLLECT_CLAIM_TTL_SECONDS)
         claim.save(update_fields=["message_hash", "tx_base64", "expires_at"])
 
+        logger.info(
+            "collect.prepare.ready user=%s post=%s edition=%s claim=%s hash=%s expires=%s memo=%r",
+            request.user.pk, post.id, next_edition, claim.claim_id,
+            claim.message_hash, claim.expires_at.isoformat(), memo,
+        )
         return Response({
             "claimId": str(claim.claim_id),
             "edition": next_edition,
@@ -243,8 +295,10 @@ class CollectSubmitView(APIView):
     def post(self, request) -> Response:
         claim_id = request.data.get("claimId")
         signed_tx = request.data.get("signedTransaction")
+        logger.info("collect.submit user=%s claim=%s", request.user.pk, claim_id)
         if not claim_id or not signed_tx:
-            return _error("CLAIM_NOT_FOUND", "Missing claimId or signedTransaction.", status.HTTP_404_NOT_FOUND)
+            return _error("CLAIM_NOT_FOUND", "Missing claimId or signedTransaction.", status.HTTP_404_NOT_FOUND,
+                          user=request.user)
 
         claim = (
             PendingClaim.objects
@@ -253,11 +307,18 @@ class CollectSubmitView(APIView):
             .first()
         )
         if not claim:
-            return _error("CLAIM_NOT_FOUND", "Claim not found.", status.HTTP_404_NOT_FOUND)
+            return _error("CLAIM_NOT_FOUND", "Claim not found.", status.HTTP_404_NOT_FOUND,
+                          user=request.user)
 
         if claim.expires_at < timezone.now():
+            logger.info(
+                "collect.submit.expired user=%s post=%s edition=%s claim=%s expired_at=%s",
+                request.user.pk, claim.post_id, claim.edition, claim.claim_id,
+                claim.expires_at.isoformat(),
+            )
             claim.delete()
-            return _error("CLAIM_EXPIRED", "The claim expired — prepare again.", status.HTTP_410_GONE)
+            return _error("CLAIM_EXPIRED", "The claim expired — prepare again.", status.HTTP_410_GONE,
+                          user=request.user, post_id=claim.post_id)
 
         try:
             submit_raw = requests.post(
@@ -272,15 +333,25 @@ class CollectSubmitView(APIView):
             )
             submit_res = submit_raw.json()
         except Exception:
-            return _error("MINT_FAILED", "Mint service connection error.", status.HTTP_502_BAD_GATEWAY)
+            logger.error("collect.submit.service_unreachable user=%s post=%s edition=%s claim=%s",
+                         request.user.pk, claim.post_id, claim.edition, claim.claim_id, exc_info=True)
+            return _error("MINT_FAILED", "Mint service connection error.", status.HTTP_502_BAD_GATEWAY,
+                          user=request.user, post_id=claim.post_id)
 
         if not submit_res.get("success"):
             if submit_res.get("error") == "CLAIM_EXPIRED" or submit_raw.status_code == 410:
+                logger.info("collect.submit.blockhash_expired user=%s post=%s edition=%s claim=%s",
+                            request.user.pk, claim.post_id, claim.edition, claim.claim_id)
                 claim.delete()
-                return _error("CLAIM_EXPIRED", "The claim expired — prepare again.", status.HTTP_410_GONE)
+                return _error("CLAIM_EXPIRED", "The claim expired — prepare again.", status.HTTP_410_GONE,
+                              user=request.user, post_id=claim.post_id)
             # Leave the PendingClaim to expire on its own so a quick retry
             # keeps the same edition reservation.
-            return _error("MINT_FAILED", submit_res.get("error") or "Mint failed on service side.", status.HTTP_502_BAD_GATEWAY)
+            logger.error("collect.submit.service_error user=%s post=%s edition=%s claim=%s http=%s error=%s",
+                         request.user.pk, claim.post_id, claim.edition, claim.claim_id,
+                         submit_raw.status_code, submit_res.get("error"))
+            return _error("MINT_FAILED", submit_res.get("error") or "Mint failed on service side.", status.HTTP_502_BAD_GATEWAY,
+                          user=request.user, post_id=claim.post_id)
 
         edition = claim.edition
         post, collection = _finalize_collect(
