@@ -355,9 +355,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
                     <Text style={[styles.username, { color: colors.text }]} numberOfLines={1}>
                       {chat.other_user.username}
                     </Text>
-                    <View style={{ marginLeft: 4 }}>
-                      <UserBadges official={chat.other_user.official} seekerVerified={chat.other_user.seeker_verified} size={16} />
-                    </View>
+                    <UserBadges official={chat.other_user.official} seekerVerified={chat.other_user.seeker_verified} size={16} />
                   </View>
                   <Text style={[styles.time, { color: unreadCount > 0 ? colors.accent : colors.subtext, fontWeight: unreadCount > 0 ? '700' : '400' }]}>
                     {messageTime}
@@ -473,6 +471,8 @@ const getStyles = (isDark: boolean, colors: typeof chatColors.dark) =>
     },
     username: {
       fontSize: 16,
+      lineHeight: 18,
+      flexShrink: 1,
       fontWeight: '700',
       fontFamily: 'Dank Mono Bold',
       includeFontPadding: false,

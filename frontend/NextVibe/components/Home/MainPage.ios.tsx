@@ -134,9 +134,8 @@ const getStyles = (theme: typeof darkTheme, headerHeight: number = 0) => {
         userInfo: { flex: 1, marginLeft: 12 },
         usernameContainer: { flexDirection: "row", alignItems: "center" },
         usernameRow: { flexDirection: "row", alignItems: "center" },
-        badgeWrapper: { marginLeft: 1, justifyContent: 'center', alignItems: 'center' },
         username: {
-            fontSize: 16, fontFamily: "Dank Mono Bold", includeFontPadding: false,
+            fontSize: 16, lineHeight: 18, flexShrink: 1, fontFamily: "Dank Mono Bold", includeFontPadding: false,
             color: theme.textPrimary, textAlignVertical: 'center',
         },
         location: { fontSize: 14, color: theme.textSecondary, marginTop: 2 },
@@ -520,10 +519,8 @@ const PostItem = memo(({
                 </TouchableOpacity>
                 <View style={styles.userInfo}>
                     <View style={styles.usernameRow}>
-                        <Text style={styles.username}>{item.owner__username}</Text>
-                        <View style={styles.badgeWrapper}>
-                            <UserBadges official={item.owner__official} seekerVerified={item.owner__seeker_verified} isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
-                        </View>
+                        <Text style={styles.username} numberOfLines={1}>{item.owner__username}</Text>
+                        <UserBadges official={item.owner__official} seekerVerified={item.owner__seeker_verified} isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
                     </View>
                 </View>
 

@@ -86,10 +86,10 @@ export const ReplyItem: React.FC<ReplyProps> = ({ item, isLiked, onLike, onReply
             />
             <View style={{ flex: 1 }}>
                 <View style={s.metaRow}>
-                    <Text style={[s.username, { color: theme.textPrimary, fontSize: 13 }]}>
+                    <Text style={[s.username, { color: theme.textPrimary, fontSize: 13, lineHeight: 15 }]} numberOfLines={1}>
                         {item.user.username}
                     </Text>
-                    <UserBadges official={item.user.official} seekerVerified={item.user.seeker_verified} isLooped={false} isVisible haveModal={false} isStatic size={13} />
+                    <UserBadges official={item.user.official} seekerVerified={item.user.seeker_verified} isLooped={false} isVisible haveModal={false} isStatic size={14} />
                     <Text style={[s.time, { color: theme.textSecondary }]}>
                         · {timeAgo(item.create_at)}
                     </Text>
@@ -206,8 +206,8 @@ export const CommentItem: React.FC<CommentProps> = ({
                 </View>
 
                 <View style={{ flex: 1 }}>
-                    <View style={[s.metaRow, { marginBottom: 3, flexWrap: "wrap" }]}>
-                        <Text style={[s.username, { color: theme.textPrimary, fontSize: 14 }]}>
+                    <View style={[s.metaRow, { marginBottom: 3 }]}>
+                        <Text style={[s.username, { color: theme.textPrimary, fontSize: 14, lineHeight: 16 }]} numberOfLines={1}>
                             {item.user.username}
                         </Text>
                         <UserBadges official={item.user.official} seekerVerified={item.user.seeker_verified} isLooped={false} isVisible haveModal={false} isStatic size={14} />
@@ -303,13 +303,13 @@ const s = StyleSheet.create({
     metaRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 5
     },
     username: {
         fontFamily: "Dank Mono Bold",
-        includeFontPadding: false
+        includeFontPadding: false,
+        flexShrink: 1,
     },
-    time: { fontSize: 12 },
+    time: { fontSize: 12, marginLeft: 5 },
     actionsRow: {
         flexDirection: "row",
         alignItems: "center",

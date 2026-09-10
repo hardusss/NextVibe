@@ -73,6 +73,7 @@ type UserData = {
     follows_count: number;
     official: boolean;
     seeker_verified: boolean;
+    seeker_verified_source: string | null;
     isOg: boolean;
     ogEdition: number | null;
     reputation: number;
@@ -148,7 +149,7 @@ const ProfileView = () => {
     const [userData, setUserData] = useState<UserData>(cachedUserData ?? {
         username: "", about: "", avatar_url: null,
         post_count: 0, cnft_count: 0, readers_count: 0, follows_count: 0,
-        official: false, seeker_verified: false, isOg: false, ogEdition: null, reputation: 0,
+        official: false, seeker_verified: false, seeker_verified_source: null, isOg: false, ogEdition: null, reputation: 0,
     });
 
     const [loading, setLoading] = useState<boolean>(!cachedUserData);
@@ -266,6 +267,7 @@ const ProfileView = () => {
                 follows_count: data.follows_count || 0,
                 official: data.official === true,
                 seeker_verified: data.seeker_verified === true,
+                seeker_verified_source: data.seeker_verified_source ?? null,
                 isOg: data.isOg === true,
                 ogEdition: data.edition ?? null,
                 reputation: data.reputation || 0,
@@ -390,18 +392,17 @@ const ProfileView = () => {
                     <Text style={[st.nameText, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
                         {userData.username}
                     </Text>
-                    <View style={{ marginLeft: 4 }}>
-                        <UserBadges
-                            official={userData.official}
-                            seekerVerified={userData.seeker_verified}
-                            isLooped={true}
-                            isVisible={true}
-                            haveModal={true}
-                            isStatic={false}
-                            size={22}
-                            seekerInfoOnLongPress={true}
-                        />
-                    </View>
+                    <UserBadges
+                        official={userData.official}
+                        seekerVerified={userData.seeker_verified}
+                        isLooped={true}
+                        isVisible={true}
+                        haveModal={true}
+                        isStatic={false}
+                        size={20}
+                        seekerInfoOnTap={true}
+                        seekerSource={userData.seeker_verified_source}
+                    />
                 </View>
 
                 <View style={st.repRow}>
@@ -432,12 +433,6 @@ const ProfileView = () => {
                         </View>
                     </TouchableOpacity>
                 </View>
-
-                {userData.seeker_verified && (
-                    <Text style={{ fontSize: 12, marginTop: 4, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}>
-                        Seeker Verified · Genesis Token
-                    </Text>
-                )}
 
                 {userData.about !== "" && (
                     <View style={st.bioWrap}>
@@ -664,6 +659,8 @@ const st = StyleSheet.create({
     },
     nameText: {
         fontSize: 22,
+        lineHeight: 24,
+        flexShrink: 1,
         fontFamily: 'Dank Mono Bold',
         includeFontPadding: false,
     },

@@ -385,17 +385,15 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                                 <Text style={[styles.connName, { color: main }]} numberOfLines={1}>
                                                                     {c.username}
                                                                 </Text>
-                                                                <View style={{ marginLeft: 4 }}>
-                                                                    <UserBadges
-                                                                        official={c.is_official}
-                                                                        seekerVerified={c.is_seeker_verified}
-                                                                        isLooped={true}
-                                                                        isVisible={true}
-                                                                        haveModal={true}
-                                                                        isStatic={false}
-                                                                        size={15}
-                                                                    />
-                                                                </View>
+                                                                <UserBadges
+                                                                    official={c.is_official}
+                                                                    seekerVerified={c.is_seeker_verified}
+                                                                    isLooped={true}
+                                                                    isVisible={true}
+                                                                    haveModal={true}
+                                                                    isStatic={false}
+                                                                    size={15}
+                                                                />
                                                             </View>
 
                                                             <View style={styles.connRepRow}>
@@ -548,5 +546,5 @@ const styles = StyleSheet.create({
     connInitial: { fontFamily: 'Dank Mono Bold', fontSize: 13, includeFontPadding: false },
 
     connNameWrap: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-    connName: { fontFamily: 'Dank Mono Bold', fontSize: 14, flexShrink: 1, includeFontPadding: false },
+    connName: { fontFamily: 'Dank Mono Bold', fontSize: 14, lineHeight: 16, flexShrink: 1, includeFontPadding: false },
 });

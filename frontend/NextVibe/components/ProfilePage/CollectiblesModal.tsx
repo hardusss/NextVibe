@@ -263,17 +263,15 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
                                     <Text style={s.username} numberOfLines={1}>
                                         {item?.creator_username ?? ""}
                                     </Text>
-                                    <View style={s.badgeWrapper}>
-                                        <UserBadges
-                                            official={item?.creator_official}
-                                            seekerVerified={item?.creator_seeker_verified}
-                                            isLooped={false}
-                                            isVisible={true}
-                                            haveModal={false}
-                                            isStatic={true}
-                                            size={15}
-                                        />
-                                    </View>
+                                    <UserBadges
+                                        official={item?.creator_official}
+                                        seekerVerified={item?.creator_seeker_verified}
+                                        isLooped={false}
+                                        isVisible={true}
+                                        haveModal={false}
+                                        isStatic={true}
+                                        size={15}
+                                    />
                                 </View>
                             </View>
 
@@ -490,11 +488,12 @@ const s = StyleSheet.create({
     usernameRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 5,
     },
     username: {
         color: "#fff",
         fontSize: 15,
+        lineHeight: 17,
+        flexShrink: 1,
         fontFamily: "Dank Mono Bold",
         includeFontPadding: false,
         textAlignVertical: "center",
@@ -503,12 +502,6 @@ const s = StyleSheet.create({
             textShadowOffset: { width: 0, height: 1 },
             textShadowRadius: 3,
         } : {}),
-    },
-    badgeWrapper: {
-        width: 15,
-        height: 15,
-        alignItems: "center",
-        justifyContent: "center",
     },
     headerActions: {
         flexDirection: "row",

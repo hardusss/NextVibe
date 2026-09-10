@@ -348,17 +348,15 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                 />
                                 <View style={styles.usernameRow}>
                                     <Text style={styles.username} numberOfLines={1}>{post?.username ?? ""}</Text>
-                                    <View style={styles.badgeWrapper}>
-                                        <UserBadges
-                                            official={post?.official}
-                                            seekerVerified={post?.seeker_verified}
-                                            isLooped={false}
-                                            isVisible={true}
-                                            haveModal={false}
-                                            isStatic={true}
-                                            size={15}
-                                        />
-                                    </View>
+                                    <UserBadges
+                                        official={post?.official}
+                                        seekerVerified={post?.seeker_verified}
+                                        isLooped={false}
+                                        isVisible={true}
+                                        haveModal={false}
+                                        isStatic={true}
+                                        size={15}
+                                    />
                                 </View>
                             </View>
 
@@ -698,11 +696,12 @@ const styles = StyleSheet.create({
     usernameRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 5,
     },
     username: {
         color: "#fff",
         fontSize: 15,
+        lineHeight: 17,
+        flexShrink: 1,
         includeFontPadding: false,
         textAlignVertical: "center",
         ...(Platform.OS === 'ios' ? {
@@ -710,12 +709,6 @@ const styles = StyleSheet.create({
             textShadowOffset: { width: 0, height: 1 },
             textShadowRadius: 3,
         } : {}),
-    },
-    badgeWrapper: {
-        width: 15,
-        height: 15,
-        alignItems: "center",
-        justifyContent: "center",
     },
     headerActions: {
         flexDirection: "row",

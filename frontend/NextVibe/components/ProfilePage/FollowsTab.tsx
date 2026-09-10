@@ -218,7 +218,7 @@ export default function FollowsScreen() {
                 }}
             />
             {/** Wraps username and badge in a row */}
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={[styles.userName, { flexShrink: 1 }]} numberOfLines={1}>{item.username}</Text>
                 <UserBadges
                     official={item.official}
@@ -297,6 +297,7 @@ export default function FollowsScreen() {
         },
         userName: {
             fontSize: 16,
+            lineHeight: 18,
             fontFamily: "Dank Mono Bold",
             includeFontPadding: false,
             color: isDark ? '#FFFFFF' : '#000',

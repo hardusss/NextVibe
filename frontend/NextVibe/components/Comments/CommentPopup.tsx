@@ -278,7 +278,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                 />
                 <View style={styles.commentContent}>
                     <View style={styles.userDetails}>
-                        <Text style={styles.username}>{item.user?.username}</Text>
+                        <Text style={styles.username} numberOfLines={1}>{item.user?.username}</Text>
                         <UserBadges official={item.user?.official} seekerVerified={item.user?.seeker_verified} isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={14} />
                     </View>
                     {renderCommentText(item.content, `reply-${item.reply_id}`)}
@@ -318,7 +318,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                     />
                     <View style={styles.commentContent}>
                         <View style={styles.userDetails}>
-                            <Text style={styles.username}>{item.user?.username}</Text>
+                            <Text style={styles.username} numberOfLines={1}>{item.user?.username}</Text>
                             <UserBadges official={item.user?.official} seekerVerified={item.user?.seeker_verified} isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={14} />
                         </View>
                         {renderCommentText(item.content, `comment-${item.id}`)}
@@ -613,13 +613,15 @@ const getStyles = (colors: any) => StyleSheet.create({
     userDetails: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
         marginBottom: 3,
     },
     username: {
         color: colors.textPrimary,
         fontFamily: "Dank Mono Bold",
         fontSize: 13,
+        lineHeight: 15,
+        flexShrink: 1,
+        includeFontPadding: false,
     },
     commentText: {
         fontSize: 14,

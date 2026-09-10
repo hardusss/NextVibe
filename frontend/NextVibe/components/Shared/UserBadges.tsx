@@ -1,6 +1,10 @@
-import { View, StyleSheet, Pressable, Alert } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, TouchableOpacity, useColorScheme } from 'react-native';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import VerifyBadge from '../VerifyBadge';
+
+const SEEKER_ART = require('@/assets/badges/seeker-genesis.png');
 
 interface UserBadgesProps {
     official?: boolean;
@@ -11,8 +15,10 @@ interface UserBadgesProps {
     isVisible?: boolean;
     haveModal?: boolean;
     isStatic?: boolean;
-    /** Profile header only: long-press on the Seeker badge explains it */
-    seekerInfoOnLongPress?: boolean;
+    /** Profile header & NFC tap card only: tap on the Seeker badge opens the info sheet */
+    seekerInfoOnTap?: boolean;
+    /** Verification source from the API — 'skr' changes the sheet's source line */
+    seekerSource?: string | null;
 }
 
 /**
@@ -28,19 +34,39 @@ export default function UserBadges({
     isVisible = true,
     haveModal = false,
     isStatic = true,
-    seekerInfoOnLongPress = false,
+    seekerInfoOnTap = false,
+    seekerSource = null,
 }: UserBadgesProps) {
+    const sheetRef = useRef<BottomSheetModal>(null);
+    const isDark = useColorScheme() === 'dark';
+
+    const renderBackdrop = useCallback(
+        (props: any) => (
+            <BottomSheetBackdrop
+                {...props}
+                disappearsOnIndex={-1}
+                appearsOnIndex={0}
+                opacity={0.6}
+                pressBehavior="close"
+            />
+        ),
+        []
+    );
+
     if (!official && !seekerVerified) return null;
+
+    const bg = isDark ? '#0A0410' : '#F5F3FF';
+    const main = isDark ? '#FFFFFF' : '#111827';
+    const muted = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(17,24,39,0.55)';
 
     const seekerBadge = (
         <Image
-            source={require('@/assets/badges/seeker-genesis.png')}
+            source={SEEKER_ART}
             style={{
                 width: size,
                 height: size,
-                borderRadius: size / 2,
-                borderWidth: 1,
-                borderColor: 'rgba(168,85,247,0.6)',
+                borderRadius: size * 0.28,
+                overflow: 'hidden',
             }}
             contentFit="cover"
             accessibilityLabel="Seeker Verified"
@@ -59,21 +85,39 @@ export default function UserBadges({
                 />
             )}
             {seekerVerified && (
-                seekerInfoOnLongPress ? (
-                    <Pressable
-                        onLongPress={() =>
-                            Alert.alert(
-                                'Seeker Verified',
-                                'This person owns a Solana Seeker (Genesis Token detected on-chain).'
-                            )
-                        }
-                        hitSlop={8}
-                    >
+                seekerInfoOnTap ? (
+                    <Pressable onPress={() => sheetRef.current?.present()} hitSlop={8}>
                         {seekerBadge}
                     </Pressable>
                 ) : (
                     seekerBadge
                 )
+            )}
+            {seekerVerified && seekerInfoOnTap && (
+                <BottomSheetModal
+                    ref={sheetRef}
+                    enableDynamicSizing
+                    backdropComponent={renderBackdrop}
+                    backgroundStyle={{ backgroundColor: bg }}
+                    handleIndicatorStyle={{ backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)' }}
+                >
+                    <BottomSheetView style={styles.sheetContent}>
+                        <Image source={SEEKER_ART} style={styles.sheetArt} contentFit="cover" />
+                        <Text style={[styles.sheetTitle, { color: main }]}>Seeker Verified</Text>
+                        <Text style={[styles.sheetLine, { color: muted }]}>
+                            {seekerSource === 'skr'
+                                ? 'This person owns a Solana Seeker. Verified via Seeker ID (.skr).'
+                                : 'This person owns a Solana Seeker. Their Seeker Genesis Token was detected on-chain.'}
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.sheetCloseBtn}
+                            activeOpacity={0.8}
+                            onPress={() => sheetRef.current?.dismiss()}
+                        >
+                            <Text style={styles.sheetCloseTxt}>Close</Text>
+                        </TouchableOpacity>
+                    </BottomSheetView>
+                </BottomSheetModal>
             )}
         </View>
     );
@@ -85,5 +129,46 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
         flexShrink: 0,
+        marginLeft: 4,
+    },
+    sheetContent: {
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingTop: 8,
+        paddingBottom: 40,
+    },
+    sheetArt: {
+        width: 48,
+        height: 48,
+        borderRadius: 48 * 0.28,
+        overflow: 'hidden',
+    },
+    sheetTitle: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 18,
+        marginTop: 12,
+        includeFontPadding: false,
+    },
+    sheetLine: {
+        fontFamily: 'Dank Mono',
+        fontSize: 13,
+        lineHeight: 19,
+        textAlign: 'center',
+        marginTop: 6,
+        includeFontPadding: false,
+    },
+    sheetCloseBtn: {
+        alignSelf: 'stretch',
+        alignItems: 'center',
+        marginTop: 18,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: '#A855F7',
+    },
+    sheetCloseTxt: {
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 14,
+        color: '#ffffff',
+        includeFontPadding: false,
     },
 });

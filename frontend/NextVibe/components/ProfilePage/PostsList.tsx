@@ -93,6 +93,8 @@ const getStyles = (theme: typeof darkTheme) => {
     },
     username: {
       fontSize: 16,
+      lineHeight: 18,
+      flexShrink: 1,
       fontFamily: "Dank Mono Bold",
       includeFontPadding: false,
       color: theme.textPrimary
@@ -628,7 +630,7 @@ const UserPosts = () => {
               <View style={styles.userInfo}>
                 <View style={styles.usernameContainer}>
                   <View style={{ flexDirection: "row", "alignItems": "center" }}>
-                    <Text style={styles.username}>{userData.username}</Text>
+                    <Text style={styles.username} numberOfLines={1}>{userData.username}</Text>
                     <UserBadges
                       official={userData.official}
                       seekerVerified={userData.seeker_verified}

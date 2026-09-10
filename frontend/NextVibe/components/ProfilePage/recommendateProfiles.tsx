@@ -133,17 +133,15 @@ const RecommendedUsers = () => {
                                         >
                                             {item.username}
                                         </Text>
-                                        <View style={{ marginLeft: 4 }}>
-                                            <UserBadges
-                                                official={item.official}
-                                                seekerVerified={item.seeker_verified}
-                                                isLooped={false}
-                                                isVisible={true}
-                                                haveModal={false}
-                                                isStatic={true}
-                                                size={16}
-                                            />
-                                        </View>
+                                        <UserBadges
+                                            official={item.official}
+                                            seekerVerified={item.seeker_verified}
+                                            isLooped={false}
+                                            isVisible={true}
+                                            haveModal={false}
+                                            isStatic={true}
+                                            size={16}
+                                        />
                                     </View>
 
                                     <TouchableOpacity
@@ -215,6 +213,8 @@ const styles = StyleSheet.create({
     username: {
         fontWeight: "bold",
         fontSize: 14,
+        lineHeight: 16,
+        includeFontPadding: false,
         maxWidth: 100,
         flexShrink: 1,
     },

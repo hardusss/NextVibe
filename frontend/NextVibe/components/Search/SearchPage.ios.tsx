@@ -168,7 +168,7 @@ export default function SearchPage() {
                 />
                 <View style={{ marginLeft: 10 }}>
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
-                        <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
+                        <Text style={[styles.username, { color: colors.textPrimary }]} numberOfLines={1}>{item.username}</Text>
                         <UserBadges official={item.official} seekerVerified={item.seeker_verified} isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16} />
                     </View>
                     <Text style={{ color: "gray", fontFamily: "Dank Mono Bold", includeFontPadding: false }}>
@@ -255,5 +255,8 @@ const styles = StyleSheet.create({
     },
     username: {
         fontSize: 16,
+        lineHeight: 18,
+        flexShrink: 1,
+        includeFontPadding: false,
     },
 });

@@ -1078,9 +1078,7 @@ export default function CustomChatScreen() {
                             <Text style={[styles.partnerName, { color: colors.text }]} numberOfLines={1}>
                                 {partnerName}
                             </Text>
-                            <View style={{ marginLeft: 4 }}>
-                                <UserBadges official={otherUser?.official} seekerVerified={otherUser?.seeker_verified} size={16} />
-                            </View>
+                            <UserBadges official={otherUser?.official} seekerVerified={otherUser?.seeker_verified} size={16} />
                         </View>
                         <Text style={[styles.partnerStatus, { color: colors.subtext }]}>
                             {isTyping ? 'typing...' : otherUser?.is_online ? 'Online' : 'Encrypted Chat'}
@@ -1466,8 +1464,11 @@ const getStyles = (
         },
         partnerName: {
             fontSize: 16,
+            lineHeight: 18,
+            flexShrink: 1,
             fontWeight: '700',
             fontFamily: 'Dank Mono Bold',
+            includeFontPadding: false,
         },
         partnerStatus: {
             fontSize: 11,

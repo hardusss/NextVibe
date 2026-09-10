@@ -291,11 +291,11 @@ export default function EventNFCReceiveScreen() {
                             </View>
                         </Animated.View>
 
-                        <Animated.View entering={FadeInDown.delay(400)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 16 }}>
-                            <Text style={[styles.heading, { color: main, fontSize: 24 }]}>
+                        <Animated.View entering={FadeInDown.delay(400)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+                            <Text style={[styles.heading, { color: main, fontSize: 24, lineHeight: 26, flexShrink: 1 }]} numberOfLines={1}>
                                 Connected with {scannedUser?.username}
                             </Text>
-                            <UserBadges official={scannedUser?.is_official} seekerVerified={scannedUser?.is_seeker_verified} size={22} />
+                            <UserBadges official={scannedUser?.is_official} seekerVerified={scannedUser?.is_seeker_verified} size={22} seekerInfoOnTap={true} />
                         </Animated.View>
 
                         <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>

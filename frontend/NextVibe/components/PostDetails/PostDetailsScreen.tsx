@@ -388,10 +388,8 @@ export default function PostDetailsScreen() {
                         </TouchableOpacity>
                         <View style={{ flex: 1, marginLeft: 12 }}>
                             <View style={{ flexDirection: "row", alignItems: "center" }}>
-                                <Text style={[s.username, { color: theme.textPrimary }]}>{post.username}</Text>
-                                <View style={{ marginLeft: 2 }}>
-                                    <UserBadges official={post.official} seekerVerified={post.seeker_verified} isLooped isVisible haveModal={false} isStatic={false} size={16} />
-                                </View>
+                                <Text style={[s.username, { color: theme.textPrimary }]} numberOfLines={1}>{post.username}</Text>
+                                <UserBadges official={post.official} seekerVerified={post.seeker_verified} isLooped isVisible haveModal={false} isStatic={false} size={16} />
                             </View>
                         </View>
                         <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -644,6 +642,8 @@ const s = StyleSheet.create({
     },
     username: {
         fontSize: 16,
+        lineHeight: 18,
+        flexShrink: 1,
         fontFamily: "Dank Mono Bold",
         includeFontPadding: false
     },
