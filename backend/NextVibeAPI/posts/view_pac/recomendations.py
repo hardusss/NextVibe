@@ -50,7 +50,8 @@ class Recomendations:
         ).values(
             "id", "about", "create_at", "location", "count_likes", 
             "is_ai_generated", "moderation_status",
-            "owner__user_id", "owner__username", "avatar_url", "owner__official"
+            "owner__user_id", "owner__username", "avatar_url", "owner__official",
+            "owner__seeker_verified"
         )
         
         data = []
@@ -66,6 +67,7 @@ class Recomendations:
                 "owner__username": post["owner__username"],
                 "owner__avatar": post["avatar_url"],
                 "owner__official": post["owner__official"],
+                "owner__seeker_verified": post["owner__seeker_verified"],
                 "id": post["id"],
                 "about": post["about"],
                 "location": post["location"],

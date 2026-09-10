@@ -4,7 +4,7 @@ from django.contrib import admin
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ["username", "email", "is_online", "is_baned"]
+    list_display = ["username", "email", "is_online", "is_baned", "seeker_verified"]
 
     list_filter = ('is_baned', 'is_staff', 'is_superuser', 'is_active')
 

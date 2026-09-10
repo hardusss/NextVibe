@@ -49,7 +49,8 @@ class CommentCreateView(APIView):
             user_data = {
                 "username": user.username,
                 "avatar": user.avatar.url,
-                "official": user.official
+                "official": user.official,
+                "seeker_verified": user.seeker_verified
             }
             return Response(
                 dict({"user": user_data}, **comment.data, **{"replises": []}),
@@ -114,7 +115,8 @@ class CommentReplyView(APIView):
             user_data = {
                 "username": user.username,
                 "avatar": user.avatar.url,
-                "official": user.official
+                "official": user.official,
+                "seeker_verified": user.seeker_verified
             }
 
             return Response(

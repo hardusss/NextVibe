@@ -33,6 +33,7 @@ class PostFeedSerializer(serializers.ModelSerializer):
     owner__username = serializers.CharField(source='owner.username')
     owner__avatar   = serializers.SerializerMethodField()
     owner__official = serializers.BooleanField(source='owner.official')
+    owner__seeker_verified = serializers.BooleanField(source='owner.seeker_verified')
     media           = serializers.SerializerMethodField()
     already_claimed = serializers.SerializerMethodField()
     collect         = serializers.SerializerMethodField()
@@ -49,7 +50,7 @@ class PostFeedSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'about', 'create_at', 'location', 'count_likes',
             'is_comments_enabled', 'owner__user_id', 'owner__username',
-            'owner__avatar', 'owner__official', 'media',
+            'owner__avatar', 'owner__official', 'owner__seeker_verified', 'media',
             'is_ai_generated', 'moderation_status',
             # NFT
             'is_nft', 'minted_count', 'total_supply',

@@ -24,8 +24,8 @@ class RecommendedUsersView(APIView):
             .exclude(user_id=user.user_id)
             .exclude(user_id__in=follow_for)
             .select_related("og_avatar")
-            .only("user_id", "username", "avatar", "official", "about")
-            [:200]  
+            .only("user_id", "username", "avatar", "official", "seeker_verified", "about")
+            [:200]
         )
 
         random.shuffle(qs)
@@ -37,7 +37,7 @@ class RecommendedUsersView(APIView):
                 .exclude(user_id=user.user_id)
                 .exclude(user_id__in=[u.user_id for u in recommended_users])
                 .select_related("og_avatar")
-                .only("user_id", "username", "avatar", "official", "about")
+                .only("user_id", "username", "avatar", "official", "seeker_verified", "about")
                 [:50]
             )
             random.shuffle(fallback)
@@ -61,6 +61,7 @@ class RecommendedUsersView(APIView):
                 "username": u.username,
                 "avatar": u.avatar.url if u.avatar else None,
                 "official": u.official,
+                "seeker_verified": u.seeker_verified,
                 "about": u.about,
                 "is_og": og is not None,
                 "og_edition": og.edition if og is not None else None,

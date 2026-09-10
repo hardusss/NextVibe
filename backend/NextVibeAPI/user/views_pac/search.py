@@ -29,7 +29,7 @@ class SearchUsersView(APIView):
             User.objects
             .filter(username__icontains=search_name)
             .select_related("og_avatar")
-            .only("user_id", "username", "avatar", "official", "readers_count")
+            .only("user_id", "username", "avatar", "official", "seeker_verified", "readers_count")
             [:50]
         )
 
@@ -58,6 +58,7 @@ class SearchUsersView(APIView):
                 "username": u.username,
                 "avatar": build_avatar(u),
                 "official": u.official,
+                "seeker_verified": u.seeker_verified,
                 "readers_count": u.readers_count,
                 "is_og": og is not None,
                 "og_edition": og.edition if og is not None else None,

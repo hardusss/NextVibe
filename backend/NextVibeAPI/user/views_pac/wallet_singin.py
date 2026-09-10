@@ -6,7 +6,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from user.serializers_pac import UserWalletSignInSerializer
+from user.src.seeker_verification import needs_onchain_check, verify_seeker_in_background
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
@@ -82,6 +84,11 @@ class WalletSignInView(APIView):
                     user.user_id,
                     wallet_address,
                 )
+                if needs_onchain_check(user):
+                    user_id = user.user_id
+                    transaction.on_commit(
+                        lambda: verify_seeker_in_background(user_id, wallet_address)
+                    )
                 return Response({
                     'token': {
                         'refresh': str(refresh),
@@ -115,6 +122,10 @@ class WalletSignInView(APIView):
                         "Successfully registered new user via wallet: user_id=%s, address=%s",
                         user.user_id,
                         wallet_address,
+                    )
+                    new_user_id = user.user_id
+                    transaction.on_commit(
+                        lambda: verify_seeker_in_background(new_user_id, wallet_address)
                     )
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
 

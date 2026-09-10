@@ -4,8 +4,10 @@ from exponent_server_sdk import (
 )
 from typing import Optional
 
-def send(token: str, title: str, body: str, link: Optional[str] = None):
+def send(token: str, title: str, body: str, link: Optional[str] = None, extra_data: Optional[dict] = None):
     data = {"url": link} if link else None
+    if extra_data:
+        data = {**(data or {}), **extra_data}
     response = PushClient().publish(
         PushMessage(
             to=token,

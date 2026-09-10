@@ -1,6 +1,8 @@
 import logging
 import httpx
 from django.conf import settings
+from django.db import transaction
+from user.src.seeker_verification import needs_onchain_check, verify_seeker_in_background
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -65,6 +67,11 @@ class SaveWalletAddressView(APIView):
             request.user.wallet_address = wallet_address
             request.user.save(update_fields=["wallet_address"])
             logger.info("SaveWalletAddressView: Successfully saved wallet %s for user %s", wallet_address, request.user.user_id)
+            if needs_onchain_check(request.user):
+                user_id = request.user.user_id
+                transaction.on_commit(
+                    lambda: verify_seeker_in_background(user_id, wallet_address)
+                )
         except Exception as e:
             logger.error("SaveWalletAddressView: Failed to save wallet %s: %s", wallet_address, e, exc_info=True)
             return Response(

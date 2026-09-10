@@ -180,6 +180,7 @@ REST_FRAMEWORK = {
         "2fa": "5/min",
         "password_reset": "5/min",
         "save_push_token": "5/min",
+        "seeker_verify": "5/min",
         "follow": "40/min", 
         "follows": "100/min",
         "readers": "100/min",

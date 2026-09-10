@@ -51,6 +51,7 @@ class GetCommentView(APIView):
                 "username": owner.username,
                 "avatar": owner.avatar.url if owner.avatar else None,
                 "official": owner.official,
+                "seeker_verified": owner.seeker_verified,
                 "is_og": og is not None,
                 "og_edition": og.edition if og is not None else None,
                 "invited_count": invite_counts.get(owner.user_id, 0),

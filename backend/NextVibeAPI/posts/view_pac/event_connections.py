@@ -66,6 +66,7 @@ class UserEventConnectionsView(APIView):
                         "user_id": uid,
                         "username": other.username,
                         "is_official": other.official,
+                        "is_seeker_verified": other.seeker_verified,
                         "avatar": avatar_url,
                         "rep_received": 0,
                         "rep_given": 0,
@@ -381,6 +382,7 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
             "username": scanned_user.username,
             "avatar": avatar_url,
             "is_official": scanned_user.official,
+            "is_seeker_verified": scanned_user.seeker_verified,
         }
     }, status=status.HTTP_200_OK)
 

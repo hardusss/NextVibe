@@ -49,3 +49,5 @@ trx-addresses-generator.log
 # OS specific files
 .DS_Store
 Thumbs.db
+# throwaway one-off scripts (never committed)
+NextVibeAPI/scripts_tmp/

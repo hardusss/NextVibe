@@ -80,6 +80,7 @@ class GetPostView(APIView):
                 "liked_posts": request.user.liked_posts,
                 "avatar": avatar_url,
                 "official": getattr(owner, "official", False),
+                "seeker_verified": getattr(owner, "seeker_verified", False),
                 "is_og": og is not None,
                 "og_edition": og.edition if og is not None else None,
                 "invited_count": invited_count,

@@ -71,7 +71,7 @@ class GetReaders(APIView):
                     )
                 )
             .order_by("ordering")
-            .values("avatar_url", "username", "user_id", "official")
+            .values("avatar_url", "username", "user_id", "official", "seeker_verified")
         )
         for reader in readers_qs:
             reader['avatar'] = reader.pop('avatar_url')

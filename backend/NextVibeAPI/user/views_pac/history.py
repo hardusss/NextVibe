@@ -54,6 +54,7 @@ class HistorySearchView(APIView):
                 "username": u.username,
                 "avatar": build_avatar(u),
                 "official": u.official,
+                "seeker_verified": u.seeker_verified,
                 "readers_count": u.readers_count,
                 "is_og": og is not None,
                 "og_edition": og.edition if og is not None else None,

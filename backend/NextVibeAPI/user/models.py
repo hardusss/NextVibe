@@ -49,6 +49,11 @@ class User(AbstractBaseUser):
     secret_2fa = models.CharField(max_length=100, null=True, blank=True, default=None)
     is2FA = models.BooleanField(default=False)
     official = models.BooleanField(default=False, null=True)
+    seeker_verified = models.BooleanField(default=False)
+    # SGT mint address; unique so one Genesis Token can only verify one account
+    seeker_sgt_mint = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    seeker_verified_at = models.DateTimeField(null=True, blank=True)
+    seeker_verified_source = models.CharField(max_length=10, null=True, blank=True)  # 'onchain' | 'skr'
     count_generations_ai = models.IntegerField(default=1, null=True, blank=True)
     is_online = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)

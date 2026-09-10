@@ -130,6 +130,8 @@ class CherryMembersView(APIView):
                     "username": u.username,
                     "avatar": get_avatar_url(u, request),
                     "is_online": True if is_you else getattr(u, 'is_online', False),
+                    "official": getattr(u, 'official', False),
+                    "seeker_verified": getattr(u, 'seeker_verified', False),
                     "wallet_address": u.wallet_address,
                     "is_you": is_you,
                 })

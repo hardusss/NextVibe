@@ -88,7 +88,8 @@ class PostMenuView(APIView):
                 "id": user_owner_posts.user_id,
                 "username": user_owner_posts.username,
                 "avatar": user_owner_posts.avatar.url,
-                "official": user_owner_posts.official
+                "official": user_owner_posts.official,
+                "seeker_verified": user_owner_posts.seeker_verified
             },
             "data": data,
             "more_posts": (index + limit) < total_posts,

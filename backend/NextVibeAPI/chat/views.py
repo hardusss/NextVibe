@@ -56,7 +56,9 @@ class ChatListView(APIView):
                             "user_id": other_user.user_id,
                             "username": other_user.username,
                             "avatar": get_avatar_url(other_user),
-                            "is_online": getattr(other_user, 'is_online', False)
+                            "is_online": getattr(other_user, 'is_online', False),
+                            "official": getattr(other_user, 'official', False),
+                            "seeker_verified": getattr(other_user, 'seeker_verified', False)
                         },
                         "sort_date": last_message.created_at
                     })
@@ -94,7 +96,9 @@ class OnlineUsersView(APIView):
             users_data = [{
                 'user_id': user.user_id,
                 'username': user.username,
-                'avatar': get_avatar_url(user)
+                'avatar': get_avatar_url(user),
+                'official': getattr(user, 'official', False),
+                'seeker_verified': getattr(user, 'seeker_verified', False)
             } for user in online_users]
 
             return Response(users_data)
