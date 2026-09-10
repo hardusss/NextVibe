@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, ActivityIndicator, Platform, Vibration } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Radio, AlertTriangle, Star, Users } from 'lucide-react-native';
+import { ChevronLeft, Radio, AlertTriangle, Star, Users, Camera } from 'lucide-react-native';
+import { FEATURE_PROOF_OF_MEET } from '@/constants/FeatureFlags';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -20,8 +21,9 @@ export default function EventNFCShareScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
-    const params = useLocalSearchParams<{ eventId: string }>();
+    const params = useLocalSearchParams<{ eventId?: string; mode?: string }>();
     const eventId = params.eventId;
+    const isIrl = params.mode === 'irl';
 
     const [userId, setUserId] = useState<string | null>(null);
     const [initialConnections, setInitialConnections] = useState<number[]>([]);
@@ -62,6 +64,22 @@ export default function EventNFCShareScreen() {
         }
     };
 
+    const onNewTapDetected = (user: any, points: number) => {
+        stopSharingSession();
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+        Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+
+        setSuccessUser(user);
+        setSuccessPoints(points);
+        setSuccessState(true);
+
+        if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+        }
+    };
+
     const checkNewConnections = async (currentKnownIds: number[]) => {
         try {
             const token = await storage.getItem('access');
@@ -69,34 +87,37 @@ export default function EventNFCShareScreen() {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
+            if (isIrl) {
+                // IRL mode: watch for a new entry in irl_taps (keyed by rep row id)
+                const taps = res.data.irl_taps || [];
+                const newTap = taps.find((t: any) => !currentKnownIds.includes(t.id));
+                if (newTap) {
+                    onNewTapDetected({
+                        username: newTap.username,
+                        avatar: newTap.avatar,
+                        is_official: newTap.is_official,
+                        is_seeker_verified: newTap.is_seeker_verified
+                    }, newTap.points || 1);
+                    return [...currentKnownIds, newTap.id];
+                }
+                return currentKnownIds;
+            }
+
             const eventsArray = res.data.events || [];
             const eventData = eventsArray.find((e: any) => e.event_id === Number(eventId));
-            
+
             if (!eventData) return currentKnownIds;
 
             const currentConns = eventData.connections || [];
             const newConn = currentConns.find((c: any) => !currentKnownIds.includes(c.user_id));
 
             if (newConn) {
-                stopSharingSession();
-
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
-                Vibration.vibrate([0, 50, 50, 50, 50, 100]);
-
-                setSuccessUser({
+                onNewTapDetected({
                     username: newConn.username,
                     avatar: newConn.avatar,
                     is_official: newConn.is_official,
                     is_seeker_verified: newConn.is_seeker_verified
-                });
-                setSuccessPoints(newConn.rep_received || 2);
-                setSuccessState(true);
-
-                if (pollingRef.current) {
-                    clearInterval(pollingRef.current);
-                    pollingRef.current = null;
-                }
-
+                }, newConn.rep_received || 2);
                 return [...currentKnownIds, newConn.user_id];
             }
             return currentKnownIds;
@@ -112,10 +133,13 @@ export default function EventNFCShareScreen() {
         setSuccessPoints(0);
         setDisplayPoints(0);
 
-        const tokenUrl = await generateToken('networking', Number(eventId));
+        const tokenUrl = await generateToken(
+            isIrl ? 'irl' : 'networking',
+            isIrl ? undefined : Number(eventId)
+        );
         if (tokenUrl) {
             startSharingSession(tokenUrl);
-            startAutoRenewal('networking', Number(eventId), (newUrl) => {
+            startAutoRenewal(isIrl ? 'irl' : 'networking', isIrl ? undefined : Number(eventId), (newUrl) => {
                 stopSharingSession();
                 startSharingSession(newUrl);
             });
@@ -163,22 +187,30 @@ export default function EventNFCShareScreen() {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 
-                const eventsArray = res.data.events || [];
-                const eventData = eventsArray.find((e: any) => e.event_id === Number(eventId));
-
-                if (eventData && eventData.connections) {
-                    knownIds = eventData.connections.map((c: any) => c.user_id);
+                if (isIrl) {
+                    knownIds = (res.data.irl_taps || []).map((t: any) => t.id);
                     setInitialConnections(knownIds);
+                } else {
+                    const eventsArray = res.data.events || [];
+                    const eventData = eventsArray.find((e: any) => e.event_id === Number(eventId));
+
+                    if (eventData && eventData.connections) {
+                        knownIds = eventData.connections.map((c: any) => c.user_id);
+                        setInitialConnections(knownIds);
+                    }
                 }
 
                 if (!active) return;
 
-                const tokenUrl = await generateToken('networking', Number(eventId));
+                const tokenUrl = await generateToken(
+                    isIrl ? 'irl' : 'networking',
+                    isIrl ? undefined : Number(eventId)
+                );
                 if (!active || !tokenUrl) return;
                 startSharingSession(tokenUrl);
 
                 // Start auto-renewal to keep token fresh
-                startAutoRenewal('networking', Number(eventId), (newUrl) => {
+                startAutoRenewal(isIrl ? 'irl' : 'networking', isIrl ? undefined : Number(eventId), (newUrl) => {
                     stopSharingSession();
                     startSharingSession(newUrl);
                 });
@@ -195,7 +227,7 @@ export default function EventNFCShareScreen() {
             }
         };
 
-        if (eventId) {
+        if (eventId || isIrl) {
             init();
         }
 
@@ -208,9 +240,9 @@ export default function EventNFCShareScreen() {
                 pollingRef.current = null;
             }
         };
-    }, [eventId]);
+    }, [eventId, isIrl]);
 
-    if (!eventId) {
+    if (!eventId && !isIrl) {
         return (
             <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
                 <Text style={{ color: main }}>Invalid Event</Text>
@@ -230,9 +262,16 @@ export default function EventNFCShareScreen() {
                 >
                     <ChevronLeft size={22} color={main} strokeWidth={2} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: main }]}>
-                    {Platform.OS === 'ios' ? 'BLE Networking' : 'NFC Networking'}
-                </Text>
+                <View style={{ alignItems: 'center' }}>
+                    <Text style={[styles.headerTitle, { color: main }]}>
+                        Tap to Meet
+                    </Text>
+                    {isIrl && (
+                        <Text style={[styles.headerSub, { color: muted }]}>
+                            Not at an event · IRL tap
+                        </Text>
+                    )}
+                </View>
                 <View style={{ width: 44 }} />
             </View>
 
@@ -256,21 +295,35 @@ export default function EventNFCShareScreen() {
 
                             <Animated.View entering={FadeInDown.delay(400)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
                                 <Text style={[styles.heading, { color: main, fontSize: 24, lineHeight: 26, flexShrink: 1 }]} numberOfLines={1}>
-                                    Connected with {successUser?.username}
+                                    You met @{successUser?.username}
                                 </Text>
                                 <UserBadges official={successUser?.is_official} seekerVerified={successUser?.is_seeker_verified} size={22} seekerInfoOnTap={true} />
                             </Animated.View>
 
                             <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>
                                 <Star size={24} color="#fbbf24" fill="#fbbf24" />
-                                <Text style={styles.repPointsText}>+{displayPoints} Rep</Text>
+                                <Text style={styles.repPointsText}>+{displayPoints} REP</Text>
                             </Animated.View>
 
                             <Animated.Text entering={FadeInDown.delay(800)} style={[styles.description, { color: muted, fontSize: 16, marginTop: 16 }]}>
-                                You both earned reputation for networking!
+                                Reputation added for both of you!
                             </Animated.Text>
 
                             <Animated.View entering={FadeInUp.delay(1200)} style={{ width: "100%", paddingHorizontal: 40, marginTop: 40, gap: 12 }}>
+                                {FEATURE_PROOF_OF_MEET && (
+                                    <TouchableOpacity
+                                        activeOpacity={0.8}
+                                        style={[styles.verifyBtn, {
+                                            backgroundColor: "rgba(168,85,247,0.12)",
+                                            borderColor: "rgba(168,85,247,0.3)",
+                                        }]}
+                                    >
+                                        <Camera size={16} color="#c084fc" />
+                                        <Text style={[styles.verifyBtnText, { color: "#c084fc" }]}>
+                                            Take a selfie together
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                                 <TouchableOpacity
                                     onPress={handleContinue}
                                     activeOpacity={0.8}
@@ -280,7 +333,7 @@ export default function EventNFCShareScreen() {
                                     }]}
                                 >
                                     <Text style={[styles.verifyBtnText, { color: "#c084fc" }]}>
-                                        Continue Networking
+                                        {isIrl ? 'Keep tapping' : 'Continue Networking'}
                                     </Text>
                                 </TouchableOpacity>
 
@@ -315,17 +368,19 @@ export default function EventNFCShareScreen() {
                             </Animated.View>
 
                             <Text style={[styles.heading, { color: main }]}>
-                                Ready to Network
+                                {isIrl ? 'Ready to Tap' : 'Ready to Network'}
                             </Text>
                             <Text style={[styles.description, { color: muted }]}>
-                                Hold your phone near another attendee's phone to connect and share reputation via {broadcastLabel}!
+                                {isIrl
+                                    ? `Hold your phone near a friend's phone to meet — you'll both get +1 REP (via ${broadcastLabel}).`
+                                    : `Hold your phone near another attendee's phone to connect and share reputation via ${broadcastLabel}!`}
                             </Text>
 
                             <TokenExpiryBadge
                                 secondsLeft={secondsLeft}
                                 totalDuration={totalDuration}
                                 isRenewing={isRenewing}
-                                label="Active Networking Token"
+                                label={isIrl ? 'Active Tap Token' : 'Active Networking Token'}
                             />
 
                             {Platform.OS === 'ios' ? (
@@ -373,6 +428,12 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontFamily: 'Dank Mono Bold',
         fontSize: 16,
+        includeFontPadding: false,
+    },
+    headerSub: {
+        fontFamily: 'Dank Mono',
+        fontSize: 11,
+        marginTop: 2,
         includeFontPadding: false,
     },
     main: {

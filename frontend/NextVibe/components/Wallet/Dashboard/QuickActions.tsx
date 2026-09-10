@@ -37,12 +37,12 @@ const ALL_ACTIONS = [
     { id: "receive", Icon: ArrowDown, label: "Receive", pulse: false },
     { id: "send", Icon: ArrowUp, label: "Send", pulse: false },
     { id: "swap", Icon: ArrowLeftRight, label: "Swap", pulse: false },
-    { id: "nfc", Icon: Nfc, label: "NFC Deposit", pulse: true },
+    { id: "nfc", Icon: Nfc, label: "Tap Deposit", pulse: true },
 ];
 
 // NFC HCE sharing is not supported on iOS — customize as BLE "via Tap" deposit
 const ACTIONS = Platform.OS === 'ios'
-    ? ALL_ACTIONS.map(a => a.id === 'nfc' ? { ...a, label: "via Tap", Icon: Radio } : a)
+    ? ALL_ACTIONS.map(a => a.id === 'nfc' ? { ...a, label: "Tap Deposit", Icon: Radio } : a)
     : ALL_ACTIONS;
 
 interface QuickActionButtonProps {

@@ -299,7 +299,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                         </Animated.View>
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={[styles.title, { color: main }]}>NFC Check-in</Text>
+                        <Text style={[styles.title, { color: main }]}>Tap Check-in</Text>
                         {eventTitle ? (
                             <Text style={[styles.subtitle, { color: muted }]} numberOfLines={1}>{eventTitle}</Text>
                         ) : (
@@ -330,7 +330,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                     }]}>
                         {isBroadcasting
                             ? `Broadcasting · ${tapCount} tap${tapCount !== 1 ? "s" : ""} detected`
-                            : "NFC not active"
+                            : "Tap sharing not active"
                         }
                     </Text>
                 </View>

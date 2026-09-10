@@ -54,7 +54,8 @@ class UserWalletSignInSerializer(serializers.ModelSerializer):
                 user=user,
                 given_by=user,
                 points=100,
-                post_type="cherry_invite_code"
+                post_type="cherry_invite_code",
+                source='post',
             )
 
         return user

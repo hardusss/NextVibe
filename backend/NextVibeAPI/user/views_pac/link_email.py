@@ -62,7 +62,8 @@ class LinkEmailView(APIView):
                 user=user,
                 given_by=user,
                 points=20,
-                post_type="link_email_reward"
+                post_type="link_email_reward",
+                source='post',
             )
             rep_granted = True
 

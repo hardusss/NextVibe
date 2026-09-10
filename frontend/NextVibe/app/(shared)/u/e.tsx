@@ -47,12 +47,14 @@ export default function ProximityTokenScreen() {
                 const result = await verifyProximityToken(token, lat, lng);
 
                 // Route to the appropriate result screen based on interaction type
-                if (result.interaction_type === 'networking') {
+                const isIrl = result.interaction_type === 'irl' || result.source === 'irl';
+                if (isIrl || result.interaction_type === 'networking' || (result.success && result.scanned_user)) {
                     router.replace({
                         pathname: '/event-nfc-receive',
                         params: {
                             t: token,
                             _verified: '1',
+                            ...(isIrl && { _source: 'irl' }),
                             _earned_points: String(result.earned_points || 0),
                             _username: result.scanned_user?.username || '',
                             _avatar: result.scanned_user?.avatar || '',

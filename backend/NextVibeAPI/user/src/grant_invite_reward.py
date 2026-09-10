@@ -28,7 +28,8 @@ def check_and_grant_invite_rewards(inviter_user, new_user=None):
                 user=inviter_user,
                 given_by=given_by,
                 points=points,
-                post_type="invite_reward_lvl2"
+                post_type="invite_reward_lvl2",
+                source='post',
             )
             return points
 

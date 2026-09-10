@@ -267,6 +267,12 @@ class Reputation(models.Model):
         blank=True,
         help_text="The type of post (e.g. event_post)"
     )
+    source = models.CharField(
+        max_length=10,
+        default='event',
+        db_index=True,
+        help_text="Where the reputation came from: 'event' (tap at an event), 'irl' (tap outside events), 'checkin', 'post'",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

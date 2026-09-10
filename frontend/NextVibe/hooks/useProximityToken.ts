@@ -15,7 +15,7 @@ export function useProximityToken() {
 
     const renewalIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const currentParamsRef = useRef<{ interactionType: InteractionType; eventId: number } | null>(null);
+    const currentParamsRef = useRef<{ interactionType: InteractionType; eventId?: number } | null>(null);
 
     const startCountdown = useCallback(() => {
         if (countdownIntervalRef.current) {
@@ -34,7 +34,7 @@ export function useProximityToken() {
 
     const generateToken = useCallback(async (
         interactionType: InteractionType,
-        eventId: number
+        eventId?: number
     ): Promise<string | null> => {
         try {
             setIsGenerating(true);
@@ -60,7 +60,7 @@ export function useProximityToken() {
 
     const startAutoRenewal = useCallback((
         interactionType: InteractionType,
-        eventId: number,
+        eventId?: number,
         onNewUrl?: (url: string) => void
     ) => {
         // Stop any existing renewal

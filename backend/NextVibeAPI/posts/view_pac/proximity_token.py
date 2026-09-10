@@ -16,7 +16,7 @@ TOKEN_PREFIX = "proximity:"
 class GenerateProximityTokenView(APIView):
     """
     POST /api/v1/posts/proximity/generate-token/
-    Body: { "interaction_type": "checkin" | "networking", "event_id": int }
+    Body: { "interaction_type": "checkin" | "networking" | "irl", "event_id": int (not for 'irl') }
     Returns: { "token": "<8-char-token>" }
     """
     permission_classes = [IsAuthenticated]
@@ -25,26 +25,29 @@ class GenerateProximityTokenView(APIView):
         interaction_type = request.data.get('interaction_type')
         event_id = request.data.get('event_id')
 
-        if interaction_type not in ('checkin', 'networking'):
+        if interaction_type not in ('checkin', 'networking', 'irl'):
             return Response(
-                {"error": "interaction_type must be 'checkin' or 'networking'."},
+                {"error": "interaction_type must be 'checkin', 'networking' or 'irl'."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not event_id:
-            return Response(
-                {"error": "event_id is required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if interaction_type == 'irl':
+            event_id = None
+        else:
+            if not event_id:
+                return Response(
+                    {"error": "event_id is required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        # Verify event exists
-        try:
-            post = Post.objects.get(id=event_id, is_luma_event=True)
-        except Post.DoesNotExist:
-            return Response(
-                {"error": "Event not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            # Verify event exists
+            try:
+                post = Post.objects.get(id=event_id, is_luma_event=True)
+            except Post.DoesNotExist:
+                return Response(
+                    {"error": "Event not found."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
         # Generate cryptographically secure token
         token = secrets.token_urlsafe(6)  # Produces 8 chars
@@ -52,7 +55,7 @@ class GenerateProximityTokenView(APIView):
         # Store in Cache with TTL (temporary, non-single-use)
         payload = {
             "user_id": str(request.user.user_id),
-            "event_id": int(event_id),
+            "event_id": int(event_id) if event_id else None,
             "interaction_type": str(interaction_type),
         }
 
@@ -117,11 +120,15 @@ class VerifyProximityTokenView(APIView):
             )
 
         if interaction_type == 'networking':
-            return self._handle_networking(
+            response = self._handle_networking(
                 request.user, event_id, broadcaster_user_id, latitude, longitude
             )
+        elif interaction_type == 'irl':
+            response = self._handle_irl(
+                request.user, broadcaster_user_id, latitude, longitude
+            )
         elif interaction_type == 'checkin':
-            return self._handle_checkin(
+            response = self._handle_checkin(
                 request.user, event_id, latitude, longitude
             )
         else:
@@ -130,12 +137,27 @@ class VerifyProximityTokenView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Echo the interaction type so clients can branch on it.
+        if isinstance(response.data, dict) and 'interaction_type' not in response.data:
+            response.data['interaction_type'] = interaction_type
+        return response
+
     def _handle_networking(self, scanner_user, event_id, broadcaster_user_id, latitude, longitude):
         """Delegate to the extracted networking logic."""
         from .event_connections import process_nfc_connect
         return process_nfc_connect(
             requesting_user=scanner_user,
             event_id=event_id,
+            scanned_user_id=broadcaster_user_id,
+            latitude=latitude,
+            longitude=longitude
+        )
+
+    def _handle_irl(self, scanner_user, broadcaster_user_id, latitude, longitude):
+        """Tap outside any event — no geofence, no check-in gate."""
+        from .event_connections import process_irl_tap
+        return process_irl_tap(
+            requesting_user=scanner_user,
             scanned_user_id=broadcaster_user_id,
             latitude=latitude,
             longitude=longitude

@@ -222,7 +222,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                 <View style={styles.header}>
                     <DepositIcon size={16} color={iconColor} strokeWidth={1.5} />
                     <Text style={[styles.headerTitle, { color: mainColor }]}>
-                        {Platform.OS === 'ios' ? 'Receive via Tap' : 'Receive via NFC'}
+                        Receive via Tap
                     </Text>
                 </View>
 

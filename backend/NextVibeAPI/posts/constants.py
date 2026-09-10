@@ -21,3 +21,13 @@ COLLECT_CLAIM_TTL_SECONDS = 75
 
 # Base URL of the Elysia nft-service.
 NFT_SERVICE_URL = "http://localhost:3000"
+
+# Reputation awarded to each side of an IRL (outside-of-event) tap.
+IRL_TAP_POINTS = 1
+
+# Maximum IRL taps a user can be part of per UTC day.
+IRL_TAP_DAILY_LIMIT = 15
+
+# H3 resolution stored on IRL tap reputation rows (coarse on purpose —
+# event taps keep res 15, IRL taps only need neighbourhood precision).
+IRL_TAP_H3_RESOLUTION = 9

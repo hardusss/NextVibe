@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View, useColorScheme, FlatList, Act
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { CalendarPlus, ChevronLeft, Calendar, Link2, Users, Nfc, Bluetooth } from "lucide-react-native";
+import { CalendarPlus, ChevronLeft, Calendar, Link2, Users, Radio } from "lucide-react-native";
 import AddLumaEventSheet, { AddLumaEventSheetRef } from "./AddLumaEventSheet";
 import EventRequestsSheet, { EventRequestsSheetRef } from "./EventRequestsSheet";
 import AttendeesSheet, { AttendeesSheetRef } from "./AttendeesSheet";
@@ -186,12 +186,9 @@ export default function EventsScreen() {
                             onPress={() => nfcCheckinSheetRef.current?.presentForPost(item.post_id, item.about)}
                             style={[styles.eventBtn, styles.nfcCheckinBtn, { backgroundColor: nfcBtnBg, borderColor: nfcBtnBorder }]}
                         >
-                            {Platform.OS === 'ios'
-                                ? <Bluetooth size={15} color={nfcColor} strokeWidth={1.8} />
-                                : <Nfc size={15} color={nfcColor} strokeWidth={1.8} />
-                            }
+                            <Radio size={15} color={nfcColor} strokeWidth={1.8} />
                             <Text style={[styles.eventBtnText, { color: nfcColor }]}>
-                                {Platform.OS === 'ios' ? 'Check users via BLE' : 'Check users via NFC'}
+                                Tap Check-in
                             </Text>
                         </TouchableOpacity>
                     )}

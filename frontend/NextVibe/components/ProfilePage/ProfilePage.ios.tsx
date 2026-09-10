@@ -24,7 +24,7 @@ import { AvatarWithFrame } from "./AvatarWithFrame";
 import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
-import { Star, Camera, Layers, Calendar, ChevronRight } from "lucide-react-native";
+import { Star, Camera, Layers, Calendar, ChevronRight, Share2 } from "lucide-react-native";
 
 import getUserDetail from "@/src/api/user.detail";
 import { storage } from '@/src/utils/storage';
@@ -37,7 +37,7 @@ import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import UserBadges from "../Shared/UserBadges";
 
-import { ShareViaNFC } from "./ShareViaNFC/ButtonShare";
+import { TapToMeetButton } from "./TapToMeet/TapToMeetButton";
 import ShareModal, { ShareModalRef } from './ShareViaNFC/ShareBottomModal';
 
 import { InviteSecondaryButton } from "./Invite/InviteButton";
@@ -383,6 +383,14 @@ const ProfileView = () => {
                         seekerInfoOnTap={true}
                         seekerSource={userData.seeker_verified_source}
                     />
+                    <TouchableOpacity
+                        onPress={handleOpenModal}
+                        hitSlop={8}
+                        accessibilityLabel="Share profile"
+                        style={{ marginLeft: 8 }}
+                    >
+                        <Share2 size={16} color={isDark ? 'rgba(255,255,255,0.55)' : 'rgba(17,24,39,0.55)'} />
+                    </TouchableOpacity>
                 </View>
 
                 <View style={st.repRow}>
@@ -445,7 +453,7 @@ const ProfileView = () => {
 
                 <View style={st.actionsRow}>
                     <View style={{ flex: 1.2 }}>
-                        <ShareViaNFC handlePress={handleOpenModal} />
+                        <TapToMeetButton />
                     </View>
                     <View style={{ flex: 0.9 }}>
                         <InviteSecondaryButton handlePress={() => inviteSheetRef.current?.present()} />

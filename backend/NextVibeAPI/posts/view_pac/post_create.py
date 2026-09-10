@@ -95,7 +95,8 @@ class PostViewSet(viewsets.ModelViewSet):
                                 event=event,
                                 h3_geo=post.h3_geo or event.h3_geo,
                                 post=post,
-                                post_type="event_post"
+                                post_type="event_post",
+                                source='post',
                             )
                             # Reward for the first matching event only
                             break

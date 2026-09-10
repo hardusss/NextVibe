@@ -253,7 +253,9 @@ export function useBleScanner() {
                         }
 
                         const result = await verifyProximityToken(info.token, lat, lng);
-                        if (result.interaction_type === 'networking') {
+                        if (result.interaction_type === 'irl' || result.source === 'irl') {
+                            setDetails({ type: 'proximity_token', data: { ...result, flow: 'irl' } });
+                        } else if (result.interaction_type === 'networking') {
                             setDetails({ type: 'proximity_token', data: { ...result, flow: 'networking' } });
                         } else if (result.interaction_type === 'checkin') {
                             setDetails({ type: 'proximity_token', data: { ...result, flow: 'checkin' } });
@@ -296,12 +298,13 @@ export function useBleScanner() {
         setModalVisible(false);
         const info = parseScannedPath(scannedPath);
         if (info.type === 'proximity_token') {
-            if (details?.data?.flow === 'networking' && details?.data?.success) {
+            if ((details?.data?.flow === 'networking' || details?.data?.flow === 'irl') && details?.data?.success) {
                 try {
                     router.push({
                         pathname: '/event-nfc-receive',
                         params: {
                             _verified: '1',
+                            ...(details.data.flow === 'irl' && { _source: 'irl' }),
                             _earned_points: String(details.data.earned_points || 0),
                             _username: details.data.scanned_user?.username || '',
                             _avatar: details.data.scanned_user?.avatar || '',
@@ -379,13 +382,15 @@ export function useBleScanner() {
                 confirmLabel = "Connect";
             } else if (details.type === 'proximity_token') {
                 const flow = details.data?.flow;
-                if (flow === 'networking') {
-                    modalTitle = "Connected!";
+                if (flow === 'networking' || flow === 'irl') {
+                    modalTitle = flow === 'irl' ? "Tapped!" : "Connected!";
                     detailName = details.data?.scanned_user?.username ? `@${details.data.scanned_user.username}` : "";
                     avatarUrl = details.data?.scanned_user?.avatar || null;
                     isOfficial = !!details.data?.scanned_user?.is_official;
                     const points = details.data?.earned_points || 0;
-                    message = points > 0 ? `You earned +${points} reputation for networking!` : "Connected successfully!";
+                    message = flow === 'irl'
+                        ? (points > 0 ? `You met ${detailName} — +${points} REP for both of you!` : "Tap recorded!")
+                        : (points > 0 ? `+${points} REP for networking!` : "Connected successfully!");
                     confirmLabel = "Awesome";
                 } else if (flow === 'checkin') {
                     modalTitle = details.data?.verified ? "Checked In!" : "Not Registered";

@@ -158,6 +158,7 @@ class ClaimEventNftView(APIView):
                         is_checkin=True,
                         event=post,
                         h3_geo=user_h3_geo,
+                        source='checkin',
                     )
 
                 return Response({

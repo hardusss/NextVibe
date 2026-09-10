@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, forwardRef, useState, useImperativeHandle } from 'react';
-import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
@@ -39,7 +39,7 @@ type EventData = {
 
 export type ReputationItem = {
     id: string;
-    type: 'cherry_invite_code' | 'event_post' | 'email_verification' | 'invite_reward' | 'event_checkin' | 'networking' | 'generic';
+    type: 'cherry_invite_code' | 'event_post' | 'email_verification' | 'invite_reward' | 'event_checkin' | 'networking' | 'irl_tap' | 'generic';
     title: string;
     description: string;
     points: number;
@@ -49,6 +49,20 @@ export type ReputationItem = {
     event_id?: number | null;
     icon?: string;
     badge_color?: string;
+    source?: string;
+};
+
+type IrlTap = {
+    id: number;
+    user_id: number | null;
+    username: string;
+    avatar: string | null;
+    is_official: boolean;
+    is_seeker_verified: boolean;
+    points: number;
+    date: string;
+    lat: number | null;
+    lng: number | null;
 };
 
 const formatDate = (dateStr: string) => {
@@ -73,9 +87,10 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     const isDark = useColorScheme() === 'dark';
     const snapPoints = useMemo(() => ['88%', '95%'], []);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'poaps'>('history');
+    const [activeTab, setActiveTab] = useState<'history' | 'poaps' | 'irl'>('history');
     const [data, setData] = useState<EventData[]>([]);
     const [repItems, setRepItems] = useState<ReputationItem[]>([]);
+    const [irlTaps, setIrlTaps] = useState<IrlTap[]>([]);
     const [totalRep, setTotalRep] = useState(0);
     const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
@@ -99,12 +114,14 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
             
             let eventsList: EventData[] = [];
             let itemsList: ReputationItem[] = [];
+            let irlList: IrlTap[] = [];
 
             if (Array.isArray(res.data)) {
                 eventsList = res.data;
             } else if (res.data && typeof res.data === 'object') {
                 eventsList = res.data.events || [];
                 itemsList = res.data.reputation_items || [];
+                irlList = res.data.irl_taps || [];
             }
 
             if (res.data && res.data.total_reputation !== undefined) {
@@ -113,6 +130,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
 
             setData(eventsList);
             setRepItems(itemsList);
+            setIrlTaps(irlList);
         } catch (e) {
             console.error(e);
         } finally {
@@ -179,8 +197,8 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                     ]}
                 >
                     <Sparkles size={14} color={activeTab === 'history' ? '#A855F7' : muted} />
-                    <Text style={[styles.tabTxt, { color: activeTab === 'history' ? main : muted }]}>
-                        Reputation Breakdown ({repItems.length})
+                    <Text style={[styles.tabTxt, { color: activeTab === 'history' ? main : muted }]} numberOfLines={1}>
+                        Breakdown ({repItems.length})
                     </Text>
                 </TouchableOpacity>
 
@@ -193,8 +211,22 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                     ]}
                 >
                     <Award size={14} color={activeTab === 'poaps' ? '#A855F7' : muted} />
-                    <Text style={[styles.tabTxt, { color: activeTab === 'poaps' ? main : muted }]}>
-                        POAPs & Events ({data.length})
+                    <Text style={[styles.tabTxt, { color: activeTab === 'poaps' ? main : muted }]} numberOfLines={1}>
+                        POAPs ({data.length})
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setActiveTab('irl')}
+                    style={[
+                        styles.tabItem,
+                        activeTab === 'irl' && { backgroundColor: isDark ? '#231035' : '#FFFFFF', borderColor: '#A855F766', borderWidth: 1 }
+                    ]}
+                >
+                    <Radio size={14} color={activeTab === 'irl' ? '#A855F7' : muted} />
+                    <Text style={[styles.tabTxt, { color: activeTab === 'irl' ? main : muted }]} numberOfLines={1}>
+                        IRL ({irlTaps.length})
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -202,7 +234,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
             <BottomSheetScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={
-                    loading || (activeTab === 'poaps' ? data.length === 0 : repItems.length === 0)
+                    loading || (activeTab === 'poaps' ? data.length === 0 : activeTab === 'irl' ? irlTaps.length === 0 : repItems.length === 0)
                         ? { flexGrow: 1 }
                         : { padding: 16, paddingBottom: 48 }
                 }
@@ -267,6 +299,64 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                 </TouchableOpacity>
                             );
                         })
+                    )
+                ) : activeTab === 'irl' ? (
+                    // IRL TAPS TAB — met outside events
+                    irlTaps.length === 0 ? (
+                        <View style={styles.emptyWrap}>
+                            <Text style={[styles.emptyIcon]}>🤝</Text>
+                            <Text style={[styles.emptyTitle, { color: main }]}>No IRL taps yet</Text>
+                            <Text style={[styles.emptySub, { color: muted }]}>
+                                Tap phones with someone outside an event — you'll both get +1 REP.
+                            </Text>
+                        </View>
+                    ) : (
+                        <View style={{ gap: 12 }}>
+                            {irlTaps.map((tap) => (
+                                <View key={tap.id} style={[styles.repCard, { backgroundColor: card, borderColor: divider, marginBottom: 0 }]}>
+                                    <View style={styles.connRow}>
+                                        {tap.avatar ? (
+                                            <Image source={{ uri: tap.avatar }} style={styles.connAvatar} />
+                                        ) : (
+                                            <View style={[styles.connAvatar, {
+                                                backgroundColor: avatarColor(tap.username) + '20',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }]}>
+                                                <Text style={[styles.connInitial, { color: avatarColor(tap.username) }]}>
+                                                    {tap.username.substring(0, 2).toUpperCase()}
+                                                </Text>
+                                            </View>
+                                        )}
+
+                                        <View style={{ flex: 1 }}>
+                                            <View style={styles.connNameWrap}>
+                                                <Text style={[styles.connName, { color: main }]} numberOfLines={1}>
+                                                    {tap.username}
+                                                </Text>
+                                                <UserBadges
+                                                    official={tap.is_official}
+                                                    seekerVerified={tap.is_seeker_verified}
+                                                    isLooped={true}
+                                                    isVisible={true}
+                                                    haveModal={true}
+                                                    isStatic={false}
+                                                    size={15}
+                                                />
+                                            </View>
+                                            <Text style={[styles.repDate, { color: muted }]}>
+                                                IRL tap · {formatDate(tap.date)}
+                                            </Text>
+                                        </View>
+
+                                        <View style={[styles.pointsBadge, { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.3)' }]}>
+                                            <Star size={10} color="#22c55e" fill="#22c55e" />
+                                            <Text style={styles.pointsTxt}>+{tap.points} REP</Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
                     )
                 ) : (
                     // POAPs & EVENTS TAB
@@ -347,7 +437,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                         >
                                             <Radio size={16} color="#ffffff" />
                                             <Text style={styles.nfcBtnTxt}>
-                                                {Platform.OS === 'ios' ? 'Network via BLE' : 'Network via NFC'}
+                                                Tap to Meet
                                             </Text>
                                         </TouchableOpacity>
                                     )}

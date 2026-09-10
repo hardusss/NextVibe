@@ -7,7 +7,6 @@ import {
     useColorScheme,
     ActivityIndicator,
     Vibration,
-    Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -31,6 +30,8 @@ export default function EventNFCReceiveScreen() {
         eventId?: string;
         userId?: string;
         t?: string;
+        mode?: string;
+        _source?: string;
         _verified?: string;
         _earned_points?: string;
         _username?: string;
@@ -41,12 +42,14 @@ export default function EventNFCReceiveScreen() {
     const eventId = params.eventId ? parseInt(params.eventId, 10) : null;
     const scannedUserId = params.userId ? parseInt(params.userId, 10) : null;
     const proximityToken = params.t || null;
+    const irlRequested = params.mode === 'irl' || params._source === 'irl';
 
     const [state, setState] = useState<ConnectionState>("idle");
     const [message, setMessage] = useState("");
     const [earnedPoints, setEarnedPoints] = useState(0);
     const [displayPoints, setDisplayPoints] = useState(0);
     const [scannedUser, setScannedUser] = useState<any>(null);
+    const [isIrlTap, setIsIrlTap] = useState(irlRequested);
 
     const bg = isDark ? "#0A0410" : "#FFFFFF";
     const main = isDark ? "#ffffff" : "#111827";
@@ -86,7 +89,7 @@ export default function EventNFCReceiveScreen() {
             Vibration.vibrate([0, 50, 50, 50, 50, 100]);
         } else if (proximityToken && state === "idle") {
             handleTokenConnect();
-        } else if (eventId && scannedUserId && state === "idle") {
+        } else if ((eventId || irlRequested) && scannedUserId && state === "idle") {
             handleConnect();
         }
     }, [eventId, scannedUserId, proximityToken, params._verified]);
@@ -99,40 +102,35 @@ export default function EventNFCReceiveScreen() {
         }
 
         setState("locating");
-        let location = null;
+        // Location is best-effort here: IRL taps don't need it at all, and
+        // event taps are rejected server-side when an event requires it.
+        let coords: { latitude: number; longitude: number } | null = null;
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                setState("error");
-                setMessage("Location permission is required to connect with other attendees.");
-                Vibration.vibrate([0, 200]);
-                return;
-            }
-
-            location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            if (location.mocked) {
-                setState("error");
-                setMessage("Fake GPS detected. Real moments only.");
-                Vibration.vibrate([0, 200]);
-                return;
+            if (status === 'granted') {
+                const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                if (location.mocked) {
+                    setState("error");
+                    setMessage("Fake GPS detected. Real moments only.");
+                    Vibration.vibrate([0, 200]);
+                    return;
+                }
+                coords = location.coords;
             }
         } catch (e) {
             console.warn("Location error:", e);
-            setState("error");
-            setMessage("Failed to get location coordinates.");
-            Vibration.vibrate([0, 200]);
-            return;
         }
 
         setState("connecting");
         try {
             const result = await verifyProximityToken(
                 proximityToken,
-                location.coords.latitude,
-                location.coords.longitude
+                coords?.latitude,
+                coords?.longitude
             );
 
-            if (result.success || result.interaction_type === 'networking') {
+            if (result.success || result.interaction_type === 'networking' || result.interaction_type === 'irl') {
+                if (result.source === 'irl' || result.interaction_type === 'irl') setIsIrlTap(true);
                 setEarnedPoints(result.earned_points || 0);
                 setScannedUser(result.scanned_user || null);
                 setState("success");
@@ -150,9 +148,9 @@ export default function EventNFCReceiveScreen() {
     };
 
     const handleConnect = async () => {
-        if (!eventId || !scannedUserId) {
+        if ((!eventId && !irlRequested) || !scannedUserId) {
             setState("error");
-            setMessage(Platform.OS === 'ios' ? "Invalid BLE data." : "Invalid NFC data.");
+            setMessage("Invalid tap data.");
             return;
         }
 
@@ -161,40 +159,49 @@ export default function EventNFCReceiveScreen() {
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                setState("error");
-                setMessage("Location permission is required to connect with other attendees.");
-                Vibration.vibrate([0, 200]);
-                return;
-            }
-
-            location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            if (location.mocked) {
-                setState("error");
-                setMessage("Fake GPS detected. Real moments only.");
-                Vibration.vibrate([0, 200]);
-                return;
+                if (!irlRequested) {
+                    setState("error");
+                    setMessage("Location permission is required to connect with other attendees.");
+                    Vibration.vibrate([0, 200]);
+                    return;
+                }
+            } else {
+                location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                if (location.mocked) {
+                    setState("error");
+                    setMessage("Fake GPS detected. Real moments only.");
+                    Vibration.vibrate([0, 200]);
+                    return;
+                }
             }
         } catch (e) {
             console.warn("Location error:", e);
-            setState("error");
-            setMessage("Failed to get location coordinates.");
-            Vibration.vibrate([0, 200]);
-            return;
+            if (!irlRequested) {
+                setState("error");
+                setMessage("Failed to get location coordinates.");
+                Vibration.vibrate([0, 200]);
+                return;
+            }
+            location = null;
         }
 
         setState("connecting");
         try {
             const token = await storage.getItem('access');
-            const response = await axios.post(`${GetApiUrl()}/posts/event-nfc-connect/`, {
-                event_id: eventId,
-                scanned_user_id: scannedUserId,
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-            }, {
+            const endpoint = irlRequested ? 'irl-tap' : 'event-nfc-connect';
+            const body: any = irlRequested
+                ? { scanned_user_id: scannedUserId }
+                : { event_id: eventId, scanned_user_id: scannedUserId };
+            if (location) {
+                body.latitude = location.coords.latitude;
+                body.longitude = location.coords.longitude;
+            }
+            const response = await axios.post(`${GetApiUrl()}/posts/${endpoint}/`, body, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             if (response.data.success) {
+                if (response.data.source === 'irl') setIsIrlTap(true);
                 setEarnedPoints(response.data.earned_points || 0);
                 setScannedUser(response.data.scanned_user);
                 setState("success");
@@ -293,18 +300,18 @@ export default function EventNFCReceiveScreen() {
 
                         <Animated.View entering={FadeInDown.delay(400)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
                             <Text style={[styles.heading, { color: main, fontSize: 24, lineHeight: 26, flexShrink: 1 }]} numberOfLines={1}>
-                                Connected with {scannedUser?.username}
+                                You met @{scannedUser?.username}
                             </Text>
                             <UserBadges official={scannedUser?.is_official} seekerVerified={scannedUser?.is_seeker_verified} size={22} seekerInfoOnTap={true} />
                         </Animated.View>
 
                         <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>
                             <Star size={24} color="#fbbf24" fill="#fbbf24" />
-                            <Text style={styles.repPointsText}>+{displayPoints} Rep</Text>
+                            <Text style={styles.repPointsText}>+{displayPoints} REP</Text>
                         </Animated.View>
 
                         <Animated.Text entering={FadeInDown.delay(800)} style={[styles.description, { color: muted, fontSize: 16, marginTop: 16 }]}>
-                            You both earned reputation for networking!
+                            Reputation added for both of you!
                         </Animated.Text>
 
                         <Animated.View entering={FadeInUp.delay(1200)} style={{ width: "100%", paddingHorizontal: 40, marginTop: 40 }}>
@@ -336,9 +343,16 @@ export default function EventNFCReceiveScreen() {
                 >
                     <ChevronLeft size={22} color={main} strokeWidth={2} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: main }]}>
-                    {Platform.OS === 'ios' ? 'BLE Networking' : 'NFC Networking'}
-                </Text>
+                <View style={{ alignItems: 'center' }}>
+                    <Text style={[styles.headerTitle, { color: main }]}>
+                        Tap to Meet
+                    </Text>
+                    {isIrlTap && (
+                        <Text style={[styles.headerSub, { color: muted }]}>
+                            Not at an event · IRL tap
+                        </Text>
+                    )}
+                </View>
                 <View style={{ width: 44 }} />
             </View>
 
@@ -371,6 +385,12 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontFamily: "Dank Mono Bold",
         fontSize: 16,
+        includeFontPadding: false,
+    },
+    headerSub: {
+        fontFamily: "Dank Mono",
+        fontSize: 11,
+        marginTop: 2,
         includeFontPadding: false,
     },
     main: {

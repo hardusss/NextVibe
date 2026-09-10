@@ -1,13 +1,46 @@
+import threading
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import EventCheckin, Reputation, Post
+from ..constants import IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
 from user.models import User
+from user.src.send_push_message import send
+from django.db import transaction
 from django.db.models import Sum, Q
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, timezone as dt_timezone
 import h3
+
+
+def is_event_active(post, checkin, now):
+    """An event counts as active inside its Luma window, else for 24h after
+    its start, else for 24h after the user's check-in."""
+    start = post.luma_event_start_time
+    end = post.luma_event_end_time
+    if start and end:
+        return start <= now <= end
+    if start:
+        return start <= now <= (start + timedelta(days=1))
+    return now <= (checkin.checked_in_at + timedelta(days=1))
+
+
+def _utc_day_start(now):
+    return now.astimezone(dt_timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _avatar_url(user):
+    if not user:
+        return None
+    try:
+        if user.avatar and getattr(user.avatar, 'name', None):
+            return user.avatar.url
+    except Exception:
+        pass
+    return None
+
 
 class UserEventConnectionsView(APIView):
     """
@@ -83,16 +116,7 @@ class UserEventConnectionsView(APIView):
             if media and getattr(media, 'file', None):
                 event_image = media.file_url
 
-            is_active = False
-            start = post.luma_event_start_time
-            end = post.luma_event_end_time
-
-            if start and end:
-                is_active = start <= now <= end
-            elif start:
-                is_active = start <= now <= (start + timedelta(days=1))
-            else:
-                is_active = now <= (checkin.checked_in_at + timedelta(days=1))
+            is_active = is_event_active(post, checkin, now)
 
             events_data.append({
                 "event_id": post.id,
@@ -112,8 +136,22 @@ class UserEventConnectionsView(APIView):
         user_date = getattr(target_user, 'created_at', None) or timezone.now()
 
         for rep in all_reps:
+            # Case 0: IRL tap (outside any event)
+            if rep.source == 'irl':
+                other_name = rep.given_by.username if rep.given_by else "Someone"
+                reputation_items.append({
+                    "id": f"rep_{rep.id}",
+                    "type": "irl_tap",
+                    "title": f"Met {other_name}",
+                    "description": f"Tapped in person with {other_name}",
+                    "points": rep.points,
+                    "date": rep.created_at or user_date,
+                    "icon": "🤝",
+                    "badge_color": "#A855F7",
+                    "source": rep.source,
+                })
             # Case A: Cherry invite code activation
-            if rep.post_type == "cherry_invite_code":
+            elif rep.post_type == "cherry_invite_code":
                 reputation_items.append({
                     "id": f"rep_{rep.id}",
                     "type": "cherry_invite_code",
@@ -122,7 +160,8 @@ class UserEventConnectionsView(APIView):
                     "points": rep.points,
                     "date": rep.created_at or user_date,
                     "icon": "🍒",
-                    "badge_color": "#FF5BA8"
+                    "badge_color": "#FF5BA8",
+                    "source": rep.source,
                 })
             # Case B: Email Verification reward
             elif rep.post_type == "link_email_reward":
@@ -134,7 +173,8 @@ class UserEventConnectionsView(APIView):
                     "points": rep.points,
                     "date": rep.created_at or user_date,
                     "icon": "✉️",
-                    "badge_color": "#3B82F6"
+                    "badge_color": "#3B82F6",
+                    "source": rep.source,
                 })
             # Case C: Invite / Referral milestone reward
             elif rep.post_type and rep.post_type.startswith("invite_reward"):
@@ -146,7 +186,8 @@ class UserEventConnectionsView(APIView):
                     "points": rep.points,
                     "date": rep.created_at or user_date,
                     "icon": "👥",
-                    "badge_color": "#10B981"
+                    "badge_color": "#10B981",
+                    "source": rep.source,
                 })
             # Case D: Event Check-in
             elif rep.is_checkin and rep.event:
@@ -159,7 +200,8 @@ class UserEventConnectionsView(APIView):
                     "date": rep.created_at or user_date,
                     "event_id": rep.event.id,
                     "icon": "🎟️",
-                    "badge_color": "#22C55E"
+                    "badge_color": "#22C55E",
+                    "source": rep.source,
                 })
             # Case E: Post created at Event
             elif rep.post_type == "event_post" or (rep.post and not rep.is_checkin):
@@ -182,7 +224,8 @@ class UserEventConnectionsView(APIView):
                     "post_id": p.id if p else None,
                     "event_id": rep.event.id if rep.event else (p.on_event.id if (p and p.on_event) else None),
                     "icon": "📝",
-                    "badge_color": "#A78BFA"
+                    "badge_color": "#A78BFA",
+                    "source": rep.source,
                 })
             # Case F: Peer interaction / Networking
             elif rep.event and not rep.is_checkin:
@@ -196,7 +239,8 @@ class UserEventConnectionsView(APIView):
                     "date": rep.created_at or user_date,
                     "event_id": rep.event.id,
                     "icon": "🤝",
-                    "badge_color": "#EAB308"
+                    "badge_color": "#EAB308",
+                    "source": rep.source,
                 })
             else:
                 reputation_items.append({
@@ -207,7 +251,8 @@ class UserEventConnectionsView(APIView):
                     "points": rep.points,
                     "date": rep.created_at or user_date,
                     "icon": "⭐",
-                    "badge_color": "#F59E0B"
+                    "badge_color": "#F59E0B",
+                    "source": rep.source,
                 })
 
         # Fallback Check B: User Posts created on Events or earning reputation (only for posts in DB)
@@ -240,7 +285,8 @@ class UserEventConnectionsView(APIView):
                     "post_id": p.id,
                     "event_id": p.on_event.id if p.on_event else None,
                     "icon": "📝",
-                    "badge_color": "#A78BFA"
+                    "badge_color": "#A78BFA",
+                    "source": "post",
                 })
 
         # Fallback Check C: Event Check-ins (only for checkin records in DB)
@@ -265,7 +311,8 @@ class UserEventConnectionsView(APIView):
                     "image": event_image,
                     "event_id": ev_id,
                     "icon": "🎟️",
-                    "badge_color": "#22C55E"
+                    "badge_color": "#22C55E",
+                    "source": "checkin",
                 })
 
         # Sort reputation items by date (newest first)
@@ -273,9 +320,37 @@ class UserEventConnectionsView(APIView):
 
         total_calculated_rep = sum(item.get("points", 0) for item in reputation_items)
 
+        # 3. IRL taps (outside any event) — one row per tap, newest first
+        irl_taps = []
+        irl_reps = Reputation.objects.filter(
+            user=target_user, source='irl'
+        ).select_related('given_by').order_by('-created_at')
+        for rep in irl_reps:
+            other = rep.given_by
+            avatar_url = _avatar_url(other)
+            lat, lng = None, None
+            if rep.h3_geo:
+                try:
+                    lat, lng = h3.cell_to_latlng(rep.h3_geo)
+                except Exception:
+                    pass
+            irl_taps.append({
+                "id": rep.id,
+                "user_id": other.user_id if other else None,
+                "username": other.username if other else "Someone",
+                "avatar": avatar_url,
+                "is_official": other.official if other else False,
+                "is_seeker_verified": other.seeker_verified if other else False,
+                "points": rep.points,
+                "date": rep.created_at,
+                "lat": lat,
+                "lng": lng,
+            })
+
         return Response({
             "events": events_data,
             "reputation_items": reputation_items,
+            "irl_taps": irl_taps,
             "total_reputation": total_calculated_rep,
         }, status=status.HTTP_200_OK)
 
@@ -350,23 +425,26 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
         scanned_gains = max(2, min(20, int((rep_scanner - rep_scanned) * 0.15)))
 
     # Create Reputation records
-    Reputation.objects.create(
-        user=requesting_user,
-        given_by=scanned_user,
-        points=scanner_gains,
-        is_checkin=False,
-        event=post,
-        h3_geo=h3_geo_val
-    )
+    with transaction.atomic():
+        Reputation.objects.create(
+            user=requesting_user,
+            given_by=scanned_user,
+            points=scanner_gains,
+            is_checkin=False,
+            event=post,
+            h3_geo=h3_geo_val,
+            source='event',
+        )
 
-    Reputation.objects.create(
-        user=scanned_user,
-        given_by=requesting_user,
-        points=scanned_gains,
-        is_checkin=False,
-        event=post,
-        h3_geo=h3_geo_val
-    )
+        Reputation.objects.create(
+            user=scanned_user,
+            given_by=requesting_user,
+            points=scanned_gains,
+            is_checkin=False,
+            event=post,
+            h3_geo=h3_geo_val,
+            source='event',
+        )
 
     # Avatar URL for response
     avatar_url = None
@@ -399,7 +477,7 @@ class EventNFCConnectView(APIView):
         scanned_user_id = request.data.get('scanned_user_id')
         latitude = request.data.get('latitude')
         longitude = request.data.get('longitude')
-        
+
         return process_nfc_connect(
             requesting_user=request.user,
             event_id=event_id,
@@ -407,3 +485,171 @@ class EventNFCConnectView(APIView):
             latitude=latitude,
             longitude=longitude
         )
+
+
+def _send_tap_push_async(receiver, tapper_username):
+    push_token = getattr(receiver, "expo_push_token", None)
+    if not push_token:
+        return
+    try:
+        send(
+            token=push_token,
+            title="Tap to Meet",
+            body=f"{tapper_username} tapped with you",
+        )
+    except Exception as e:
+        print(f"IRL tap push failed: {e}")
+
+
+def _send_tap_push_in_background(receiver, tapper_username):
+    threading.Thread(
+        target=_send_tap_push_async,
+        args=(receiver, tapper_username),
+        daemon=True,
+    ).start()
+
+
+def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=None):
+    """
+    Tap outside any event: no geofence, no check-in gate.
+    Both sides get IRL_TAP_POINTS. One tap per pair per UTC day,
+    at most IRL_TAP_DAILY_LIMIT taps per user per UTC day.
+    Returns a Response object shaped like process_nfc_connect's success payload.
+    """
+    if not scanned_user_id:
+        return Response({"error": "scanned_user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if str(requesting_user.user_id) == str(scanned_user_id):
+        return Response({"error": "You cannot tap with yourself."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        scanned_user = User.objects.get(user_id=scanned_user_id)
+    except User.DoesNotExist:
+        return Response({"error": "Invalid user."}, status=status.HTTP_404_NOT_FOUND)
+
+    now = timezone.now()
+    day_start = _utc_day_start(now)
+
+    # Rows are created in mirrored pairs, so one direction is enough.
+    already_tapped = Reputation.objects.filter(
+        source='irl',
+        user=requesting_user,
+        given_by=scanned_user,
+        created_at__gte=day_start,
+    ).exists()
+    if already_tapped:
+        return Response({
+            "error": f"You already tapped with {scanned_user.username} today. See you tomorrow!",
+            "code": "ALREADY_TAPPED_TODAY",
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    my_taps_today = Reputation.objects.filter(
+        source='irl', user=requesting_user, created_at__gte=day_start
+    ).count()
+    if my_taps_today >= IRL_TAP_DAILY_LIMIT:
+        return Response({
+            "error": "You've hit today's tap limit. Back at it tomorrow!",
+            "code": "IRL_DAILY_LIMIT",
+        }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+    their_taps_today = Reputation.objects.filter(
+        source='irl', user=scanned_user, created_at__gte=day_start
+    ).count()
+    if their_taps_today >= IRL_TAP_DAILY_LIMIT:
+        return Response({
+            "error": f"{scanned_user.username} has hit today's tap limit.",
+            "code": "IRL_DAILY_LIMIT",
+        }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+    h3_geo_val = None
+    if latitude is not None and longitude is not None:
+        try:
+            h3_geo_val = h3.latlng_to_cell(float(latitude), float(longitude), res=IRL_TAP_H3_RESOLUTION)
+        except Exception as e:
+            print(f"H3 calculation error: {e}")
+
+    with transaction.atomic():
+        Reputation.objects.create(
+            user=requesting_user,
+            given_by=scanned_user,
+            points=IRL_TAP_POINTS,
+            is_checkin=False,
+            event=None,
+            h3_geo=h3_geo_val,
+            source='irl',
+        )
+        Reputation.objects.create(
+            user=scanned_user,
+            given_by=requesting_user,
+            points=IRL_TAP_POINTS,
+            is_checkin=False,
+            event=None,
+            h3_geo=h3_geo_val,
+            source='irl',
+        )
+        transaction.on_commit(
+            lambda: _send_tap_push_in_background(scanned_user, requesting_user.username)
+        )
+
+    avatar_url = _avatar_url(scanned_user)
+
+    return Response({
+        "success": True,
+        "message": f"You met {scanned_user.username}!",
+        "earned_points": IRL_TAP_POINTS,
+        "source": "irl",
+        "scanned_user": {
+            "user_id": scanned_user.user_id,
+            "username": scanned_user.username,
+            "avatar": avatar_url,
+            "is_official": scanned_user.official,
+            "is_seeker_verified": scanned_user.seeker_verified,
+        }
+    }, status=status.HTTP_200_OK)
+
+
+class IRLTapView(APIView):
+    """
+    POST /posts/irl-tap/
+    Body: { "scanned_user_id": int, "latitude"?: float, "longitude"?: float }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return process_irl_tap(
+            requesting_user=request.user,
+            scanned_user_id=request.data.get('scanned_user_id'),
+            latitude=request.data.get('latitude'),
+            longitude=request.data.get('longitude'),
+        )
+
+
+class ActiveCheckinView(APIView):
+    """
+    GET /posts/active-checkin/
+    Lightweight list of events the current user is checked in to that are
+    still active (same rule as UserEventConnectionsView).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        now = timezone.now()
+        active_events = []
+        checkins = EventCheckin.objects.filter(
+            user=request.user, is_registered=True
+        ).select_related('post')
+        for checkin in checkins:
+            post = checkin.post
+            if not is_event_active(post, checkin, now):
+                continue
+            event_image = None
+            media = post.media.first()
+            if media and getattr(media, 'file', None):
+                event_image = media.file_url
+            active_events.append({
+                "event_id": post.id,
+                "event_name": post.about or "Event",
+                "event_image": event_image,
+                "checked_in_at": checkin.checked_in_at,
+            })
+        return Response({"active_events": active_events}, status=status.HTTP_200_OK)

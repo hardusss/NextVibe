@@ -111,6 +111,7 @@ def _finalize_collect(user, post_id, edition, asset_id, signature):
                 event=post.on_event,
                 post=post,
                 post_type="collect",
+                source='post',
             )
             logger.info(
                 "collect.rep_bonus user=%s post=%s points=%s given_by=%s",
