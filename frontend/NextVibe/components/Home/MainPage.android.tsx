@@ -62,6 +62,8 @@ import AnimatedReanimated, {
     runOnJS
 } from "react-native-reanimated";
 import HomeHeaderTitle from "@/components/Home/HomeHeaderTitle";
+import GlassSurface from "@/components/Shared/GlassSurface";
+import { space } from "@/src/theme/tokens";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -1208,13 +1210,19 @@ export default function MainPage() {
                     right: 0,
                     zIndex: 100,
                     height: headerHeight,
-                    paddingTop: insets.top,
-                    paddingLeft: 16,
-                    backgroundColor: "transparent",
                 },
                 animatedHeaderStyle
             ]}>
-                <HomeHeaderTitle />
+                {/* Blurred backdrop so feed content dims under the status bar + title */}
+                <GlassSurface
+                    style={StyleSheet.absoluteFill}
+                    androidBlur
+                    colorScheme={colorScheme === "dark" ? "dark" : "light"}
+                    fallbackBackgroundColor={colorScheme === "dark" ? "rgba(10,4,16,0.88)" : "rgba(250,250,252,0.9)"}
+                />
+                <View style={{ flex: 1, paddingTop: insets.top, paddingLeft: space.lg }}>
+                    <HomeHeaderTitle />
+                </View>
             </AnimatedReanimated.View>
         </View>
     );
