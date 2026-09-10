@@ -4,6 +4,8 @@ import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { CalendarPlus, ChevronLeft, Calendar, Link2, Users, Radio } from "lucide-react-native";
+import GlassSurface from "@/components/Shared/GlassSurface";
+import { space } from "@/src/theme/tokens";
 import AddLumaEventSheet, { AddLumaEventSheetRef } from "./AddLumaEventSheet";
 import EventRequestsSheet, { EventRequestsSheetRef } from "./EventRequestsSheet";
 import AttendeesSheet, { AttendeesSheetRef } from "./AttendeesSheet";
@@ -197,9 +199,18 @@ export default function EventsScreen() {
         );
     };
 
+    const headerHeight = insets.top + 62;
+
     return (
         <View style={[styles.container, { backgroundColor: t.bg }]} >
             <StatusBar style="light" />
+            <GlassSurface
+                style={[styles.headerWrap, { height: headerHeight }]}
+                glassEffectStyle="regular"
+                androidBlur
+                colorScheme={isDark ? "dark" : "light"}
+                fallbackBackgroundColor={isDark ? "rgba(10,4,16,0.88)" : "rgba(250,250,252,0.9)"}
+            >
             <View style={[styles.header, { paddingTop: insets.top + 6, marginTop: 0 }]}>
                 <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={styles.backBtn}>
                     <ChevronLeft size={22} color={t.text} strokeWidth={2} />
@@ -218,12 +229,13 @@ export default function EventsScreen() {
                     <CalendarPlus size={20} color={t.accent} strokeWidth={2} />
                 </TouchableOpacity>
             </View>
+            </GlassSurface>
 
             <FadeIn from="bottom" duration={400} delay={100} style={{ flex: 1 }}>
                 {loading && pageIndexRef.current === 0 ? (
-                    <ActivityIndicator size="large" color={t.accent} style={{ marginTop: 40 }} />
+                    <ActivityIndicator size="large" color={t.accent} style={{ marginTop: headerHeight + 40 }} />
                 ) : events.length === 0 ? (
-                    <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border, marginHorizontal: 18 }]}>
+                    <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border, marginHorizontal: 18, marginTop: headerHeight + 8 }]}>
                         <Text style={[styles.emptyTitle, { color: t.text }]}>No events yet</Text>
                         <Text style={[styles.emptyDesc, { color: t.muted }]}>
                             Your active and past events will appear here.
@@ -242,7 +254,7 @@ export default function EventsScreen() {
                         data={events}
                         keyExtractor={(item) => item.post_id.toString()}
                         renderItem={renderEvent}
-                        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40 }}
+                        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 40, paddingTop: headerHeight + space.sm }}
                         onRefresh={handleRefresh}
                         refreshing={refreshing}
                         onEndReached={handleLoadMore}
@@ -266,13 +278,20 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingTop: 0,
     },
+    headerWrap: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+    },
     header: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
         marginTop: 6,
         marginBottom: 14,
-        paddingHorizontal: 18,
+        paddingHorizontal: space.lg,
     },
     backBtn: {
         width: 44,
