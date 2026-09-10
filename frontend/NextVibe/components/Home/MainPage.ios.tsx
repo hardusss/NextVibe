@@ -1219,6 +1219,7 @@ export default function MainPage() {
                     style={StyleSheet.absoluteFill}
                     glassEffectStyle="regular"
                     colorScheme={theme === darkTheme ? "dark" : "light"}
+                    tintColor={theme === darkTheme ? "rgba(10,4,16,0.7)" : "rgba(250,250,252,0.7)"}
                     fallbackBackgroundColor={theme === darkTheme ? "rgba(10,4,16,0.88)" : "rgba(250,250,252,0.9)"}
                 />
                 <View style={{ flex: 1, paddingTop: insets.top - 4, paddingLeft: space.lg }}>

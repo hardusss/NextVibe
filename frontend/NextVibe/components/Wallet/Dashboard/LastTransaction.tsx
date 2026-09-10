@@ -277,7 +277,7 @@ const EmptyState: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
         <View style={styles.stateRow}>
             <FileText size={18} color={color} strokeWidth={1.5} />
             <Text style={[styles.stateText, { color, fontFamily: "Dank Mono" }]}>
-                No recent activity
+                No recent transactions
             </Text>
         </View>
     );
