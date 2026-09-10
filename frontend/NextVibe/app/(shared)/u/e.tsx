@@ -57,6 +57,7 @@ export default function ProximityTokenScreen() {
                             _username: result.scanned_user?.username || '',
                             _avatar: result.scanned_user?.avatar || '',
                             _is_official: result.scanned_user?.is_official ? '1' : '0',
+                            _is_seeker_verified: result.scanned_user?.is_seeker_verified ? '1' : '0',
                         },
                     } as any);
                 } else if (result.interaction_type === 'checkin') {

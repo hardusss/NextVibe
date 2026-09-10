@@ -33,7 +33,7 @@ import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
 import { requestToAttend } from "@/src/api/event.requests";
 import DropDown from "../Shared/Posts/PostsDropdown";
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
@@ -65,6 +65,7 @@ interface PostData {
     username: string;
     avatar: string | null;
     official: boolean;
+    seeker_verified: boolean;
     is_og: boolean;
     og_edition: number | null;
     invited_count: number;
@@ -347,11 +348,17 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                 />
                                 <View style={styles.usernameRow}>
                                     <Text style={styles.username} numberOfLines={1}>{post?.username ?? ""}</Text>
-                                    {post?.official && (
-                                        <View style={styles.badgeWrapper}>
-                                            <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={15} />
-                                        </View>
-                                    )}
+                                    <View style={styles.badgeWrapper}>
+                                        <UserBadges
+                                            official={post?.official}
+                                            seekerVerified={post?.seeker_verified}
+                                            isLooped={false}
+                                            isVisible={true}
+                                            haveModal={false}
+                                            isStatic={true}
+                                            size={15}
+                                        />
+                                    </View>
                                 </View>
                             </View>
 

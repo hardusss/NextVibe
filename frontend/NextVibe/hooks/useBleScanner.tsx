@@ -306,6 +306,7 @@ export function useBleScanner() {
                             _username: details.data.scanned_user?.username || '',
                             _avatar: details.data.scanned_user?.avatar || '',
                             _is_official: details.data.scanned_user?.is_official ? '1' : '0',
+                            _is_seeker_verified: details.data.scanned_user?.is_seeker_verified ? '1' : '0',
                         }
                     } as any);
                 } catch (err) {

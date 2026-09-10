@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, Palette, Mail, Sparkles } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import linkEmail from "@/src/api/link.email";
+import verifySeeker from "@/src/api/verify.seeker";
 import { Switch } from "react-native-paper";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -42,6 +43,7 @@ interface User {
     readers_count: number;
     follows_count: number;
     official: boolean;
+    seeker_verified: boolean;
 }
 
 const darkColors = {
@@ -94,6 +96,7 @@ function PageSettingsContent() {
     const [isBluetoothEnabled, setIsBluetoothEnabled] = useState<boolean>(true);
     const [newEmail, setNewEmail] = useState("");
     const [isLinkingEmail, setIsLinkingEmail] = useState(false);
+    const [isVerifyingSeeker, setIsVerifyingSeeker] = useState(false);
     const themePreference = useSettingsStore((state) => state.themePreference);
     const liquidGlassEnabled = useSettingsStore((state) => state.liquidGlassEnabled);
     const setThemePreference = useSettingsStore((state) => state.setThemePreference);
@@ -117,6 +120,26 @@ function PageSettingsContent() {
             showToast(errMsg, false);
         } finally {
             setIsLinkingEmail(false);
+        }
+    };
+
+    const handleVerifySeeker = async () => {
+        if (isVerifyingSeeker) return;
+        setIsVerifyingSeeker(true);
+        try {
+            const result = await verifySeeker();
+            if (result.seekerVerified) {
+                setUser((prev) => (prev ? { ...prev, seeker_verified: true } : prev));
+                showToast("You're Seeker Verified", true);
+            } else if (result.error === "SGT_ALREADY_USED") {
+                showToast("This Genesis Token is already linked to another NextVibe account.", false);
+            } else if (result.error === "SGT_NOT_FOUND") {
+                showToast("No Seeker Genesis Token found in this wallet.", false);
+            } else {
+                showToast("Verification failed. Try again later.", false);
+            }
+        } finally {
+            setIsVerifyingSeeker(false);
         }
     };
 
@@ -530,6 +553,39 @@ function PageSettingsContent() {
 
                         <Text style={styles.sectionHeader}>GASLESS TRANSACTIONS</Text>
                         <GaslessIndicator />
+
+                        {(address || user?.wallet_address) && (
+                            <>
+                                <Text style={styles.sectionHeader}>WALLET</Text>
+                                {user?.seeker_verified ? (
+                                    <View style={styles.row}>
+                                        <View style={{ flex: 1, paddingRight: 16 }}>
+                                            <Text style={styles.rowText}>Seeker Verified</Text>
+                                            <Text style={styles.rowDescription}>
+                                                Genesis Token detected on-chain
+                                            </Text>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        style={styles.row}
+                                        onPress={handleVerifySeeker}
+                                        disabled={isVerifyingSeeker}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={{ flex: 1, paddingRight: 16 }}>
+                                            <Text style={styles.rowText}>Verify Seeker</Text>
+                                            <Text style={styles.rowDescription}>
+                                                Check your wallet for a Seeker Genesis Token
+                                            </Text>
+                                        </View>
+                                        {isVerifyingSeeker && (
+                                            <ActivityIndicator size="small" color={colors.accent} />
+                                        )}
+                                    </TouchableOpacity>
+                                )}
+                            </>
+                        )}
 
                         <Text style={styles.sectionHeader}>BLUETOOTH SETTINGS</Text>
                         <View style={styles.row}>

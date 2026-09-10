@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { LayoutAnimation, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Heart, ChevronDown, ChevronUp } from "lucide-react-native";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
-import VerifyBadge from "@/components/VerifyBadge";
+import UserBadges from "@/components/Shared/UserBadges";
 import timeAgo from "@/src/utils/formatTime";
 
 const REPLIES_BATCH = 3;
@@ -12,6 +12,7 @@ export interface User {
     username: string;
     avatar: string;
     official: boolean;
+    seeker_verified: boolean;
     is_og: boolean;
     og_edition: number | null;
     invited_count: number;
@@ -88,9 +89,7 @@ export const ReplyItem: React.FC<ReplyProps> = ({ item, isLiked, onLike, onReply
                     <Text style={[s.username, { color: theme.textPrimary, fontSize: 13 }]}>
                         {item.user.username}
                     </Text>
-                    {item.user.official && (
-                        <VerifyBadge isLooped={false} isVisible haveModal={false} isStatic size={13} />
-                    )}
+                    <UserBadges official={item.user.official} seekerVerified={item.user.seeker_verified} isLooped={false} isVisible haveModal={false} isStatic size={13} />
                     <Text style={[s.time, { color: theme.textSecondary }]}>
                         · {timeAgo(item.create_at)}
                     </Text>
@@ -211,9 +210,7 @@ export const CommentItem: React.FC<CommentProps> = ({
                         <Text style={[s.username, { color: theme.textPrimary, fontSize: 14 }]}>
                             {item.user.username}
                         </Text>
-                        {item.user.official && (
-                            <VerifyBadge isLooped={false} isVisible haveModal={false} isStatic size={14} />
-                        )}
+                        <UserBadges official={item.user.official} seekerVerified={item.user.seeker_verified} isLooped={false} isVisible haveModal={false} isStatic size={14} />
                         <Text style={[s.time, { color: theme.textSecondary }]}>
                             · {timeAgo(item.create_at)}
                         </Text>

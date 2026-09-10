@@ -9,7 +9,8 @@ import {
   useWindowDimensions,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { Trash2, BadgeCheck } from 'lucide-react-native';
+import { Trash2 } from 'lucide-react-native';
+import UserBadges from '../Shared/UserBadges';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import timeAgo from '@/src/utils/formatTime';
@@ -29,6 +30,7 @@ interface ChatUser {
   avatar: string | null;
   is_online: boolean;
   official?: boolean;
+  seeker_verified?: boolean;
 }
 
 export interface LastMessage {
@@ -353,9 +355,9 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
                     <Text style={[styles.username, { color: colors.text }]} numberOfLines={1}>
                       {chat.other_user.username}
                     </Text>
-                    {chat.other_user.official && (
-                      <BadgeCheck size={16} color={colors.accent} style={{ marginLeft: 4 }} />
-                    )}
+                    <View style={{ marginLeft: 4 }}>
+                      <UserBadges official={chat.other_user.official} seekerVerified={chat.other_user.seeker_verified} size={16} />
+                    </View>
                   </View>
                   <Text style={[styles.time, { color: unreadCount > 0 ? colors.accent : colors.subtext, fontWeight: unreadCount > 0 ? '700' : '400' }]}>
                     {messageTime}

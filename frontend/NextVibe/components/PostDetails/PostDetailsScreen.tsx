@@ -38,7 +38,7 @@ import useWalletAddress from "@/hooks/useWalletAddress";
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import { CollectResult } from "../NftClaim/MintBottomSheet/useCollectFlow";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
@@ -389,11 +389,9 @@ export default function PostDetailsScreen() {
                         <View style={{ flex: 1, marginLeft: 12 }}>
                             <View style={{ flexDirection: "row", alignItems: "center" }}>
                                 <Text style={[s.username, { color: theme.textPrimary }]}>{post.username}</Text>
-                                {post.official && (
-                                    <View style={{ marginLeft: 2 }}>
-                                        <VerifyBadge isLooped isVisible haveModal={false} isStatic={false} size={16} />
-                                    </View>
-                                )}
+                                <View style={{ marginLeft: 2 }}>
+                                    <UserBadges official={post.official} seekerVerified={post.seeker_verified} isLooped isVisible haveModal={false} isStatic={false} size={16} />
+                                </View>
                             </View>
                         </View>
                         <View style={{ flexDirection: "row", alignItems: "center" }}>

@@ -27,6 +27,7 @@ import { vexo, identifyDevice } from 'vexo-analytics';
 import { StatusBar } from "expo-status-bar";
 import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
 import { useBleScanner } from "@/hooks/useBleScanner";
+import { clearProfileCache } from "@/components/ProfilePage/ProfilePage";
 import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 
@@ -93,6 +94,9 @@ function resolveNotificationUrl(data: Record<string, any>): { internal?: string;
     }
     if (data?.type === 'cherry_chat') {
         return { internal: '/(shared)/cherry-chat' };
+    }
+    if (data?.type === 'seeker_verified') {
+        return { internal: '/(tabs)/profile' };
     }
     return {};
 }
@@ -216,6 +220,10 @@ export default function RootLayout() {
     }
 
     const handleNotificationNavigation = (data: Record<string, any>) => {
+        if (data?.type === 'seeker_verified') {
+            clearProfileCache();
+        }
+
         const { internal, external } = resolveNotificationUrl(data);
 
         if (external) {

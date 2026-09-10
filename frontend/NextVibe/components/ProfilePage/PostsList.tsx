@@ -25,7 +25,7 @@ import PopupModal from "../Comments/CommentPopup";
 import { Image } from 'expo-image';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 import Hyperlink from "react-native-hyperlink";
 import { storage } from '@/src/utils/storage';
 
@@ -289,6 +289,7 @@ interface User {
   username: string;
   avatar: string;
   official: boolean;
+  seeker_verified: boolean;
 }
 
 const getVideoUrls = (mediaItem: MediaItem) => ({
@@ -628,9 +629,15 @@ const UserPosts = () => {
                 <View style={styles.usernameContainer}>
                   <View style={{ flexDirection: "row", "alignItems": "center" }}>
                     <Text style={styles.username}>{userData.username}</Text>
-                    {userData.official ? (
-                      <VerifyBadge isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
-                    ) : null}
+                    <UserBadges
+                      official={userData.official}
+                      seekerVerified={userData.seeker_verified}
+                      isLooped={true}
+                      isVisible={isVisible}
+                      haveModal={false}
+                      isStatic={false}
+                      size={16}
+                    />
                   </View>
                   {item.is_ai_generated && (
                     <View style={styles.aiBadge}>

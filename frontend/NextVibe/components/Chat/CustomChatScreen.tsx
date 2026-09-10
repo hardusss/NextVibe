@@ -24,7 +24,6 @@ import {
     ArrowLeft,
     Send,
     Plus,
-    BadgeCheck,
     ShieldCheck,
     X,
     MessageSquare,
@@ -73,6 +72,7 @@ import SafetyNumberModal from './SafetyNumberModal';
 import MediaPickerModal from './MediaPickerModal';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { LiquidGlassView } from '../Shared/LiquidGlassView';
+import UserBadges from '../Shared/UserBadges';
 import { chatColors, chatRadius, chatSpacing } from '@/src/theme/chatTheme';
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
@@ -83,6 +83,7 @@ interface Sender {
     username: string;
     avatar?: string | null;
     official?: boolean;
+    seeker_verified?: boolean;
 }
 
 interface MessageItem {
@@ -174,6 +175,7 @@ export default function CustomChatScreen() {
         avatar: string | null;
         is_online: boolean;
         official?: boolean;
+        seeker_verified?: boolean;
     } | null>(null);
 
     const [replyToMessage, setReplyToMessage] = useState<MessageItem | null>(null);
@@ -344,6 +346,7 @@ export default function CustomChatScreen() {
                             avatar: msgFromOther.sender.avatar || null,
                             is_online: false,
                             official: msgFromOther.sender.official,
+                            seeker_verified: msgFromOther.sender.seeker_verified,
                         });
                     }
                 }
@@ -488,6 +491,7 @@ export default function CustomChatScreen() {
 
                 const dummyMsg: MessageItem = {
                     id: Number(targetId),
+                    chat_id: chatId,
                     server_msg_id: Number(targetId),
                     content: updatedText,
                     text: updatedText,
@@ -1074,9 +1078,9 @@ export default function CustomChatScreen() {
                             <Text style={[styles.partnerName, { color: colors.text }]} numberOfLines={1}>
                                 {partnerName}
                             </Text>
-                            {otherUser?.official && (
-                                <BadgeCheck size={16} color={colors.accent} style={{ marginLeft: 4 }} />
-                            )}
+                            <View style={{ marginLeft: 4 }}>
+                                <UserBadges official={otherUser?.official} seekerVerified={otherUser?.seeker_verified} size={16} />
+                            </View>
                         </View>
                         <Text style={[styles.partnerStatus, { color: colors.subtext }]}>
                             {isTyping ? 'typing...' : otherUser?.is_online ? 'Online' : 'Encrypted Chat'}

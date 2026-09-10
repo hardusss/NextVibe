@@ -19,6 +19,7 @@ import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
 import * as Location from 'expo-location';
 import { verifyProximityToken } from '@/src/api/proximity.token';
+import UserBadges from '@/components/Shared/UserBadges';
 
 type ConnectionState = "idle" | "locating" | "connecting" | "success" | "error";
 
@@ -35,6 +36,7 @@ export default function EventNFCReceiveScreen() {
         _username?: string;
         _avatar?: string;
         _is_official?: string;
+        _is_seeker_verified?: string;
     }>();
     const eventId = params.eventId ? parseInt(params.eventId, 10) : null;
     const scannedUserId = params.userId ? parseInt(params.userId, 10) : null;
@@ -78,6 +80,7 @@ export default function EventNFCReceiveScreen() {
                 username: params._username || "Attendee",
                 avatar: params._avatar || null,
                 is_official: params._is_official === "1",
+                is_seeker_verified: params._is_seeker_verified === "1",
             });
             setState("success");
             Vibration.vibrate([0, 50, 50, 50, 50, 100]);
@@ -288,9 +291,12 @@ export default function EventNFCReceiveScreen() {
                             </View>
                         </Animated.View>
 
-                        <Animated.Text entering={FadeInDown.delay(400)} style={[styles.heading, { color: main, fontSize: 24, marginTop: 16 }]}>
-                            Connected with {scannedUser?.username}
-                        </Animated.Text>
+                        <Animated.View entering={FadeInDown.delay(400)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 16 }}>
+                            <Text style={[styles.heading, { color: main, fontSize: 24 }]}>
+                                Connected with {scannedUser?.username}
+                            </Text>
+                            <UserBadges official={scannedUser?.is_official} seekerVerified={scannedUser?.is_seeker_verified} size={22} />
+                        </Animated.View>
 
                         <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>
                             <Star size={24} color="#fbbf24" fill="#fbbf24" />

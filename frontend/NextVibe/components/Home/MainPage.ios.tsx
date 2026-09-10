@@ -32,7 +32,7 @@ import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { storage } from '@/src/utils/storage';
 
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 import Hyperlink from "react-native-hyperlink";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
@@ -292,6 +292,7 @@ interface Post {
     owner__username: string;
     owner__avatar: string;
     owner__official: boolean;
+    owner__seeker_verified: boolean;
     owner__is_og: boolean;
     owner__edition: number | null;
     owner__invited_count: number;
@@ -520,11 +521,9 @@ const PostItem = memo(({
                 <View style={styles.userInfo}>
                     <View style={styles.usernameRow}>
                         <Text style={styles.username}>{item.owner__username}</Text>
-                        {item.owner__official && (
-                            <View style={styles.badgeWrapper}>
-                                <VerifyBadge isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
-                            </View>
-                        )}
+                        <View style={styles.badgeWrapper}>
+                            <UserBadges official={item.owner__official} seekerVerified={item.owner__seeker_verified} isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
+                        </View>
                     </View>
                 </View>
 

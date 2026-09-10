@@ -26,7 +26,7 @@ import createCommentReply from '@/src/api/comment.reply';
 import commentLike from '@/src/api/comment.like';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import VerifyBadge from '../VerifyBadge';
+import UserBadges from '../Shared/UserBadges';
 import { AvatarWithFrame } from '@/components/ProfilePage/AvatarWithFrame';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -41,6 +41,7 @@ interface User {
     username: string;
     avatar: string;
     official: boolean;
+    seeker_verified: boolean;
     is_og: boolean;
     og_edition: number | null;
     invited_count: number;
@@ -71,6 +72,7 @@ interface UserData {
     readers_count: number;
     follows_count: number;
     official: boolean;
+    seeker_verified: boolean;
     liked_comments: number[];
     liked_comment_replies: number[];
 }
@@ -277,9 +279,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                 <View style={styles.commentContent}>
                     <View style={styles.userDetails}>
                         <Text style={styles.username}>{item.user?.username}</Text>
-                        {item.user?.official && (
-                            <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={14} />
-                        )}
+                        <UserBadges official={item.user?.official} seekerVerified={item.user?.seeker_verified} isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={14} />
                     </View>
                     {renderCommentText(item.content, `reply-${item.reply_id}`)}
                     <View style={styles.commentFooter}>
@@ -319,9 +319,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                     <View style={styles.commentContent}>
                         <View style={styles.userDetails}>
                             <Text style={styles.username}>{item.user?.username}</Text>
-                            {item.user?.official && (
-                                <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={14} />
-                            )}
+                            <UserBadges official={item.user?.official} seekerVerified={item.user?.seeker_verified} isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={14} />
                         </View>
                         {renderCommentText(item.content, `comment-${item.id}`)}
                         <View style={styles.commentFooter}>

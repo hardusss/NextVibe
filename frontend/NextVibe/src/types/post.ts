@@ -7,6 +7,7 @@ export interface PostData {
     username: string;
     avatar: string | null;
     official: boolean;
+    seeker_verified: boolean;
     is_og: boolean;
     og_edition: number | null;
     invited_count: number;

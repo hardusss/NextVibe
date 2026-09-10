@@ -7,7 +7,7 @@ import { ChevronUp, ChevronDown } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import getRoccomendationsProfiles from "@/src/api/recommendations.profiles";
 import followUser from "@/src/api/follow";
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 
 const screenWidth = Dimensions.get("window").width;
@@ -133,17 +133,17 @@ const RecommendedUsers = () => {
                                         >
                                             {item.username}
                                         </Text>
-                                        {item.official ? (
-                                            <View style={{ marginLeft: 4 }}>
-                                                <VerifyBadge
-                                                    isLooped={false}
-                                                    isVisible={true}
-                                                    haveModal={false}
-                                                    isStatic={true}
-                                                    size={16}
-                                                />
-                                            </View>
-                                        ) : null}
+                                        <View style={{ marginLeft: 4 }}>
+                                            <UserBadges
+                                                official={item.official}
+                                                seekerVerified={item.seeker_verified}
+                                                isLooped={false}
+                                                isVisible={true}
+                                                haveModal={false}
+                                                isStatic={true}
+                                                size={16}
+                                            />
+                                        </View>
                                     </View>
 
                                     <TouchableOpacity

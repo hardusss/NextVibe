@@ -10,7 +10,7 @@ import { useCallback } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from 'expo-blur';
 import { storage } from "@/src/utils/storage";
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
@@ -46,6 +46,7 @@ interface User {
     avatar: string;
     username: string;
     official: boolean;
+    seeker_verified: boolean;
     readers_count: number;
     is_og: boolean;
     og_edition: number | null;
@@ -154,9 +155,7 @@ export default function SearchPage() {
                 <View style={{ marginLeft: 10 }}>
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                         <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
-                        {item.official ? (
-                            <VerifyBadge isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16} />
-                        ) : null}
+                        <UserBadges official={item.official} seekerVerified={item.seeker_verified} isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={16} />
                     </View>
                     <Text style={{ color: "gray", fontFamily: "Dank Mono Bold", includeFontPadding: false }}>
                         {formatNumber(item.readers_count)} Subs

@@ -19,6 +19,7 @@ export interface VerifyTokenResponse {
         username: string;
         avatar: string | null;
         is_official: boolean;
+        is_seeker_verified?: boolean;
     };
     // Checkin response fields
     verified?: boolean;

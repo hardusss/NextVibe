@@ -14,6 +14,7 @@ import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
 import { useProximityToken } from '@/hooks/useProximityToken';
 import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
+import UserBadges from '@/components/Shared/UserBadges';
 
 export default function EventNFCShareScreen() {
     const insets = useSafeAreaInsets();
@@ -85,7 +86,8 @@ export default function EventNFCShareScreen() {
                 setSuccessUser({
                     username: newConn.username,
                     avatar: newConn.avatar,
-                    is_official: newConn.is_official
+                    is_official: newConn.is_official,
+                    is_seeker_verified: newConn.is_seeker_verified
                 });
                 setSuccessPoints(newConn.rep_received || 2);
                 setSuccessState(true);
@@ -252,9 +254,12 @@ export default function EventNFCShareScreen() {
                                 </View>
                             </Animated.View>
 
-                            <Animated.Text entering={FadeInDown.delay(400)} style={[styles.heading, { color: main, fontSize: 24, marginTop: 16 }]}>
-                                Connected with {successUser?.username}
-                            </Animated.Text>
+                            <Animated.View entering={FadeInDown.delay(400)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 16 }}>
+                                <Text style={[styles.heading, { color: main, fontSize: 24 }]}>
+                                    Connected with {successUser?.username}
+                                </Text>
+                                <UserBadges official={successUser?.is_official} seekerVerified={successUser?.is_seeker_verified} size={22} />
+                            </Animated.View>
 
                             <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>
                                 <Star size={24} color="#fbbf24" fill="#fbbf24" />

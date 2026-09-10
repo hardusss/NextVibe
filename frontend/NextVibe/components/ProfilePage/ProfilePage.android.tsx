@@ -34,7 +34,7 @@ import ButtonWallet from "./ButtonWallet";
 import PostGallery, { clearPostsCache } from "./PostsMenu";
 import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 
 import { ShareViaNFC } from "./ShareViaNFC/ButtonShare";
 import ShareModal, { ShareModalRef } from './ShareViaNFC/ShareBottomModal';
@@ -72,6 +72,7 @@ type UserData = {
     readers_count: number;
     follows_count: number;
     official: boolean;
+    seeker_verified: boolean;
     isOg: boolean;
     ogEdition: number | null;
     reputation: number;
@@ -147,7 +148,7 @@ const ProfileView = () => {
     const [userData, setUserData] = useState<UserData>(cachedUserData ?? {
         username: "", about: "", avatar_url: null,
         post_count: 0, cnft_count: 0, readers_count: 0, follows_count: 0,
-        official: false, isOg: false, ogEdition: null, reputation: 0,
+        official: false, seeker_verified: false, isOg: false, ogEdition: null, reputation: 0,
     });
 
     const [loading, setLoading] = useState<boolean>(!cachedUserData);
@@ -264,6 +265,7 @@ const ProfileView = () => {
                 readers_count: data.readers_count || 0,
                 follows_count: data.follows_count || 0,
                 official: data.official === true,
+                seeker_verified: data.seeker_verified === true,
                 isOg: data.isOg === true,
                 ogEdition: data.edition ?? null,
                 reputation: data.reputation || 0,
@@ -388,11 +390,18 @@ const ProfileView = () => {
                     <Text style={[st.nameText, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
                         {userData.username}
                     </Text>
-                    {userData.official && (
-                        <View style={{ marginLeft: 4 }}>
-                            <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={22} />
-                        </View>
-                    )}
+                    <View style={{ marginLeft: 4 }}>
+                        <UserBadges
+                            official={userData.official}
+                            seekerVerified={userData.seeker_verified}
+                            isLooped={true}
+                            isVisible={true}
+                            haveModal={true}
+                            isStatic={false}
+                            size={22}
+                            seekerInfoOnLongPress={true}
+                        />
+                    </View>
                 </View>
 
                 <View style={st.repRow}>
@@ -423,6 +432,12 @@ const ProfileView = () => {
                         </View>
                     </TouchableOpacity>
                 </View>
+
+                {userData.seeker_verified && (
+                    <Text style={{ fontSize: 12, marginTop: 4, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}>
+                        Seeker Verified · Genesis Token
+                    </Text>
+                )}
 
                 {userData.about !== "" && (
                     <View style={st.bioWrap}>

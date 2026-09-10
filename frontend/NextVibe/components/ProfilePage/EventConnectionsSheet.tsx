@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, TouchableOpa
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 import { Star, Layers, Users, ChevronDown, ShieldCheck, Radio, Award, MessageSquare, Mail, UserPlus, Sparkles } from 'lucide-react-native';
 import axios from 'axios';
 import { storage } from '@/src/utils/storage';
@@ -22,6 +22,7 @@ type Connection = {
     rep_received: number;
     rep_given: number;
     is_official: boolean;
+    is_seeker_verified: boolean;
 };
 
 type EventData = {
@@ -384,11 +385,17 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                                 <Text style={[styles.connName, { color: main }]} numberOfLines={1}>
                                                                     {c.username}
                                                                 </Text>
-                                                                {c.is_official && (
-                                                                    <View style={{ marginLeft: 4 }}>
-                                                                        <VerifyBadge isLooped={true} isVisible={true} haveModal={true} isStatic={false} size={15} />
-                                                                    </View>
-                                                                )}
+                                                                <View style={{ marginLeft: 4 }}>
+                                                                    <UserBadges
+                                                                        official={c.is_official}
+                                                                        seekerVerified={c.is_seeker_verified}
+                                                                        isLooped={true}
+                                                                        isVisible={true}
+                                                                        haveModal={true}
+                                                                        isStatic={false}
+                                                                        size={15}
+                                                                    />
+                                                                </View>
                                                             </View>
 
                                                             <View style={styles.connRepRow}>

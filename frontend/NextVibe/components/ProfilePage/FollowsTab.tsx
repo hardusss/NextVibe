@@ -6,13 +6,14 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import getFollows from '@/src/api/get.follows';
 import getReaders from '@/src/api/get.readers';
 import { Image } from 'expo-image';
-import VerifyBadge from '../VerifyBadge'; 
+import UserBadges from '../Shared/UserBadges';
 
 type UserData = {
     user_id: number;
     username: string;
     avatar: string | null;
     official: boolean;
+    seeker_verified: boolean;
 }
 
 export default function FollowsScreen() {
@@ -218,10 +219,16 @@ export default function FollowsScreen() {
             />
             {/** Wraps username and badge in a row */}
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={styles.userName}>{item.username}</Text>
-                {item.official && (
-                    <VerifyBadge isLooped={true} isVisible={true} haveModal={false} isStatic={true} size={16} />
-                )}
+                <Text style={[styles.userName, { flexShrink: 1 }]} numberOfLines={1}>{item.username}</Text>
+                <UserBadges
+                    official={item.official}
+                    seekerVerified={item.seeker_verified}
+                    isLooped={true}
+                    isVisible={true}
+                    haveModal={false}
+                    isStatic={true}
+                    size={16}
+                />
             </View>
         </TouchableOpacity>
     );

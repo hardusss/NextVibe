@@ -32,7 +32,7 @@ import {
     Layers,
 } from "lucide-react-native";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
-import VerifyBadge from "../VerifyBadge";
+import UserBadges from "../Shared/UserBadges";
 import * as Clipboard from "expo-clipboard";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -70,6 +70,7 @@ export interface CollectionItemData {
     creator_username: string;
     creator_avatar: string | null;
     creator_official: boolean;
+    creator_seeker_verified: boolean;
     is_luma_event?: boolean;
 }
 
@@ -262,17 +263,17 @@ const CollectiblesModal: React.FC<CollectiblesModalProps> = ({
                                     <Text style={s.username} numberOfLines={1}>
                                         {item?.creator_username ?? ""}
                                     </Text>
-                                    {item?.creator_official && (
-                                        <View style={s.badgeWrapper}>
-                                            <VerifyBadge
-                                                isLooped={false}
-                                                isVisible={true}
-                                                haveModal={false}
-                                                isStatic={true}
-                                                size={15}
-                                            />
-                                        </View>
-                                    )}
+                                    <View style={s.badgeWrapper}>
+                                        <UserBadges
+                                            official={item?.creator_official}
+                                            seekerVerified={item?.creator_seeker_verified}
+                                            isLooped={false}
+                                            isVisible={true}
+                                            haveModal={false}
+                                            isStatic={true}
+                                            size={15}
+                                        />
+                                    </View>
                                 </View>
                             </View>
 
