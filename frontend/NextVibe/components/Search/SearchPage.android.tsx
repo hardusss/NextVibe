@@ -15,6 +15,7 @@ import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 const { width } = Dimensions.get("window");
 import { useRouter } from "expo-router";
 import { StaggeredItem } from "@/components/Shared/motion";
+import { space } from "@/src/theme/tokens";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const darkColors = {
@@ -298,8 +299,8 @@ const styles = StyleSheet.create({
     userContainer: {
         flexDirection: "row",
         alignItems: "center",
-        paddingVertical: 10,
-        paddingLeft: 10
+        minHeight: 56,
+        paddingVertical: space.sm,
     },
     username: {
         fontSize: 16,
