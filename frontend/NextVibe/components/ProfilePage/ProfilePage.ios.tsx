@@ -37,6 +37,7 @@ import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import UserBadges from "../Shared/UserBadges";
 
+import haptics from "@/src/utils/haptics";
 import { TapToMeetButton } from "./TapToMeet/TapToMeetButton";
 import ShareModal, { ShareModalRef } from './ShareViaNFC/ShareBottomModal';
 
@@ -223,6 +224,7 @@ const ProfileView = () => {
 
     const handleTabPress = (tab: Tab) => {
         if (tab === activeTab) return;
+        haptics.selection();
         animateTabSwitch(tab);
         setActiveTab(tab);
     };

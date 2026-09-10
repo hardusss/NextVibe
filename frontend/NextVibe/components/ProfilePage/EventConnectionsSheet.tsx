@@ -9,6 +9,7 @@ import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
 import { useRouter } from 'expo-router';
+import haptics from '@/src/utils/haptics';
 
 export interface EventConnectionsSheetRef {
     present: (totalRep?: number, userId?: number) => void;
@@ -178,7 +179,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
             <View style={[styles.sheetHeader, { borderBottomColor: divider }]}>
                 <View>
                     <Text style={[styles.sheetTitle, { color: main }]}>Reputation & POAPs</Text>
-                    <Text style={[styles.sheetSub, { color: muted }]}>Activity breakdown & rewards</Text>
+                    <Text style={[styles.sheetSub, { color: muted }]}>Reputation history & POAPs</Text>
                 </View>
                 <View style={styles.totalRepPill}>
                     <Star size={13} color="#22c55e" fill="#22c55e" />
@@ -190,7 +191,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
             <View style={[styles.tabBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }]}>
                 <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => setActiveTab('history')}
+                    onPress={() => { haptics.selection(); setActiveTab('history'); }}
                     style={[
                         styles.tabItem,
                         activeTab === 'history' && { backgroundColor: isDark ? '#231035' : '#FFFFFF', borderColor: '#A855F766', borderWidth: 1 }
@@ -204,7 +205,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
 
                 <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => setActiveTab('poaps')}
+                    onPress={() => { haptics.selection(); setActiveTab('poaps'); }}
                     style={[
                         styles.tabItem,
                         activeTab === 'poaps' && { backgroundColor: isDark ? '#231035' : '#FFFFFF', borderColor: '#A855F766', borderWidth: 1 }
@@ -218,7 +219,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
 
                 <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => setActiveTab('irl')}
+                    onPress={() => { haptics.selection(); setActiveTab('irl'); }}
                     style={[
                         styles.tabItem,
                         activeTab === 'irl' && { backgroundColor: isDark ? '#231035' : '#FFFFFF', borderColor: '#A855F766', borderWidth: 1 }
@@ -246,9 +247,9 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                     repItems.length === 0 ? (
                         <View style={styles.emptyWrap}>
                             <Text style={[styles.emptyIcon]}>⭐</Text>
-                            <Text style={[styles.emptyTitle, { color: main }]}>No Reputation Activity Yet</Text>
+                            <Text style={[styles.emptyTitle, { color: main }]}>No reputation yet</Text>
                             <Text style={[styles.emptySub, { color: muted }]}>
-                                Post at events, claim Cherry invite bonuses, verify your email or meet people IRL to earn reputation.
+                                Post at events, claim Cherry invite bonuses, verify your email or meet people IRL to grow your reputation.
                             </Text>
                         </View>
                     ) : (
@@ -365,7 +366,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                             <Text style={[styles.emptyIcon]}>🎟️</Text>
                             <Text style={[styles.emptyTitle, { color: main }]}>No POAPs yet</Text>
                             <Text style={[styles.emptySub, { color: muted }]}>
-                                Attend events and claim your POAP to earn reputation.
+                                Attend events and claim your POAP to grow your reputation.
                             </Text>
                         </View>
                     ) : (
