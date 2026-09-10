@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleProp, ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleProp, ViewStyle } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -18,7 +18,11 @@ interface PressableButtonProps {
     pressScale?: number;
     disabled?: boolean;
     hitSlop?: { top?: number; bottom?: number; left?: number; right?: number };
+    /** Android ripple on press (rows/cards). iOS keeps the scale-down. */
+    ripple?: boolean;
 }
+
+const ANDROID_RIPPLE = { color: 'rgba(168,85,247,0.2)', borderless: false } as const;
 
 export const PressableButton: React.FC<PressableButtonProps> = ({
     onPress,
@@ -28,6 +32,7 @@ export const PressableButton: React.FC<PressableButtonProps> = ({
     pressScale = MOTION.press.scale,
     disabled = false,
     hitSlop,
+    ripple = false,
 }) => {
     const scale = useSharedValue(1);
 
@@ -67,6 +72,7 @@ export const PressableButton: React.FC<PressableButtonProps> = ({
             }}
             hitSlop={hitSlop}
             disabled={disabled}
+            android_ripple={ripple && Platform.OS === 'android' ? ANDROID_RIPPLE : undefined}
         >
             <Animated.View style={[animStyle, style]}>
                 {children}

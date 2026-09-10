@@ -1,5 +1,7 @@
 import React from 'react';
-import { Platform, View, useColorScheme, type ColorSchemeName, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View, useColorScheme, type ColorSchemeName, type StyleProp, type ViewStyle } from 'react-native';
+import { BlurView } from 'expo-blur';
+import * as ExpoDevice from 'expo-device';
 import { isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import type { GlassColorScheme, GlassStyle } from 'expo-glass-effect/build/GlassView.types';
 import LiquidGlassView from './LiquidGlassView';
@@ -14,7 +16,20 @@ type GlassSurfaceProps = {
     isInteractive?: boolean;
     /** Used when liquid glass is unavailable or disabled. */
     fallbackBackgroundColor?: string;
+    /**
+     * Android: render a real blur (dimezis BlurView) behind the content so
+     * headers/tab bars visually match the iOS glass. Low-memory devices
+     * (< 4 GB) skip the blur and get the fallback colour instead.
+     */
+    androidBlur?: boolean;
+    androidBlurIntensity?: number;
 };
+
+// Blur is costly on weak GPUs — settle it once per session.
+const IS_LOW_END_ANDROID =
+    Platform.OS === 'android' &&
+    (ExpoDevice.totalMemory ?? 0) > 0 &&
+    (ExpoDevice.totalMemory as number) < 4 * 1024 * 1024 * 1024;
 
 function resolveIosFallbackBackground(
     colorScheme: GlassColorScheme,
@@ -44,6 +59,8 @@ export function GlassSurface({
     tintColor,
     isInteractive,
     fallbackBackgroundColor,
+    androidBlur = false,
+    androidBlurIntensity = 50,
 }: GlassSurfaceProps) {
     const liquidGlassEnabled = useLiquidGlassEnabled();
     const systemScheme = useColorScheme();
@@ -79,6 +96,28 @@ export function GlassSurface({
                     },
                 ]}
             >
+                {children}
+            </View>
+        );
+    }
+
+    // Android
+    if (androidBlur && !IS_LOW_END_ANDROID) {
+        const resolvedScheme =
+            colorScheme === 'light' || colorScheme === 'dark'
+                ? colorScheme
+                : systemScheme === 'light'
+                  ? 'light'
+                  : 'dark';
+        return (
+            <View style={[style, { overflow: 'hidden' }]}>
+                <BlurView
+                    tint={resolvedScheme}
+                    intensity={androidBlurIntensity}
+                    experimentalBlurMethod="dimezisBlurView"
+                    style={StyleSheet.absoluteFill}
+                    pointerEvents="none"
+                />
                 {children}
             </View>
         );

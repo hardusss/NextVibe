@@ -8,6 +8,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { MOTION } from '@/constants/motion';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 
 type ShimmerSkeletonProps = {
     width?: number | `${number}%`;
@@ -25,8 +26,13 @@ export default function ShimmerSkeleton({
     isDark = true,
 }: ShimmerSkeletonProps) {
     const opacity = useSharedValue(0.45);
+    const reduceMotion = useReduceMotion();
 
     useEffect(() => {
+        if (reduceMotion) {
+            opacity.value = 0.6;
+            return;
+        }
         opacity.value = withRepeat(
             withSequence(
                 withTiming(0.95, { duration: MOTION.duration.slow }),
@@ -35,7 +41,7 @@ export default function ShimmerSkeleton({
             -1,
             false,
         );
-    }, [opacity]);
+    }, [opacity, reduceMotion]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,

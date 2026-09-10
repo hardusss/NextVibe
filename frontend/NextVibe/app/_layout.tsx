@@ -19,6 +19,7 @@ import MobileWalletProviderGate from "@/components/Providers/MobileWalletProvide
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SystemUI from 'expo-system-ui';
+import * as NavigationBar from 'expo-navigation-bar';
 import Constants from 'expo-constants';
 import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -162,6 +163,10 @@ export default function RootLayout() {
     useEffect(() => {
         if (Platform.OS === 'ios') {
             SystemUI.setBackgroundColorAsync(theme === "dark" ? "#0A0410" : "#ffffff");
+        } else {
+            // Edge-to-edge: keep the gesture/nav bar transparent with
+            // buttons matching the theme.
+            NavigationBar.setButtonStyleAsync(theme === "dark" ? "light" : "dark").catch(() => {});
         }
     }, [theme]);
 

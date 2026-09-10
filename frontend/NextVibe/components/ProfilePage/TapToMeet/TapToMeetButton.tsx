@@ -5,7 +5,7 @@ import { Smartphone, Zap, ChevronRight, Calendar } from "lucide-react-native";
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import haptics from "@/src/utils/haptics";
 import { getActiveCheckins, ActiveEvent } from "@/src/api/active.checkin";
 
 /**
@@ -29,7 +29,7 @@ export function TapToMeetButton() {
 
     const handlePress = useCallback(async () => {
         if (busy) return;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        haptics.impact('light');
         setBusy(true);
         let events: ActiveEvent[] = [];
         try {
@@ -105,7 +105,7 @@ export function TapToMeetButton() {
                             activeOpacity={0.75}
                             style={[styles.eventRow, { borderColor: divider }]}
                             onPress={() => {
-                                Haptics.selectionAsync().catch(() => {});
+                                haptics.selection();
                                 openForEvent(ev.event_id);
                             }}
                         >
