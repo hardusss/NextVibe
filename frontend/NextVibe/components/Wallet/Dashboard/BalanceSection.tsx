@@ -1,6 +1,8 @@
 import React, { memo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { ShimmerSkeleton, AnimatedBalance } from "@/components/Shared/motion";
+import GlassSurface from "@/components/Shared/GlassSurface";
+import { space, radius } from "@/src/theme/tokens";
 
 interface BalanceSectionProps {
     isDarkMode: boolean;
@@ -25,7 +27,13 @@ const BalanceSection: React.FC<BalanceSectionProps> = ({
     const decPart = (totalBalance % 1).toFixed(decimals).slice(1);
 
     return (
-        <View style={styles.container}>
+        <GlassSurface
+            style={[styles.container, { borderColor }]}
+            glassEffectStyle="regular"
+            androidBlur
+            colorScheme={isDarkMode ? "dark" : "light"}
+            fallbackBackgroundColor={isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"}
+        >
             <Text style={[styles.label, { color: labelColor }]}>BALANCE</Text>
             <View style={[styles.divider, { backgroundColor: borderColor }]} />
 
@@ -55,15 +63,20 @@ const BalanceSection: React.FC<BalanceSectionProps> = ({
                 <Text style={[styles.usdLabel, { color: dimColor }]}>USD</Text>
                 <View style={[styles.bottomLine, { backgroundColor: borderColor }]} />
             </View>
-        </View>
+        </GlassSurface>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         alignItems: "center",
-        marginBottom: 16,
-        paddingHorizontal: 20,
+        marginBottom: space.lg,
+        marginHorizontal: space.lg,
+        paddingHorizontal: space.lg + space.xs,
+        paddingVertical: space.lg,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        overflow: "hidden",
     },
     label: {
         fontFamily: "Dank Mono",
