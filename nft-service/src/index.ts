@@ -11,7 +11,13 @@ import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata'
 import { publicKey, keypairIdentity, createNoopSigner, PublicKey } from '@metaplex-foundation/umi'
 import { createHash } from 'node:crypto'
 import { fromWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
-import { Keypair } from '@solana/web3.js'
+import { Keypair, Connection, PublicKey as Web3PublicKey } from '@solana/web3.js'
+import {
+    TOKEN_2022_PROGRAM_ID,
+    unpackMint,
+    getMetadataPointerState,
+    getTokenGroupMemberState,
+} from '@solana/spl-token'
 import bs58 from 'bs58'
 import { config } from 'dotenv'
 
@@ -51,6 +57,76 @@ const MERKLE_TREE_ADDRESS = process.env.MERKLE_TREE_ADDRESS!;
 
 /** SPL Memo program */
 const MEMO_PROGRAM_ID = publicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+
+/** Seeker Genesis Token verification constants (Solana Mobile docs) */
+const SGT_MINT_AUTHORITY = new Web3PublicKey('GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4');
+const SGT_GROUP_ADDRESS = new Web3PublicKey('GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te');
+
+/** web3.js connection for Token-2022 account scans (shares the Helius RPC URL with Umi) */
+const web3Connection = new Connection(process.env.HELIUS_RPC_URL!, 'confirmed');
+
+const SOLANA_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+/**
+ * Scans a wallet's Token-2022 accounts for a Seeker Genesis Token.
+ * Returns the SGT mint address, or null if the wallet holds none.
+ *
+ * Follows the official verification algorithm: paginate
+ * getTokenAccountsByOwnerV2, skip zero balances, then confirm mint
+ * authority, metadata pointer and token-group membership on each mint.
+ */
+async function findSgtMint(wallet: string): Promise<string | null> {
+    const heldMints: Web3PublicKey[] = [];
+    let paginationKey: string | null = null;
+
+    do {
+        const response = await fetch(process.env.HELIUS_RPC_URL!, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'getTokenAccountsByOwnerV2',
+                params: [
+                    wallet,
+                    { programId: TOKEN_2022_PROGRAM_ID.toBase58() },
+                    { encoding: 'jsonParsed', limit: 1000, ...(paginationKey ? { paginationKey } : {}) },
+                ],
+            }),
+        });
+        if (!response.ok) throw new Error(`getTokenAccountsByOwnerV2 HTTP ${response.status}`);
+        const json: any = await response.json();
+        if (json.error) throw new Error(`getTokenAccountsByOwnerV2: ${json.error.message}`);
+
+        const { accounts, paginationKey: nextKey } = json.result.value;
+        for (const acc of accounts) {
+            const info = acc.account?.data?.parsed?.info;
+            if (info && info.tokenAmount?.amount !== '0') {
+                heldMints.push(new Web3PublicKey(info.mint));
+            }
+        }
+        paginationKey = nextKey ?? null;
+    } while (paginationKey);
+
+    for (let i = 0; i < heldMints.length; i += 100) {
+        const batch = heldMints.slice(i, i + 100);
+        const mintAccounts = await web3Connection.getMultipleAccountsInfo(batch);
+        for (let j = 0; j < batch.length; j++) {
+            const accountInfo = mintAccounts[j];
+            if (!accountInfo) continue;
+            try {
+                const mint = unpackMint(batch[j], accountInfo, TOKEN_2022_PROGRAM_ID);
+                if (!mint.mintAuthority?.equals(SGT_MINT_AUTHORITY)) continue;
+                if (!getMetadataPointerState(mint)?.metadataAddress?.equals(SGT_GROUP_ADDRESS)) continue;
+                if (!getTokenGroupMemberState(mint)?.group?.equals(SGT_GROUP_ADDRESS)) continue;
+                return batch[j].toBase58();
+            } catch {
+                continue;
+            }
+        }
+    }
+    return null;
+}
 
 /** How long a prepared collect transaction stays valid (blockhash lifetime is ~60-90s) */
 const CLAIM_TTL_SECONDS = 75;
@@ -515,6 +591,33 @@ new Elysia()
             logError("asset_id_from_signature.failed", error, { signature });
             set.status = 404;
             return { success: false, error: "ASSET_ID_NOT_FOUND" };
+        }
+    })
+
+    /**
+     * POST /seeker/sgt-check
+     *
+     * Checks whether a wallet currently holds a Seeker Genesis Token
+     * (non-transferable Token-2022 NFT minted per Seeker device).
+     *
+     * @body wallet - Solana wallet address to scan
+     * @returns { success: true, sgtMint: string | null }
+     */
+    .post("/seeker/sgt-check", async ({ body, set }: { body: any, set: any }) => {
+        const { wallet } = body || {};
+        if (!wallet || typeof wallet !== 'string' || !SOLANA_ADDRESS_RE.test(wallet)) {
+            set.status = 400;
+            return { success: false, error: "INVALID_WALLET" };
+        }
+        log("seeker.sgt_check.request", { wallet });
+        try {
+            const sgtMint = await findSgtMint(wallet);
+            log("seeker.sgt_check.done", { wallet, sgtMint: sgtMint ?? "none" });
+            return { success: true, sgtMint };
+        } catch (error) {
+            logError("seeker.sgt_check.failed", error, { wallet });
+            set.status = 502;
+            return { success: false, error: "SGT_CHECK_FAILED" };
         }
     })
 
