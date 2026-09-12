@@ -14,7 +14,6 @@ import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 const { width } = Dimensions.get("window");
 import { useRouter, useNavigation } from "expo-router";
 import { StaggeredItem } from "@/components/Shared/motion";
-import { space } from "@/src/theme/tokens";
 import { useEffect } from "react";
 
 const darkColors = {
@@ -251,8 +250,8 @@ const styles = StyleSheet.create({
     userContainer: {
         flexDirection: "row",
         alignItems: "center",
-        minHeight: 56,
-        paddingVertical: space.sm,
+        paddingVertical: 10,
+        paddingLeft: 10
     },
     username: {
         fontSize: 16,
