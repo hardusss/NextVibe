@@ -1,26 +1,51 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator } from "react-native";
+import React, { useCallback, useRef, useState } from "react";
+import { View, Text, Pressable, StyleSheet, useColorScheme, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Smartphone, ChevronRight, Calendar } from "lucide-react-native";
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import * as Device from "expo-device";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import haptics from "@/src/utils/haptics";
+import { MOTION } from "@/constants/motion";
+import { space, radius, colors, type as typeScale } from "@/src/theme/tokens";
+import { useActiveCheckin } from "@/hooks/useActiveCheckin";
 import { getActiveCheckins, ActiveEvent } from "@/src/api/active.checkin";
 
 /**
- * Tap to Meet — one entry point for meeting people in person.
- * Checked in to one active event -> event networking screen.
+ * Tap to Meet — the profile's primary action.
+ * Checked in to one active event -> event networking screen (label shows the event).
  * Checked in to several -> chooser sheet.
  * Not at an event -> IRL mode (no event, no geofence).
+ * Simulators/emulators can't broadcast NFC/BLE, so the button disables there.
  */
+
+const EVENT_LABEL_MAX = 14;
+
+function truncateEventName(name: string): string {
+    const trimmed = name.trim();
+    return trimmed.length > EVENT_LABEL_MAX ? `${trimmed.slice(0, EVENT_LABEL_MAX).trimEnd()}…` : trimmed;
+}
+
 export function TapToMeetButton() {
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
     const chooserRef = useRef<BottomSheetModal>(null);
     const [busy, setBusy] = useState(false);
     const [choices, setChoices] = useState<ActiveEvent[]>([]);
-    const styles = getStyles();
+    const { activeEvents } = useActiveCheckin();
+
+    const disabled = !Device.isDevice;
+    const disabledReason = disabled ? "Tap to Meet needs a physical device with NFC or Bluetooth." : null;
+
+    const scale = useSharedValue(1);
+    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+    const label =
+        activeEvents.length === 1
+            ? `Tap to Meet · at ${truncateEventName(activeEvents[0].event_name)}`
+            : "Tap to Meet";
 
     const openForEvent = useCallback((eventId: number) => {
         chooserRef.current?.dismiss();
@@ -28,10 +53,10 @@ export function TapToMeetButton() {
     }, [router]);
 
     const handlePress = useCallback(async () => {
-        if (busy) return;
+        if (busy || disabled) return;
         haptics.impact('light');
         setBusy(true);
-        let events: ActiveEvent[] = [];
+        let events: ActiveEvent[] = activeEvents;
         try {
             events = await getActiveCheckins();
         } catch (e) {
@@ -47,7 +72,7 @@ export function TapToMeetButton() {
         } else {
             router.push("/event-nfc-share?mode=irl" as any);
         }
-    }, [busy, openForEvent, router]);
+    }, [busy, disabled, activeEvents, openForEvent, router]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -56,32 +81,44 @@ export function TapToMeetButton() {
         []
     );
 
-    const sheetBg = isDark ? "#12091f" : "#FFFFFF";
-    const main = isDark ? "#FFFFFF" : "#111827";
-    const muted = isDark ? "rgba(255,255,255,0.5)" : "rgba(17,24,39,0.5)";
-    const divider = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+    const sheetBg = isDark ? colors.card : "#FFFFFF";
+    const main = isDark ? colors.text : "#111827";
+    const mutedColor = isDark ? "rgba(255,255,255,0.5)" : "rgba(17,24,39,0.5)";
+    const divider = isDark ? colors.border : "rgba(0,0,0,0.06)";
 
     return (
         <>
-            <TouchableOpacity onPress={handlePress} disabled={busy}>
-                <LinearGradient
-                    style={styles.button}
-                    colors={["#6A00F4", "#8100dd"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                >
-                    <View style={styles.contentWrap}>
+            <Pressable
+                onPress={handlePress}
+                onPressIn={() => { if (!disabled) scale.value = withSpring(MOTION.press.scale, MOTION.spring.snappy); }}
+                onPressOut={() => { scale.value = withSpring(1, MOTION.spring.snappy); }}
+                disabled={disabled || busy}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+            >
+                <Animated.View style={[animStyle, disabled && { opacity: 0.5 }]}>
+                    <LinearGradient
+                        style={styles.button}
+                        colors={[colors.accent, colors.accentDeep]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                    >
                         {busy ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                            <>
-                                <Smartphone color="white" size={16} />
-                                <Text style={styles.buttonText}>Tap to Meet</Text>
-                            </>
+                            <View style={styles.contentWrap}>
+                                <Smartphone color="white" size={18} />
+                                <Text style={styles.buttonText} numberOfLines={1}>{label}</Text>
+                            </View>
                         )}
-                    </View>
-                </LinearGradient>
-            </TouchableOpacity>
+                    </LinearGradient>
+                </Animated.View>
+            </Pressable>
+            {disabledReason && (
+                <Text style={[styles.reason, { color: mutedColor }]} numberOfLines={1}>
+                    {disabledReason}
+                </Text>
+            )}
 
             <BottomSheetModal
                 ref={chooserRef}
@@ -93,14 +130,14 @@ export function TapToMeetButton() {
             >
                 <BottomSheetView style={styles.sheetBody}>
                     <Text style={[styles.sheetTitle, { color: main }]}>Tap to Meet</Text>
-                    <Text style={[styles.sheetSub, { color: muted }]}>
+                    <Text style={[styles.sheetSub, { color: mutedColor }]}>
                         You're checked in to a few events — pick where you're meeting.
                     </Text>
                     {choices.map((ev) => (
-                        <TouchableOpacity
+                        <Pressable
                             key={ev.event_id}
-                            activeOpacity={0.75}
-                            style={[styles.eventRow, { borderColor: divider }]}
+                            style={({ pressed }) => [styles.eventRow, { borderColor: divider, opacity: pressed ? 0.7 : 1 }]}
+                            android_ripple={{ color: 'rgba(168,85,247,0.2)', borderless: false }}
                             onPress={() => {
                                 haptics.selection();
                                 openForEvent(ev.event_id);
@@ -110,14 +147,14 @@ export function TapToMeetButton() {
                                 <Image source={{ uri: ev.event_image }} style={styles.eventImg} contentFit="cover" />
                             ) : (
                                 <View style={[styles.eventImg, styles.eventImgPlaceholder]}>
-                                    <Calendar size={18} color="#A855F7" />
+                                    <Calendar size={18} color={colors.accent} />
                                 </View>
                             )}
                             <Text style={[styles.eventName, { color: main }]} numberOfLines={1}>
                                 {ev.event_name}
                             </Text>
-                            <ChevronRight size={16} color={muted as any} />
-                        </TouchableOpacity>
+                            <ChevronRight size={16} color={mutedColor as any} />
+                        </Pressable>
                     ))}
                 </BottomSheetView>
             </BottomSheetModal>
@@ -125,31 +162,40 @@ export function TapToMeetButton() {
     );
 }
 
-const getStyles = () => StyleSheet.create({
+const styles = StyleSheet.create({
     button: {
         width: "100%",
-        height: 44,
-        borderRadius: 14,
+        height: 52,
+        borderRadius: radius.lg,
         justifyContent: "center",
         alignItems: "center",
+        paddingHorizontal: space.lg,
     },
     contentWrap: {
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        gap: 8,
+        gap: space.sm,
     },
     buttonText: {
         includeFontPadding: false,
-        color: "white",
-        fontSize: 15,
-        lineHeight: 17,
+        color: colors.text,
+        fontSize: typeScale.body,
+        lineHeight: typeScale.body + 2,
         fontWeight: "600",
+        flexShrink: 1,
+    },
+    reason: {
+        fontFamily: "Dank Mono",
+        fontSize: typeScale.caption,
+        includeFontPadding: false,
+        marginTop: space.xs + 2,
+        textAlign: "center",
     },
     sheetBody: {
-        paddingHorizontal: 20,
-        paddingBottom: 36,
-        paddingTop: 4,
+        paddingHorizontal: space.xl - space.xs,
+        paddingBottom: space.xxl + space.xs,
+        paddingTop: space.xs,
     },
     sheetTitle: {
         fontFamily: "Dank Mono Bold",
@@ -158,22 +204,22 @@ const getStyles = () => StyleSheet.create({
     },
     sheetSub: {
         fontFamily: "Dank Mono",
-        fontSize: 13,
-        marginTop: 4,
-        marginBottom: 14,
+        fontSize: typeScale.mono,
+        marginTop: space.xs,
+        marginBottom: space.md + 2,
         includeFontPadding: false,
     },
     eventRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        paddingVertical: 10,
+        gap: space.md,
+        paddingVertical: space.sm + 2,
         borderBottomWidth: 1,
     },
     eventImg: {
         width: 40,
         height: 40,
-        borderRadius: 10,
+        borderRadius: radius.sm,
     },
     eventImgPlaceholder: {
         backgroundColor: "rgba(168,85,247,0.12)",
