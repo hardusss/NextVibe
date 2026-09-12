@@ -323,7 +323,7 @@ export default function ChatsList() {
         renderItem={({ item }) => (
           <ChatItem chat={item} onDelete={handleDeleteChat} />
         )}
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 100 }]}
         ListHeaderComponent={ListHeader}
         refreshControl={
           <RefreshControl

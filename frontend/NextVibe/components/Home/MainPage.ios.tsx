@@ -1197,7 +1197,14 @@ export default function MainPage() {
                 showsVerticalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChangedRef.current}
                 viewabilityConfig={viewabilityConfig}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        // Keep the spinner below the floating header/status bar
+                        progressViewOffset={headerHeight}
+                    />
+                }
                 ListFooterComponent={!loading ? renderFooter : null}
             />
 

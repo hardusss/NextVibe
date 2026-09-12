@@ -10,9 +10,10 @@ import {
     Platform,
     UIManager,
     LayoutAnimation,
-    KeyboardAvoidingView,
+    Keyboard,
     Modal,
     Animated,
+    Pressable,
     StatusBar,
     useColorScheme,
 } from 'react-native';
@@ -105,6 +106,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
     const [replyingTo, setReplyingTo] = useState<Comment | Reply | null>(null);
     const [commentText, setCommentText] = useState('');
     const [expandedTexts, setExpandedTexts] = useState<{ [key: string]: boolean }>({});
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     useEffect(() => {
         Animated.spring(slideAnim, {
@@ -113,6 +115,22 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
             friction: 11,
             useNativeDriver: true,
         }).start();
+    }, []);
+
+    // KeyboardAvoidingView is unreliable inside a statusBarTranslucent Modal
+    // (Android never resizes it), so track the keyboard height manually and
+    // pad the sheet content with it on both platforms.
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+        const showSub = Keyboard.addListener(showEvent, (e) => {
+            setKeyboardHeight(e.endCoordinates?.height ?? 0);
+        });
+        const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
     }, []);
 
     useEffect(() => {
@@ -378,20 +396,27 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
             <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
 
             <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-                <KeyboardAvoidingView
-                    style={styles.keyboardWrapper}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                <View
+                    style={[
+                        styles.keyboardWrapper,
+                        // Android outside a Modal resizes the window itself
+                        // (softwareKeyboardLayoutMode: "resize"), so only pad
+                        // where the system doesn't do it for us.
+                        { paddingBottom: Platform.OS === 'android' && !useModal ? 0 : keyboardHeight },
+                    ]}
                 >
-                    <View style={styles.handle} />
+                    <Pressable onPress={Keyboard.dismiss}>
+                        <View style={styles.handle} />
 
-                    <View style={styles.header}>
-                        <Text style={styles.headerText}>
-                            Comments{totalCount > 0 ? ` · ${totalCount}` : ''}
-                        </Text>
-                        <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                            <X size={20} color="#888" />
-                        </TouchableOpacity>
-                    </View>
+                        <View style={styles.header}>
+                            <Text style={styles.headerText}>
+                                Comments{totalCount > 0 ? ` · ${totalCount}` : ''}
+                            </Text>
+                            <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <X size={20} color="#888" />
+                            </TouchableOpacity>
+                        </View>
+                    </Pressable>
 
                     {loading ? (
                         <View style={styles.centered}>
@@ -417,6 +442,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                             contentContainerStyle={styles.listContent}
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
                         />
                     )}
 
@@ -461,7 +487,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                             </TouchableOpacity>
                         </View>
                     )}
-                </KeyboardAvoidingView>
+                </View>
             </Animated.View>
         </View>
     );

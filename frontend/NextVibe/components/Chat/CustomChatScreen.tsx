@@ -1131,8 +1131,17 @@ export default function CustomChatScreen() {
                         renderItem={renderItem}
                         inverted
                         contentContainerStyle={[
-                            styles.listContent, 
-                            { paddingTop: inputLayoutHeight + 12 + (keyboardHeight > 0 ? 0 : Math.max(insets.bottom, 8)) }
+                            styles.listContent,
+                            // Inverted list: paddingTop is the visual bottom. It must clear the
+                            // floating input AND the keyboard it rides on, or the newest
+                            // messages hide behind them.
+                            {
+                                paddingTop:
+                                    inputLayoutHeight + 12 +
+                                    (keyboardHeight > 0
+                                        ? keyboardHeight + (Platform.OS === 'android' ? 24 : 12)
+                                        : Math.max(insets.bottom, 8)),
+                            },
                         ]}
                         showsVerticalScrollIndicator={false}
                         onEndReached={loadOlderMessages}
