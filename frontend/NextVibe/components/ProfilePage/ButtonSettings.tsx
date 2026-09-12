@@ -24,7 +24,7 @@ const ButtonSsetings = () => {
     };
 
     return (
-        <Animated.View style={{ transform: [{ scale }] }}>
+        <Animated.View style={[{marginRight: 10}, { transform: [{ scale }] }]}>
             <TouchableOpacity
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}

@@ -24,7 +24,7 @@ import { AvatarWithFrame } from "./AvatarWithFrame";
 import Hyperlink from 'react-native-hyperlink';
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
-import { Star, Camera, Layers, Calendar, ChevronRight, Share2, Users } from "lucide-react-native";
+import { Star, Camera, Layers, Calendar, ChevronRight, Share2 } from "lucide-react-native";
 
 import getUserDetail from "@/src/api/user.detail";
 import { storage } from '@/src/utils/storage';
@@ -41,9 +41,7 @@ import haptics from "@/src/utils/haptics";
 import { TapToMeetButton } from "./TapToMeet/TapToMeetButton";
 import ShareModal, { ShareModalRef } from './ShareViaNFC/ShareBottomModal';
 
-import { SecondaryActionButton } from "./SecondaryActionButton";
-import { GlassSurface } from "@/components/Shared/GlassSurface";
-import { space } from "@/src/theme/tokens";
+import { InviteSecondaryButton } from "./Invite/InviteButton";
 import { InviteBottomSheet, InviteSheetRef } from "./Invite/InviteBottomSheet";
 
 import { EventConnectionsSheet, EventConnectionsSheetRef } from "./EventConnectionsSheet";
@@ -455,15 +453,25 @@ const ProfileView = () => {
 
                 <View style={[st.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
 
-                <View style={st.actionsCol}>
-                    <TapToMeetButton />
-                    <View style={st.secondaryRow}>
-                        <View style={{ flex: 1 }}>
-                            <SecondaryActionButton icon={Users} label="Invite" onPress={() => inviteSheetRef.current?.present()} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <SecondaryActionButton icon={Calendar} label="Events" onPress={() => router.push("/events")} />
-                        </View>
+                <View style={st.actionsRow}>
+                    <View style={{ flex: 1.2 }}>
+                        <TapToMeetButton />
+                    </View>
+                    <View style={{ flex: 0.9 }}>
+                        <InviteSecondaryButton handlePress={() => inviteSheetRef.current?.present()} />
+                    </View>
+                    <View style={{ flex: 0.9 }}>
+                        <TouchableOpacity
+                            activeOpacity={0.84}
+                            onPress={() => router.push("/events")}
+                            style={[st.eventsBtn, {
+                                borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
+                                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                            }]}
+                        >
+                            <Calendar size={18} color="#A855F7" />
+                            <Text style={st.eventsBtnText}>Events</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -611,16 +619,7 @@ const ProfileView = () => {
 
             {/* Fixed Settings/Wallet Top Bar with safe area top inset */}
             <View style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
-                <GlassSurface
-                    style={st.topBarChip}
-                    glassEffectStyle="regular"
-                    isInteractive
-                    androidBlur
-                    colorScheme={isDark ? "dark" : "light"}
-                    fallbackBackgroundColor={isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"}
-                >
-                    <ButtonSettings />
-                </GlassSurface>
+                <ButtonSettings />
                 <View style={{ flex: 1 }} />
                 <ButtonWallet />
             </View>
@@ -811,22 +810,26 @@ const st = StyleSheet.create({
         marginHorizontal: 40,
         marginBottom: 16,
     },
-    actionsCol: {
-        gap: space.sm,
-        marginBottom: space.lg + space.xs,
-    },
-    secondaryRow: {
+    actionsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: space.sm,
+        gap: 6,
+        marginBottom: 20,
     },
-    topBarChip: {
-        width: 44,
+    eventsBtn: {
         height: 44,
-        borderRadius: 22,
+        borderRadius: 14,
+        borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        overflow: 'hidden',
+        flexDirection: 'row',
+        gap: 6,
+    },
+    eventsBtnText: {
+        color: '#A855F7',
+        fontFamily: 'Dank Mono Bold',
+        fontSize: 12,
+        includeFontPadding: false,
     },
     tabBar: {
         marginBottom: 20,
