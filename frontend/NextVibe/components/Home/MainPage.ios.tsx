@@ -1198,11 +1198,13 @@ export default function MainPage() {
                 onViewableItemsChanged={onViewableItemsChangedRef.current}
                 viewabilityConfig={viewabilityConfig}
                 refreshControl={
+                    // The native spinner renders behind the floating header/status bar
+                    // (progressViewOffset is a no-op on the new architecture), so it is
+                    // hidden and a custom indicator is overlaid below the header instead.
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        // Keep the spinner below the floating header/status bar
-                        progressViewOffset={headerHeight}
+                        tintColor="transparent"
                     />
                 }
                 ListFooterComponent={!loading ? renderFooter : null}
@@ -1223,6 +1225,38 @@ export default function MainPage() {
             ]}>
                 <HomeHeaderTitle />
             </AnimatedReanimated.View>
+
+            {refreshing && (
+                <View
+                    pointerEvents="none"
+                    style={{
+                        position: "absolute",
+                        top: headerHeight + 8,
+                        left: 0,
+                        right: 0,
+                        zIndex: 90,
+                        alignItems: "center",
+                    }}
+                >
+                    <View style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        backgroundColor: theme.cardBackground,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderWidth: 1,
+                        borderColor: colorScheme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(124,58,237,0.12)",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: colorScheme === "dark" ? 0.35 : 0.12,
+                        shadowRadius: 8,
+                        elevation: 6,
+                    }}>
+                        <CustomActivityIndicator size="small" />
+                    </View>
+                </View>
+            )}
         </View>
     );
 }

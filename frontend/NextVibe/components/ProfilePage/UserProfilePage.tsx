@@ -545,7 +545,13 @@ const UserProfileView = () => {
                         </View>
                     )}
 
-                    <Animated.View style={{ flex: 1, opacity: postsOpacity, transform: [{ translateX: postsTranslate }], display: activeTab === 'Posts' ? 'flex' : 'none' }}>
+                    {/* Both galleries stay mounted AND laid out; `display: none` would
+                        drop the hidden list's layout and force a full re-layout (visible
+                        as the whole page "reloading") on every tab switch. */}
+                    <Animated.View
+                        pointerEvents={activeTab === 'Posts' ? 'auto' : 'none'}
+                        style={[StyleSheet.absoluteFill, { opacity: postsOpacity, transform: [{ translateX: postsTranslate }], zIndex: activeTab === 'Posts' ? 1 : 0 }]}
+                    >
                         <PostGallery
                             key={`posts-${refreshKey}`}
                             id={+id}
@@ -563,7 +569,10 @@ const UserProfileView = () => {
                             contentInsetAdjustmentBehavior="never"
                         />
                     </Animated.View>
-                    <Animated.View style={{ flex: 1, opacity: cnftsOpacity, transform: [{ translateX: cnftsTranslate }], display: activeTab === 'cNFTs' ? 'flex' : 'none' }}>
+                    <Animated.View
+                        pointerEvents={activeTab === 'cNFTs' ? 'auto' : 'none'}
+                        style={[StyleSheet.absoluteFill, { opacity: cnftsOpacity, transform: [{ translateX: cnftsTranslate }], zIndex: activeTab === 'cNFTs' ? 1 : 0 }]}
+                    >
                         <CollectionsGallery
                             key={`collections-${refreshKey}`}
                             id={+id}
@@ -656,6 +665,7 @@ const st = StyleSheet.create({
         right: 16,
         flexDirection: 'row',
         alignItems: 'center',
+        zIndex: 10,
     },
     avatarWrap: {
         alignSelf: 'center',

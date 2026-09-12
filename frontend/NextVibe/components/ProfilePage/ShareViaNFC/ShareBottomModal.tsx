@@ -11,11 +11,13 @@ import {
 import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Wifi, WifiOff, Users, CheckCircle, AlertTriangle } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
+import { Wifi, WifiOff, Users, CheckCircle, AlertTriangle, Link2, Check } from 'lucide-react-native';
 
 import { startSharing, stopSharing, addNfcReadListener } from '../../../modules/nfc-send';
 import { startBroadcasting, stopBroadcasting, addBleReadListener } from '../../../modules/ble-share';
 import { storage } from '@/src/utils/storage';
+import haptics from '@/src/utils/haptics';
 
 export interface ShareModalRef {
     present: () => void;
@@ -139,6 +141,8 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [vibes, setVibes] = useState(0);
     const [showGlow, setShowGlow] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const removeListenerRef = useRef<{ remove: () => void } | null>(null);
     const lastReadTimestamp = useRef<number>(0);
@@ -148,7 +152,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     const glowAnimRef = useRef<Animated.CompositeAnimation | null>(null);
     const glowOpacity = useRef(new Animated.Value(0)).current;
 
-    const snapPoints = useMemo(() => ['50%', '65%'], []);
+    const snapPoints = useMemo(() => ['55%', '75%'], []);
 
     useEffect(() => {
         StatusBar.setBarStyle(colors.statusBarStyle, true);
@@ -156,7 +160,10 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     }, [isDark]);
 
     useEffect(() => {
-        return () => { stopHceBroadcast(); };
+        return () => {
+            stopHceBroadcast();
+            if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+        };
     }, []);
 
     useImperativeHandle(ref, () => ({
@@ -170,6 +177,32 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         lastReadTimestamp.current = 0;
         setShowGlow(false);
         glowOpacity.setValue(0);
+        setCopied(false);
+        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+
+    const resolveProfileUrl = async (): Promise<string | null> => {
+        let url = props.profileUrl;
+        if (!url || url.includes('undefined') || url.includes('NaN')) {
+            const storedId = await storage.getItem('id');
+            if (storedId) url = `https://nextvibe.io/u/${storedId}`;
+        }
+        if (!url || url.includes('undefined') || url.includes('NaN')) return null;
+        return url;
+    };
+
+    const handleCopyLink = async () => {
+        try {
+            const url = await resolveProfileUrl();
+            if (!url) return;
+            await Clipboard.setStringAsync(url);
+            haptics.notification('success');
+            setCopied(true);
+            if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+            copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
+        } catch (e) {
+            console.warn('[ShareModal] Failed to copy profile link:', e);
+        }
     };
 
     const triggerNeonGlow = () => {
@@ -394,6 +427,24 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                     <View style={{ flex: 1 }} />
 
                     <TouchableOpacity
+                        onPress={handleCopyLink}
+                        activeOpacity={0.8}
+                        style={[styles.copyLinkButton, {
+                            backgroundColor: colors.cardBg,
+                            borderColor: copied ? 'rgba(34,197,94,0.4)' : 'rgba(168,85,247,0.25)',
+                        }]}
+                    >
+                        {copied ? (
+                            <Check size={18} color="#22c55e" />
+                        ) : (
+                            <Link2 size={18} color={colors.accent} />
+                        )}
+                        <Text style={[styles.copyLinkText, { color: copied ? '#22c55e' : colors.textColor }]}>
+                            {copied ? 'Link copied!' : 'Copy profile link'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         onPress={handleClose}
                         activeOpacity={0.8}
                         style={styles.buttonContainer}
@@ -497,6 +548,22 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 18,
         fontFamily: "Dank Mono Bold",
+        includeFontPadding: false,
+    },
+    copyLinkButton: {
+        width: '100%',
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    copyLinkText: {
+        fontSize: 15,
+        fontFamily: 'Dank Mono Bold',
         includeFontPadding: false,
     },
     buttonContainer: {

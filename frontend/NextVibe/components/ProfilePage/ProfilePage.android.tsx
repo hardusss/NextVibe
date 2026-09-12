@@ -551,7 +551,13 @@ const ProfileView = () => {
                 </View>
             ) : (
                 <>
-                    <Animated.View style={[postsAnimatedStyle, { flex: 1, display: activeTab === 'Posts' ? 'flex' : 'none' }]}>
+                    {/* Both galleries stay mounted AND laid out; `display: none` would
+                        drop the hidden list's layout and force a full re-layout (visible
+                        as the whole page "reloading") on every tab switch. */}
+                    <Animated.View
+                        pointerEvents={activeTab === 'Posts' ? 'auto' : 'none'}
+                        style={[postsAnimatedStyle, StyleSheet.absoluteFill, { zIndex: activeTab === 'Posts' ? 1 : 0 }]}
+                    >
                         {interactionsFinished ? (
                             <PostGallery
                                 key={`posts-${refreshKey}`}
@@ -569,7 +575,10 @@ const ProfileView = () => {
                             <ActivityIndicator size="large" color="#58a6ff" style={{ marginTop: 40 }} />
                         )}
                     </Animated.View>
-                    <Animated.View style={[cnftsAnimatedStyle, { flex: 1, display: activeTab === 'cNFTs' ? 'flex' : 'none' }]}>
+                    <Animated.View
+                        pointerEvents={activeTab === 'cNFTs' ? 'auto' : 'none'}
+                        style={[cnftsAnimatedStyle, StyleSheet.absoluteFill, { zIndex: activeTab === 'cNFTs' ? 1 : 0 }]}
+                    >
                         {interactionsFinished ? (
                             <CollectionsGallery
                                 key={`collections-${refreshKey}`}
