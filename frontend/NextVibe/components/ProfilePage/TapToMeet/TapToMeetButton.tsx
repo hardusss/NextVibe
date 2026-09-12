@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Smartphone, Zap, ChevronRight, Calendar } from "lucide-react-native";
+import { Smartphone, ChevronRight, Calendar } from "lucide-react-native";
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -75,11 +75,8 @@ export function TapToMeetButton() {
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
                             <>
+                                <Smartphone color="white" size={16} />
                                 <Text style={styles.buttonText}>Tap to Meet</Text>
-                                <View style={styles.iconPair}>
-                                    <Smartphone color="white" size={15} />
-                                    <Zap color="white" size={11} fill="white" style={styles.zap} />
-                                </View>
                             </>
                         )}
                     </View>
@@ -140,20 +137,13 @@ const getStyles = () => StyleSheet.create({
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        gap: 6,
-    },
-    iconPair: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    zap: {
-        marginLeft: -3,
-        marginTop: -8,
+        gap: 8,
     },
     buttonText: {
         includeFontPadding: false,
         color: "white",
         fontSize: 15,
+        lineHeight: 17,
         fontWeight: "600",
     },
     sheetBody: {
