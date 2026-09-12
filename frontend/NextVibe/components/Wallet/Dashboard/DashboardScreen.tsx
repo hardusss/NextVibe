@@ -24,7 +24,6 @@ import { useCnftDisplayData } from "@/src/utils/solana/cnftMetadata";
 import { createWalletStyles } from "@/styles/wallet.styles";
 import { FadeIn } from "@/components/Shared/motion";
 import { MOTION } from "@/constants/motion";
-import haptics from "@/src/utils/haptics";
 
 import { DepositBottomSheet, DepositSheetRef } from '@/components/Wallet/NfcDeposit/DepositBottomSheet';
 
@@ -346,7 +345,7 @@ export default function WalletDashboardScreen() {
                                                     },
                                                 ]}
                                                 activeOpacity={0.8}
-                                                onPress={() => { haptics.selection(); setActiveTab(tab); }}
+                                                onPress={() => setActiveTab(tab)}
                                             >
                                                 <Text
                                                     style={[
