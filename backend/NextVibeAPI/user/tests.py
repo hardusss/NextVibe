@@ -100,3 +100,46 @@ class InviteSystemTest(TestCase):
         force_authenticate(request2, user=wallet_user)
         response2 = view(request2)
         self.assertEqual(response2.status_code, 400)
+
+
+class SaveWalletAddressTest(TestCase):
+    """Linking, replacing, and cross-account conflicts for save-wallet."""
+
+    ADDR_A = "So11111111111111111111111111111111111111112"
+    ADDR_B = "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E"
+
+    def setUp(self):
+        from rest_framework.test import APIRequestFactory
+        self.factory = APIRequestFactory()
+        self.owner = User.objects.create_user(
+            email="owner@example.com", username="owner", password="Password123!"
+        )
+        self.owner.wallet_address = self.ADDR_A
+        self.owner.save()
+        self.other = User.objects.create_user(
+            email="other@example.com", username="other", password="Password123!"
+        )
+
+    def _post(self, user, address):
+        from rest_framework.test import force_authenticate
+        from user.views_pac.save_wallet_address import SaveWalletAddressView
+        request = self.factory.post("/users/save-wallet/", {"walletAddress": address}, format="json")
+        force_authenticate(request, user=user)
+        return SaveWalletAddressView.as_view()(request)
+
+    def test_same_address_is_a_noop_success(self):
+        response = self._post(self.owner, self.ADDR_A)
+        self.assertEqual(response.status_code, 200)
+
+    def test_user_can_replace_own_linked_wallet(self):
+        response = self._post(self.owner, self.ADDR_B)
+        self.assertEqual(response.status_code, 200)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.wallet_address, self.ADDR_B)
+
+    def test_address_owned_by_another_account_is_rejected(self):
+        response = self._post(self.other, self.ADDR_A)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("another account", response.data.get("error", ""))
+        self.other.refresh_from_db()
+        self.assertNotEqual(self.other.wallet_address, self.ADDR_A)

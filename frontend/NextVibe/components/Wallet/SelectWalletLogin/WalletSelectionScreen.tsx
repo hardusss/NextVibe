@@ -94,30 +94,6 @@ const WalletSelectionScreen = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!isConnecting || !account?.address) return;
-
-    const walletAddr = account.address.toString();
-    walletLogger.info(WalletTag.MWA, `WalletSelectionScreen: Account detected (${walletAddr}), calling saveWallet...`);
-
-    if (!isMounted.current) return;
-    setIsConnecting(false);
-
-    saveWallet(walletAddr)
-      .then(() => {
-        if (!isMounted.current) return;
-        walletLogger.info(WalletTag.MWA, `WalletSelectionScreen: saveWallet succeeded for ${walletAddr}, redirecting to /wallet-dash`);
-        router.push('/wallet-dash');
-      })
-      .catch((saveError: any) => {
-        if (!isMounted.current) return;
-        const msg = extractErrorMessage(saveError);
-        walletLogger.error(WalletTag.MWA, `WalletSelectionScreen: saveWallet failed for ${walletAddr}: ${msg}`, saveError);
-        disconnect();
-        setToast({ message: msg, isSuccess: false });
-      });
-  }, [account, isConnecting]);
-
   const handleCardPress = useCallback((id: WalletType) => {
     walletLogger.debug(WalletTag.MWA, `WalletSelectionScreen: Card press toggle for ${id}`);
     setSelectedWallet((prev) => (prev === id ? null : id));
@@ -131,17 +107,37 @@ const WalletSelectionScreen = () => {
         await disconnect();
       }
       setIsConnecting(true);
+      // Save only the account returned by THIS connect call. The previous
+      // account-watching effect fired with the stale cached adapter account
+      // the moment isConnecting flipped true, posting an old (possibly another
+      // account's) address to save-wallet before the handshake finished.
       const connectedAcc = await connect();
       walletLogger.info(WalletTag.MWA_ANDROID, 'WalletSelectionScreen: MWA connect call returned', {
         address: connectedAcc?.address?.toString(),
         label: connectedAcc?.label,
       });
+      if (!connectedAcc) return;
+
+      const walletAddr = connectedAcc.address.toString();
+      try {
+        await saveWallet(walletAddr);
+        if (!isMounted.current) return;
+        walletLogger.info(WalletTag.MWA, `WalletSelectionScreen: saveWallet succeeded for ${walletAddr}, redirecting to /wallet-dash`);
+        router.push('/wallet-dash');
+      } catch (saveError: any) {
+        if (!isMounted.current) return;
+        const msg = extractErrorMessage(saveError);
+        walletLogger.error(WalletTag.MWA, `WalletSelectionScreen: saveWallet failed for ${walletAddr}: ${msg}`, saveError);
+        disconnect();
+        setToast({ message: msg, isSuccess: false });
+      }
     } catch (error) {
       if (!isMounted.current) return;
-      setIsConnecting(false);
       const msg = extractErrorMessage(error);
       walletLogger.error(WalletTag.MWA_ANDROID, `WalletSelectionScreen: MWA Connection failed: ${msg}`, error);
       setToast({ message: msg, isSuccess: false });
+    } finally {
+      if (isMounted.current) setIsConnecting(false);
     }
   }, [account, connect, disconnect]);
 

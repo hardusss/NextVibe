@@ -8,7 +8,6 @@ import {
     Dimensions,
     useColorScheme,
     Animated,
-    RefreshControl,
     ActivityIndicator,
     Pressable,
     Linking,
@@ -66,6 +65,9 @@ import AnimatedReanimated, {
 import HomeHeaderTitle from "@/components/Home/HomeHeaderTitle";
 
 const { width: screenWidth } = Dimensions.get("window");
+
+// How far past the resting position the feed must be pulled to trigger a refresh
+const PULL_TO_REFRESH_DISTANCE = 75;
 
 let isSessionActive = false;
 
@@ -792,6 +794,17 @@ export default function MainPage() {
         cachedScrollOffset = Math.max(0, y);
     };
 
+    // The native UIRefreshControl always draws its spinner at the very top of
+    // the scroll view frame — behind the Dynamic Island / floating header — so
+    // pull-to-refresh is triggered from the scroll gesture instead and the
+    // custom indicator below the header (rendered while `refreshing`) is the
+    // only spinner.
+    const onRefreshRef = useRef<() => void>(() => {});
+    const triggerPullRefresh = useCallback(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        onRefreshRef.current();
+    }, []);
+
     const scrollHandler = useAnimatedScrollHandler({
         onScroll: (event) => {
             const currentY = event.contentOffset.y + headerHeight;
@@ -808,6 +821,9 @@ export default function MainPage() {
         },
         onEndDrag: (event) => {
             const currentY = event.contentOffset.y + headerHeight;
+            if (currentY < -PULL_TO_REFRESH_DISTANCE) {
+                runOnJS(triggerPullRefresh)();
+            }
             if (currentY > headerHeight) {
                 if (translateY.value < -headerHeight / 2) {
                     translateY.value = withSpring(-headerHeight, { damping: 20, stiffness: 120 });
@@ -934,6 +950,7 @@ export default function MainPage() {
         cachedScrollOffset = 0;
         fetchPosts(false, true, true).then(() => setRefreshing(false));
     }, []);
+    onRefreshRef.current = onRefresh;
 
     const fetchPosts = async (loadMore = false, reset = false, forceReset = false) => {
         if (isFetchingRef.current) return;
@@ -1197,16 +1214,6 @@ export default function MainPage() {
                 showsVerticalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChangedRef.current}
                 viewabilityConfig={viewabilityConfig}
-                refreshControl={
-                    // The native spinner renders behind the floating header/status bar
-                    // (progressViewOffset is a no-op on the new architecture), so it is
-                    // hidden and a custom indicator is overlaid below the header instead.
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        tintColor="transparent"
-                    />
-                }
                 ListFooterComponent={!loading ? renderFooter : null}
             />
 
