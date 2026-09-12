@@ -28,8 +28,6 @@ import validationUsername from "@/src/validation/username-update-validator";
 import { clearFeedCache } from "../Home/MainPage";
 import { clearProfileCache } from "../ProfilePage/ProfilePage";
 import { startScanning, stopScanning } from "@/modules/ble-share";
-import GlassSurface from "@/components/Shared/GlassSurface";
-import haptics from "@/src/utils/haptics";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
 import GaslessIndicator from "@/components/Shared/GaslessIndicator";
@@ -409,19 +407,12 @@ function PageSettingsContent() {
 
             <StatusBar backgroundColor={colors.background} barStyle={isDark ? "light-content" : "dark-content"} />
             
-            <GlassSurface
-                style={styles.headerWrap}
-                glassEffectStyle="regular"
-                androidBlur
-                colorScheme={isDark ? "dark" : "light"}
-                fallbackBackgroundColor={isDark ? "rgba(10,4,16,0.88)" : "rgba(250,250,252,0.92)"}
-            >
             <View style={styles.header}>
                 <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={handleBackPress}>
                     <ArrowLeft size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Profile</Text>
-                <TouchableOpacity
+                <TouchableOpacity 
                     hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                     disabled={!isSave}
                     onPress={handleSave}
@@ -431,7 +422,6 @@ function PageSettingsContent() {
                     </Text>
                 </TouchableOpacity>
             </View>
-            </GlassSurface>
 
             <ScrollView 
                 contentContainerStyle={styles.contentContainer}
@@ -555,7 +545,7 @@ function PageSettingsContent() {
                                 </View>
                                 <Switch
                                     value={liquidGlassEnabled}
-                                    onValueChange={(v: boolean) => { haptics.selection(); setLiquidGlassEnabled(v); }}
+                                    onValueChange={setLiquidGlassEnabled}
                                     color={colors.accent}
                                 />
                             </View>
@@ -607,7 +597,7 @@ function PageSettingsContent() {
                             </View>
                             <Switch
                                 value={isBluetoothEnabled}
-                                onValueChange={(v: boolean) => { haptics.selection(); handleToggleBluetooth(v); }}
+                                onValueChange={handleToggleBluetooth}
                                 color={colors.accent}
                             />
                         </View>
@@ -718,15 +708,6 @@ const getStyles = (colors: any, insets: any) => {
             backgroundColor: colors.background,
             flex: 1,
         },
-        headerWrap: {
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 50,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-        },
         header: {
             flexDirection: "row",
             alignItems: "center",
@@ -734,6 +715,9 @@ const getStyles = (colors: any, insets: any) => {
             paddingHorizontal: 24,
             paddingTop: insets.top + 16,
             paddingBottom: 16,
+            backgroundColor: colors.background,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
         },
         icon: {
             color: colors.textPrimary,
@@ -757,7 +741,6 @@ const getStyles = (colors: any, insets: any) => {
         },
         contentContainer: {
             padding: 24,
-            paddingTop: insets.top + 72,
             paddingBottom: 60,
         },
         centeredView: {
