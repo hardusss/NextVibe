@@ -24,8 +24,6 @@ import { ChatItemSkeleton, OnlineUserSkeleton } from './SkeletonLoaders';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { chatColors, chatRadius } from '@/src/theme/chatTheme';
-import GlassSurface from '@/components/Shared/GlassSurface';
-import { space } from '@/src/theme/tokens';
 
 const SearchBar = React.memo(({ placeholder, value, onChangeText, isDark }: any) => {
   const colors = chatColors[isDark ? 'dark' : 'light'];
@@ -318,14 +316,6 @@ export default function ChatsList() {
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.bg}
-      />
-      {/* Status-bar protection: chat list blurs under the system bar */}
-      <GlassSurface
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, zIndex: 10 }}
-        glassEffectStyle="regular"
-        androidBlur
-        colorScheme={isDark ? 'dark' : 'light'}
-        fallbackBackgroundColor={isDark ? 'rgba(10,4,16,0.85)' : 'rgba(250,250,252,0.9)'}
       />
       <FlatList
         data={chatLoading && chats.length === 0 ? [] : filteredChats}

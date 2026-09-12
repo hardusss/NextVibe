@@ -19,7 +19,6 @@ import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { chatColors, chatRadius } from '@/src/theme/chatTheme';
-import { space } from '@/src/theme/tokens';
 import CryptoService from '@/src/services/CryptoService';
 import { storage } from '@/src/utils/storage';
 
@@ -422,10 +421,9 @@ const getStyles = (isDark: boolean, colors: typeof chatColors.dark) =>
     container: {
       flexDirection: 'row',
       padding: 14,
-      paddingHorizontal: space.lg,
-      marginHorizontal: space.lg,
-      marginVertical: space.xs,
-      minHeight: 64,
+      paddingHorizontal: 16,
+      marginHorizontal: 10,
+      marginVertical: 4,
       borderRadius: chatRadius.card,
       borderWidth: 1,
       borderColor: colors.border,
