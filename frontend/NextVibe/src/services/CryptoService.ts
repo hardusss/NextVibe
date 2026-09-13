@@ -66,6 +66,24 @@ class CryptoService {
   }
 
   /**
+   * Conversation session secret. Must be derivable identically on BOTH devices:
+   * building it from the local device's private key (as v1 did) gives sender and
+   * recipient different keystreams, so every keystream cycle 8 bytes decrypt wrong —
+   * multi-byte UTF-8 (emoji, accents, CJK) comes out as U+FFFD on the other device.
+   */
+  private getSharedSessionSecret(userA: number, userB: number): string {
+    const u1 = Math.min(userA, userB);
+    const u2 = Math.max(userA, userB);
+    return `e2ee_secret_chat_${u1}_${u2}`;
+  }
+
+  private getLegacySessionSecret(userA: number, userB: number, privateKey: string): string {
+    const u1 = Math.min(userA, userB);
+    const u2 = Math.max(userA, userB);
+    return `e2ee_secret_chat_${u1}_${u2}_${privateKey.slice(0, 8)}`;
+  }
+
+  /**
    * Encrypts plaintext message text for chat recipient.
    * Returns standard E2EE envelope structure containing ciphertext & nonce.
    */
@@ -76,11 +94,8 @@ class CryptoService {
     mediaKey?: string
   ): Promise<EncryptedEnvelope> {
     const identity = await this.getOrCreateIdentityKeyPair(senderUserId);
-    
-    // Derive symmetric session key for conversation between sender & recipient
-    const u1 = Math.min(senderUserId, targetUserId);
-    const u2 = Math.max(senderUserId, targetUserId);
-    const sessionSecret = `e2ee_secret_chat_${u1}_${u2}_${identity.privateKey.slice(0, 8)}`;
+
+    const sessionSecret = this.getSharedSessionSecret(senderUserId, targetUserId);
     const nonce = Buffer.from(Array.from({ length: 12 }, () => Math.floor(Math.random() * 256))).toString('base64');
     
     const textBuffer = Buffer.from(plaintext, 'utf-8');
@@ -94,7 +109,7 @@ class CryptoService {
     const ciphertext = Buffer.from(cipherBytes).toString('base64');
 
     return {
-      v: 1,
+      v: 2,
       ciphertext,
       nonce,
       sender_device_id: identity.deviceId,
@@ -133,11 +148,18 @@ class CryptoService {
         return typeof envelopeJsonOrObj === 'string' ? envelopeJsonOrObj : (envelopeJsonOrObj?.content || envelopeJsonOrObj?.text || '');
       }
 
-      const identity = await this.getOrCreateIdentityKeyPair(currentUserId);
       const otherUser = targetUserId || (senderUserId === currentUserId ? currentUserId : senderUserId);
-      const u1 = Math.min(currentUserId, otherUser);
-      const u2 = Math.max(currentUserId, otherUser);
-      const sessionSecret = `e2ee_secret_chat_${u1}_${u2}_${identity.privateKey.slice(0, 8)}`;
+
+      // v2 envelopes use the shared per-conversation secret. v1 envelopes were
+      // keyed with the sending device's private key, which only that device holds —
+      // keep the legacy derivation so a user's own old messages still decrypt.
+      let sessionSecret: string;
+      if (envelope.v >= 2) {
+        sessionSecret = this.getSharedSessionSecret(currentUserId, otherUser);
+      } else {
+        const identity = await this.getOrCreateIdentityKeyPair(currentUserId);
+        sessionSecret = this.getLegacySessionSecret(currentUserId, otherUser, identity.privateKey);
+      }
 
       const cipherBytes = Buffer.from(envelope.ciphertext, 'base64');
       const secretBuffer = Buffer.from(sessionSecret, 'utf-8');
