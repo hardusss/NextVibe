@@ -63,6 +63,13 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
         if (loading) return;
         setLoading(true);
 
+        // Hoisted so the catch block can stash them for the invite-code retry —
+        // Apple only provides email/fullName on the very FIRST authorization,
+        // so losing them here loses them forever.
+        let identityToken: string | null = null;
+        let email: string | null = null;
+        let fullName: string | null = null;
+
         try {
             const credential = await AppleAuthentication.signInAsync({
                 requestedScopes: [
@@ -71,12 +78,13 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
                 ],
             });
 
-            const identityToken = credential.identityToken;
+            identityToken = credential.identityToken;
             if (!identityToken) {
                 throw new Error('No identity token received from Apple');
             }
 
-            const fullName = credential.fullName
+            email = credential.email ?? null;
+            fullName = credential.fullName
                 ? [credential.fullName.givenName, credential.fullName.familyName]
                     .filter(Boolean)
                     .join('_')
@@ -86,28 +94,20 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
 
             await AppleSignIn(
                 identityToken,
-                credential.email,
+                email,
                 fullName,
                 router,
             );
 
             if (onSuccess) onSuccess({});
         } catch (error: any) {
-            if (error?.response?.data?.error === 'invite_code_required') {
-                pendingRef.current = {
-                    identityToken: error?.config?.data
-                        ? JSON.parse(error.config.data)?.identityToken ?? ''
-                        : '',
-                    email: null,
-                    fullName: null,
-                };
-                sheetRef.current?.present();
-                setLoading(false);
+            if (error?.code === 'ERR_REQUEST_CANCELED') {
                 return;
             }
 
-            if (error?.code === 'ERR_REQUEST_CANCELED') {
-                setLoading(false);
+            if (error?.response?.data?.error === 'invite_code_required' && identityToken) {
+                pendingRef.current = { identityToken, email, fullName };
+                sheetRef.current?.present();
                 return;
             }
 
