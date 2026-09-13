@@ -12,6 +12,8 @@ interface QuickActionsProps {
     onSend: () => void;
     onSwap: () => void;
     onNfcDeposit: () => void;
+    /** Hides the Swap action when false (iOS feature flag / mwa wallets). */
+    showSwap?: boolean;
 }
 
 function PulseDot({ isDarkMode }: { isDarkMode: boolean }) {
@@ -115,6 +117,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
     onSend,
     onSwap,
     onNfcDeposit,
+    showSwap = true,
 }) => {
     const allHandlers: Record<string, () => void> = {
         receive: onReceive,
@@ -128,9 +131,11 @@ const QuickActions: React.FC<QuickActionsProps> = ({
     const iconColor = isDarkMode ? "rgba(196,167,255,0.9)" : "rgba(109,40,217,0.85)";
     const labelColor = isDarkMode ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
 
+    const visibleActions = showSwap ? ACTIONS : ACTIONS.filter(a => a.id !== "swap");
+
     return (
         <View style={styles.container}>
-            {ACTIONS.map((action, i) => (
+            {visibleActions.map((action, i) => (
                 <View key={action.id} style={styles.wrapper}>
                     <QuickActionButton
                         action={action}

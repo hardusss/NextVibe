@@ -25,6 +25,7 @@ import { useCnftDisplayData } from "@/src/utils/solana/cnftMetadata";
 import { createWalletStyles } from "@/styles/wallet.styles";
 import { FadeIn } from "@/components/Shared/motion";
 import { MOTION } from "@/constants/motion";
+import { FEATURE_IOS_SWAP } from "@/constants/FeatureFlags";
 
 import { DepositBottomSheet, DepositSheetRef } from '@/components/Wallet/NfcDeposit/DepositBottomSheet';
 
@@ -59,7 +60,10 @@ export default function WalletDashboardScreen() {
     const colorScheme = useColorScheme();
     const isDarkMode = colorScheme === "dark";
 
-    const { connection, address, disconnect } = useWalletAddress();
+    const { connection, address, disconnect, walletType } = useWalletAddress();
+    // Swap is flag-gated on iOS; deep-link ('mwa') wallets stay excluded even
+    // with the flag on — that path can't sign transactions on iOS.
+    const showSwap = Platform.OS !== "ios" || (FEATURE_IOS_SWAP && walletType !== "mwa");
     const { data, isLoading, isRefreshing, refresh } = usePortfolio();
     const {
         lastTransaction,
@@ -317,6 +321,7 @@ export default function WalletDashboardScreen() {
                                     onSend={navigateToSend}
                                     onSwap={() => router.push("/swap")}
                                     onNfcDeposit={() => depositSheetRef.current?.present()}
+                                    showSwap={showSwap}
                                 />
                             </FadeIn>
 
