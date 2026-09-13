@@ -445,12 +445,12 @@ const UserProfileView = () => {
                     <StatColumn value={userData.post_count} label="Posts" isDark={isDark} />
                     <Dot isDark={isDark} />
                     <StatColumn
-                        value={userData.readers_count} label="Readers" isDark={isDark}
+                        value={userData.readers_count} label="Followers" isDark={isDark}
                         onPress={() => router.push({ pathname: "/follows-screen", params: { userId: id, username: userData.username, activeTab: "Readers" } })}
                     />
                     <Dot isDark={isDark} />
                     <StatColumn
-                        value={userData.follows_count} label="Follows" isDark={isDark}
+                        value={userData.follows_count} label="Following" isDark={isDark}
                         onPress={() => router.push({ pathname: "/follows-screen", params: { userId: id, username: userData.username, activeTab: "Follows" } })}
                     />
                 </View>

@@ -49,6 +49,7 @@ import { useSettingsStore } from '@/src/stores/settingsStore';
 import { getWallpaperColors } from '@/constants/chatWallpapers';
 import { storage } from '@/src/utils/storage';
 import { parseISOToLocalDate } from '@/src/utils/formatTime';
+import getUserDetail from '@/src/api/user.detail';
 import {
     getMessages,
     sendWebSocketMessage,
@@ -153,9 +154,11 @@ export default function CustomChatScreen() {
     const wpColors = useMemo(() => getWallpaperColors(chatWallpaperType, chatWallpaperValue, isDark), [chatWallpaperType, chatWallpaperValue, isDark]);
     const isFocused = useIsFocused();
 
-    const { id } = useLocalSearchParams();
+    const { id, userId } = useLocalSearchParams();
     const chatIdStr = Array.isArray(id) ? id[0] : id;
     const chatId = chatIdStr ? parseInt(chatIdStr, 10) : 0;
+    const partnerIdStr = Array.isArray(userId) ? userId[0] : userId;
+    const partnerId = partnerIdStr ? parseInt(partnerIdStr, 10) : 0;
 
     const [messages, setMessages] = useState<MessageItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -235,18 +238,44 @@ export default function CustomChatScreen() {
     }, []);
 
     useEffect(() => {
+        let cancelled = false;
+
+        // The chats list only contains chats that already have messages, so a
+        // just-created chat (first "Message" tap on a profile) is never found
+        // there — fetch the partner directly by id when the route provides it.
         const fetchPartnerInfo = async () => {
+            if (partnerId) {
+                try {
+                    const data = await getUserDetail(partnerId);
+                    if (!cancelled && data?.user_id) {
+                        setOtherUser({
+                            user_id: data.user_id,
+                            username: data.username || 'User',
+                            avatar: data.avatar ? `${data.avatar}` : null,
+                            is_online: data.is_online === true,
+                            official: data.official === true,
+                            seeker_verified: data.seeker_verified === true,
+                        });
+                        return;
+                    }
+                } catch (err) {
+                }
+            }
             try {
                 const chatsList = await getChats();
                 const found = chatsList.find((c: any) => c.chat_id === chatId);
-                if (found && found.other_user) {
+                if (!cancelled && found && found.other_user) {
                     setOtherUser(found.other_user);
                 }
             } catch (err) {
             }
         };
-        if (chatId) fetchPartnerInfo();
-    }, [chatId]);
+        if (chatId || partnerId) fetchPartnerInfo();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [chatId, partnerId]);
 
     const deduplicateMessages = (list: MessageItem[]): MessageItem[] => {
         const seenKeys = new Set<string>();
