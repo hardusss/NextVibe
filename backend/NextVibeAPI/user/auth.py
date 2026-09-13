@@ -21,7 +21,13 @@ class CustomJWTAuthentication(JWTAuthentication):
                 user = User.all_objects.get(user_id=validated_token['user_id'])
             except User.DoesNotExist:
                 raise AuthenticationFailed('User not found')
-            
+
+            # Deleted (soft-deleted) and staff-deactivated accounts keep their
+            # issued tokens for up to 1h — reject them here since there is no
+            # token blacklist installed.
+            if not user.is_active:
+                raise AuthenticationFailed('User account is deactivated')
+
             return (user, validated_token)
         
         except InvalidToken:

@@ -254,3 +254,77 @@ class AppleSignInTest(TestCase):
         user = User.objects.get(apple_user_id=self.SUB)
         self.assertEqual(user.email, f"{self.SUB}@privaterelay.appleid.com")
         self.assertTrue(user.username.startswith("apple_"))
+
+
+class DeleteAccountTest(TestCase):
+    """Anonymizing soft delete: PII scrub, hidden state, token rejection."""
+
+    def setUp(self):
+        from rest_framework.test import APIRequestFactory
+        from user.views_pac.delete_account import DeleteAccountView
+        self.factory = APIRequestFactory()
+        self._orig_throttles = DeleteAccountView.throttle_classes
+        DeleteAccountView.throttle_classes = []
+        self.user = User.objects.create_user(
+            email="doomed@example.com", username="doomed", password="Password123!"
+        )
+        self.user.about = "bio"
+        self.user.wallet_address = "So11111111111111111111111111111111111111112"
+        self.user.secret_2fa = "SECRET"
+        self.user.is2FA = True
+        self.user.expo_push_token = "ExponentPushToken[x]"
+        self.user.apple_user_id = "001111.deadbeef.1111"
+        self.user.save()
+
+    def tearDown(self):
+        from user.views_pac.delete_account import DeleteAccountView
+        DeleteAccountView.throttle_classes = self._orig_throttles
+
+    def _delete(self, user):
+        from rest_framework.test import force_authenticate
+        from user.views_pac.delete_account import DeleteAccountView
+        request = self.factory.delete("/users/delete-account/")
+        force_authenticate(request, user=user)
+        return DeleteAccountView.as_view()(request)
+
+    def test_delete_scrubs_pii_and_hides_account(self):
+        response = self._delete(self.user)
+        self.assertEqual(response.status_code, 200)
+
+        scrubbed = User.all_objects.get(user_id=self.user.user_id)
+        self.assertEqual(scrubbed.username, f"deleted_user_{self.user.user_id}")
+        self.assertIsNone(scrubbed.email)
+        self.assertEqual(scrubbed.about, "")
+        self.assertIsNone(scrubbed.wallet_address)
+        self.assertIsNone(scrubbed.secret_2fa)
+        self.assertFalse(scrubbed.is2FA)
+        self.assertIsNone(scrubbed.expo_push_token)
+        self.assertIsNone(scrubbed.apple_user_id)
+        self.assertEqual(scrubbed.auth_provider, "deleted")
+        self.assertTrue(scrubbed.is_baned)
+        self.assertFalse(scrubbed.is_active)
+        # Hidden from the default (banned-filtering) manager
+        self.assertFalse(User.objects.filter(user_id=self.user.user_id).exists())
+
+    def test_existing_token_rejected_after_delete(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from rest_framework_simplejwt.exceptions import AuthenticationFailed
+        from user.auth import CustomJWTAuthentication
+
+        token = str(RefreshToken.for_user(self.user).access_token)
+        self._delete(self.user)
+
+        request = self.factory.get(
+            "/users/invite-info/", HTTP_AUTHORIZATION=f"Bearer {token}"
+        )
+        with self.assertRaises(AuthenticationFailed):
+            CustomJWTAuthentication().authenticate(request)
+
+    def test_deleted_email_and_wallet_are_reusable(self):
+        self._delete(self.user)
+        fresh = User.objects.create_user(
+            email="doomed@example.com", username="doomed", password="Password123!"
+        )
+        fresh.wallet_address = "So11111111111111111111111111111111111111112"
+        fresh.save()
+        self.assertEqual(fresh.email, "doomed@example.com")

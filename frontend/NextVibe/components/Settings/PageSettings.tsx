@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     ArrowLeft, Palette, Mail, Sparkles, Moon, Droplets, Radar,
-    ShieldCheck, KeyRound, LogOut, ChevronRight
+    ShieldCheck, KeyRound, LogOut, ChevronRight, Trash2
 } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import linkEmail from "@/src/api/link.email";
@@ -19,7 +19,9 @@ import { useFocusEffect } from "expo-router";
 import { useCallback } from 'react';
 import AvatarSheet from "./AvatarSheet";
 import LogoutConfirmationSheet from "./LogoutConfirmationSheet";
+import DeleteAccountSheet from "./DeleteAccountSheet";
 import ResetPasswordSheet from "./ResetPasswordSheet";
+import deleteAccount from "@/src/api/delete.account";
 import { ChatWallpaperModal } from "./ChatWallpaperModal";
 import resetAvatar from "@/src/api/reset.avatar";
 import { PopupProvider, usePopup } from "../Popup";
@@ -94,6 +96,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 function PageSettingsContent() {
     const [isVisibleAvatar, setIsVisableAvatar] = useState<boolean>(false);
     const [isVisibleLogoutConfirmation, setIsVisibleLogoutConfirmation] = useState<boolean>(false);
+    const [isVisibleDeleteConfirmation, setIsVisibleDeleteConfirmation] = useState<boolean>(false);
     const [isVisibleResetPassword, setIsVisibleResetPassword] = useState<boolean>(false);
     const [isWallpaperModalVisible, setIsWallpaperModalVisible] = useState<boolean>(false);
     const [user, setUser] = useState<User | null>(null);
@@ -221,6 +224,28 @@ function PageSettingsContent() {
 
     const handleLogout = () => {
         setIsVisibleLogoutConfirmation(true);
+    }
+
+    const handleDeleteAccountConfirm = async () => {
+        try {
+            await deleteAccount();
+        } catch (e) {
+            setIsVisibleDeleteConfirmation(false);
+            haptics.notification('error');
+            showToast("Couldn't delete your account. Please try again.", false);
+            return;
+        }
+        setIsVisibleDeleteConfirmation(false);
+        // Same local cleanup as logout — the account no longer exists server-side
+        storage.clearAll();
+        AsyncStorage.clear();
+        GoogleSignin.signOut();
+        clearFeedCache();
+        clearProfileCache();
+        if (address) {
+            await disconnect();
+        }
+        router.replace("/register");
     }
 
     const handleBackPress = () => {
@@ -759,6 +784,23 @@ function PageSettingsContent() {
                                     <Text style={styles.dangerText}>Sign Out</Text>
                                 </View>
                             </TouchableOpacity>
+                            <RowDivider />
+                            <TouchableOpacity
+                                style={styles.row}
+                                onPress={() => {
+                                    haptics.impact('light');
+                                    setIsVisibleDeleteConfirmation(true);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <IconChip tint={colors.dangerSoft}>
+                                    <Trash2 size={18} color={colors.danger} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.dangerText}>Delete Account</Text>
+                                    <Text style={styles.rowDescription}>Permanently remove your profile and data</Text>
+                                </View>
+                            </TouchableOpacity>
                         </View>
                     </>
                 )}
@@ -769,6 +811,11 @@ function PageSettingsContent() {
                 isVisible={isVisibleLogoutConfirmation}
                 onClose={() => {setIsVisibleLogoutConfirmation(false)}}
                 onConfirm={handleLogoutConfirm}
+            />
+            <DeleteAccountSheet
+                isVisible={isVisibleDeleteConfirmation}
+                onClose={() => setIsVisibleDeleteConfirmation(false)}
+                onConfirm={handleDeleteAccountConfirm}
             />
             <ResetPasswordSheet
                 isVisible={isVisibleResetPassword}

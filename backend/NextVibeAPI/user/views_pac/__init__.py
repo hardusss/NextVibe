@@ -26,3 +26,4 @@ from .mint_og import OgNftMintView
 from .wallet_singin import WalletSignInView
 from .link_email import LinkEmailView
 from .seeker_verify import SeekerVerifyView
+from .delete_account import DeleteAccountView

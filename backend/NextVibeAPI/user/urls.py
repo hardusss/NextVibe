@@ -13,7 +13,7 @@ from .views_pac import (
                             SavePushTokenView, SaveWalletAddressView,
                             GetInviteInfoView, OgNftMintView,
                             WalletSignInView, LinkEmailView,
-                            SeekerVerifyView
+                            SeekerVerifyView, DeleteAccountView
                         )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -50,4 +50,5 @@ urlpatterns = [
     path("apple-sign-in/", AppleRegisterView.as_view(), name="apple_sign_in"),
     path("link-email/", LinkEmailView.as_view(), name="link_email"),
     path("seeker/verify/", SeekerVerifyView.as_view(), name="seeker_verify"),
+    path("delete-account/", DeleteAccountView.as_view(), name="delete_account"),
 ]
