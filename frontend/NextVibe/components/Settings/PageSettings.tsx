@@ -4,7 +4,10 @@ import {
     Animated, TouchableWithoutFeedback, TouchableOpacity, TextInput, RefreshControl, Platform, ActivityIndicator
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, Palette, Mail, Sparkles } from "lucide-react-native";
+import {
+    ArrowLeft, Palette, Mail, Sparkles, Moon, Droplets, Radar,
+    ShieldCheck, KeyRound, LogOut, ChevronRight
+} from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import linkEmail from "@/src/api/link.email";
 import verifySeeker from "@/src/api/verify.seeker";
@@ -28,6 +31,7 @@ import validationUsername from "@/src/validation/username-update-validator";
 import { clearFeedCache } from "../Home/MainPage";
 import { clearProfileCache } from "../ProfilePage/ProfilePage";
 import { startScanning, stopScanning } from "@/modules/ble-share";
+import haptics from "@/src/utils/haptics";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
 import GaslessIndicator from "@/components/Shared/GaslessIndicator";
@@ -48,28 +52,36 @@ interface User {
 
 const darkColors = {
     background: "#0A0410",
-    inputBackground: "transparent",
+    card: "rgba(255,255,255,0.04)",
+    cardBorder: "rgba(168,85,247,0.14)",
+    fieldBackground: "rgba(255,255,255,0.05)",
     textPrimary: "#ffffff",
-    textSecondary: "#8b949e",
-    border: "#1F152E",
-    accent: "#05f0d8",
-    link: "#a371f7",
-    danger: "#ff4d4d",
-    saveActive: "#a371f7",
-    saveInactive: "#302640"
+    textSecondary: "rgba(255,255,255,0.55)",
+    border: "rgba(255,255,255,0.08)",
+    accent: "#a855f7",
+    accentSoft: "rgba(168,85,247,0.15)",
+    link: "#a78bfa",
+    danger: "#f87171",
+    dangerSoft: "rgba(248,113,113,0.12)",
+    saveActive: "#a855f7",
+    saveInactive: "rgba(255,255,255,0.08)"
 };
 
 const lightColors = {
     background: "#ffffff",
-    inputBackground: "transparent",
+    card: "#F7F5FB",
+    cardBorder: "rgba(124,58,237,0.10)",
+    fieldBackground: "#ffffff",
     textPrimary: "#1A1225",
     textSecondary: "#64748B",
-    border: "#E2E8F0",
+    border: "rgba(0,0,0,0.07)",
     accent: "#7C3AED",
+    accentSoft: "rgba(124,58,237,0.10)",
     link: "#7C3AED",
     danger: "#EF4444",
+    dangerSoft: "rgba(239,68,68,0.10)",
     saveActive: "#7C3AED",
-    saveInactive: "#E2E8F0"
+    saveInactive: "rgba(0,0,0,0.06)"
 };
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
@@ -149,7 +161,7 @@ function PageSettingsContent() {
     const colors = isDark ? darkColors : lightColors;
     const styles = getStyles(colors, insets);
     const { showPopup } = usePopup();
-    
+
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     // Load initial Bluetooth scan setting
@@ -170,6 +182,7 @@ function PageSettingsContent() {
     }, []);
 
     const handleToggleBluetooth = async (newValue: boolean) => {
+        haptics.selection();
         setIsBluetoothEnabled(newValue);
         try {
             await AsyncStorage.setItem("bluetooth_scan_enabled", newValue ? "true" : "false");
@@ -200,7 +213,7 @@ function PageSettingsContent() {
         storage.clearAll();
         AsyncStorage.clear();
         GoogleSignin.signOut();
-        setIsVisibleLogoutConfirmation(false); 
+        setIsVisibleLogoutConfirmation(false);
         clearFeedCache();
         clearProfileCache();
         if (address) {
@@ -215,7 +228,7 @@ function PageSettingsContent() {
 
     const handleBackPress = () => {
         if (isSave) {
-            setShowConfirm(true); 
+            setShowConfirm(true);
         } else {
             router.back();
         }
@@ -311,7 +324,7 @@ function PageSettingsContent() {
         useCallback(() => {
             setLoading(true);
             fetchUserData();
-            
+
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 400,
@@ -319,14 +332,14 @@ function PageSettingsContent() {
             }).start();
 
             setIsVisibleLogoutConfirmation(false);
-            
+
             return () => {
                 setUser(null);
                 setAbout("");
                 setUsername("");
-                setIsVisibleLogoutConfirmation(false); 
+                setIsVisibleLogoutConfirmation(false);
             }
-        }, []) 
+        }, [])
     )
 
     const handlePressIn = () => {
@@ -364,20 +377,26 @@ function PageSettingsContent() {
     }, [username, about, user]);
 
     const SkeletonAvatar = () => (
-        <View style={[styles.image, { backgroundColor: colors.border }]} />
+        <View style={[styles.image, { backgroundColor: colors.card }]} />
     );
 
     const SkeletonText = ({ width, height = 14 }: {width: number | string, height?: number}) => (
-        <View 
+        <View
             style={{
                 width: width  as number,
                 height: height,
-                backgroundColor: colors.border,
+                backgroundColor: colors.card,
                 borderRadius: 4,
                 marginVertical: 4
             }}
         />
     );
+
+    const IconChip = ({ tint, children }: { tint: string; children: React.ReactNode }) => (
+        <View style={[styles.iconChip, { backgroundColor: tint }]}>{children}</View>
+    );
+
+    const RowDivider = () => <View style={styles.rowDivider} />;
 
     return (
         <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -388,34 +407,35 @@ function PageSettingsContent() {
                 confirmLabel="Save"
                 cancelLabel="Discard"
                 onConfirm={async () => {
-                    await handleSave(); 
+                    await handleSave();
                     setShowConfirm(false);
                     router.back();
                 }}
                 onCancel={() => {
                     setShowConfirm(false);
-                    router.back(); 
+                    router.back();
                 }}
             />
 
-            <Web3Toast 
-                message={toastMessage} 
-                visible={toastVisible} 
-                isSuccess={toastSuccess} 
-                onHide={() => setToastVisible(false)} 
+            <Web3Toast
+                message={toastMessage}
+                visible={toastVisible}
+                isSuccess={toastSuccess}
+                onHide={() => setToastVisible(false)}
             />
 
             <StatusBar backgroundColor={colors.background} barStyle={isDark ? "light-content" : "dark-content"} />
-            
+
             <View style={styles.header}>
-                <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={handleBackPress}>
-                    <ArrowLeft size={24} color={colors.textPrimary} />
+                <TouchableOpacity style={styles.backChip} onPress={handleBackPress} activeOpacity={0.8}>
+                    <ArrowLeft size={22} color={colors.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Profile</Text>
-                <TouchableOpacity 
-                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                <Text style={styles.title}>Settings</Text>
+                <TouchableOpacity
                     disabled={!isSave}
                     onPress={handleSave}
+                    activeOpacity={0.85}
+                    style={[styles.savePill, isSave ? styles.savePillActive : styles.savePillInactive]}
                 >
                     <Text style={[styles.saveText, isSave ? styles.saveTextActive : styles.saveTextInactive]}>
                         Save
@@ -423,7 +443,7 @@ function PageSettingsContent() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
@@ -443,113 +463,144 @@ function PageSettingsContent() {
                             <View style={{marginTop: 16}}><SkeletonText width={100} height={16} /></View>
                         </View>
 
-                        <View style={styles.section}>
-                            <SkeletonText width={70} height={12} />
-                            <View style={{marginTop: 8}}><SkeletonText width="100%" height={24} /></View>
-                        </View>
-                        
-                        <View style={styles.section}>
-                            <SkeletonText width={50} height={12} />
-                            <View style={{marginTop: 8}}><SkeletonText width="100%" height={40} /></View>
+                        <View style={styles.card}>
+                            <View style={styles.fieldBlock}>
+                                <SkeletonText width={70} height={12} />
+                                <View style={{marginTop: 8}}><SkeletonText width="100%" height={24} /></View>
+                            </View>
+                            <RowDivider />
+                            <View style={styles.fieldBlock}>
+                                <SkeletonText width={50} height={12} />
+                                <View style={{marginTop: 8}}><SkeletonText width="100%" height={40} /></View>
+                            </View>
                         </View>
                     </>
                 ) : (
                     <>
                         <View style={styles.centeredView}>
                             <TouchableWithoutFeedback onPressIn={() => {handlePressIn(); handleOpenEdit()}} onPressOut={handlePressOut}>
-                                <Animated.Image
-                                    style={[styles.image, { transform: [{ scale: scaleAnim }] }]}
-                                    source={{ uri: `${user?.avatar}` }}
-                                />
+                                <Animated.View style={[styles.avatarRing, { transform: [{ scale: scaleAnim }] }]}>
+                                    <Animated.Image
+                                        style={styles.image}
+                                        source={{ uri: `${user?.avatar}` }}
+                                    />
+                                </Animated.View>
                             </TouchableWithoutFeedback>
-                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={handleOpenEdit}>
+                            <TouchableOpacity style={styles.changePhotoPill} onPress={handleOpenEdit} activeOpacity={0.8}>
                                 <Text style={styles.linkText}>Change Photo</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.section}>
-                            <Text style={styles.label}>USERNAME</Text>
-                            <TextInput 
-                                style={styles.input} 
-                                value={username} 
-                                onChangeText={setUsername}
-                                placeholderTextColor={colors.textSecondary}
-                                selectionColor={colors.accent}
-                            />
-                        </View>
-                        
-                        <View style={styles.section}>
-                            <Text style={styles.label}>ABOUT</Text>
-                            <TextInput 
-                                style={[styles.input, { minHeight: 40 }]} 
-                                value={about} 
-                                onChangeText={setAbout} 
-                                multiline 
-                                placeholderTextColor={colors.textSecondary}
-                                selectionColor={colors.accent}
-                            />
+                        <Text style={styles.sectionHeader}>PROFILE</Text>
+                        <View style={styles.card}>
+                            <View style={styles.fieldBlock}>
+                                <Text style={styles.label}>USERNAME</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={username}
+                                    onChangeText={setUsername}
+                                    placeholderTextColor={colors.textSecondary}
+                                    selectionColor={colors.accent}
+                                />
+                            </View>
+                            <RowDivider />
+                            <View style={styles.fieldBlock}>
+                                <Text style={styles.label}>ABOUT</Text>
+                                <TextInput
+                                    style={[styles.input, { minHeight: 40, paddingTop: 0 }]}
+                                    value={about}
+                                    onChangeText={setAbout}
+                                    multiline
+                                    placeholder="Tell people about yourself"
+                                    placeholderTextColor={colors.textSecondary}
+                                    selectionColor={colors.accent}
+                                />
+                            </View>
                         </View>
 
                         <Text style={styles.sectionHeader}>APPEARANCE</Text>
-
-                        <View style={styles.themeSection}>
-                            <Text style={styles.rowText}>Theme</Text>
-                            <View style={styles.themePicker}>
-                                {THEME_OPTIONS.map((option) => {
-                                    const isSelected = themePreference === option.value;
-                                    return (
-                                        <TouchableOpacity
-                                            key={option.value}
-                                            style={[
-                                                styles.themeOption,
-                                                isSelected && styles.themeOptionSelected,
-                                            ]}
-                                            onPress={() => setThemePreference(option.value)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.themeOptionText,
-                                                    isSelected && styles.themeOptionTextSelected,
-                                                ]}
-                                            >
-                                                {option.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </View>
-
-                        <TouchableOpacity 
-                            style={styles.row}
-                            onPress={() => setIsWallpaperModalVisible(true)}
-                            activeOpacity={0.7}
-                        >
-                            <View style={{ flex: 1, paddingRight: 16 }}>
-                                <Text style={styles.rowText}>Chat Wallpaper & Theme</Text>
-                                <Text style={styles.rowDescription}>
-                                    Customize background images, gradients, dimming, and bubble styles
-                                </Text>
-                            </View>
-                            <Palette size={22} color={colors.accent} />
-                        </TouchableOpacity>
-
-                        {Platform.OS === 'ios' && (
+                        <View style={styles.card}>
                             <View style={styles.row}>
-                                <View style={{ flex: 1, paddingRight: 16 }}>
-                                    <Text style={styles.rowText}>Liquid Glass</Text>
+                                <IconChip tint={colors.accentSoft}>
+                                    <Moon size={18} color={colors.accent} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.rowText}>Theme</Text>
+                                </View>
+                                <View style={styles.themePicker}>
+                                    {THEME_OPTIONS.map((option) => {
+                                        const isSelected = themePreference === option.value;
+                                        return (
+                                            <TouchableOpacity
+                                                key={option.value}
+                                                style={[
+                                                    styles.themeOption,
+                                                    isSelected && styles.themeOptionSelected,
+                                                ]}
+                                                onPress={() => {
+                                                    haptics.selection();
+                                                    setThemePreference(option.value);
+                                                }}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text
+                                                    style={[
+                                                        styles.themeOptionText,
+                                                        isSelected && styles.themeOptionTextSelected,
+                                                    ]}
+                                                >
+                                                    {option.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+                            <RowDivider />
+                            <TouchableOpacity
+                                style={styles.row}
+                                onPress={() => {
+                                    haptics.impact('light');
+                                    setIsWallpaperModalVisible(true);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <IconChip tint={colors.accentSoft}>
+                                    <Palette size={18} color={colors.accent} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.rowText}>Chat Wallpaper & Theme</Text>
                                     <Text style={styles.rowDescription}>
-                                        Use the native iOS liquid glass visual effect
+                                        Backgrounds, gradients, dimming, and bubble styles
                                     </Text>
                                 </View>
-                                <Switch
-                                    value={liquidGlassEnabled}
-                                    onValueChange={setLiquidGlassEnabled}
-                                    color={colors.accent}
-                                />
-                            </View>
-                        )}
+                                <ChevronRight size={18} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                            {Platform.OS === 'ios' && (
+                                <>
+                                    <RowDivider />
+                                    <View style={styles.row}>
+                                        <IconChip tint={colors.accentSoft}>
+                                            <Droplets size={18} color={colors.accent} />
+                                        </IconChip>
+                                        <View style={styles.rowBody}>
+                                            <Text style={styles.rowText}>Liquid Glass</Text>
+                                            <Text style={styles.rowDescription}>
+                                                Use the native iOS liquid glass visual effect
+                                            </Text>
+                                        </View>
+                                        <Switch
+                                            value={liquidGlassEnabled}
+                                            onValueChange={(value) => {
+                                                haptics.selection();
+                                                setLiquidGlassEnabled(value);
+                                            }}
+                                            color={colors.accent}
+                                        />
+                                    </View>
+                                </>
+                            )}
+                        </View>
 
                         <Text style={styles.sectionHeader}>GASLESS TRANSACTIONS</Text>
                         <GaslessIndicator />
@@ -557,64 +608,81 @@ function PageSettingsContent() {
                         {(address || user?.wallet_address) && (
                             <>
                                 <Text style={styles.sectionHeader}>WALLET</Text>
-                                {user?.seeker_verified ? (
-                                    <View style={styles.row}>
-                                        <View style={{ flex: 1, paddingRight: 16 }}>
-                                            <Text style={styles.rowText}>Seeker Verified</Text>
-                                            <Text style={styles.rowDescription}>
-                                                Genesis Token detected on-chain
-                                            </Text>
+                                <View style={styles.card}>
+                                    {user?.seeker_verified ? (
+                                        <View style={styles.row}>
+                                            <IconChip tint={isDark ? 'rgba(74,222,128,0.12)' : 'rgba(16,185,129,0.10)'}>
+                                                <ShieldCheck size={18} color={isDark ? '#4ade80' : '#059669'} />
+                                            </IconChip>
+                                            <View style={styles.rowBody}>
+                                                <Text style={styles.rowText}>Seeker Verified</Text>
+                                                <Text style={styles.rowDescription}>
+                                                    Genesis Token detected on-chain
+                                                </Text>
+                                            </View>
                                         </View>
-                                    </View>
-                                ) : (
-                                    <TouchableOpacity
-                                        style={styles.row}
-                                        onPress={handleVerifySeeker}
-                                        disabled={isVerifyingSeeker}
-                                        activeOpacity={0.7}
-                                    >
-                                        <View style={{ flex: 1, paddingRight: 16 }}>
-                                            <Text style={styles.rowText}>Verify Seeker</Text>
-                                            <Text style={styles.rowDescription}>
-                                                Check your wallet for a Seeker Genesis Token
-                                            </Text>
-                                        </View>
-                                        {isVerifyingSeeker && (
-                                            <ActivityIndicator size="small" color={colors.accent} />
-                                        )}
-                                    </TouchableOpacity>
-                                )}
+                                    ) : (
+                                        <TouchableOpacity
+                                            style={styles.row}
+                                            onPress={handleVerifySeeker}
+                                            disabled={isVerifyingSeeker}
+                                            activeOpacity={0.7}
+                                        >
+                                            <IconChip tint={colors.accentSoft}>
+                                                <ShieldCheck size={18} color={colors.accent} />
+                                            </IconChip>
+                                            <View style={styles.rowBody}>
+                                                <Text style={styles.rowText}>Verify Seeker</Text>
+                                                <Text style={styles.rowDescription}>
+                                                    Check your wallet for a Seeker Genesis Token
+                                                </Text>
+                                            </View>
+                                            {isVerifyingSeeker ? (
+                                                <ActivityIndicator size="small" color={colors.accent} />
+                                            ) : (
+                                                <ChevronRight size={18} color={colors.textSecondary} />
+                                            )}
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
                             </>
                         )}
 
-                        <Text style={styles.sectionHeader}>BLUETOOTH SETTINGS</Text>
-                        <View style={styles.row}>
-                            <View style={{ flex: 1, paddingRight: 16 }}>
-                                <Text style={styles.rowText}>Background Scanning</Text>
-                                <Text style={styles.rowDescription}>
-                                    Scan for nearby devices to receive vibes in the background
-                                </Text>
+                        <Text style={styles.sectionHeader}>DISCOVERY</Text>
+                        <View style={styles.card}>
+                            <View style={styles.row}>
+                                <IconChip tint={colors.accentSoft}>
+                                    <Radar size={18} color={colors.accent} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.rowText}>Background Scanning</Text>
+                                    <Text style={styles.rowDescription}>
+                                        Scan for nearby devices to receive vibes in the background
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={isBluetoothEnabled}
+                                    onValueChange={handleToggleBluetooth}
+                                    color={colors.accent}
+                                />
                             </View>
-                            <Switch
-                                value={isBluetoothEnabled}
-                                onValueChange={handleToggleBluetooth}
-                                color={colors.accent}
-                            />
                         </View>
 
                         {!user?.email ? (
                             <>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 4 }}>
-                                    <Text style={styles.sectionHeader}>LINK EMAIL</Text>
+                                <View style={styles.sectionHeaderRow}>
+                                    <Text style={[styles.sectionHeader, { marginTop: 0, marginBottom: 0 }]}>LINK EMAIL</Text>
                                     <View style={styles.repBadge}>
                                         <Sparkles size={12} color={colors.accent} style={{ marginRight: 4 }} />
                                         <Text style={styles.repBadgeText}>+20 REP</Text>
                                     </View>
                                 </View>
 
-                                <View style={styles.linkEmailCard}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                        <Mail size={18} color={colors.accent} />
+                                <View style={[styles.card, styles.linkEmailCard]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                                        <IconChip tint={colors.accentSoft}>
+                                            <Mail size={18} color={colors.accent} />
+                                        </IconChip>
                                         <Text style={styles.linkEmailTitle}>Link Email Address</Text>
                                     </View>
                                     <Text style={styles.linkEmailDesc}>
@@ -647,44 +715,71 @@ function PageSettingsContent() {
                                 </View>
                             </>
                         ) : (
-                            <View style={styles.section}>
-                                <Text style={styles.label}>LINKED EMAIL</Text>
-                                <Text style={[styles.input, { color: colors.textSecondary }]}>{user.email}</Text>
-                            </View>
+                            <>
+                                <Text style={styles.sectionHeader}>LINKED EMAIL</Text>
+                                <View style={styles.card}>
+                                    <View style={styles.row}>
+                                        <IconChip tint={colors.accentSoft}>
+                                            <Mail size={18} color={colors.accent} />
+                                        </IconChip>
+                                        <View style={styles.rowBody}>
+                                            <Text style={styles.rowText}>{user.email}</Text>
+                                            <Text style={styles.rowDescription}>Linked to your account</Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </>
                         )}
 
                         <Text style={styles.sectionHeader}>SECURITY & ACCOUNT</Text>
-
-                        <TouchableOpacity 
-                            style={styles.row} 
-                            onPress={() => setIsVisibleResetPassword(true)}
-                        >
-                            <Text style={styles.linkTextMain}>Reset Password</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity 
-                            style={[styles.row, styles.lastRow]} 
-                            onPress={handleLogout}
-                        >
-                            <Text style={styles.dangerText}>Sign Out</Text>
-                        </TouchableOpacity>
-                    </>                    
+                        <View style={styles.card}>
+                            <TouchableOpacity
+                                style={styles.row}
+                                onPress={() => {
+                                    haptics.impact('light');
+                                    setIsVisibleResetPassword(true);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <IconChip tint={colors.accentSoft}>
+                                    <KeyRound size={18} color={colors.accent} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.rowText}>Reset Password</Text>
+                                </View>
+                                <ChevronRight size={18} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                            <RowDivider />
+                            <TouchableOpacity
+                                style={styles.row}
+                                onPress={handleLogout}
+                                activeOpacity={0.7}
+                            >
+                                <IconChip tint={colors.dangerSoft}>
+                                    <LogOut size={18} color={colors.danger} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.dangerText}>Sign Out</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                    </>
                 )}
             </ScrollView>
-            
+
             <AvatarSheet isVisible={isVisibleAvatar} onClose={() => setIsVisableAvatar((prev)=>!prev)} onReset={() => resetAvatar()} />
-            <LogoutConfirmationSheet 
-                isVisible={isVisibleLogoutConfirmation} 
-                onClose={() => {setIsVisibleLogoutConfirmation(false)}} 
-                onConfirm={handleLogoutConfirm} 
+            <LogoutConfirmationSheet
+                isVisible={isVisibleLogoutConfirmation}
+                onClose={() => {setIsVisibleLogoutConfirmation(false)}}
+                onConfirm={handleLogoutConfirm}
             />
-            <ResetPasswordSheet 
-                isVisible={isVisibleResetPassword} 
-                onClose={() => setIsVisibleResetPassword(false)} 
+            <ResetPasswordSheet
+                isVisible={isVisibleResetPassword}
+                onClose={() => setIsVisibleResetPassword(false)}
                 onSuccess={() => {
                     showPopup('success', 'Success', 'Your password has been successfully changed');
                     setIsVisibleResetPassword(false);
-                }} 
+                }}
             />
             <ChatWallpaperModal
                 visible={isWallpaperModalVisible}
@@ -712,169 +807,215 @@ const getStyles = (colors: any, insets: any) => {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingHorizontal: 24,
-            paddingTop: insets.top + 16,
-            paddingBottom: 16,
+            paddingHorizontal: 16,
+            paddingTop: insets.top + 8,
+            paddingBottom: 12,
             backgroundColor: colors.background,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
         },
-        icon: {
-            color: colors.textPrimary,
-            fontSize: 24,
+        backChip: {
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.card,
         },
         title: {
             fontSize: 18,
-            fontWeight: "600",
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
             color: colors.textPrimary,
-            letterSpacing: 0.5,
+            letterSpacing: 0.3,
+        },
+        savePill: {
+            minWidth: 64,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 14,
+        },
+        savePillActive: {
+            backgroundColor: colors.saveActive,
+        },
+        savePillInactive: {
+            backgroundColor: colors.saveInactive,
         },
         saveText: {
-            fontSize: 16,
-            fontWeight: "600",
+            fontSize: 14,
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
         },
         saveTextActive: {
-            color: colors.saveActive,
+            color: "#ffffff",
         },
         saveTextInactive: {
-            color: colors.saveInactive,
+            color: colors.textSecondary,
         },
         contentContainer: {
-            padding: 24,
-            paddingBottom: 60,
+            paddingHorizontal: 16,
+            paddingTop: 8,
+            paddingBottom: insets.bottom + 60,
         },
         centeredView: {
             alignItems: "center",
-            marginTop: 10,
-            marginBottom: 40,
+            marginTop: 8,
+            marginBottom: 24,
+        },
+        avatarRing: {
+            padding: 3,
+            borderRadius: 54,
+            borderWidth: 2,
+            borderColor: colors.accentSoft,
         },
         image: {
             width: 96,
             height: 96,
             borderRadius: 48,
         },
+        changePhotoPill: {
+            marginTop: 12,
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: 999,
+            backgroundColor: colors.accentSoft,
+        },
         linkText: {
             color: colors.link,
-            fontWeight: "500",
-            fontSize: 14,
-            marginTop: 16,
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
+            fontSize: 13,
             letterSpacing: 0.3,
-        },
-        section: {
-            marginBottom: 32,
-        },
-        label: {
-            fontSize: 11,
-            fontWeight: "700",
-            color: colors.textSecondary,
-            letterSpacing: 1.2,
-            marginBottom: 8,
         },
         sectionHeader: {
             fontSize: 11,
             fontWeight: "700",
             color: colors.textSecondary,
             letterSpacing: 1.2,
-            marginTop: 16, 
+            marginTop: 24,
             marginBottom: 8,
+            marginLeft: 4,
+        },
+        sectionHeaderRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 24,
+            marginBottom: 8,
+            paddingLeft: 4,
+        },
+        card: {
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            borderRadius: 20,
+            paddingHorizontal: 16,
+            overflow: "hidden",
+        },
+        fieldBlock: {
+            paddingVertical: 14,
+        },
+        label: {
+            fontSize: 11,
+            fontWeight: "700",
+            color: colors.textSecondary,
+            letterSpacing: 1.2,
+            marginBottom: 6,
         },
         input: {
             color: colors.textPrimary,
-            fontSize: 18,
-            paddingVertical: 8,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-            minHeight: 40,
+            fontSize: 16,
+            paddingVertical: 4,
+            includeFontPadding: false,
         },
         row: {
             flexDirection: "row",
-            justifyContent: "space-between",
             alignItems: "center",
-            paddingVertical: 20,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            paddingVertical: 14,
+            minHeight: 56,
         },
-        lastRow: {
-            borderBottomWidth: 0,
+        rowBody: {
+            flex: 1,
+            paddingRight: 12,
+        },
+        rowDivider: {
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: colors.border,
+            marginLeft: 48,
+        },
+        iconChip: {
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 12,
         },
         rowText: {
-            fontSize: 16,
+            fontSize: 15,
             color: colors.textPrimary,
-            fontWeight: "400",
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
         },
         rowDescription: {
             fontSize: 12,
             color: colors.textSecondary,
-            marginTop: 4,
-            fontWeight: "400",
-        },
-        linkTextMain: {
-            fontSize: 16,
-            color: colors.textPrimary,
-            fontWeight: "400",
+            marginTop: 3,
+            lineHeight: 16,
         },
         dangerText: {
-            fontSize: 16,
+            fontSize: 15,
             color: colors.danger,
-            fontWeight: "400",
-        },
-        themeSection: {
-            paddingVertical: 20,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
         },
         themePicker: {
             flexDirection: 'row',
-            marginTop: 12,
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: colors.border,
-            overflow: 'hidden',
+            borderRadius: 12,
+            backgroundColor: colors.saveInactive,
+            padding: 3,
         },
         themeOption: {
-            flex: 1,
-            paddingVertical: 10,
+            paddingVertical: 7,
+            paddingHorizontal: 12,
             alignItems: 'center',
-            backgroundColor: colors.background,
+            borderRadius: 9,
         },
         themeOptionSelected: {
             backgroundColor: colors.accent,
         },
         themeOptionText: {
-            fontSize: 14,
-            fontWeight: '600',
-            color: colors.textPrimary,
+            fontSize: 12,
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
+            color: colors.textSecondary,
         },
         themeOptionTextSelected: {
             color: '#FFFFFF',
-            fontWeight: '700',
         },
         repBadge: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: 'rgba(124, 58, 237, 0.15)',
+            backgroundColor: colors.accentSoft,
             borderWidth: 1,
-            borderColor: 'rgba(124, 58, 237, 0.4)',
+            borderColor: colors.cardBorder,
             paddingHorizontal: 8,
             paddingVertical: 3,
-            borderRadius: 6,
+            borderRadius: 999,
         },
         repBadgeText: {
             color: colors.accent,
             fontSize: 11,
-            fontWeight: '700',
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
         },
         linkEmailCard: {
-            backgroundColor: colors.inputBackground || colors.border,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 24,
+            paddingVertical: 16,
         },
         linkEmailTitle: {
             fontSize: 15,
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
             color: colors.textPrimary,
         },
         linkEmailDesc: {
@@ -890,26 +1031,27 @@ const getStyles = (colors: any, insets: any) => {
         },
         linkEmailInput: {
             flex: 1,
-            height: 42,
+            height: 44,
             borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 8,
+            borderColor: colors.cardBorder,
+            borderRadius: 12,
             paddingHorizontal: 12,
             fontSize: 14,
             color: colors.textPrimary,
-            backgroundColor: colors.background,
+            backgroundColor: colors.fieldBackground,
         },
         linkEmailBtn: {
             backgroundColor: colors.accent,
             paddingHorizontal: 14,
-            height: 42,
-            borderRadius: 8,
+            height: 44,
+            borderRadius: 12,
             justifyContent: 'center',
             alignItems: 'center',
         },
         linkEmailBtnText: {
             color: '#ffffff',
-            fontWeight: '600',
+            fontFamily: "Dank Mono Bold",
+            includeFontPadding: false,
             fontSize: 13,
         },
     });

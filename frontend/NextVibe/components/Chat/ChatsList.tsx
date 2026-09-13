@@ -22,8 +22,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatItemSkeleton, OnlineUserSkeleton } from './SkeletonLoaders';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { chatColors, chatRadius } from '@/src/theme/chatTheme';
+import { chatColors } from '@/src/theme/chatTheme';
 
 const SearchBar = React.memo(({ placeholder, value, onChangeText, isDark }: any) => {
   const colors = chatColors[isDark ? 'dark' : 'light'];
@@ -31,12 +30,7 @@ const SearchBar = React.memo(({ placeholder, value, onChangeText, isDark }: any)
 
   return (
     <View style={styles.searchContainer}>
-      <BlurView
-        intensity={isDark ? 30 : 30}
-        tint={isDark ? 'dark' : 'light'}
-        style={styles.blurViewAbsolute}
-      />
-      <Search size={20} color={colors.subtext} />
+      <Search size={18} color={colors.subtext} />
       <TextInput
         placeholder={placeholder}
         placeholderTextColor={colors.subtext}
@@ -227,8 +221,9 @@ export default function ChatsList() {
           onChangeText={setSearchQuery}
           isDark={isDark}
         />
+        <Text style={[styles.sectionLabel, { color: colors.subtext }]}>ONLINE NOW</Text>
         {onlineLoading ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
             {[1, 2, 3, 4].map(i => (
               <OnlineUserSkeleton key={i} />
             ))}
@@ -236,13 +231,15 @@ export default function ChatsList() {
         ) : (
           <OnlineUsers users={onlineUsers} />
         )}
+        <Text style={[styles.sectionLabel, { color: colors.subtext }]}>MESSAGES</Text>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.push('/(shared)/cherry-chat' as any)}
           style={{
-            marginHorizontal: 12,
-            marginVertical: 8,
-            borderRadius: chatRadius.card || 16,
+            marginHorizontal: 16,
+            marginTop: 0,
+            marginBottom: 5,
+            borderRadius: 20,
             overflow: 'hidden',
             borderWidth: 1,
             borderColor: '#FF5BA844',
@@ -386,6 +383,13 @@ const getStyles = (isDark: boolean, colors: typeof chatColors.dark) =>
       textAlign: 'center',
       lineHeight: 20,
     },
+    sectionLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      marginHorizontal: 20,
+      marginBottom: 8,
+    },
   });
 
 const getSearchStyles = (isDark: boolean, colors: typeof chatColors.dark) =>
@@ -393,22 +397,21 @@ const getSearchStyles = (isDark: boolean, colors: typeof chatColors.dark) =>
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      height: 44,
       paddingHorizontal: 14,
-      marginHorizontal: 10,
-      marginTop: 10,
+      marginHorizontal: 16,
+      marginTop: 8,
       marginBottom: 16,
-      borderRadius: chatRadius.card,
+      borderRadius: 22,
       borderWidth: 1,
       borderColor: colors.border,
-      overflow: 'hidden',
-    },
-    blurViewAbsolute: {
-      ...StyleSheet.absoluteFillObject,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
     },
     searchInput: {
       flex: 1,
       marginLeft: 10,
       fontSize: 15,
-      paddingVertical: 12,
+      paddingVertical: 0,
+      includeFontPadding: false,
     },
   });

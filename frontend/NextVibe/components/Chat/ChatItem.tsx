@@ -17,8 +17,7 @@ import timeAgo from '@/src/utils/formatTime';
 import ConfirmDialog from '../Shared/Toasts/ConfirmDialog';
 import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
-import { chatColors, chatRadius } from '@/src/theme/chatTheme';
+import { chatColors } from '@/src/theme/chatTheme';
 import CryptoService from '@/src/services/CryptoService';
 import { storage } from '@/src/utils/storage';
 
@@ -331,12 +330,6 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
               disabled={isDeleting}
               activeOpacity={0.8}
             >
-              <BlurView
-                intensity={isDark ? 20 : 40}
-                tint={isDark ? 'dark' : 'light'}
-                style={styles.blurBackground}
-              />
-
               <View style={styles.avatarContainer}>
                 <Image
                   source={{ uri: avatarUri }}
@@ -420,19 +413,17 @@ const getStyles = (isDark: boolean, colors: typeof chatColors.dark) =>
     },
     container: {
       flexDirection: 'row',
-      padding: 14,
-      paddingHorizontal: 16,
-      marginHorizontal: 10,
-      marginVertical: 4,
-      borderRadius: chatRadius.card,
+      alignItems: 'center',
+      padding: 12,
+      paddingHorizontal: 14,
+      marginHorizontal: 16,
+      marginVertical: 5,
+      borderRadius: 20,
       borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: isDark ? 'rgba(21, 7, 35, 0.4)' : 'rgba(255, 255, 255, 0.75)',
+      borderColor: isDark ? 'rgba(168,85,247,0.12)' : 'rgba(0,0,0,0.06)',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#FFFFFF',
       overflow: 'hidden',
       zIndex: 1,
-    },
-    blurBackground: {
-      ...StyleSheet.absoluteFillObject,
     },
     avatarContainer: {
       position: 'relative',
@@ -506,10 +497,11 @@ const getStyles = (isDark: boolean, colors: typeof chatColors.dark) =>
     },
     deleteButton: {
       position: 'absolute',
-      right: 0,
-      top: 0,
-      bottom: 0,
-      width: 80,
+      right: 16,
+      top: 5,
+      bottom: 5,
+      width: 72,
+      borderRadius: 20,
       backgroundColor: '#ef4444',
       justifyContent: 'center',
       alignItems: 'center',

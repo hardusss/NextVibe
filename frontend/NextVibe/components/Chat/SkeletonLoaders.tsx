@@ -97,7 +97,11 @@ const styles = StyleSheet.create({
   },
   chatItemSkeleton: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 12,
+    paddingHorizontal: 14,
+    marginHorizontal: 16,
+    marginVertical: 5,
+    borderRadius: 20,
     alignItems: 'center',
   },
   chatAvatar: {
