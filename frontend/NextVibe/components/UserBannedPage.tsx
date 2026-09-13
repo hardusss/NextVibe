@@ -5,6 +5,7 @@ import LottieView from "lottie-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from "@/src/utils/storage";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { configureGoogleSignin } from "@/src/config/googleSignin";
 import { useEffect } from "react";
 export default function UserBannedPage() {
     const isDark = useColorScheme() === "dark";
@@ -19,11 +20,7 @@ export default function UserBannedPage() {
     };
 
     useEffect(() => {
-        GoogleSignin.configure({
-            webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
-            iosClientId: '603386649315-vp4revvrcgrcjme51ebuhbkbspl048l9.apps.googleusercontent.com',
-            offlineAccess: true,
-        });
+        configureGoogleSignin();
     }, []);
 
     const handleLogout = () => {

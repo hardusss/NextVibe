@@ -4,6 +4,7 @@
  * Styled to sit alongside AppleButtonAuth in the same row on a #0A0410 background.
  */
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { configureGoogleSignin } from '@/src/config/googleSignin';
 import { Pressable, ActivityIndicator, StyleSheet, View, Animated } from 'react-native';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Svg, { Path } from 'react-native-svg';
@@ -77,11 +78,7 @@ export default function GoogleIconButton({ page }: { page: string }) {
     };
 
     useEffect(() => {
-        GoogleSignin.configure({
-            webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
-            iosClientId: '1063264156706-9of910einuhchb1pef6g482vu8b91nh4.apps.googleusercontent.com',
-            offlineAccess: true,
-        });
+        configureGoogleSignin();
     }, []);
 
     const signInWithGoogle = async () => {

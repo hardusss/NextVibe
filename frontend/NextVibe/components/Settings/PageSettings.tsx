@@ -25,6 +25,7 @@ import resetAvatar from "@/src/api/reset.avatar";
 import { PopupProvider, usePopup } from "../Popup";
 import updateUser from "@/src/api/update.user";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { configureGoogleSignin } from "@/src/config/googleSignin";
 import ConfirmDialog from "../Shared/Toasts/ConfirmDialog";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import validationUsername from "@/src/validation/username-update-validator";
@@ -202,11 +203,7 @@ function PageSettingsContent() {
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        GoogleSignin.configure({
-            webClientId: '1063264156706-l99os5o2se3h9rs8tcuuolo3kfio7osn.apps.googleusercontent.com',
-            iosClientId: '603386649315-vp4revvrcgrcjme51ebuhbkbspl048l9.apps.googleusercontent.com',
-            offlineAccess: true,
-        });
+        configureGoogleSignin();
     }, []);
 
     const handleLogoutConfirm = async () => {
