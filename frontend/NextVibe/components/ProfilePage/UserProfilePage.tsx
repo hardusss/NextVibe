@@ -355,12 +355,13 @@ const UserProfileView = () => {
                     <LinearGradient colors={[bg, bgTransparent]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} locations={[0, 0.4]} style={st.headerFadeLeft} />
                     <LinearGradient colors={[bgTransparent, bg]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} locations={[0.6, 1]} style={st.headerFadeRight} />
 
-                    <View style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
+                    <View pointerEvents="box-none" style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
                         <TouchableOpacity
-                            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                            activeOpacity={0.8}
                             onPress={() => router.back()}
+                            style={[st.backBtn, { backgroundColor: isDark ? 'rgba(10,4,16,0.45)' : 'rgba(255,255,255,0.6)' }]}
                         >
-                            <ArrowLeft size={28} color={isDark ? '#fff' : '#000'} />
+                            <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -593,12 +594,13 @@ const UserProfileView = () => {
 
             {/* Fixed iOS Top Bar with safe area top inset */}
             {Platform.OS === 'ios' && (
-                <View style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
+                <View pointerEvents="box-none" style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
                     <TouchableOpacity
-                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                        activeOpacity={0.8}
                         onPress={() => router.back()}
+                        style={[st.backBtn, { backgroundColor: isDark ? 'rgba(10,4,16,0.45)' : 'rgba(255,255,255,0.6)' }]}
                     >
-                        <ArrowLeft size={28} color={isDark ? '#fff' : '#000'} />
+                        <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
                     </TouchableOpacity>
                 </View>
             )}
@@ -666,6 +668,13 @@ const st = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         zIndex: 10,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     avatarWrap: {
         alignSelf: 'center',

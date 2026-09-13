@@ -13,7 +13,6 @@ import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 const screenWidth = Dimensions.get("window").width;
 
 const lightTheme = {
-    background: "#ffffff",
     cardBackground: "#f7f7f7",
     textPrimary: "#111111",
     textSecondary: "#666666",
@@ -26,7 +25,6 @@ const lightTheme = {
 };
 
 const darkTheme = {
-    background: "#0A0410",
     cardBackground: "#180B32",
     textPrimary: "#ffffff",
     textSecondary: "#8b949e",
@@ -70,7 +68,7 @@ const RecommendedUsers = () => {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: theme.textPrimary }]}>
                     Recommended for you
