@@ -1,12 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 
-const useSecure = true; 
+const useSecure = true;
 const SECURE_KEYS = [
     "access",
     "refresh",
     "id",
     "wallet",
+    // Deep-link wallet state must not survive logout/account switches —
+    // a leaked address triggers "already linked to another account" for
+    // the next user on this device.
+    "deeplink_wallet_address",
+    "deeplink_wallet_type",
+    "deeplink_wallet_session",
+    "deeplink_pending_handshake",
+    "deeplink_wallet_pending_save",
 ];
 
 export const storage = {

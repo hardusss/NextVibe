@@ -31,6 +31,7 @@ import { useBleScanner } from "@/hooks/useBleScanner";
 import { clearProfileCache } from "@/components/ProfilePage/ProfilePage";
 import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
+import { completeColdStartHandshake } from "@/src/services/walletDeepLink";
 
 setupAxiosInterceptor();
 
@@ -262,6 +263,13 @@ export default function RootLayout() {
 
     useEffect(() => {
         registerForPushNotifications();
+    }, []);
+
+    useEffect(() => {
+        // A wallet deep-link redirect may have cold-started the app while no
+        // wallet screen was mounted — finish that handshake here (no-op on
+        // Android and on ordinary launches).
+        completeColdStartHandshake();
     }, []);
 
     useEffect(() => {

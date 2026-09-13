@@ -7,6 +7,7 @@ import { useColorScheme } from "react-native";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
 import usePortfolio from "@/hooks/usePortfolio";
+import { retryPendingWalletSave } from "@/src/services/walletDeepLink";
 import { useLastTransaction } from "@/hooks/useLastTransaction";
 
 import Header from "./Header";
@@ -92,6 +93,11 @@ export default function WalletDashboardScreen() {
     useEffect(() => {
         if (params.tab === "collectibles") setActiveTab("collectibles");
     }, [params.tab]);
+
+    useEffect(() => {
+        // Flush a backend wallet save owed from a cold-start deep-link connect.
+        if (Platform.OS === "ios") retryPendingWalletSave();
+    }, []);
 
     useEffect(() => {
         const assetId = typeof params.asset === "string" ? params.asset : null;

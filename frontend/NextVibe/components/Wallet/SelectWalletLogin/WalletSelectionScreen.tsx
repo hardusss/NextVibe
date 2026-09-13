@@ -10,7 +10,6 @@ import {
   useColorScheme,
   Alert,
 } from 'react-native';
-import { storage } from '@/src/utils/storage';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -21,6 +20,8 @@ import type { WalletType, WalletCardConfig } from './WalletOptionCard';
 import saveWallet from '@/src/api/save.wallet';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 import { walletLogger, WalletTag, extractErrorMessage } from '@/src/utils/walletLogger';
+import { retryPendingWalletSave } from '@/src/services/walletDeepLink';
+import haptics from '@/src/utils/haptics';
 
 const COLORS = {
   dark: {
@@ -88,6 +89,11 @@ const WalletSelectionScreen = () => {
       platform: Platform.OS,
       currentAccount: account?.address?.toString() ?? null,
     });
+    if (Platform.OS === 'ios') {
+      // A cold-start redirect may have connected locally while logged out or
+      // offline — flush any backend save that is still owed.
+      retryPendingWalletSave();
+    }
     return () => {
       isMounted.current = false;
       walletLogger.debug(WalletTag.MWA, 'WalletSelectionScreen unmounted');
@@ -100,6 +106,7 @@ const WalletSelectionScreen = () => {
   }, []);
 
   const handleMwaConnect = useCallback(async (_id: WalletType) => {
+    if (isConnecting) return;
     walletLogger.info(WalletTag.MWA_ANDROID, 'WalletSelectionScreen: handleMwaConnect triggered');
     try {
       if (account) {
@@ -139,34 +146,46 @@ const WalletSelectionScreen = () => {
     } finally {
       if (isMounted.current) setIsConnecting(false);
     }
-  }, [account, connect, disconnect]);
+  }, [account, connect, disconnect, isConnecting]);
 
   const handleIosWalletConnect = useCallback(async (walletType: 'phantom' | 'solflare' | 'backpack') => {
+    if (isConnecting) return;
     walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: handleIosWalletConnect selected: ${walletType}`);
     try {
       setIsConnecting(true);
+      // The deep-link service persists the connected wallet itself; this
+      // screen only drives the backend save and navigation.
       const connectedAccount = await connect(walletType);
       if (connectedAccount) {
         const walletAddr = connectedAccount.publicKey.toBase58();
         walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: iOS wallet connected (${walletType}): ${walletAddr}`);
-        await storage.setItem("deeplink_wallet_address", walletAddr);
-        await storage.setItem("deeplink_wallet_type", walletType);
-        
-        walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: Calling saveWallet for ${walletAddr}`);
-        await saveWallet(walletAddr);
-        walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: saveWallet succeeded, navigating to /wallet-dash`);
-        router.push('/wallet-dash');
+        try {
+          await saveWallet(walletAddr);
+          if (!isMounted.current) return;
+          walletLogger.info(WalletTag.MWA_IOS, `WalletSelectionScreen: saveWallet succeeded, navigating to ${page ? `/${page}` : '/wallet-dash'}`);
+          haptics.notification('success');
+          router.push(page ? `/${page}` as any : '/wallet-dash');
+        } catch (saveError: any) {
+          const msg = extractErrorMessage(saveError);
+          walletLogger.error(WalletTag.MWA_IOS, `WalletSelectionScreen: saveWallet failed for ${walletAddr}: ${msg}`, saveError);
+          await disconnect();
+          if (!isMounted.current) return;
+          haptics.notification('error');
+          setToast({ message: msg, isSuccess: false });
+        }
       } else {
         walletLogger.warn(WalletTag.MWA_IOS, `WalletSelectionScreen: connect returned null for ${walletType}`);
       }
     } catch (error: any) {
       const msg = extractErrorMessage(error);
       walletLogger.error(WalletTag.MWA_IOS, `WalletSelectionScreen: ${walletType} connection failed: ${msg}`, error);
-      Alert.alert("Connection Failed", msg);
+      if (!isMounted.current) return;
+      haptics.notification('error');
+      setToast({ message: msg, isSuccess: false });
     } finally {
-      setIsConnecting(false);
+      if (isMounted.current) setIsConnecting(false);
     }
-  }, [connect]);
+  }, [connect, disconnect, isConnecting, page]);
 
   const handleLazorKitConnect = useCallback((_id: WalletType) => {
     walletLogger.info(WalletTag.LAZORKIT, `WalletSelectionScreen: Routing to /wallet-init (target page: ${page ? page : 'wallet-dash'})`);
@@ -241,9 +260,9 @@ const WalletSelectionScreen = () => {
                   config={cardConfig}
                   isExpanded={selectedWallet === cardConfig.id}
                   isDimmed={selectedWallet !== null && selectedWallet !== cardConfig.id}
+                  isDisabled={isConnecting}
                   onCardPress={handleCardPress}
                   onCtaPress={handleCtaPress}
-                  
                 />
               ))}
             </Animated.View>

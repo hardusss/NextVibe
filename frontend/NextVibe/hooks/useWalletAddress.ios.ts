@@ -1,8 +1,10 @@
 import { useWallet } from "@lazorkit/wallet-mobile-adapter";
 import { useMemo, useState, useEffect, useRef } from "react";
+import { DeviceEventEmitter } from "react-native";
 import { Connection, Transaction, VersionedTransaction, TransactionSignature } from "@solana/web3.js";
 import { storage } from "@/src/utils/storage";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
+import { disconnectDeepLinkWallet, WALLET_DEEPLINK_EVENTS, DEEPLINK_STORAGE_KEYS } from "@/src/services/walletDeepLink";
 
 // 1. Define strict, mutually exclusive states
 export type WalletState = 
@@ -46,10 +48,25 @@ export default function useWalletAddress(): WalletState {
 
     useEffect(() => {
         const load = async () => {
-            const addr = await storage.getItem("deeplink_wallet_address");
+            const addr = await storage.getItem(DEEPLINK_STORAGE_KEYS.address);
             setDeeplinkAddr(addr);
         };
         load();
+
+        // Stay live: a connect/disconnect anywhere in the app (including a
+        // cold-start handshake) must reach already-mounted consumers.
+        const connectedSub = DeviceEventEmitter.addListener(
+            WALLET_DEEPLINK_EVENTS.connected,
+            ({ address }: { address: string }) => setDeeplinkAddr(address)
+        );
+        const disconnectedSub = DeviceEventEmitter.addListener(
+            WALLET_DEEPLINK_EVENTS.disconnected,
+            () => setDeeplinkAddr(null)
+        );
+        return () => {
+            connectedSub.remove();
+            disconnectedSub.remove();
+        };
     }, []);
 
     const activeState = useMemo(() => {
@@ -60,8 +77,7 @@ export default function useWalletAddress(): WalletState {
                 connection,
                 disconnect: async () => {
                     walletLogger.info(WalletTag.STATE, 'useWalletAddress (iOS): Disconnecting active deep link wallet');
-                    await storage.removeItem("deeplink_wallet_address");
-                    await storage.removeItem("deeplink_wallet_type");
+                    await disconnectDeepLinkWallet();
                     setDeeplinkAddr(null);
                 },
                 signAndSendTransaction: async (transaction, minContextSlot) => {

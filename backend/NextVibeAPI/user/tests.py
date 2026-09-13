@@ -143,3 +143,14 @@ class SaveWalletAddressTest(TestCase):
         self.assertIn("another account", response.data.get("error", ""))
         self.other.refresh_from_db()
         self.assertNotEqual(self.other.wallet_address, self.ADDR_A)
+
+    def test_address_owned_by_banned_account_is_rejected(self):
+        # The default manager hides banned users; the guard must still see them
+        # or the unique constraint turns this into a 500.
+        self.owner.is_baned = True
+        self.owner.save(update_fields=["is_baned"])
+        response = self._post(self.other, self.ADDR_A)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("another account", response.data.get("error", ""))
+        self.other.refresh_from_db()
+        self.assertNotEqual(self.other.wallet_address, self.ADDR_A)

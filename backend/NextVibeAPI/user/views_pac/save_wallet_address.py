@@ -47,8 +47,10 @@ class SaveWalletAddressView(APIView):
                 wallet_address,
             )
 
+        # all_objects: the default manager hides banned users, but the DB unique
+        # constraint doesn't — a banned holder must reject cleanly, not 500.
         User = request.user.__class__
-        other_user = User.objects.filter(wallet_address=wallet_address).exclude(user_id=request.user.user_id).first()
+        other_user = User.all_objects.filter(wallet_address=wallet_address).exclude(user_id=request.user.user_id).first()
         if other_user:
             logger.warning(
                 "SaveWalletAddressView: Address %s is already linked to another user %s",
