@@ -268,6 +268,20 @@ export const deleteMessage = async (chatId: number, messageId: number) => {
   }
 };
 
+export const getUnreadMessagesCount = async (): Promise<number> => {
+  const token = await storage.getItem('access');
+  try {
+    const response = await axios.get(`${GetApiUrl()}/chat/unread-count/`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data?.count ?? 0;
+  } catch (error) {
+    return 0;
+  }
+};
+
 export const getChats = async () => {
   const token = await storage.getItem('access');
   try {

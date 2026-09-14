@@ -1,31 +1,35 @@
 import React, { useState, useEffect } from "react";
-import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme,
-    ActivityIndicator,
-    Vibration,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, ShieldX, Radio, Users, Star } from "lucide-react-native";
-import Animated, { FadeInDown, FadeInUp, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, withSpring } from "react-native-reanimated";
-import { Image } from "expo-image";
+import { ShieldX, Radio } from "lucide-react-native";
+import Animated, {
+    FadeInDown,
+    FadeInUp,
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    withSpring,
+} from "react-native-reanimated";
 import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
 import * as Location from 'expo-location';
 import { verifyProximityToken } from '@/src/api/proximity.token';
-import UserBadges from '@/components/Shared/UserBadges';
+import haptics from "@/src/utils/haptics";
+import { space, colors, type as typeScale } from "@/src/theme/tokens";
+import { useReduceMotion } from "@/hooks/useReduceMotion";
+import EventScreenShell from "@/components/Events/EventScreenShell";
+import EventCta from "@/components/Events/EventCta";
+import MeetSuccess from "@/components/Events/MeetSuccess";
 
 type ConnectionState = "idle" | "locating" | "connecting" | "success" | "error";
 
 export default function EventNFCReceiveScreen() {
-    const insets = useSafeAreaInsets();
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
+    const reduceMotion = useReduceMotion();
     const params = useLocalSearchParams<{
         eventId?: string;
         userId?: string;
@@ -47,20 +51,17 @@ export default function EventNFCReceiveScreen() {
     const [state, setState] = useState<ConnectionState>("idle");
     const [message, setMessage] = useState("");
     const [earnedPoints, setEarnedPoints] = useState(0);
-    const [displayPoints, setDisplayPoints] = useState(0);
     const [scannedUser, setScannedUser] = useState<any>(null);
     const [isIrlTap, setIsIrlTap] = useState(irlRequested);
 
-    const bg = isDark ? "#0A0410" : "#FFFFFF";
-    const main = isDark ? "#ffffff" : "#111827";
-    const muted = isDark ? "rgba(255,255,255,0.5)" : "rgba(17,24,39,0.5)";
-    const border = isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.07)";
-    const accent = "#A855F7";
+    const main = isDark ? colors.text : "#111827";
+    const mutedColor = isDark ? colors.sub : "rgba(17,24,39,0.5)";
 
-    // Pulse animation
+    // Pulse animation while waiting/connecting
     const pulseScale = useSharedValue(1);
     useEffect(() => {
-        if (state === "idle" || state === "locating" || state === "connecting") {
+        const waiting = state === "idle" || state === "locating" || state === "connecting";
+        if (waiting && !reduceMotion) {
             pulseScale.value = withRepeat(
                 withSequence(
                     withTiming(1.08, { duration: 1200 }),
@@ -70,7 +71,7 @@ export default function EventNFCReceiveScreen() {
         } else {
             pulseScale.value = withSpring(1);
         }
-    }, [state]);
+    }, [state, reduceMotion]);
 
     const pulseStyle = useAnimatedStyle(() => ({
         transform: [{ scale: pulseScale.value }],
@@ -86,7 +87,7 @@ export default function EventNFCReceiveScreen() {
                 is_seeker_verified: params._is_seeker_verified === "1",
             });
             setState("success");
-            Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+            haptics.notification('success');
         } else if (proximityToken && state === "idle") {
             handleTokenConnect();
         } else if ((eventId || irlRequested) && scannedUserId && state === "idle") {
@@ -112,7 +113,7 @@ export default function EventNFCReceiveScreen() {
                 if (location.mocked) {
                     setState("error");
                     setMessage("Fake GPS detected. Real moments only.");
-                    Vibration.vibrate([0, 200]);
+                    haptics.notification('error');
                     return;
                 }
                 coords = location.coords;
@@ -134,16 +135,16 @@ export default function EventNFCReceiveScreen() {
                 setEarnedPoints(result.earned_points || 0);
                 setScannedUser(result.scanned_user || null);
                 setState("success");
-                Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+                haptics.notification('success');
             } else {
                 setState("error");
                 setMessage(result.error || "Connection failed.");
-                Vibration.vibrate([0, 200]);
+                haptics.notification('error');
             }
         } catch (error: any) {
             setState("error");
             setMessage(error?.response?.data?.error || "Failed to connect. Please try again.");
-            Vibration.vibrate([0, 200]);
+            haptics.notification('error');
         }
     };
 
@@ -162,7 +163,7 @@ export default function EventNFCReceiveScreen() {
                 if (!irlRequested) {
                     setState("error");
                     setMessage("Location permission is required to connect with other attendees.");
-                    Vibration.vibrate([0, 200]);
+                    haptics.notification('error');
                     return;
                 }
             } else {
@@ -170,7 +171,7 @@ export default function EventNFCReceiveScreen() {
                 if (location.mocked) {
                     setState("error");
                     setMessage("Fake GPS detected. Real moments only.");
-                    Vibration.vibrate([0, 200]);
+                    haptics.notification('error');
                     return;
                 }
             }
@@ -179,7 +180,7 @@ export default function EventNFCReceiveScreen() {
             if (!irlRequested) {
                 setState("error");
                 setMessage("Failed to get location coordinates.");
-                Vibration.vibrate([0, 200]);
+                haptics.notification('error');
                 return;
             }
             location = null;
@@ -205,27 +206,14 @@ export default function EventNFCReceiveScreen() {
                 setEarnedPoints(response.data.earned_points || 0);
                 setScannedUser(response.data.scanned_user);
                 setState("success");
-                Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+                haptics.notification('success');
             }
         } catch (error: any) {
             setState("error");
             setMessage(error.response?.data?.error || "Failed to connect. Please try again.");
-            Vibration.vibrate([0, 200]);
+            haptics.notification('error');
         }
     };
-
-    useEffect(() => {
-        if (state === "success" && earnedPoints > 0) {
-            let current = 0;
-            const interval = setInterval(() => {
-                current += 1;
-                setDisplayPoints(current);
-                Vibration.vibrate(40);
-                if (current >= earnedPoints) clearInterval(interval);
-            }, 80);
-            return () => clearInterval(interval);
-        }
-    }, [state, earnedPoints]);
 
     const renderContent = () => {
         switch (state) {
@@ -233,18 +221,18 @@ export default function EventNFCReceiveScreen() {
             case "locating":
             case "connecting":
                 return (
-                    <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.centerContent}>
-                        <Animated.View style={[styles.iconCircle, {
-                            backgroundColor: "rgba(168,85,247,0.1)",
-                            borderColor: "rgba(168,85,247,0.2)",
-                        }, pulseStyle]}>
-                            <Radio size={48} color={accent} strokeWidth={1.5} />
+                    <Animated.View
+                        entering={reduceMotion ? undefined : FadeInDown.springify().damping(18)}
+                        style={styles.centerContent}
+                    >
+                        <Animated.View style={[styles.iconCircle, styles.accentCircle, pulseStyle]}>
+                            <Radio size={48} color={colors.accent} strokeWidth={1.5} />
                         </Animated.View>
 
                         <Text style={[styles.heading, { color: main }]}>
                             Networking...
                         </Text>
-                        <Text style={[styles.description, { color: muted }]}>
+                        <Text style={[styles.description, { color: mutedColor }]}>
                             {state === "locating" ? "Getting your location..." : "Waiting for reputation..."}
                         </Text>
                     </Animated.View>
@@ -252,157 +240,61 @@ export default function EventNFCReceiveScreen() {
 
             case "error":
                 return (
-                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
-                        <View style={[styles.iconCircle, {
-                            backgroundColor: "rgba(239,68,68,0.1)",
-                            borderColor: "rgba(239,68,68,0.25)",
-                        }]}>
-                            <ShieldX size={48} color="#f87171" strokeWidth={1.5} />
+                    <Animated.View
+                        entering={reduceMotion ? undefined : FadeInUp.springify().damping(15)}
+                        style={styles.centerContent}
+                    >
+                        <View style={[styles.iconCircle, styles.dangerCircle]}>
+                            <ShieldX size={48} color={colors.danger} strokeWidth={1.5} />
                         </View>
 
-                        <Text style={[styles.heading, { color: "#f87171" }]}>
+                        <Text style={[styles.heading, { color: colors.danger }]}>
                             Connection Failed
                         </Text>
-                        <Text style={[styles.description, { color: muted }]}>
+                        <Text style={[styles.description, { color: mutedColor }]}>
                             {message}
                         </Text>
 
-                        <TouchableOpacity
-                            onPress={() => router.back()}
-                            activeOpacity={0.8}
-                            style={[styles.verifyBtn, {
-                                backgroundColor: "rgba(255,255,255,0.05)",
-                                borderColor: border,
-                                marginTop: 16,
-                            }]}
-                        >
-                            <Text style={[styles.verifyBtnText, { color: main }]}>
-                                Go Back
-                            </Text>
-                        </TouchableOpacity>
+                        <View style={styles.ctaWidth}>
+                            <EventCta
+                                label="Go Back"
+                                variant="secondary"
+                                onPress={() => router.back()}
+                            />
+                        </View>
                     </Animated.View>
                 );
 
             case "success":
                 return (
-                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.fullScreenSuccess}>
-                        <Animated.View entering={FadeInDown.delay(200).springify()}>
-                            <View style={styles.avatarsRow}>
-                                {scannedUser?.avatar ? (
-                                    <Image source={{ uri: scannedUser.avatar }} style={styles.scannedAvatar} />
-                                ) : (
-                                    <View style={[styles.scannedAvatar, { backgroundColor: 'rgba(168,85,247,0.2)', alignItems: 'center', justifyContent: 'center' }]}>
-                                        <Users size={32} color={accent} />
-                                    </View>
-                                )}
-                            </View>
-                        </Animated.View>
-
-                        <Animated.View entering={FadeInDown.delay(400)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
-                            <Text style={[styles.heading, { color: main, fontSize: 24, lineHeight: 26, flexShrink: 1 }]} numberOfLines={1}>
-                                You met @{scannedUser?.username}
-                            </Text>
-                            <UserBadges official={scannedUser?.is_official} seekerVerified={scannedUser?.is_seeker_verified} size={22} seekerInfoOnTap={true} />
-                        </Animated.View>
-
-                        <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>
-                            <Star size={24} color="#fbbf24" fill="#fbbf24" />
-                            <Text style={styles.repPointsText}>+{displayPoints} REP</Text>
-                        </Animated.View>
-
-                        <Animated.Text entering={FadeInDown.delay(800)} style={[styles.description, { color: muted, fontSize: 16, marginTop: 16 }]}>
-                            Reputation added for both of you!
-                        </Animated.Text>
-
-                        <Animated.View entering={FadeInUp.delay(1200)} style={{ width: "100%", paddingHorizontal: 40, marginTop: 40 }}>
-                            <TouchableOpacity
+                    <MeetSuccess
+                        user={scannedUser}
+                        points={earnedPoints}
+                        actions={
+                            <EventCta
+                                label="Awesome"
                                 onPress={() => router.back()}
-                                activeOpacity={0.8}
-                                style={[styles.verifyBtn, {
-                                    backgroundColor: "rgba(34,197,94,0.12)",
-                                    borderColor: "rgba(34,197,94,0.3)",
-                                }]}
-                            >
-                                <Text style={[styles.verifyBtnText, { color: "#4ade80" }]}>
-                                    Awesome
-                                </Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
+                            />
+                        }
+                    />
                 );
+
+            default:
+                return null;
         }
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-            <View style={styles.header}>
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => router.back()}
-                    style={styles.backBtn}
-                >
-                    <ChevronLeft size={22} color={main} strokeWidth={2} />
-                </TouchableOpacity>
-                <View style={{ alignItems: 'center' }}>
-                    <Text style={[styles.headerTitle, { color: main }]}>
-                        Tap to Meet
-                    </Text>
-                    {isIrlTap && (
-                        <Text style={[styles.headerSub, { color: muted }]}>
-                            Not at an event · IRL tap
-                        </Text>
-                    )}
-                </View>
-                <View style={{ width: 44 }} />
-            </View>
-
-            <View style={styles.main}>
-                {renderContent()}
-            </View>
-        </View>
+        <EventScreenShell title="Tap to Meet" subtitle={isIrlTap ? 'Not at an event · IRL tap' : null}>
+            {renderContent()}
+        </EventScreenShell>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: 6,
-        marginBottom: 14,
-        paddingHorizontal: 18,
-    },
-    backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    headerTitle: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 16,
-        includeFontPadding: false,
-    },
-    headerSub: {
-        fontFamily: "Dank Mono",
-        fontSize: 11,
-        marginTop: 2,
-        includeFontPadding: false,
-    },
-    main: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        paddingHorizontal: 32,
-        paddingBottom: 80,
-    },
     centerContent: {
         alignItems: "center",
-        gap: 16,
+        gap: space.lg,
         width: "100%",
     },
     iconCircle: {
@@ -412,70 +304,32 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: 8,
+        marginBottom: space.sm,
+    },
+    accentCircle: {
+        backgroundColor: "rgba(168,85,247,0.1)",
+        borderColor: "rgba(168,85,247,0.2)",
+    },
+    dangerCircle: {
+        backgroundColor: "rgba(248,113,113,0.1)",
+        borderColor: "rgba(248,113,113,0.25)",
     },
     heading: {
         fontFamily: "Dank Mono Bold",
-        fontSize: 22,
+        fontSize: typeScale.h2 + 2,
         includeFontPadding: false,
         textAlign: "center",
     },
     description: {
         fontFamily: "Dank Mono",
-        fontSize: 14,
+        fontSize: typeScale.sub,
         lineHeight: 21,
         textAlign: "center",
         includeFontPadding: false,
-        paddingHorizontal: 10,
+        paddingHorizontal: space.sm + 2,
     },
-    verifyBtn: {
+    ctaWidth: {
         width: "100%",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        paddingVertical: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-    },
-    verifyBtnText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 15,
-        includeFontPadding: false,
-    },
-    fullScreenSuccess: {
-        flex: 1,
-        width: "100%",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingBottom: 40,
-    },
-    avatarsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    scannedAvatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 3,
-        borderColor: '#A855F7',
-    },
-    repBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        backgroundColor: 'rgba(251,191,36,0.15)',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 30,
-        marginTop: 20,
-    },
-    repPointsText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 28,
-        color: "#fbbf24",
-        includeFontPadding: false,
+        marginTop: space.sm,
     },
 });

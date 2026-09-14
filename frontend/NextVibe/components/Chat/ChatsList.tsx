@@ -160,6 +160,9 @@ export default function ChatsList() {
           }
         });
       } else if (event.type === 'read_receipt') {
+        // Receipts fan out to every participant — only MY read clears MY badge;
+        // the other user reading their side must not zero my count.
+        if (!currentUserId || Number(event.reader_id) !== currentUserId) return;
         const readChatId = Number(event.chat_id);
         setChats(prevChats =>
           prevChats.map(c => {

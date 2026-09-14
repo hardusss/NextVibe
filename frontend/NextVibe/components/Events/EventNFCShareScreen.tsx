@@ -1,26 +1,30 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, ActivityIndicator, Platform, Vibration } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, useColorScheme, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Radio, AlertTriangle, Star, Users, Camera } from 'lucide-react-native';
+import { Radio, AlertTriangle, Camera, ShieldX } from 'lucide-react-native';
 import { FEATURE_PROOF_OF_MEET } from '@/constants/FeatureFlags';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { Image } from 'expo-image';
 import axios from 'axios';
-import * as Haptics from 'expo-haptics';
 import { startSharing, stopSharing } from '@/modules/nfc-send';
 import { startBroadcasting, stopBroadcasting } from '@/modules/ble-share';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
 import { useProximityToken } from '@/hooks/useProximityToken';
 import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
-import UserBadges from '@/components/Shared/UserBadges';
+import haptics from '@/src/utils/haptics';
+import { MOTION } from '@/constants/motion';
+import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
+import CustomActivityIndicator from '@/components/CustomActivityIndicator';
+import EventScreenShell from '@/components/Events/EventScreenShell';
+import EventCta from '@/components/Events/EventCta';
+import MeetSuccess from '@/components/Events/MeetSuccess';
 
 export default function EventNFCShareScreen() {
-    const insets = useSafeAreaInsets();
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
+    const reduceMotion = useReduceMotion();
     const params = useLocalSearchParams<{ eventId?: string; mode?: string }>();
     const eventId = params.eventId;
     const isIrl = params.mode === 'irl';
@@ -29,7 +33,6 @@ export default function EventNFCShareScreen() {
     const [initialConnections, setInitialConnections] = useState<number[]>([]);
     const [successUser, setSuccessUser] = useState<any>(null);
     const [successPoints, setSuccessPoints] = useState<number>(0);
-    const [displayPoints, setDisplayPoints] = useState<number>(0);
     const [successState, setSuccessState] = useState<boolean>(false);
 
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -37,11 +40,8 @@ export default function EventNFCShareScreen() {
 
     const { generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing } = useProximityToken();
 
-    const bg = isDark ? '#0A0410' : '#FFFFFF';
-    const main = isDark ? '#FFFFFF' : '#111827';
-    const muted = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(17,24,39,0.5)';
-    const accent = '#A855F7';
-    const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)';
+    const main = isDark ? colors.text : '#111827';
+    const mutedColor = isDark ? colors.sub : 'rgba(17,24,39,0.5)';
 
     const startSharingSession = (url: string) => {
         console.log('Starting sharing session with URL:', url);
@@ -67,8 +67,7 @@ export default function EventNFCShareScreen() {
     const onNewTapDetected = (user: any, points: number) => {
         stopSharingSession();
 
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
-        Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+        haptics.notification('success');
 
         setSuccessUser(user);
         setSuccessPoints(points);
@@ -131,7 +130,6 @@ export default function EventNFCShareScreen() {
         setSuccessState(false);
         setSuccessUser(null);
         setSuccessPoints(0);
-        setDisplayPoints(0);
 
         const tokenUrl = await generateToken(
             isIrl ? 'irl' : 'networking',
@@ -155,19 +153,6 @@ export default function EventNFCShareScreen() {
             setInitialConnections(knownIds);
         }, 2500);
     };
-
-    useEffect(() => {
-        if (successState && successPoints > 0) {
-            let current = 0;
-            const interval = setInterval(() => {
-                current += 1;
-                setDisplayPoints(current);
-                Vibration.vibrate(40);
-                if (current >= successPoints) clearInterval(interval);
-            }, 80);
-            return () => clearInterval(interval);
-        }
-    }, [successState, successPoints]);
 
     useEffect(() => {
         let active = true;
@@ -242,210 +227,120 @@ export default function EventNFCShareScreen() {
         };
     }, [eventId, isIrl]);
 
+    const broadcastLabel = Platform.OS === 'ios' ? 'Bluetooth' : 'NFC';
+    const subtitle = isIrl ? 'Not at an event · IRL tap' : null;
+
     if (!eventId && !isIrl) {
         return (
-            <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-                <Text style={{ color: main }}>Invalid Event</Text>
-            </View>
+            <EventScreenShell title="Tap to Meet">
+                <View style={styles.centerContent}>
+                    <View style={[styles.errorCircle]}>
+                        <ShieldX size={48} color={colors.danger} strokeWidth={1.5} />
+                    </View>
+                    <Text style={[styles.heading, { color: colors.danger }]}>Invalid Event</Text>
+                    <Text style={[styles.description, { color: mutedColor }]}>
+                        This link is missing its event. Head back and try again.
+                    </Text>
+                    <View style={styles.ctaWidth}>
+                        <EventCta label="Go Back" variant="secondary" onPress={() => router.back()} />
+                    </View>
+                </View>
+            </EventScreenShell>
         );
     }
 
-    const broadcastLabel = Platform.OS === 'ios' ? 'Bluetooth' : 'NFC';
-
     return (
-        <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-            <View style={styles.header}>
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => router.back()}
-                    style={styles.backBtn}
-                >
-                    <ChevronLeft size={22} color={main} strokeWidth={2} />
-                </TouchableOpacity>
-                <View style={{ alignItems: 'center' }}>
-                    <Text style={[styles.headerTitle, { color: main }]}>
-                        Tap to Meet
-                    </Text>
-                    {isIrl && (
-                        <Text style={[styles.headerSub, { color: muted }]}>
-                            Not at an event · IRL tap
-                        </Text>
-                    )}
-                </View>
-                <View style={{ width: 44 }} />
-            </View>
-
-            <View style={styles.main}>
-                {!userId ? (
-                    <ActivityIndicator size="large" color={accent} />
-                ) : (
-                    successState ? (
-                        <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.fullScreenSuccess}>
-                            <Animated.View entering={FadeInDown.delay(200).springify()}>
-                                <View style={styles.avatarsRow}>
-                                    {successUser?.avatar ? (
-                                        <Image source={{ uri: successUser.avatar }} style={styles.scannedAvatar} />
-                                    ) : (
-                                        <View style={[styles.scannedAvatar, { backgroundColor: 'rgba(168,85,247,0.2)', alignItems: 'center', justifyContent: 'center' }]}>
-                                            <Users size={32} color={accent} />
-                                        </View>
-                                    )}
-                                </View>
-                            </Animated.View>
-
-                            <Animated.View entering={FadeInDown.delay(400)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
-                                <Text style={[styles.heading, { color: main, fontSize: 24, lineHeight: 26, flexShrink: 1 }]} numberOfLines={1}>
-                                    You met @{successUser?.username}
-                                </Text>
-                                <UserBadges official={successUser?.is_official} seekerVerified={successUser?.is_seeker_verified} size={22} seekerInfoOnTap={true} />
-                            </Animated.View>
-
-                            <Animated.View entering={FadeInDown.delay(600)} style={styles.repBadge}>
-                                <Star size={24} color="#fbbf24" fill="#fbbf24" />
-                                <Text style={styles.repPointsText}>+{displayPoints} REP</Text>
-                            </Animated.View>
-
-                            <Animated.Text entering={FadeInDown.delay(800)} style={[styles.description, { color: muted, fontSize: 16, marginTop: 16 }]}>
-                                Reputation added for both of you!
-                            </Animated.Text>
-
-                            <Animated.View entering={FadeInUp.delay(1200)} style={{ width: "100%", paddingHorizontal: 40, marginTop: 40, gap: 12 }}>
-                                {FEATURE_PROOF_OF_MEET && (
-                                    <TouchableOpacity
-                                        activeOpacity={0.8}
-                                        style={[styles.verifyBtn, {
-                                            backgroundColor: "rgba(168,85,247,0.12)",
-                                            borderColor: "rgba(168,85,247,0.3)",
-                                        }]}
-                                    >
-                                        <Camera size={16} color="#c084fc" />
-                                        <Text style={[styles.verifyBtnText, { color: "#c084fc" }]}>
-                                            Take a selfie together
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                                <TouchableOpacity
-                                    onPress={handleContinue}
-                                    activeOpacity={0.8}
-                                    style={[styles.verifyBtn, {
-                                        backgroundColor: "rgba(168,85,247,0.12)",
-                                        borderColor: "rgba(168,85,247,0.3)",
-                                    }]}
-                                >
-                                    <Text style={[styles.verifyBtnText, { color: "#c084fc" }]}>
-                                        {isIrl ? 'Keep tapping' : 'Continue Networking'}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    onPress={() => router.back()}
-                                    activeOpacity={0.8}
-                                    style={[styles.verifyBtn, {
-                                        backgroundColor: "transparent",
-                                        borderColor: "transparent",
-                                    }]}
-                                >
-                                    <Text style={[styles.verifyBtnText, { color: muted }]}>
-                                        Done
-                                    </Text>
-                                </TouchableOpacity>
-                            </Animated.View>
-                        </Animated.View>
-                    ) : (
-                        <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
-                            <Animated.View entering={FadeInDown.delay(200)}>
-                                <View style={styles.animationContainer}>
-                                    <LottieView
-                                        autoPlay
-                                        loop
-                                        style={styles.lottie}
-                                        source={require('@/assets/lottie/scanning.json')}
-                                    />
-                                    <View style={[styles.iconCircle, { backgroundColor: accent }]}>
-                                        <Radio size={32} color="#ffffff" />
-                                    </View>
-                                </View>
-                            </Animated.View>
-
-                            <Text style={[styles.heading, { color: main }]}>
-                                {isIrl ? 'Ready to Tap' : 'Ready to Network'}
-                            </Text>
-                            <Text style={[styles.description, { color: muted }]}>
-                                {isIrl
-                                    ? `Hold your phone near a friend's phone to meet — you'll both get +1 REP (via ${broadcastLabel}).`
-                                    : `Hold your phone near another attendee's phone to connect and share reputation via ${broadcastLabel}!`}
-                            </Text>
-
-                            <TokenExpiryBadge
-                                secondsLeft={secondsLeft}
-                                totalDuration={totalDuration}
-                                isRenewing={isRenewing}
-                                label={isIrl ? 'Active Tap Token' : 'Active Networking Token'}
-                            />
-
-                            {Platform.OS === 'ios' ? (
-                                <View style={[styles.warningCard, { backgroundColor: 'rgba(168,85,247,0.1)', borderColor: 'rgba(168,85,247,0.2)' }]}>
-                                    <AlertTriangle size={18} color="#A855F7" style={{ marginBottom: 2 }} />
-                                    <Text style={[styles.warningTitle, { color: main }]}>iOS Proximity Requirements</Text>
-                                    <Text style={[styles.warningText, { color: muted }]}>
-                                        Please ask the other person to enable <Text style={{ fontFamily: 'Dank Mono Bold', color: main }}>Bluetooth</Text> and open the <Text style={{ fontFamily: 'Dank Mono Bold', color: main }}>NextVibe</Text> app on their phone to receive.
-                                    </Text>
-                                </View>
-                            ) : (
-                                <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-                                    <Text style={[styles.infoCardText, { color: muted }]}>
-                                        Make sure the other person's screen is unlocked.
-                                    </Text>
-                                </View>
+        <EventScreenShell title="Tap to Meet" subtitle={subtitle}>
+            {!userId ? (
+                <CustomActivityIndicator size="large" />
+            ) : successState ? (
+                <MeetSuccess
+                    user={successUser}
+                    points={successPoints}
+                    actions={
+                        <>
+                            {FEATURE_PROOF_OF_MEET && (
+                                <EventCta
+                                    label="Take a selfie together"
+                                    variant="secondary"
+                                    icon={<Camera size={16} color={isDark ? colors.text : '#111827'} />}
+                                    onPress={() => {}}
+                                />
                             )}
-                        </Animated.View>
-                    )
-                )}
-            </View>
-        </View>
+                            <EventCta
+                                label={isIrl ? 'Keep tapping' : 'Continue Networking'}
+                                onPress={handleContinue}
+                            />
+                            <EventCta
+                                label="Done"
+                                variant="ghost"
+                                onPress={() => router.back()}
+                            />
+                        </>
+                    }
+                />
+            ) : (
+                <Animated.View
+                    entering={reduceMotion ? undefined : FadeInUp.springify().damping(15)}
+                    style={styles.centerContent}
+                >
+                    <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(100).duration(MOTION.duration.normal)}>
+                        <View style={styles.animationContainer}>
+                            {!reduceMotion && (
+                                <LottieView
+                                    autoPlay
+                                    loop
+                                    style={styles.lottie}
+                                    source={require('@/assets/lottie/scanning.json')}
+                                />
+                            )}
+                            <View style={styles.iconCircle}>
+                                <Radio size={32} color="#ffffff" />
+                            </View>
+                        </View>
+                    </Animated.View>
+
+                    <Text style={[styles.heading, { color: main }]}>
+                        {isIrl ? 'Ready to Tap' : 'Ready to Network'}
+                    </Text>
+                    <Text style={[styles.description, { color: mutedColor }]}>
+                        {isIrl
+                            ? `Hold your phone near a friend's phone to meet — you'll both get +1 REP (via ${broadcastLabel}).`
+                            : `Hold your phone near another attendee's phone to connect and share reputation via ${broadcastLabel}!`}
+                    </Text>
+
+                    <TokenExpiryBadge
+                        secondsLeft={secondsLeft}
+                        totalDuration={totalDuration}
+                        isRenewing={isRenewing}
+                        label={isIrl ? 'Active Tap Token' : 'Active Networking Token'}
+                    />
+
+                    {Platform.OS === 'ios' ? (
+                        <View style={styles.warningCard}>
+                            <AlertTriangle size={18} color={colors.accent} style={{ marginBottom: 2 }} />
+                            <Text style={[styles.warningTitle, { color: main }]}>iOS Proximity Requirements</Text>
+                            <Text style={[styles.warningText, { color: mutedColor }]}>
+                                Please ask the other person to enable <Text style={{ fontFamily: 'Dank Mono Bold', color: main }}>Bluetooth</Text> and open the <Text style={{ fontFamily: 'Dank Mono Bold', color: main }}>NextVibe</Text> app on their phone to receive.
+                            </Text>
+                        </View>
+                    ) : (
+                        <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                            <Text style={[styles.infoCardText, { color: mutedColor }]}>
+                                Make sure the other person's screen is unlocked.
+                            </Text>
+                        </View>
+                    )}
+                </Animated.View>
+            )}
+        </EventScreenShell>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 6,
-        marginBottom: 14,
-        paddingHorizontal: 18,
-    },
-    backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerTitle: {
-        fontFamily: 'Dank Mono Bold',
-        fontSize: 16,
-        includeFontPadding: false,
-    },
-    headerSub: {
-        fontFamily: 'Dank Mono',
-        fontSize: 11,
-        marginTop: 2,
-        includeFontPadding: false,
-    },
-    main: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 32,
-        paddingBottom: 80,
-    },
     centerContent: {
         alignItems: 'center',
-        gap: 16,
+        gap: space.lg,
         width: '100%',
     },
     animationContainer: {
@@ -454,7 +349,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
-        marginBottom: 20,
+        marginBottom: space.xl - space.xs,
     },
     lottie: {
         width: 250,
@@ -468,15 +363,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 10,
-        shadowColor: '#A855F7',
+        backgroundColor: colors.accent,
+        shadowColor: colors.accent,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,
         shadowRadius: 16,
         elevation: 10,
     },
+    errorCircle: {
+        width: 110,
+        height: 110,
+        borderRadius: 55,
+        borderWidth: 1.5,
+        backgroundColor: 'rgba(248,113,113,0.1)',
+        borderColor: 'rgba(248,113,113,0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: space.sm,
+    },
     heading: {
         fontFamily: 'Dank Mono Bold',
-        fontSize: 24,
+        fontSize: typeScale.title,
         includeFontPadding: false,
         textAlign: 'center',
     },
@@ -486,91 +393,47 @@ const styles = StyleSheet.create({
         lineHeight: 22,
         textAlign: 'center',
         includeFontPadding: false,
-        paddingHorizontal: 10,
+        paddingHorizontal: space.sm + 2,
     },
     infoCard: {
-        marginTop: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 12,
+        marginTop: space.xs,
+        paddingHorizontal: space.lg,
+        paddingVertical: space.md,
+        borderRadius: radius.md,
         width: '100%',
     },
     infoCardText: {
         fontFamily: 'Dank Mono',
-        fontSize: 13,
+        fontSize: typeScale.mono,
         textAlign: 'center',
     },
     warningCard: {
-        marginTop: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        borderRadius: 14,
+        marginTop: space.xs,
+        paddingHorizontal: space.lg,
+        paddingVertical: space.md + 2,
+        borderRadius: radius.md,
         borderWidth: 1,
         width: '100%',
         alignItems: 'center',
-        gap: 6,
+        gap: space.xs + 2,
+        backgroundColor: 'rgba(168,85,247,0.1)',
+        borderColor: 'rgba(168,85,247,0.2)',
     },
     warningTitle: {
         fontFamily: 'Dank Mono Bold',
-        fontSize: 13,
+        fontSize: typeScale.mono,
         textAlign: 'center',
         includeFontPadding: false,
     },
     warningText: {
         fontFamily: 'Dank Mono',
-        fontSize: 12,
+        fontSize: typeScale.caption,
         textAlign: 'center',
         lineHeight: 18,
         includeFontPadding: false,
     },
-    verifyBtn: {
-        width: "100%",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        paddingVertical: 16,
-        borderRadius: 16,
-        borderWidth: 1,
+    ctaWidth: {
+        width: '100%',
+        marginTop: space.sm,
     },
-    verifyBtnText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 15,
-        includeFontPadding: false,
-    },
-    fullScreenSuccess: {
-        flex: 1,
-        width: "100%",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingBottom: 40,
-    },
-    avatarsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    scannedAvatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 3,
-        borderColor: '#A855F7',
-    },
-    repBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        backgroundColor: 'rgba(251,191,36,0.15)',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 30,
-        marginTop: 20,
-    },
-    repPointsText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 28,
-        color: "#fbbf24",
-        includeFontPadding: false,
-    }
 });

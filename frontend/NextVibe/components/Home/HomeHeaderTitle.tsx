@@ -5,7 +5,21 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import { Bell, Plus, MessageSquare } from "lucide-react-native";
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
+import { useUnreadMessagesCount } from "@/hooks/useUnreadMessagesCount";
 import GlassSurface from "@/components/Shared/GlassSurface";
+
+function formatBadgeCount(count: number): string {
+    if (count > 999) return '999+';
+    if (count > 99) return '99+';
+    if (count > 9) return '9+';
+    return count.toString();
+}
+
+function badgeRightPosition(count: number): number {
+    if (count > 99) return -8;
+    if (count > 9) return -6;
+    return -4;
+}
 
 type BtnProps = { isDark: boolean; onPress: () => void; badge?: React.ReactNode };
 
@@ -41,14 +55,14 @@ function CameraBtn({ isDark, onPress }: BtnProps) {
     );
 }
 
-function ChatBtn({ isDark, onPress }: BtnProps) {
+function ChatBtn({ isDark, onPress, badge }: BtnProps) {
     if (Platform.OS === 'ios') {
         return (
             <TouchableOpacity
                 activeOpacity={0.7}
                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 onPress={onPress}
-                style={{ width: 40, height: 40, zIndex: 10 }}
+                style={{ position: 'relative', width: 40, height: 40, zIndex: 10 }}
             >
                 <GlassSurface
                     style={styles.glassBtn}
@@ -58,6 +72,7 @@ function ChatBtn({ isDark, onPress }: BtnProps) {
                 >
                     <MessageSquare size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
                 </GlassSurface>
+                {badge}
             </TouchableOpacity>
         );
     }
@@ -69,6 +84,7 @@ function ChatBtn({ isDark, onPress }: BtnProps) {
             style={[styles.roundBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)', zIndex: 10 }]}
         >
             <MessageSquare size={22} color={isDark ? "#fafafa" : "#1A1225"} strokeWidth={2} />
+            {badge}
         </TouchableOpacity>
     );
 }
@@ -111,17 +127,11 @@ export default function HomeHeaderTitle() {
     const isDark = useColorScheme() === "dark";
     const router = useRouter();
     const [notificationsCount, setNotificationsCount] = useState(0);
+    // iOS shows unread messages on the native chats tab; this header's chat
+    // button only exists on Android.
+    const unreadMessages = useUnreadMessagesCount(Platform.OS === 'android');
 
-    let rightPosition = -4;
-    if (notificationsCount > 9 && notificationsCount <= 99) rightPosition = -6;
-    else if (notificationsCount > 99) rightPosition = -8;
-
-    const displayCount = (): string => {
-        if (notificationsCount > 999) return '999+';
-        if (notificationsCount > 99) return '99+';
-        if (notificationsCount > 9) return '9+';
-        return notificationsCount.toString();
-    };
+    const rightPosition = badgeRightPosition(notificationsCount);
 
     const fetchCount = async () => {
         const count = await getCountUnreadNotifications();
@@ -139,7 +149,15 @@ export default function HomeHeaderTitle() {
     const badge = notificationsCount > 0 ? (
         <View style={[styles.badge, { right: rightPosition, borderColor: isDark ? '#0A0410' : '#fff' }]}>
             <Text style={[styles.badgeText, { fontSize: notificationsCount > 999 ? 7 : 8 }]}>
-                {displayCount()}
+                {formatBadgeCount(notificationsCount)}
+            </Text>
+        </View>
+    ) : undefined;
+
+    const chatBadge = unreadMessages > 0 ? (
+        <View style={[styles.badge, { right: badgeRightPosition(unreadMessages), borderColor: isDark ? '#0A0410' : '#fff' }]}>
+            <Text style={[styles.badgeText, { fontSize: unreadMessages > 999 ? 7 : 8 }]}>
+                {formatBadgeCount(unreadMessages)}
             </Text>
         </View>
     ) : undefined;
@@ -166,7 +184,7 @@ export default function HomeHeaderTitle() {
 
             {/* Chat button (Android only) */}
             {Platform.OS === 'android' && (
-                <ChatBtn isDark={isDark} onPress={() => router.push("/chats")} />
+                <ChatBtn isDark={isDark} onPress={() => router.push("/chats")} badge={chatBadge} />
             )}
 
             {/* Right side — bell + logo */}
@@ -191,7 +209,9 @@ const styles = StyleSheet.create({
     },
     titleContainer: {
         position: "absolute",
-        left: 0,
+        // Compensates the MainPage header wrapper's paddingLeft: 16 so the
+        // wordmark centers on the screen, not on the inset row.
+        left: -16,
         right: 0,
         top: 0,
         bottom: 0,

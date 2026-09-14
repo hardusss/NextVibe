@@ -68,6 +68,7 @@ export default function ProximityTokenScreen() {
                         params: {
                             t: token,
                             _verified: result.verified ? '1' : '0',
+                            _post_id: result.post_id ? String(result.post_id) : '',
                             _post_name: result.post_name || '',
                             _message: result.message || '',
                             _post_image: result.post_image || '',

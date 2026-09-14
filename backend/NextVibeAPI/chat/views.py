@@ -45,9 +45,19 @@ class ChatListView(APIView):
                     last_message = Message.objects.filter(chat=chat).order_by('-created_at').first()
                     if not last_message:
                         continue
-                    
+
+                    # Per-user unread: messages from the other side without a read receipt for me.
+                    unread_count = (
+                        Message.objects
+                        .filter(chat=chat, deleted_at__isnull=True)
+                        .exclude(sender=user)
+                        .exclude(receipts__user=user, receipts__read_at__isnull=False)
+                        .count()
+                    )
+
                     chat_data.append({
                         "chat_id": chat.id,
+                        "unread_count": unread_count,
                         "last_message": {
                             "content": last_message.text or "",
                             "created_at": last_message.created_at.isoformat() if last_message.created_at else ""
@@ -77,6 +87,27 @@ class ChatListView(APIView):
             return Response(chat_data)
         except Exception as e:
             logger.error(f"Error in ChatsView: {str(e)}")
+            return Response({'error': str(e)}, status=500)
+
+
+class UnreadMessagesCountView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "chats_list"
+
+    def get(self, request):
+        try:
+            user = request.user
+            count = (
+                Message.objects
+                .filter(chat__participants=user, deleted_at__isnull=True)
+                .exclude(sender=user)
+                .exclude(receipts__user=user, receipts__read_at__isnull=False)
+                .count()
+            )
+            return Response({"status": count > 0, "count": count})
+        except Exception as e:
+            logger.error(f"Error in UnreadMessagesCountView: {str(e)}")
             return Response({'error': str(e)}, status=500)
 
 

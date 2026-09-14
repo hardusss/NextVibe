@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import ChatListView, OnlineUsersView, CreateChatView, DeleteChatView
+from .views import ChatListView, OnlineUsersView, CreateChatView, DeleteChatView, UnreadMessagesCountView
 from .views_cherry import CherryEmbedTokenView
 
 urlpatterns = [
     path('chats/', ChatListView.as_view(), name='chat-list'),
+    path('unread-count/', UnreadMessagesCountView.as_view(), name='chat-unread-count'),
     path('online-users/', OnlineUsersView.as_view(), name='online-users'),
     path('create-chat/', CreateChatView.as_view(), name='create-chat'),
     path('delete-chat/<int:chat_id>/', DeleteChatView.as_view(), name='delete-chat'),

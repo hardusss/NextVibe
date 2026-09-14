@@ -1,16 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
     useColorScheme,
-    ActivityIndicator,
-    Vibration,
+    AccessibilityInfo,
+    Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronLeft, ShieldCheck, ShieldX, Nfc, Loader2 } from "lucide-react-native";
+import { ShieldCheck, ShieldX, Nfc, Smartphone } from "lucide-react-native";
 import Animated, {
     FadeInDown,
     FadeInUp,
@@ -22,20 +20,34 @@ import Animated, {
     withSpring,
 } from "react-native-reanimated";
 import { Image } from "expo-image";
-import { checkinEvent, claimEventNft } from "@/src/api/event.checkin";
 import * as Location from "expo-location";
-import { verifyProximityToken } from '@/src/api/proximity.token';
+import * as Device from "expo-device";
+import { checkinEvent, claimEventNft } from "@/src/api/event.checkin";
+import { verifyProximityToken } from "@/src/api/proximity.token";
+import haptics from "@/src/utils/haptics";
+import { MOTION } from "@/constants/motion";
+import { space, radius, colors, type as typeScale } from "@/src/theme/tokens";
+import { useReduceMotion } from "@/hooks/useReduceMotion";
+import GlassSurface from "@/components/Shared/GlassSurface";
+import GlassBadge from "@/components/Shared/GlassBadge";
+import CustomActivityIndicator from "@/components/CustomActivityIndicator";
+import SuccessBurst from "@/components/NftClaim/MintBottomSheet/SuccessBurst";
+import EventScreenShell from "@/components/Events/EventScreenShell";
+import EventCta from "@/components/Events/EventCta";
+import MintStatusPill from "@/components/Events/MintStatusPill";
 
-type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error" | "claiming" | "claim_success" | "claim_failed";
+type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error";
+type MintStatus = "idle" | "minting" | "success" | "failed";
 
 export default function EventCheckinScreen() {
     const router = useRouter();
-    const insets = useSafeAreaInsets();
     const isDark = useColorScheme() === "dark";
+    const reduceMotion = useReduceMotion();
     const params = useLocalSearchParams<{
         postId?: string;
         t?: string;
         _verified?: string;
+        _post_id?: string;
         _post_name?: string;
         _message?: string;
         _post_image?: string;
@@ -46,22 +58,26 @@ export default function EventCheckinScreen() {
 
     const [state, setState] = useState<CheckinState>("idle");
     const [message, setMessage] = useState("");
-    const [username, setUsername] = useState("");
     const [postImage, setPostImage] = useState<string | null>(null);
     const [postName, setPostName] = useState<string>("");
+    const [resolvedPostId, setResolvedPostId] = useState<number | null>(null);
+    const [mintStatus, setMintStatus] = useState<MintStatus>("idle");
+    const [mintError, setMintError] = useState<string | null>(null);
     const [earnedPoints, setEarnedPoints] = useState(0);
-    const [displayPoints, setDisplayPoints] = useState(0);
 
-    const bg = isDark ? "#0A0410" : "#FFFFFF";
-    const main = isDark ? "#ffffff" : "#111827";
-    const muted = isDark ? "rgba(255,255,255,0.5)" : "rgba(17,24,39,0.5)";
-    const border = isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.07)";
-    const accent = "#A855F7";
+    const effectivePostId = postId ?? resolvedPostId;
+    const mintStartedRef = useRef(false);
+    const mountedRef = useRef(true);
+    useEffect(() => () => { mountedRef.current = false; }, []);
 
-    // Pulse animation
+    const main = isDark ? colors.text : "#111827";
+    const mutedColor = isDark ? colors.sub : "rgba(17,24,39,0.5)";
+    const canTapToMeet = Device.isDevice;
+
+    // Idle NFC pulse
     const pulseScale = useSharedValue(1);
     useEffect(() => {
-        if (state === "idle") {
+        if (state === "idle" && !reduceMotion) {
             pulseScale.value = withRepeat(
                 withSequence(
                     withTiming(1.08, { duration: 1200 }),
@@ -71,7 +87,7 @@ export default function EventCheckinScreen() {
         } else {
             pulseScale.value = withSpring(1);
         }
-    }, [state]);
+    }, [state, reduceMotion]);
 
     const pulseStyle = useAnimatedStyle(() => ({
         transform: [{ scale: pulseScale.value }],
@@ -82,19 +98,30 @@ export default function EventCheckinScreen() {
             setPostName(params._post_name || "Event");
             setMessage(params._message || "You're verified! Welcome to the event.");
             setPostImage(params._post_image || null);
-            setUsername(params._username || "");
+            if (params._post_id) {
+                const parsed = parseInt(params._post_id, 10);
+                if (!Number.isNaN(parsed)) setResolvedPostId(parsed);
+            }
             setState("verified");
-            Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+            haptics.notification('success');
         } else if (params._verified === "0") {
             setPostName(params._post_name || "Event");
             setMessage(params._message || "You are not registered for this event.");
             setPostImage(params._post_image || null);
             setState("not_registered");
-            Vibration.vibrate([0, 200]);
+            haptics.notification('error');
         } else if ((postId || proximityToken) && state === "idle") {
             handleVerify();
         }
     }, [postId, proximityToken, params._verified]);
+
+    // Lazy mint: fire once as soon as we're verified and know the event.
+    useEffect(() => {
+        if (state === "verified" && effectivePostId && !mintStartedRef.current) {
+            mintStartedRef.current = true;
+            startMint(effectivePostId);
+        }
+    }, [state, effectivePostId]);
 
     const handleVerify = async () => {
         if (!postId && !proximityToken) {
@@ -109,7 +136,7 @@ export default function EventCheckinScreen() {
             if (status !== 'granted') {
                 setState("error");
                 setMessage("Location permission is required to check in to this event.");
-                Vibration.vibrate([0, 200]);
+                haptics.notification('error');
                 return;
             }
 
@@ -117,7 +144,7 @@ export default function EventCheckinScreen() {
             if (locData.mocked) {
                 setState("error");
                 setMessage("Fake GPS detected. Real moments only.");
-                Vibration.vibrate([0, 200]);
+                haptics.notification('error');
                 return;
             }
 
@@ -135,15 +162,15 @@ export default function EventCheckinScreen() {
                 if (result.post_image) {
                     setPostImage(result.post_image.startsWith("http") ? result.post_image : `https://nextvibe.s3.amazonaws.com/${result.post_image}`);
                 }
+                if (result.post_id) setResolvedPostId(result.post_id);
                 setPostName(result.post_name || "Event");
                 setState("verified");
                 setMessage("You're verified! Welcome to the event.");
-                setUsername(result.username || "");
-                Vibration.vibrate([0, 100, 80, 100]);
+                haptics.notification('success');
             } else {
                 setState("not_registered");
                 setMessage(result.message || result.error || "You are not registered for this event.");
-                Vibration.vibrate([0, 200]);
+                haptics.notification('error');
             }
         } catch (error: any) {
             setState("error");
@@ -154,106 +181,110 @@ export default function EventCheckinScreen() {
             } else {
                 setMessage(error.response?.data?.error || "Something went wrong. Please try again.");
             }
-            Vibration.vibrate([0, 200]);
+            haptics.notification('error');
         }
     };
 
-    const handleClaim = async () => {
-        if (!postId) return;
-        setState("claiming");
+    const startMint = async (targetPostId: number) => {
+        setMintStatus("minting");
+        setMintError(null);
+        AccessibilityInfo.announceForAccessibility?.("Minting your event NFT");
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
+            if (!mountedRef.current) return;
             if (status !== 'granted') {
-                setState("claim_failed");
-                setMessage("Location permission is required to check in to this event.");
-                Vibration.vibrate([0, 200]);
+                setMintStatus("failed");
+                setMintError("Location permission is required to mint.");
+                haptics.notification('error');
                 return;
             }
 
             const locData = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            if (!mountedRef.current) return;
             if (locData.mocked) {
-                setState("claim_failed");
-                setMessage("Fake GPS detected. Real moments only.");
-                Vibration.vibrate([0, 200]);
+                setMintStatus("failed");
+                setMintError("Fake GPS detected. Real moments only.");
+                haptics.notification('error');
                 return;
             }
 
-            const result = await claimEventNft(postId, {
+            const result = await claimEventNft(targetPostId, {
                 lat: locData.coords.latitude,
                 lng: locData.coords.longitude
             });
+            if (!mountedRef.current) return;
             if (result.success) {
                 setEarnedPoints(result.earned_points || 0);
-                setState("claim_success");
-                Vibration.vibrate([0, 50, 50, 50, 50, 100]);
+                setMintStatus("success");
+                haptics.notification('success');
+                AccessibilityInfo.announceForAccessibility?.(
+                    `Event NFT minted. Plus ${result.earned_points || 0} reputation points.`
+                );
             } else {
-                setState("claim_failed");
-                setMessage(result.error || "Failed to mint NFT.");
+                setMintStatus("failed");
+                setMintError(result.error || "Failed to mint NFT.");
+                haptics.notification('error');
             }
         } catch (error: any) {
-            console.log("STATUS:", error.response?.status);
-            console.log("DATA:", JSON.stringify(error.response?.data));
-            console.log("MSG:", error.message);
-
-            setState("claim_failed");
-            setMessage(error.response?.data?.error || "Something went wrong during claim. Please try again.");
-            Vibration.vibrate([0, 200]);
+            if (!mountedRef.current) return;
+            const serverError: string | undefined = error.response?.data?.error;
+            // One-per-user guard: an existing NFT is a success, not a failure.
+            if (serverError && serverError.toLowerCase().includes("already have")) {
+                setEarnedPoints(0);
+                setMintStatus("success");
+                return;
+            }
+            setMintStatus("failed");
+            setMintError(serverError || "Something went wrong while minting. Please try again.");
+            haptics.notification('error');
         }
     };
 
-    useEffect(() => {
-        if (state === "claim_success" && earnedPoints > 0) {
-            let current = 0;
-            const interval = setInterval(() => {
-                current += 1;
-                setDisplayPoints(current);
-                Vibration.vibrate(40);
-                if (current >= earnedPoints) clearInterval(interval);
-            }, 120);
-            return () => clearInterval(interval);
+    const handleTapToMeet = () => {
+        if (effectivePostId) {
+            router.push(`/event-nfc-share?eventId=${effectivePostId}` as any);
+        } else {
+            router.push("/event-nfc-share?mode=irl" as any);
         }
-    }, [state, earnedPoints]);
+    };
+
+    const enter = (delay: number) =>
+        reduceMotion ? undefined : FadeInDown.delay(delay).duration(MOTION.duration.normal);
 
     const renderContent = () => {
         switch (state) {
             case "idle":
                 return (
-                    <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.centerContent}>
-                        <Animated.View style={[styles.iconCircle, {
-                            backgroundColor: "rgba(168,85,247,0.1)",
-                            borderColor: "rgba(168,85,247,0.2)",
-                        }, pulseStyle]}>
-                            <Nfc size={48} color={accent} strokeWidth={1.5} />
+                    <Animated.View
+                        entering={reduceMotion ? undefined : FadeInDown.springify().damping(18)}
+                        style={styles.centerContent}
+                    >
+                        <Animated.View style={[styles.iconCircle, styles.accentCircle, pulseStyle]}>
+                            <Nfc size={48} color={colors.accent} strokeWidth={1.5} />
                         </Animated.View>
 
                         <Text style={[styles.heading, { color: main }]}>
                             Event Check-in
                         </Text>
-                        <Text style={[styles.description, { color: muted }]}>
+                        <Text style={[styles.description, { color: mutedColor }]}>
                             Tap the button below to verify your attendance at this event.
                         </Text>
 
-                        <TouchableOpacity
-                            onPress={handleVerify}
-                            activeOpacity={0.8}
-                            style={[styles.verifyBtn, {
-                                backgroundColor: "rgba(168,85,247,0.15)",
-                                borderColor: "rgba(168,85,247,0.35)",
-                            }]}
-                        >
-                            <ShieldCheck size={20} color={accent} strokeWidth={1.8} />
-                            <Text style={[styles.verifyBtnText, { color: accent }]}>
-                                Verify Attendance
-                            </Text>
-                        </TouchableOpacity>
+                        <View style={styles.ctaWidth}>
+                            <EventCta
+                                label="Verify Attendance"
+                                icon={<ShieldCheck size={20} color={colors.text} strokeWidth={1.8} />}
+                                onPress={handleVerify}
+                            />
+                        </View>
                     </Animated.View>
                 );
 
             case "loading":
                 return (
                     <View style={styles.centerContent}>
-                        <ActivityIndicator size="large" color={accent} />
-                        <Text style={[styles.loadingText, { color: muted }]}>
+                        <CustomActivityIndicator size="large" />
+                        <Text style={[styles.loadingText, { color: mutedColor }]}>
                             Verifying...
                         </Text>
                     </View>
@@ -261,218 +292,145 @@ export default function EventCheckinScreen() {
 
             case "verified":
                 return (
-                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
-                        {postImage ? (
-                            <Image
-                                source={{ uri: postImage }}
-                                style={styles.eventPhoto}
-                                contentFit="contain"
-                            />
-                        ) : (
-                            <View style={[styles.iconCircle, {
-                                backgroundColor: "rgba(34,197,94,0.1)",
-                                borderColor: "rgba(34,197,94,0.25)",
-                            }]}>
-                                <ShieldCheck size={48} color="#4ade80" strokeWidth={1.5} />
-                            </View>
-                        )}
+                    <Animated.View
+                        entering={reduceMotion ? undefined : FadeInUp.springify().damping(15)}
+                        style={styles.verifiedWrap}
+                    >
+                        <View style={styles.verifiedBody}>
+                            <Animated.View entering={enter(0)}>
+                                <View style={styles.imageGlow}>
+                                    {!reduceMotion && (
+                                        <SuccessBurst trigger={mintStatus === "success"} color={colors.success} />
+                                    )}
+                                    {postImage ? (
+                                        <GlassSurface
+                                            style={styles.eventPhotoCard}
+                                            glassEffectStyle="regular"
+                                            colorScheme={isDark ? "dark" : "light"}
+                                        >
+                                            <Image
+                                                source={{ uri: postImage }}
+                                                style={styles.eventPhoto}
+                                                contentFit="cover"
+                                            />
+                                        </GlassSurface>
+                                    ) : (
+                                        <View style={[styles.iconCircle, styles.successCircle]}>
+                                            <ShieldCheck size={48} color={colors.success} strokeWidth={1.5} />
+                                        </View>
+                                    )}
+                                </View>
+                            </Animated.View>
 
-                        <Text style={[styles.heading, { color: main }]}>
-                            {postName}
-                        </Text>
-                        <Text style={[styles.description, { color: muted }]}>
-                            {message}
-                        </Text>
+                            <Animated.View entering={enter(120)}>
+                                <GlassBadge variant="feed-event" feedLight={!isDark}>
+                                    <ShieldCheck size={14} color={colors.success} />
+                                    <Text style={styles.badgeText}>Checked in</Text>
+                                </GlassBadge>
+                            </Animated.View>
 
-                        <TouchableOpacity
-                            onPress={handleClaim}
-                            activeOpacity={0.8}
-                            style={[styles.verifyBtn, {
-                                backgroundColor: "rgba(168,85,247,0.15)",
-                                borderColor: "rgba(168,85,247,0.35)",
-                                marginTop: 16,
-                            }]}
-                        >
-                            <Text style={[styles.verifyBtnText, { color: accent }]}>
-                                Claim Event cNFT
-                            </Text>
-                        </TouchableOpacity>
-                    </Animated.View>
-                );
+                            <Animated.Text entering={enter(240)} style={[styles.eventName, { color: main }]}>
+                                {postName}
+                            </Animated.Text>
+                            <Animated.Text entering={enter(360)} style={[styles.description, { color: mutedColor }]}>
+                                {message}
+                            </Animated.Text>
 
-            case "claiming":
-                return (
-                    <View style={styles.centerContent}>
-                        <ActivityIndicator size="large" color={accent} />
-                        <Text style={[styles.loadingText, { color: muted }]}>
-                            Minting your cNFT...
-                        </Text>
-                    </View>
-                );
-
-            case "claim_failed":
-                return (
-                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
-                        <View style={[styles.iconCircle, {
-                            backgroundColor: "rgba(239,68,68,0.1)",
-                            borderColor: "rgba(239,68,68,0.25)",
-                        }]}>
-                            <ShieldX size={48} color="#f87171" strokeWidth={1.5} />
+                            {effectivePostId != null && mintStatus !== "idle" && (
+                                <Animated.View entering={enter(480)} style={styles.pillWrap}>
+                                    <MintStatusPill
+                                        status={mintStatus}
+                                        points={earnedPoints}
+                                        error={mintError}
+                                        onRetry={() => startMint(effectivePostId)}
+                                    />
+                                </Animated.View>
+                            )}
                         </View>
 
-                        <Text style={[styles.heading, { color: "#f87171" }]}>
-                            Claim Failed
-                        </Text>
-                        <Text style={[styles.description, { color: muted }]}>
-                            {message}
-                        </Text>
-
-                        <TouchableOpacity
-                            onPress={handleClaim}
-                            activeOpacity={0.8}
-                            style={[styles.verifyBtn, {
-                                backgroundColor: "rgba(168,85,247,0.12)",
-                                borderColor: "rgba(168,85,247,0.3)",
-                            }]}
+                        <Animated.View
+                            entering={reduceMotion ? undefined : FadeInUp.delay(500).duration(MOTION.duration.normal)}
+                            style={styles.ctaBlock}
                         >
-                            <Text style={[styles.verifyBtnText, { color: accent }]}>
-                                Retry Claim
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => router.back()}
-                            activeOpacity={0.8}
-                            style={[styles.verifyBtn, {
-                                backgroundColor: "transparent",
-                                borderColor: "transparent",
-                                marginTop: 0,
-                            }]}
-                        >
-                            <Text style={[styles.verifyBtnText, { color: muted }]}>
-                                Maybe Later
-                            </Text>
-                        </TouchableOpacity>
-                    </Animated.View>
-                );
-
-            case "claim_success":
-                return (
-                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.fullScreenSuccess}>
-                        <Animated.View entering={FadeInDown.delay(300).springify()}>
-                            <View style={[styles.iconCircle, {
-                                backgroundColor: "rgba(34,197,94,0.1)",
-                                borderColor: "rgba(34,197,94,0.25)",
-                                alignSelf: "center",
-                                width: 140,
-                                height: 140,
-                                borderRadius: 70,
-                                marginBottom: 20,
-                            }]}>
-                                <Text style={styles.repPointsText}>+{displayPoints}</Text>
-                            </View>
-                        </Animated.View>
-
-                        <Animated.Text entering={FadeInDown.delay(500)} style={[styles.heading, { color: "#4ade80", fontSize: 28 }]}>
-                            cNFT Claimed!
-                        </Animated.Text>
-                        <Animated.Text entering={FadeInDown.delay(700)} style={[styles.description, { color: muted, fontSize: 16, marginTop: 10 }]}>
-                            Event NFT minted to your collection and reputation points added!
-                        </Animated.Text>
-
-                        <Animated.View entering={FadeInUp.delay(1200)} style={{ width: "100%", paddingHorizontal: 40, marginTop: 40 }}>
-                            <TouchableOpacity
-                                onPress={() => router.back()}
-                                activeOpacity={0.8}
-                                style={[styles.verifyBtn, {
-                                    backgroundColor: "rgba(34,197,94,0.12)",
-                                    borderColor: "rgba(34,197,94,0.3)",
-                                }]}
-                            >
-                                <Text style={[styles.verifyBtnText, { color: "#4ade80" }]}>
-                                    Awesome
+                            <EventCta
+                                label="Tap To Meet"
+                                icon={<Smartphone size={18} color={colors.text} />}
+                                onPress={handleTapToMeet}
+                                disabled={!canTapToMeet}
+                                accessibilityLabel="Tap to meet people at this event"
+                            />
+                            {!canTapToMeet && (
+                                <Text style={[styles.simNote, { color: mutedColor }]} numberOfLines={1}>
+                                    Tap to Meet needs a physical device with NFC or Bluetooth.
                                 </Text>
-                            </TouchableOpacity>
+                            )}
+                            <EventCta
+                                label="Done"
+                                variant="secondary"
+                                onPress={() => router.back()}
+                            />
                         </Animated.View>
                     </Animated.View>
                 );
 
             case "not_registered":
                 return (
-                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
-                        <View style={[styles.iconCircle, {
-                            backgroundColor: "rgba(239,68,68,0.1)",
-                            borderColor: "rgba(239,68,68,0.25)",
-                        }]}>
-                            <ShieldX size={48} color="#f87171" strokeWidth={1.5} />
+                    <Animated.View
+                        entering={reduceMotion ? undefined : FadeInUp.springify().damping(15)}
+                        style={styles.centerContent}
+                    >
+                        <View style={[styles.iconCircle, styles.dangerCircle]}>
+                            <ShieldX size={48} color={colors.danger} strokeWidth={1.5} />
                         </View>
 
-                        <Text style={[styles.heading, { color: "#f87171" }]}>
+                        <Text style={[styles.heading, { color: colors.danger }]}>
                             Not Registered
                         </Text>
-                        <Text style={[styles.description, { color: muted }]}>
+                        <Text style={[styles.description, { color: mutedColor }]}>
                             {message}
                         </Text>
 
-                        <TouchableOpacity
-                            onPress={() => router.back()}
-                            activeOpacity={0.8}
-                            style={[styles.verifyBtn, {
-                                backgroundColor: "rgba(239,68,68,0.1)",
-                                borderColor: "rgba(239,68,68,0.25)",
-                            }]}
-                        >
-                            <Text style={[styles.verifyBtnText, { color: "#f87171" }]}>
-                                Go Back
-                            </Text>
-                        </TouchableOpacity>
+                        <View style={styles.ctaWidth}>
+                            <EventCta
+                                label="Go Back"
+                                variant="secondary"
+                                onPress={() => router.back()}
+                            />
+                        </View>
                     </Animated.View>
                 );
 
             case "error":
                 return (
-                    <Animated.View entering={FadeInUp.springify().damping(15)} style={styles.centerContent}>
-                        <View style={[styles.iconCircle, {
-                            backgroundColor: "rgba(251,191,36,0.1)",
-                            borderColor: "rgba(251,191,36,0.25)",
-                        }]}>
-                            <ShieldX size={48} color="#fbbf24" strokeWidth={1.5} />
+                    <Animated.View
+                        entering={reduceMotion ? undefined : FadeInUp.springify().damping(15)}
+                        style={styles.centerContent}
+                    >
+                        <View style={[styles.iconCircle, styles.warningCircle]}>
+                            <ShieldX size={48} color={colors.warning} strokeWidth={1.5} />
                         </View>
 
-                        <Text style={[styles.heading, { color: "#fbbf24" }]}>
+                        <Text style={[styles.heading, { color: colors.warning }]}>
                             Error
                         </Text>
-                        <Text style={[styles.description, { color: muted }]}>
+                        <Text style={[styles.description, { color: mutedColor }]}>
                             {message}
                         </Text>
 
                         <View style={styles.errorActions}>
-                            <TouchableOpacity
-                                onPress={() => { setState("idle"); setMessage(""); }}
-                                activeOpacity={0.8}
-                                style={[styles.verifyBtn, {
-                                    backgroundColor: "rgba(168,85,247,0.12)",
-                                    borderColor: "rgba(168,85,247,0.3)",
-                                    flex: 1,
-                                }]}
-                            >
-                                <Text style={[styles.verifyBtnText, { color: accent }]}>
-                                    Retry
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => router.back()}
-                                activeOpacity={0.8}
-                                style={[styles.verifyBtn, {
-                                    backgroundColor: "rgba(255,255,255,0.05)",
-                                    borderColor: border,
-                                    flex: 1,
-                                }]}
-                            >
-                                <Text style={[styles.verifyBtnText, { color: muted }]}>
-                                    Go Back
-                                </Text>
-                            </TouchableOpacity>
+                            <View style={{ flex: 1 }}>
+                                <EventCta
+                                    label="Retry"
+                                    onPress={() => { setState("idle"); setMessage(""); }}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <EventCta
+                                    label="Go Back"
+                                    variant="secondary"
+                                    onPress={() => router.back()}
+                                />
+                            </View>
                         </View>
                     </Animated.View>
                 );
@@ -480,64 +438,58 @@ export default function EventCheckinScreen() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => router.back()}
-                    style={styles.backBtn}
-                >
-                    <ChevronLeft size={22} color={main} strokeWidth={2} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: main }]}>Event Check-in</Text>
-                <View style={{ width: 44 }} />
-            </View>
-
-            {/* Main */}
-            <View style={styles.main}>
-                {renderContent()}
-            </View>
-        </View>
+        <EventScreenShell title="Event Check-in">
+            {renderContent()}
+        </EventScreenShell>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        paddingTop: 6,
-    },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: 6,
-        marginBottom: 14,
-        paddingHorizontal: 18,
-    },
-    backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    headerTitle: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 16,
-        includeFontPadding: false,
-    },
-    main: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        paddingHorizontal: 32,
-        paddingBottom: 80,
-    },
     centerContent: {
         alignItems: "center",
-        gap: 16,
+        gap: space.lg,
         width: "100%",
+    },
+    verifiedWrap: {
+        flex: 1,
+        width: "100%",
+    },
+    verifiedBody: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: space.lg,
+        width: "100%",
+    },
+    imageGlow: {
+        alignItems: "center",
+        justifyContent: "center",
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.accent,
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.35,
+                shadowRadius: 24,
+            },
+            android: {
+                elevation: 0,
+            },
+        }),
+    },
+    eventPhotoCard: {
+        width: 160,
+        height: 160,
+        borderRadius: radius.xl,
+        borderWidth: 1,
+        borderColor: colors.border,
+        overflow: "hidden",
+        ...Platform.select({
+            android: { elevation: 8 },
+        }),
+    },
+    eventPhoto: {
+        width: "100%",
+        height: "100%",
     },
     iconCircle: {
         width: 110,
@@ -546,68 +498,80 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: 8,
+        marginBottom: space.sm,
+    },
+    accentCircle: {
+        backgroundColor: "rgba(168,85,247,0.1)",
+        borderColor: "rgba(168,85,247,0.2)",
+    },
+    successCircle: {
+        backgroundColor: "rgba(74,222,128,0.1)",
+        borderColor: "rgba(74,222,128,0.25)",
+    },
+    dangerCircle: {
+        backgroundColor: "rgba(248,113,113,0.1)",
+        borderColor: "rgba(248,113,113,0.25)",
+    },
+    warningCircle: {
+        backgroundColor: "rgba(251,191,36,0.1)",
+        borderColor: "rgba(251,191,36,0.25)",
+    },
+    badgeText: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: typeScale.caption,
+        color: colors.success,
+        includeFontPadding: false,
     },
     heading: {
         fontFamily: "Dank Mono Bold",
-        fontSize: 22,
+        fontSize: typeScale.h2 + 2,
+        includeFontPadding: false,
+        textAlign: "center",
+    },
+    eventName: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: typeScale.title,
         includeFontPadding: false,
         textAlign: "center",
     },
     description: {
         fontFamily: "Dank Mono",
-        fontSize: 14,
+        fontSize: typeScale.sub,
         lineHeight: 21,
         textAlign: "center",
         includeFontPadding: false,
-        paddingHorizontal: 10,
+        paddingHorizontal: space.sm + 2,
     },
     loadingText: {
         fontFamily: "Dank Mono",
-        fontSize: 14,
-        marginTop: 12,
+        fontSize: typeScale.sub,
+        marginTop: space.md,
         includeFontPadding: false,
     },
-    verifyBtn: {
+    pillWrap: {
+        marginTop: space.xs,
+        maxWidth: "100%",
+    },
+    ctaBlock: {
         width: "100%",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        paddingVertical: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        marginTop: 8,
+        gap: space.md,
+        paddingBottom: space.sm,
     },
-    verifyBtnText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 15,
+    ctaWidth: {
+        width: "100%",
+        marginTop: space.sm,
+    },
+    simNote: {
+        fontFamily: "Dank Mono",
+        fontSize: typeScale.caption,
         includeFontPadding: false,
+        textAlign: "center",
+        marginTop: -space.xs,
     },
     errorActions: {
         flexDirection: "row",
-        gap: 10,
+        gap: space.sm + 2,
         width: "100%",
-    },
-    eventPhoto: {
-        width: 140,
-        height: 140,
-        borderRadius: 24,
-        marginBottom: 10,
-        borderWidth: 2,
-        borderColor: "rgba(168,85,247,0.3)",
-    },
-    fullScreenSuccess: {
-        flex: 1,
-        width: "100%",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingBottom: 40,
-    },
-    repPointsText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: 42,
-        color: "#4ade80",
-        includeFontPadding: false,
+        marginTop: space.sm,
     },
 });

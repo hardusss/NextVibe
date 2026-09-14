@@ -24,6 +24,7 @@ export interface VerifyTokenResponse {
     };
     // Checkin response fields
     verified?: boolean;
+    post_id?: number;
     user_id?: number;
     username?: string;
     avatar?: string | null;

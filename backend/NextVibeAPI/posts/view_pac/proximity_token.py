@@ -212,6 +212,7 @@ class VerifyProximityTokenView(APIView):
         return Response({
             "verified": is_registered,
             "interaction_type": "checkin",
+            "post_id": post.id,
             "user_id": user.user_id,
             "username": user.username,
             "avatar": avatar_url,

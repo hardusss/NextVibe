@@ -105,8 +105,9 @@ class ClaimEventNftView(APIView):
         edition = post.minted_count + 1
 
         try:
+            from ..constants import NFT_SERVICE_URL
             mint_res = requests.post(
-                url="http://localhost:3000/mint",
+                url=f"{NFT_SERVICE_URL}/mint",
                 json={
                     "recipient": request.user.wallet_address,
                     "postId": post.id,

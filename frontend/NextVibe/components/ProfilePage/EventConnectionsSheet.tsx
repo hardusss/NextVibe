@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, forwardRef, useState, useImperativeHandle } from 'react';
 import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import UserBadges from "../Shared/UserBadges";
@@ -86,6 +87,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     const router = useRouter();
     const sheetRef = React.useRef<BottomSheetModal>(null);
     const isDark = useColorScheme() === 'dark';
+    const insets = useSafeAreaInsets();
     const snapPoints = useMemo(() => ['88%', '95%'], []);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'poaps' | 'irl'>('history');
@@ -172,6 +174,10 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
             ref={sheetRef}
             index={0}
             snapPoints={snapPoints}
+            // v5 defaults enableDynamicSizing to true, which adds a detent sized
+            // from the scroll content ONLY — the header + tab bar above it aren't
+            // measured, so the sheet opened too short and clipped the bottom.
+            enableDynamicSizing={false}
             backdropComponent={renderBackdrop}
             backgroundStyle={{ backgroundColor: bg }}
             handleIndicatorStyle={{ backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)' }}
@@ -236,8 +242,8 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={
                     loading || (activeTab === 'poaps' ? data.length === 0 : activeTab === 'irl' ? irlTaps.length === 0 : repItems.length === 0)
-                        ? { flexGrow: 1 }
-                        : { padding: 16, paddingBottom: 48 }
+                        ? { flexGrow: 1, paddingBottom: insets.bottom + 16 }
+                        : { padding: 16, paddingBottom: insets.bottom + 48 }
                 }
             >
                 {loading ? (
