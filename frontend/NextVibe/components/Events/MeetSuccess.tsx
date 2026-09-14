@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
-import { Star, Users } from 'lucide-react-native';
+import { Sparkles, Users } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import UserBadges from '@/components/Shared/UserBadges';
 import SuccessBurst from '@/components/NftClaim/MintBottomSheet/SuccessBurst';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
@@ -68,9 +69,16 @@ export default function MeetSuccess({ user, points, actions }: MeetSuccessProps)
                 />
             </Animated.View>
 
-            <Animated.View entering={enter(340)} style={styles.repBadge}>
-                <Star size={24} color={colors.warning} fill={colors.warning} />
-                <Text style={styles.repPointsText}>+{displayPoints} REP</Text>
+            <Animated.View entering={enter(340)} style={styles.repBadgeGlow}>
+                <LinearGradient
+                    colors={[colors.accent, colors.accentDeep]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.repBadge}
+                >
+                    <Sparkles size={22} color="#ffffff" strokeWidth={2} />
+                    <Text style={styles.repPointsText}>+{displayPoints} REP</Text>
+                </LinearGradient>
             </Animated.View>
 
             <Animated.Text entering={enter(460)} style={[styles.subtitle, { color: mutedColor }]}>
@@ -124,20 +132,27 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         flexShrink: 1,
     },
+    repBadgeGlow: {
+        marginTop: space.xl - space.xs,
+        borderRadius: radius.pill,
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.45,
+        shadowRadius: 18,
+        elevation: 10,
+    },
     repBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: space.sm,
-        backgroundColor: 'rgba(251,191,36,0.15)',
-        paddingHorizontal: space.xl - space.xs,
-        paddingVertical: space.sm + 2,
-        borderRadius: radius.xl + 2,
-        marginTop: space.xl - space.xs,
+        gap: space.sm + 2,
+        paddingHorizontal: space.xl,
+        paddingVertical: space.md,
+        borderRadius: radius.pill,
     },
     repPointsText: {
         fontFamily: 'Dank Mono Bold',
-        fontSize: 28,
-        color: colors.warning,
+        fontSize: 26,
+        color: '#ffffff',
         includeFontPadding: false,
     },
     subtitle: {

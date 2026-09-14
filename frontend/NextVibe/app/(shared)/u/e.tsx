@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
-import { verifyProximityToken } from '@/src/api/proximity.token';
+import { previewProximityToken } from '@/src/api/proximity.token';
 import { ShieldX } from 'lucide-react-native';
 
 export default function ProximityTokenScreen() {
@@ -44,16 +44,19 @@ export default function ProximityTokenScreen() {
                     console.warn('Location error:', e);
                 }
 
-                const result = await verifyProximityToken(token, lat, lng);
+                // Preview only — opening the link must not grant anything.
+                // The receive screen asks the user to confirm, and only that
+                // confirmation performs the granting verify call.
+                const result = await previewProximityToken(token, lat, lng);
 
                 // Route to the appropriate result screen based on interaction type
                 const isIrl = result.interaction_type === 'irl' || result.source === 'irl';
-                if (isIrl || result.interaction_type === 'networking' || (result.success && result.scanned_user)) {
+                if (isIrl || result.interaction_type === 'networking' || (result.preview && result.scanned_user)) {
                     router.replace({
                         pathname: '/event-nfc-receive',
                         params: {
                             t: token,
-                            _verified: '1',
+                            _preview: '1',
                             ...(isIrl && { _source: 'irl' }),
                             _earned_points: String(result.earned_points || 0),
                             _username: result.scanned_user?.username || '',

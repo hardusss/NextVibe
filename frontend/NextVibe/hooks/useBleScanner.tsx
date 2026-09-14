@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { startScanning, stopScanning, addBleDiscoveredListener } from "@/modules/ble-share";
-import { verifyProximityToken, VerifyTokenResponse } from '@/src/api/proximity.token';
+import { previewProximityToken, VerifyTokenResponse } from '@/src/api/proximity.token';
 import * as Location from 'expo-location';
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -252,7 +252,8 @@ export function useBleScanner() {
                             console.warn('[useBleScanner] Location error:', locErr);
                         }
 
-                        const result = await verifyProximityToken(info.token, lat, lng);
+                        // Preview only — nothing is granted until the user accepts.
+                        const result = await previewProximityToken(info.token, lat, lng);
                         if (result.interaction_type === 'irl' || result.source === 'irl') {
                             setDetails({ type: 'proximity_token', data: { ...result, flow: 'irl' } });
                         } else if (result.interaction_type === 'networking') {
@@ -298,18 +299,16 @@ export function useBleScanner() {
         setModalVisible(false);
         const info = parseScannedPath(scannedPath);
         if (info.type === 'proximity_token') {
-            if ((details?.data?.flow === 'networking' || details?.data?.flow === 'irl') && details?.data?.success) {
+            if ((details?.data?.flow === 'networking' || details?.data?.flow === 'irl') && (details?.data?.preview || details?.data?.success)) {
+                // The user confirmed in the modal — the receive screen performs
+                // the actual (granting) verify call.
                 try {
                     router.push({
                         pathname: '/event-nfc-receive',
                         params: {
-                            _verified: '1',
+                            t: info.token,
+                            _confirmed: '1',
                             ...(details.data.flow === 'irl' && { _source: 'irl' }),
-                            _earned_points: String(details.data.earned_points || 0),
-                            _username: details.data.scanned_user?.username || '',
-                            _avatar: details.data.scanned_user?.avatar || '',
-                            _is_official: details.data.scanned_user?.is_official ? '1' : '0',
-                            _is_seeker_verified: details.data.scanned_user?.is_seeker_verified ? '1' : '0',
                         }
                     } as any);
                 } catch (err) {
@@ -383,15 +382,15 @@ export function useBleScanner() {
             } else if (details.type === 'proximity_token') {
                 const flow = details.data?.flow;
                 if (flow === 'networking' || flow === 'irl') {
-                    modalTitle = flow === 'irl' ? "Tapped!" : "Connected!";
+                    modalTitle = flow === 'irl' ? "Tap to Meet" : "Event Networking";
                     detailName = details.data?.scanned_user?.username ? `@${details.data.scanned_user.username}` : "";
                     avatarUrl = details.data?.scanned_user?.avatar || null;
                     isOfficial = !!details.data?.scanned_user?.is_official;
                     const points = details.data?.earned_points || 0;
                     message = flow === 'irl'
-                        ? (points > 0 ? `You met ${detailName} — +${points} REP for both of you!` : "Tap recorded!")
-                        : (points > 0 ? `+${points} REP for networking!` : "Connected successfully!");
-                    confirmLabel = "Awesome";
+                        ? (points > 0 ? `Confirm you met ${detailName} in person — you'll both get +${points} REP.` : `Confirm you met ${detailName} in person?`)
+                        : (points > 0 ? `Connect with ${detailName}? You'll both get REP for networking.` : `Connect with ${detailName}?`);
+                    confirmLabel = "Confirm";
                 } else if (flow === 'checkin') {
                     modalTitle = details.data?.verified ? "Checked In!" : "Not Registered";
                     detailName = details.data?.post_name || "Event";
@@ -399,7 +398,7 @@ export function useBleScanner() {
                     confirmLabel = details.data?.verified ? "Continue" : "OK";
                 }
             } else if (details.type === 'error') {
-                message = "Failed to load details. Would you like to open the link anyway?";
+                message = details.data?.error || "Failed to load details. Would you like to open the link anyway?";
             }
         }
 

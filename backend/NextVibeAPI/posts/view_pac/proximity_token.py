@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest, EventCheckin
 from user.models import User
 
-TOKEN_TTL = 120  # seconds (time-limited window)
+TOKEN_TTL = 300  # seconds (time-limited window; long enough to cover the responder's confirmation step)
 TOKEN_PREFIX = "proximity:"
 
 
@@ -68,15 +68,20 @@ class GenerateProximityTokenView(APIView):
 class VerifyProximityTokenView(APIView):
     """
     POST /api/v1/posts/proximity/verify-token/
-    Body: { "token": str, "latitude": float (optional), "longitude": float (optional) }
-    
+    Body: { "token": str, "latitude": float (optional), "longitude": float (optional),
+            "preview": bool (optional) }
+
     Retrieves the temporary token from cache.
     Dispatches to the appropriate business logic based on interaction_type.
+    With preview=true, networking/irl interactions run all validations and
+    return the broadcaster + points without granting anything — the grant
+    happens only on the follow-up call the responder's confirmation sends.
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         token = request.data.get('token')
+        preview = str(request.data.get('preview', '')).lower() in ('1', 'true', 'yes')
 
         if not token:
             return Response(
@@ -121,11 +126,13 @@ class VerifyProximityTokenView(APIView):
 
         if interaction_type == 'networking':
             response = self._handle_networking(
-                request.user, event_id, broadcaster_user_id, latitude, longitude
+                request.user, event_id, broadcaster_user_id, latitude, longitude,
+                commit=not preview
             )
         elif interaction_type == 'irl':
             response = self._handle_irl(
-                request.user, broadcaster_user_id, latitude, longitude
+                request.user, broadcaster_user_id, latitude, longitude,
+                commit=not preview
             )
         elif interaction_type == 'checkin':
             response = self._handle_checkin(
@@ -142,7 +149,7 @@ class VerifyProximityTokenView(APIView):
             response.data['interaction_type'] = interaction_type
         return response
 
-    def _handle_networking(self, scanner_user, event_id, broadcaster_user_id, latitude, longitude):
+    def _handle_networking(self, scanner_user, event_id, broadcaster_user_id, latitude, longitude, commit=True):
         """Delegate to the extracted networking logic."""
         from .event_connections import process_nfc_connect
         return process_nfc_connect(
@@ -150,17 +157,19 @@ class VerifyProximityTokenView(APIView):
             event_id=event_id,
             scanned_user_id=broadcaster_user_id,
             latitude=latitude,
-            longitude=longitude
+            longitude=longitude,
+            commit=commit
         )
 
-    def _handle_irl(self, scanner_user, broadcaster_user_id, latitude, longitude):
+    def _handle_irl(self, scanner_user, broadcaster_user_id, latitude, longitude, commit=True):
         """Tap outside any event — no geofence, no check-in gate."""
         from .event_connections import process_irl_tap
         return process_irl_tap(
             requesting_user=scanner_user,
             scanned_user_id=broadcaster_user_id,
             latitude=latitude,
-            longitude=longitude
+            longitude=longitude,
+            commit=commit
         )
 
     def _handle_checkin(self, user, event_id, latitude, longitude):

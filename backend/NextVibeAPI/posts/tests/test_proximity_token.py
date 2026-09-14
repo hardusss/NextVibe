@@ -295,6 +295,67 @@ class ProximityTokenTests(TestCase):
         self.assertTrue(scanner_rep)
         self.assertTrue(broadcaster_rep)
 
+    def test_networking_preview_grants_nothing(self):
+        """Preview must return the peer + points without writing Reputation."""
+        EventCheckin.objects.create(user=self.user_broadcaster, post=self.event, is_registered=True)
+        EventCheckin.objects.create(user=self.user_scanner, post=self.event, is_registered=True)
+
+        gen_response = self.broadcaster_client.post(
+            "/api/v1/posts/proximity/generate-token/",
+            {"interaction_type": "networking", "event_id": self.event.id},
+            format="json",
+        )
+        token = gen_response.data["token"]
+
+        response = self.scanner_client.post(
+            "/api/v1/posts/proximity/verify-token/",
+            {"token": token, "preview": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["preview"])
+        self.assertIn("earned_points", response.data)
+        self.assertEqual(response.data["scanned_user"]["username"], "broadcaster")
+        self.assertEqual(Reputation.objects.count(), 0)
+
+        # The follow-up confirming call is what actually grants.
+        confirm = self.scanner_client.post(
+            "/api/v1/posts/proximity/verify-token/",
+            {"token": token},
+            format="json",
+        )
+        self.assertEqual(confirm.status_code, status.HTTP_200_OK)
+        self.assertTrue(confirm.data["success"])
+        self.assertEqual(Reputation.objects.count(), 2)
+
+    def test_irl_preview_grants_nothing(self):
+        """IRL preview must not write Reputation or count toward daily limits."""
+        gen_response = self.broadcaster_client.post(
+            "/api/v1/posts/proximity/generate-token/",
+            {"interaction_type": "irl"},
+            format="json",
+        )
+        token = gen_response.data["token"]
+
+        response = self.scanner_client.post(
+            "/api/v1/posts/proximity/verify-token/",
+            {"token": token, "preview": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["preview"])
+        self.assertEqual(response.data["source"], "irl")
+        self.assertEqual(Reputation.objects.count(), 0)
+
+        confirm = self.scanner_client.post(
+            "/api/v1/posts/proximity/verify-token/",
+            {"token": token},
+            format="json",
+        )
+        self.assertEqual(confirm.status_code, status.HTTP_200_OK)
+        self.assertTrue(confirm.data["success"])
+        self.assertEqual(Reputation.objects.count(), 2)
+
     def test_networking_flow_not_checked_in(self):
         """Test networking fails if scanner is not checked in."""
         EventCheckin.objects.create(

@@ -11,6 +11,7 @@ export interface GenerateTokenResponse {
 export interface VerifyTokenResponse {
     // Networking / IRL response fields
     success?: boolean;
+    preview?: boolean; // true when nothing was granted yet (confirmation pending)
     interaction_type?: string;
     source?: string; // 'irl' on IRL taps
     message?: string;
@@ -62,6 +63,32 @@ export const verifyProximityToken = async (
         `${GetApiUrl()}/posts/proximity/verify-token/`,
         {
             token,
+            ...(latitude !== undefined && { latitude }),
+            ...(longitude !== undefined && { longitude }),
+        },
+        {
+            headers: { Authorization: `Bearer ${TOKEN}` },
+        }
+    );
+    return response.data;
+};
+
+/**
+ * Dry-run of verify: validates the token and returns who's on the other
+ * side (+ the REP at stake) without granting anything. The grant happens
+ * only when verifyProximityToken is called after the user confirms.
+ */
+export const previewProximityToken = async (
+    token: string,
+    latitude?: number,
+    longitude?: number
+): Promise<VerifyTokenResponse> => {
+    const TOKEN = await storage.getItem("access");
+    const response = await axios.post(
+        `${GetApiUrl()}/posts/proximity/verify-token/`,
+        {
+            token,
+            preview: true,
             ...(latitude !== undefined && { latitude }),
             ...(longitude !== undefined && { longitude }),
         },

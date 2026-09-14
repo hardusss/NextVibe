@@ -355,10 +355,12 @@ class UserEventConnectionsView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=None, longitude=None):
+def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=None, longitude=None, commit=True):
     """
     Core networking logic. Returns a Response object.
     Handles: geo verification, check-in verification, duplicate check, reputation calc, record creation.
+    With commit=False, runs every validation and the points calc but writes nothing —
+    used to show the responder a confirmation step before anything is granted.
     """
     h3_geo_val = None
     if latitude is not None and longitude is not None:
@@ -380,20 +382,23 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
     except (Post.DoesNotExist, User.DoesNotExist):
         return Response({"error": "Invalid event or user."}, status=status.HTTP_404_NOT_FOUND)
 
-    # Geolocation check
+    # Geolocation check. A preview without coordinates is allowed — the
+    # confirming call always re-runs this with coordinates required.
     if post.h3_geo:
         if latitude is None or longitude is None:
-            return Response({"error": "Location coordinates are required for networking at this event."}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            lat = float(latitude)
-            lng = float(longitude)
-            event_res = h3.get_resolution(post.h3_geo)
-            user_cell = h3.latlng_to_cell(lat, lng, event_res)
-            if h3.grid_distance(user_cell, post.h3_geo) > 2:
-                return Response({"error": "You must be physically present at the event zone to network."}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            print(f"Error checking networking geolocation: {e}")
-            return Response({"error": "Invalid location coordinates provided."}, status=status.HTTP_400_BAD_REQUEST)
+            if commit:
+                return Response({"error": "Location coordinates are required for networking at this event."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            try:
+                lat = float(latitude)
+                lng = float(longitude)
+                event_res = h3.get_resolution(post.h3_geo)
+                user_cell = h3.latlng_to_cell(lat, lng, event_res)
+                if h3.grid_distance(user_cell, post.h3_geo) > 2:
+                    return Response({"error": "You must be physically present at the event zone to network."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                print(f"Error checking networking geolocation: {e}")
+                return Response({"error": "Invalid location coordinates provided."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Check if the scanning user is registered/checked-in
     is_registered = EventCheckin.objects.filter(user=requesting_user, post=post, is_registered=True).exists()
@@ -424,6 +429,26 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
         scanner_gains = 2
         scanned_gains = max(2, min(20, int((rep_scanner - rep_scanned) * 0.15)))
 
+    # Avatar URL for response
+    avatar_url = None
+    if scanned_user.avatar and getattr(scanned_user.avatar, 'name', None):
+        avatar_url = scanned_user.avatar.url
+
+    scanned_user_payload = {
+        "user_id": scanned_user.user_id,
+        "username": scanned_user.username,
+        "avatar": avatar_url,
+        "is_official": scanned_user.official,
+        "is_seeker_verified": scanned_user.seeker_verified,
+    }
+
+    if not commit:
+        return Response({
+            "preview": True,
+            "earned_points": scanner_gains,
+            "scanned_user": scanned_user_payload,
+        }, status=status.HTTP_200_OK)
+
     # Create Reputation records
     with transaction.atomic():
         Reputation.objects.create(
@@ -446,22 +471,11 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
             source='event',
         )
 
-    # Avatar URL for response
-    avatar_url = None
-    if scanned_user.avatar and getattr(scanned_user.avatar, 'name', None):
-        avatar_url = scanned_user.avatar.url
-
     return Response({
         "success": True,
         "message": f"Connected with {scanned_user.username}!",
         "earned_points": scanner_gains,
-        "scanned_user": {
-            "user_id": scanned_user.user_id,
-            "username": scanned_user.username,
-            "avatar": avatar_url,
-            "is_official": scanned_user.official,
-            "is_seeker_verified": scanned_user.seeker_verified,
-        }
+        "scanned_user": scanned_user_payload,
     }, status=status.HTTP_200_OK)
 
 
@@ -509,12 +523,14 @@ def _send_tap_push_in_background(receiver, tapper_username):
     ).start()
 
 
-def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=None):
+def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=None, commit=True):
     """
     Tap outside any event: no geofence, no check-in gate.
     Both sides get IRL_TAP_POINTS. One tap per pair per UTC day,
     at most IRL_TAP_DAILY_LIMIT taps per user per UTC day.
     Returns a Response object shaped like process_nfc_connect's success payload.
+    With commit=False, runs every validation but writes nothing and sends no push —
+    used to show the responder a confirmation step before anything is granted.
     """
     if not scanned_user_id:
         return Response({"error": "scanned_user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -568,6 +584,22 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
         except Exception as e:
             print(f"H3 calculation error: {e}")
 
+    avatar_url = _avatar_url(scanned_user)
+
+    if not commit:
+        return Response({
+            "preview": True,
+            "earned_points": IRL_TAP_POINTS,
+            "source": "irl",
+            "scanned_user": {
+                "user_id": scanned_user.user_id,
+                "username": scanned_user.username,
+                "avatar": avatar_url,
+                "is_official": scanned_user.official,
+                "is_seeker_verified": scanned_user.seeker_verified,
+            }
+        }, status=status.HTTP_200_OK)
+
     with transaction.atomic():
         Reputation.objects.create(
             user=requesting_user,
@@ -590,8 +622,6 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
         transaction.on_commit(
             lambda: _send_tap_push_in_background(scanned_user, requesting_user.username)
         )
-
-    avatar_url = _avatar_url(scanned_user)
 
     return Response({
         "success": True,
