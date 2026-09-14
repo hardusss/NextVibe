@@ -1,5 +1,7 @@
 """Constants for the free collect flow."""
 
+import os
+
 # Maximum number of editions a post can ever have (edition 1 = owner publish).
 COLLECT_MAX_EDITIONS = 50
 
@@ -20,7 +22,7 @@ COLLECT_IRL_REP_BONUS = 2
 COLLECT_CLAIM_TTL_SECONDS = 75
 
 # Base URL of the Elysia nft-service.
-NFT_SERVICE_URL = "http://localhost:3000"
+NFT_SERVICE_URL = os.environ.get("NFT_SERVICE_URL", "http://localhost:3000")
 
 # Reputation awarded to each side of an IRL (outside-of-event) tap.
 IRL_TAP_POINTS = 1

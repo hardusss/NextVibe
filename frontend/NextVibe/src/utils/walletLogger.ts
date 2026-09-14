@@ -14,6 +14,9 @@ export const WalletTag = {
     API: 'Wallet:API',
     AUTH: 'Wallet:Auth',
     COLLECT: 'Collect:Flow',
+    BLE: 'Ble:Scan',
+    PROXIMITY: 'Proximity:Token',
+    CHECKIN: 'Checkin:Flow',
 } as const;
 
 export type WalletTagType = typeof WalletTag[keyof typeof WalletTag] | string;

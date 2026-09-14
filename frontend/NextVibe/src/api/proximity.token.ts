@@ -4,8 +4,15 @@ import GetApiUrl from "../utils/url_api";
 
 export type InteractionType = 'checkin' | 'networking' | 'irl';
 
+// A hung request must surface as an error, not an eternal spinner.
+const PROXIMITY_TIMEOUT_MS = 12000;
+
 export interface GenerateTokenResponse {
     token: string;
+    // The server owns the final mode: an 'irl' request from a checked-in
+    // user comes back as 'networking' with the event attached.
+    interaction_type?: InteractionType;
+    event_id?: number | null;
 }
 
 export interface VerifyTokenResponse {
@@ -48,6 +55,7 @@ export const generateProximityToken = async (
         },
         {
             headers: { Authorization: `Bearer ${TOKEN}` },
+            timeout: PROXIMITY_TIMEOUT_MS,
         }
     );
     return response.data;
@@ -68,6 +76,7 @@ export const verifyProximityToken = async (
         },
         {
             headers: { Authorization: `Bearer ${TOKEN}` },
+            timeout: PROXIMITY_TIMEOUT_MS,
         }
     );
     return response.data;
@@ -94,6 +103,7 @@ export const previewProximityToken = async (
         },
         {
             headers: { Authorization: `Bearer ${TOKEN}` },
+            timeout: PROXIMITY_TIMEOUT_MS,
         }
     );
     return response.data;

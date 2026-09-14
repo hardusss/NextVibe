@@ -222,20 +222,23 @@ export default function EventCheckinScreen() {
                 );
             } else {
                 setMintStatus("failed");
-                setMintError(result.error || "Failed to mint NFT.");
+                setMintError(result.error || "You're checked in — the POAP mint failed. Tap to retry.");
                 haptics.notification('error');
             }
         } catch (error: any) {
             if (!mountedRef.current) return;
             const serverError: string | undefined = error.response?.data?.error;
-            // One-per-user guard: an existing NFT is a success, not a failure.
+            // Legacy one-per-user guard (the backend now returns 200 with
+            // already_owned instead — this covers un-updated servers).
             if (serverError && serverError.toLowerCase().includes("already have")) {
                 setEarnedPoints(0);
                 setMintStatus("success");
                 return;
             }
             setMintStatus("failed");
-            setMintError(serverError || "Something went wrong while minting. Please try again.");
+            // The check-in and its reputation are already recorded server-side;
+            // only the mint needs retrying.
+            setMintError(serverError || "You're checked in — the POAP mint failed. Tap to retry.");
             haptics.notification('error');
         }
     };

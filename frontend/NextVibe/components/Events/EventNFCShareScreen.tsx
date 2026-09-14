@@ -7,8 +7,9 @@ import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import axios from 'axios';
 import { startSharing, stopSharing } from '@/modules/nfc-send';
-import { startBroadcasting, stopBroadcasting } from '@/modules/ble-share';
+import { startBroadcasting, stopBroadcasting, addBluetoothStateListener, getBluetoothState, BluetoothState } from '@/modules/ble-share';
 import { storage } from '@/src/utils/storage';
+import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 import GetApiUrl from '@/src/utils/url_api';
 import { useProximityToken } from '@/hooks/useProximityToken';
 import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
@@ -38,13 +39,27 @@ export default function EventNFCShareScreen() {
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const isBroadcastingRef = useRef<boolean>(false);
 
-    const { generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing } = useProximityToken();
+    // Effective mode after the server resolves it (an 'irl' request from a
+    // checked-in user comes back as networking + event). Kept in refs so the
+    // polling closure always reads the current values.
+    const effectiveIrlRef = useRef<boolean>(isIrl);
+    const effectiveEventIdRef = useRef<number | null>(eventId ? Number(eventId) : null);
+
+    const { generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing, resolvedType, resolvedEventId, error: tokenError, getResolvedParams } = useProximityToken();
+
+    const [btState, setBtState] = useState<BluetoothState>('unknown');
+    useEffect(() => {
+        if (Platform.OS !== 'ios') return;
+        setBtState(getBluetoothState());
+        const sub = addBluetoothStateListener(({ state }) => setBtState(state));
+        return () => sub.remove();
+    }, []);
 
     const main = isDark ? colors.text : '#111827';
     const mutedColor = isDark ? colors.sub : 'rgba(17,24,39,0.5)';
 
     const startSharingSession = (url: string) => {
-        console.log('Starting sharing session with URL:', url);
+        walletLogger.info(WalletTag.PROXIMITY, 'Starting sharing session');
         if (isBroadcastingRef.current) return;
         isBroadcastingRef.current = true;
         if (Platform.OS === 'ios') {
@@ -79,6 +94,29 @@ export default function EventNFCShareScreen() {
         }
     };
 
+    const syncEffectiveMode = () => {
+        const params = getResolvedParams();
+        if (params) {
+            effectiveIrlRef.current = params.interactionType === 'irl';
+            effectiveEventIdRef.current = params.eventId ?? null;
+        }
+    };
+
+    // Snapshot of what's already there in the effective mode, so polling only
+    // fires on genuinely new taps/connections.
+    const fetchBaseline = async (): Promise<number[]> => {
+        const token = await storage.getItem('access');
+        const res = await axios.get(`${GetApiUrl()}/posts/user-event-connections/`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (effectiveIrlRef.current) {
+            return (res.data.irl_taps || []).map((t: any) => t.id);
+        }
+        const eventsArray = res.data.events || [];
+        const eventData = eventsArray.find((e: any) => e.event_id === effectiveEventIdRef.current);
+        return (eventData?.connections || []).map((c: any) => c.user_id);
+    };
+
     const checkNewConnections = async (currentKnownIds: number[]) => {
         try {
             const token = await storage.getItem('access');
@@ -86,7 +124,7 @@ export default function EventNFCShareScreen() {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            if (isIrl) {
+            if (effectiveIrlRef.current) {
                 // IRL mode: watch for a new entry in irl_taps (keyed by rep row id)
                 const taps = res.data.irl_taps || [];
                 const newTap = taps.find((t: any) => !currentKnownIds.includes(t.id));
@@ -103,7 +141,7 @@ export default function EventNFCShareScreen() {
             }
 
             const eventsArray = res.data.events || [];
-            const eventData = eventsArray.find((e: any) => e.event_id === Number(eventId));
+            const eventData = eventsArray.find((e: any) => e.event_id === effectiveEventIdRef.current);
 
             if (!eventData) return currentKnownIds;
 
@@ -121,94 +159,68 @@ export default function EventNFCShareScreen() {
             }
             return currentKnownIds;
         } catch (e) {
-            console.error('Error polling connections:', e);
+            walletLogger.warn(WalletTag.PROXIMITY, 'Polling connections failed');
             return currentKnownIds;
         }
+    };
+
+    // Generate (server resolves the real mode) → baseline → broadcast → poll.
+    const startSession = async (isActive: () => boolean) => {
+        const tokenUrl = await generateToken(
+            isIrl ? 'irl' : 'networking',
+            isIrl ? undefined : Number(eventId)
+        );
+        if (!isActive() || !tokenUrl) return;
+        syncEffectiveMode();
+
+        let knownIds: number[] = [];
+        try {
+            knownIds = await fetchBaseline();
+        } catch (e) {
+            walletLogger.warn(WalletTag.PROXIMITY, 'Baseline fetch failed');
+        }
+        if (!isActive()) return;
+        setInitialConnections(knownIds);
+
+        startSharingSession(tokenUrl);
+        // Keep the token fresh; the mode may re-resolve on each rotation.
+        startAutoRenewal(isIrl ? 'irl' : 'networking', isIrl ? undefined : Number(eventId), (newUrl) => {
+            syncEffectiveMode();
+            stopSharingSession();
+            startSharingSession(newUrl);
+        });
+
+        if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+        }
+        pollingRef.current = setInterval(async () => {
+            if (!isActive()) return;
+            knownIds = await checkNewConnections(knownIds);
+            setInitialConnections(knownIds);
+        }, 2500);
     };
 
     const handleContinue = async () => {
         setSuccessState(false);
         setSuccessUser(null);
         setSuccessPoints(0);
-
-        const tokenUrl = await generateToken(
-            isIrl ? 'irl' : 'networking',
-            isIrl ? undefined : Number(eventId)
-        );
-        if (tokenUrl) {
-            startSharingSession(tokenUrl);
-            startAutoRenewal(isIrl ? 'irl' : 'networking', isIrl ? undefined : Number(eventId), (newUrl) => {
-                stopSharingSession();
-                startSharingSession(newUrl);
-            });
-        }
-
-        if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-        }
-
-        let knownIds = [...initialConnections];
-        pollingRef.current = setInterval(async () => {
-            knownIds = await checkNewConnections(knownIds);
-            setInitialConnections(knownIds);
-        }, 2500);
+        await startSession(() => true);
     };
 
     useEffect(() => {
         let active = true;
-        let knownIds: number[] = [];
 
         const init = async () => {
             try {
                 const storedId = await storage.getItem('id');
                 if (!storedId) {
-                    console.error('No user ID found in storage');
+                    walletLogger.error(WalletTag.PROXIMITY, 'No user ID found in storage');
                     return;
                 }
                 setUserId(storedId);
-
-                const token = await storage.getItem('access');
-                const res = await axios.get(`${GetApiUrl()}/posts/user-event-connections/`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (isIrl) {
-                    knownIds = (res.data.irl_taps || []).map((t: any) => t.id);
-                    setInitialConnections(knownIds);
-                } else {
-                    const eventsArray = res.data.events || [];
-                    const eventData = eventsArray.find((e: any) => e.event_id === Number(eventId));
-
-                    if (eventData && eventData.connections) {
-                        knownIds = eventData.connections.map((c: any) => c.user_id);
-                        setInitialConnections(knownIds);
-                    }
-                }
-
-                if (!active) return;
-
-                const tokenUrl = await generateToken(
-                    isIrl ? 'irl' : 'networking',
-                    isIrl ? undefined : Number(eventId)
-                );
-                if (!active || !tokenUrl) return;
-                startSharingSession(tokenUrl);
-
-                // Start auto-renewal to keep token fresh
-                startAutoRenewal(isIrl ? 'irl' : 'networking', isIrl ? undefined : Number(eventId), (newUrl) => {
-                    stopSharingSession();
-                    startSharingSession(newUrl);
-                });
-
-                pollingRef.current = setInterval(async () => {
-                    if (active) {
-                        knownIds = await checkNewConnections(knownIds);
-                        setInitialConnections(knownIds);
-                    }
-                }, 2500);
-
+                await startSession(() => active);
             } catch (e) {
-                console.error('Failed to initialize sharing & polling:', e);
+                walletLogger.error(WalletTag.PROXIMITY, 'Failed to initialize sharing & polling', e);
             }
         };
 
@@ -228,7 +240,33 @@ export default function EventNFCShareScreen() {
     }, [eventId, isIrl]);
 
     const broadcastLabel = Platform.OS === 'ios' ? 'Bluetooth' : 'NFC';
-    const subtitle = isIrl ? 'Not at an event · IRL tap' : null;
+    // Display follows the server-resolved mode once known (an IRL request
+    // from a checked-in user broadcasts as event networking).
+    const effectiveIrl = resolvedType ? resolvedType === 'irl' : isIrl;
+    const subtitle = effectiveIrl
+        ? 'Not at an event · IRL tap'
+        : (isIrl && resolvedType === 'networking' ? 'Checked in · counts for your event' : null);
+
+    if (tokenError && !successState) {
+        return (
+            <EventScreenShell title="Tap to Meet">
+                <View style={styles.centerContent}>
+                    <View style={[styles.errorCircle]}>
+                        <ShieldX size={48} color={colors.danger} strokeWidth={1.5} />
+                    </View>
+                    <Text style={[styles.heading, { color: colors.danger }]}>Can't Start Tapping</Text>
+                    <Text style={[styles.description, { color: mutedColor }]}>
+                        {tokenError.toLowerCase().includes('check in')
+                            ? 'Your event check-in has expired — check in again to network at this event.'
+                            : tokenError}
+                    </Text>
+                    <View style={styles.ctaWidth}>
+                        <EventCta label="Go Back" variant="secondary" onPress={() => router.back()} />
+                    </View>
+                </View>
+            </EventScreenShell>
+        );
+    }
 
     if (!eventId && !isIrl) {
         return (
@@ -268,7 +306,7 @@ export default function EventNFCShareScreen() {
                                 />
                             )}
                             <EventCta
-                                label={isIrl ? 'Keep tapping' : 'Continue Networking'}
+                                label={effectiveIrl ? 'Keep tapping' : 'Continue Networking'}
                                 onPress={handleContinue}
                             />
                             <EventCta
@@ -301,10 +339,10 @@ export default function EventNFCShareScreen() {
                     </Animated.View>
 
                     <Text style={[styles.heading, { color: main }]}>
-                        {isIrl ? 'Ready to Tap' : 'Ready to Network'}
+                        {effectiveIrl ? 'Ready to Tap' : 'Ready to Network'}
                     </Text>
                     <Text style={[styles.description, { color: mutedColor }]}>
-                        {isIrl
+                        {effectiveIrl
                             ? `Hold your phone near a friend's phone to meet — you'll both get +1 REP (via ${broadcastLabel}).`
                             : `Hold your phone near another attendee's phone to connect and share reputation via ${broadcastLabel}!`}
                     </Text>
@@ -313,8 +351,18 @@ export default function EventNFCShareScreen() {
                         secondsLeft={secondsLeft}
                         totalDuration={totalDuration}
                         isRenewing={isRenewing}
-                        label={isIrl ? 'Active Tap Token' : 'Active Networking Token'}
+                        label={effectiveIrl ? 'Active Tap Token' : 'Active Networking Token'}
                     />
+
+                    {Platform.OS === 'ios' && btState === 'poweredOff' && (
+                        <View style={styles.warningCard}>
+                            <AlertTriangle size={18} color={colors.accent} style={{ marginBottom: 2 }} />
+                            <Text style={[styles.warningTitle, { color: main }]}>Bluetooth is Off</Text>
+                            <Text style={[styles.warningText, { color: mutedColor }]}>
+                                Turn on Bluetooth to broadcast — sharing resumes automatically.
+                            </Text>
+                        </View>
+                    )}
 
                     {Platform.OS === 'ios' ? (
                         <View style={styles.warningCard}>

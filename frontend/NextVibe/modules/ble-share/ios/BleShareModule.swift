@@ -15,6 +15,16 @@ private let kRSSIFilterWindow = 3
 // Minimum interval between discovery events for the same device (seconds)
 private let kDiscoveryDebounceInterval: TimeInterval = 3.0
 
+private func bluetoothStateString(_ state: CBManagerState) -> String {
+    switch state {
+    case .poweredOn: return "poweredOn"
+    case .poweredOff: return "poweredOff"
+    case .unauthorized: return "unauthorized"
+    case .unsupported: return "unsupported"
+    default: return "unknown"
+    }
+}
+
 public class BleShareModule: Module {
 
     // ── Peripheral (Broadcaster) state ──
@@ -31,7 +41,20 @@ public class BleShareModule: Module {
     public func definition() -> ModuleDefinition {
         Name("BleShare")
 
-        Events("onBleRead", "onBleDiscovered")
+        Events("onBleRead", "onBleDiscovered", "onBluetoothStateChanged")
+
+        // Reads the state of whichever manager exists. Deliberately does NOT
+        // create one: instantiating CBCentralManager triggers the system
+        // permission prompt, so before any start* call the state is "unknown".
+        Function("getBluetoothState") { () -> String in
+            if let cm = self.centralManager {
+                return bluetoothStateString(cm.state)
+            }
+            if let pm = self.peripheralManager {
+                return bluetoothStateString(pm.state)
+            }
+            return "unknown"
+        }
 
         // ── Broadcaster API ──
 
@@ -70,6 +93,9 @@ public class BleShareModule: Module {
         }
         delegate.onRead = { [weak self] in
             self?.sendEvent("onBleRead")
+        }
+        delegate.onStateChanged = { [weak self] state in
+            self?.sendEvent("onBluetoothStateChanged", ["state": state])
         }
 
         self.peripheralDelegate = delegate
@@ -151,6 +177,7 @@ public class BleShareModule: Module {
 private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
     var onReady: (() -> Void)?
     var onRead: (() -> Void)?
+    var onStateChanged: ((String) -> Void)?
 
     // Last read time per central UUID during this broadcast session
     private var lastReadTimes: [UUID: Date] = [:]
@@ -160,6 +187,7 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
     }
 
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
+        onStateChanged?(bluetoothStateString(peripheral.state))
         if peripheral.state == .poweredOn {
             onReady?()
         }
@@ -236,6 +264,7 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
     }
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        module?.sendEvent("onBluetoothStateChanged", ["state": bluetoothStateString(central.state)])
         if central.state == .poweredOn {
             if module?.isScanningRequested == true {
                 // Scan specifically for our service UUID

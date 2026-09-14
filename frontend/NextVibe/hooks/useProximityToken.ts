@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { generateProximityToken, InteractionType } from '@/src/api/proximity.token';
+import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 
 const RENEWAL_INTERVAL_SECONDS = 50;
 const RENEWAL_INTERVAL_MS = RENEWAL_INTERVAL_SECONDS * 1000;
@@ -12,6 +13,10 @@ export function useProximityToken() {
     const [isRenewing, setIsRenewing] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState<number>(RENEWAL_INTERVAL_SECONDS);
     const [error, setError] = useState<string | null>(null);
+    // Mode as the server resolved it — it may upgrade an 'irl' request to
+    // 'networking' when the user has an active event check-in.
+    const [resolvedType, setResolvedType] = useState<InteractionType | null>(null);
+    const [resolvedEventId, setResolvedEventId] = useState<number | null>(null);
 
     const renewalIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -45,13 +50,28 @@ export function useProximityToken() {
             const newToken = result.token;
             const newUrl = `${BASE_URL}/u/e?t=${newToken}`;
 
+            const serverType = result.interaction_type ?? interactionType;
+            const serverEventId = result.event_id ?? eventId ?? null;
+            setResolvedType(serverType);
+            setResolvedEventId(serverEventId);
+            // Renew with the resolved mode so rotations stay consistent.
+            currentParamsRef.current = {
+                interactionType: serverType,
+                eventId: serverEventId ?? undefined,
+            };
+            if (serverType !== interactionType) {
+                walletLogger.info(WalletTag.PROXIMITY, 'Server resolved a different mode', {
+                    requested: interactionType, resolved: serverType, eventId: serverEventId,
+                });
+            }
+
             setToken(newToken);
             setTokenUrl(newUrl);
             setIsGenerating(false);
             startCountdown();
             return newUrl;
         } catch (e: any) {
-            console.error('[useProximityToken] Generation failed:', e);
+            walletLogger.error(WalletTag.PROXIMITY, 'Token generation failed', e);
             setError(e?.response?.data?.error || e?.message || 'Token generation failed');
             setIsGenerating(false);
             return null;
@@ -81,6 +101,15 @@ export function useProximityToken() {
                 const newToken = result.token;
                 const newUrl = `${BASE_URL}/u/e?t=${newToken}`;
 
+                const serverType = result.interaction_type ?? params.interactionType;
+                const serverEventId = result.event_id ?? params.eventId ?? null;
+                setResolvedType(serverType);
+                setResolvedEventId(serverEventId);
+                currentParamsRef.current = {
+                    interactionType: serverType,
+                    eventId: serverEventId ?? undefined,
+                };
+
                 setToken(newToken);
                 setTokenUrl(newUrl);
                 setSecondsLeft(RENEWAL_INTERVAL_SECONDS);
@@ -90,7 +119,7 @@ export function useProximityToken() {
                     onNewUrl(newUrl);
                 }
             } catch (e) {
-                console.error('[useProximityToken] Auto-renewal failed:', e);
+                walletLogger.error(WalletTag.PROXIMITY, 'Token auto-renewal failed', e);
                 setIsRenewing(false);
             }
         }, RENEWAL_INTERVAL_MS);
@@ -106,6 +135,10 @@ export function useProximityToken() {
             countdownIntervalRef.current = null;
         }
     }, []);
+
+    // Synchronous read of the server-resolved params — usable right after an
+    // awaited generateToken, before React state has re-rendered.
+    const getResolvedParams = useCallback(() => currentParamsRef.current, []);
 
     const refreshToken = useCallback(async (): Promise<string | null> => {
         const params = currentParamsRef.current;
@@ -135,6 +168,9 @@ export function useProximityToken() {
         secondsLeft,
         totalDuration: RENEWAL_INTERVAL_SECONDS,
         error,
+        resolvedType,
+        resolvedEventId,
+        getResolvedParams,
         generateToken,
         refreshToken,
         startAutoRenewal,

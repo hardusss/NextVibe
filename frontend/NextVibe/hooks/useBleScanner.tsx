@@ -1,52 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
-import { AppState, Platform, Vibration, PermissionsAndroid, Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, useColorScheme, Animated } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, Platform, Vibration, Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, useColorScheme, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { startScanning, stopScanning, addBleDiscoveredListener } from "@/modules/ble-share";
+import { addBleDiscoveredListener, addBluetoothStateListener } from "@/modules/ble-share";
 import { previewProximityToken, VerifyTokenResponse } from '@/src/api/proximity.token';
 import * as Location from 'expo-location';
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { User, Calendar, Users, Scan, X } from "lucide-react-native";
 import { Image } from "expo-image";
+import { requestScanStart, requestScanStop, isScanWanted } from "@/src/utils/bleScanController";
+import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
 // API
 import getUserDetail from "@/src/api/user.detail";
 import getPost from "@/src/api/get.post";
 
-async function requestAndroidPermissions(): Promise<boolean> {
-    if (Platform.OS !== "android") return true;
+// One prompt per unique payload: broadcast tokens rotate every 50s, so a TTL
+// just above that means each rotated token can prompt at most once — including
+// after a decline — while the next rotation naturally re-offers the peer.
+const SEEN_PAYLOAD_TTL_MS = 60_000;
+const seenPayloads = new Map<string, number>();
 
-    try {
-        const apiLevel = Number(Platform.Version);
-        if (apiLevel >= 31) {
-            const results = await PermissionsAndroid.requestMultiple([
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            ]);
-
-            const scanGranted = results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === PermissionsAndroid.RESULTS.GRANTED;
-            const connectGranted = results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED;
-            const locationGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
-
-            return scanGranted && connectGranted && locationGranted;
-        } else {
-            const results = await PermissionsAndroid.requestMultiple([
-                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-                PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-            ]);
-
-            const fineGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
-            const coarseGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
-
-            return fineGranted || coarseGranted;
-        }
-    } catch (err) {
-        console.warn("[useBleScanner] Permission request error:", err);
-        return false;
+function isDuplicatePayload(key: string): boolean {
+    const now = Date.now();
+    for (const [k, t] of seenPayloads) {
+        if (now - t > SEEN_PAYLOAD_TTL_MS) seenPayloads.delete(k);
     }
+    if (seenPayloads.has(key)) return true;
+    seenPayloads.set(key, now);
+    return false;
 }
 
 interface ScannedInfo {
@@ -113,9 +96,9 @@ export function useBleScanner() {
         data: any;
     } | null>(null);
 
-    // Refs for control
-    const startScannerRef = useRef<() => void>(() => {});
-    const stopScannerRef = useRef<() => void>(() => {});
+    // True from the moment a discovery is being handled until the user
+    // accepts or declines — further discoveries are dropped, not queued.
+    const processingRef = useRef(false);
 
     // Animation values
     const scaleAnim = useRef(new Animated.Value(0.88)).current;
@@ -145,76 +128,34 @@ export function useBleScanner() {
     useEffect(() => {
         if (Platform.OS !== "ios" && Platform.OS !== "android") return;
 
-        let isScanning = false;
-
-        const startScanner = async () => {
-            if (isScanning) return;
-
-            try {
-                const bluetoothSetting = await AsyncStorage.getItem("bluetooth_scan_enabled");
-                if (bluetoothSetting === "false") {
-                    if (__DEV__) console.log("[useBleScanner] Background scanning disabled in settings");
-                    return;
-                }
-            } catch (e) {
-                console.warn("[useBleScanner] Failed to read settings:", e);
-            }
-
-            if (Platform.OS === "android") {
-                const hasPermission = await requestAndroidPermissions();
-                if (!hasPermission) {
-                    if (__DEV__) console.log("[useBleScanner] Android permissions not granted, cannot scan.");
-                    return;
-                }
-            }
-
-            try {
-                startScanning();
-                isScanning = true;
-                if (__DEV__) console.log("[useBleScanner] BLE scanning started");
-            } catch (e) {
-                console.warn("[useBleScanner] Failed to start BLE scanning:", e);
-            }
-        };
-
-        const stopScanner = () => {
-            if (!isScanning) return;
-            try {
-                stopScanning();
-                isScanning = false;
-                if (__DEV__) console.log("[useBleScanner] BLE scanning stopped");
-            } catch (e) {
-                console.warn("[useBleScanner] Failed to stop BLE scanning:", e);
-            }
-        };
-
-        startScannerRef.current = startScanner;
-        stopScannerRef.current = stopScanner;
-
         // Start scanning if app is already active
         if (AppState.currentState === "active") {
-            startScanner();
+            requestScanStart();
         }
 
         const appStateSub = AppState.addEventListener("change", (nextAppState) => {
             if (nextAppState === "active") {
-                startScanner();
+                requestScanStart();
             } else {
-                stopScanner();
+                requestScanStop();
+            }
+        });
+
+        // Core of the "BLE needs an app switch" fix: when the user turns
+        // Bluetooth on while the app stays foregrounded, re-issue the start.
+        // (Native also self-resumes; this covers permission/settings re-checks.)
+        const stateSub = addBluetoothStateListener(({ state }) => {
+            walletLogger.info(WalletTag.BLE, 'Bluetooth state changed', { state });
+            if (state === 'poweredOn' && isScanWanted() && AppState.currentState === "active") {
+                requestScanStart();
             }
         });
 
         const bleSub = addBleDiscoveredListener(async (event) => {
             if (!event.url) return;
 
-            if (__DEV__) console.log("[useBleScanner] BLE discovered URL:", event.url);
-
-            // Haptic + vibration feedback
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-            Vibration.vibrate([0, 80, 50, 80]);
-
-            // Stop scanning immediately during processing
-            stopScanner();
+            // A prompt is already on screen — drop further discoveries.
+            if (processingRef.current) return;
 
             // Extract in-app path from full URL
             let path = event.url;
@@ -226,12 +167,24 @@ export function useBleScanner() {
                 }
             } catch (_) {}
 
+            const info = parseScannedPath(path);
+
+            // One prompt per unique token (or raw path for non-token payloads),
+            // regardless of how often the radio re-delivers the advertisement.
+            if (isDuplicatePayload(info.token ?? path)) return;
+
+            processingRef.current = true;
+            walletLogger.info(WalletTag.BLE, 'BLE payload discovered', { type: info.type });
+
+            // Haptic + vibration feedback
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+            Vibration.vibrate([0, 80, 50, 80]);
+
             setScannedPath(path);
             setModalVisible(true);
             setLoadingDetail(true);
             setDetails(null);
 
-            const info = parseScannedPath(path);
             try {
                 if (info.type === 'proximity_token' && info.token) {
                     // For token-based interactions, verify the token directly
@@ -264,8 +217,9 @@ export function useBleScanner() {
                             setDetails({ type: 'proximity_token', data: result });
                         }
                     } catch (verifyErr: any) {
-                        console.error('[useBleScanner] Token verification error:', verifyErr);
-                        const errorMsg = verifyErr?.response?.data?.error || 'Verification failed';
+                        walletLogger.error(WalletTag.PROXIMITY, 'Token preview failed', verifyErr);
+                        const errorMsg = verifyErr?.response?.data?.error
+                            || (verifyErr?.code === 'ECONNABORTED' ? 'Connection timed out. Try again.' : 'Verification failed');
                         setDetails({ type: 'error', data: { error: errorMsg } });
                     }
                 } else if (info.type === 'profile' && info.id) {
@@ -281,7 +235,7 @@ export function useBleScanner() {
                     setDetails({ type: 'unknown', data: null });
                 }
             } catch (err) {
-                console.error("[useBleScanner] Error fetching details:", err);
+                walletLogger.error(WalletTag.BLE, 'Error fetching discovery details', err);
                 setDetails({ type: 'error', data: null });
             } finally {
                 setLoadingDetail(false);
@@ -290,13 +244,23 @@ export function useBleScanner() {
 
         return () => {
             appStateSub.remove();
+            stateSub.remove();
             bleSub.remove();
-            stopScanner();
+            requestScanStop();
         };
     }, []);
 
-    const handleAccept = () => {
+    // Shared teardown for accept/decline: close the modal, drop the payload
+    // and re-arm the discovery handler. The scanner itself never stopped.
+    const finishPrompt = () => {
         setModalVisible(false);
+        setScannedPath("");
+        setDetails(null);
+        setLoadingDetail(false);
+        processingRef.current = false;
+    };
+
+    const handleAccept = () => {
         const info = parseScannedPath(scannedPath);
         if (info.type === 'proximity_token') {
             if ((details?.data?.flow === 'networking' || details?.data?.flow === 'irl') && (details?.data?.preview || details?.data?.success)) {
@@ -312,7 +276,7 @@ export function useBleScanner() {
                         }
                     } as any);
                 } catch (err) {
-                    console.error("[useBleScanner] Navigation error:", err);
+                    walletLogger.error(WalletTag.BLE, 'Navigation error', err);
                 }
             } else if (details?.data?.flow === 'checkin' && details?.data?.verified) {
                 try {
@@ -326,24 +290,21 @@ export function useBleScanner() {
                         }
                     } as any);
                 } catch (err) {
-                    console.error("[useBleScanner] Navigation error:", err);
+                    walletLogger.error(WalletTag.BLE, 'Navigation error', err);
                 }
             }
         } else {
             try {
                 router.push(scannedPath as any);
             } catch (err) {
-                console.error("[useBleScanner] Navigation error:", err);
+                walletLogger.error(WalletTag.BLE, 'Navigation error', err);
             }
         }
-        setTimeout(() => {
-            startScannerRef.current();
-        }, 800);
+        finishPrompt();
     };
 
     const handleDecline = () => {
-        setModalVisible(false);
-        startScannerRef.current();
+        finishPrompt();
     };
 
     const renderBleScanModal = () => {

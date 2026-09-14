@@ -12,7 +12,28 @@
     "lint": "expo lint"
   },
   "jest": {
-    "preset": "jest-expo"
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src/utils"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": [
+        "babel-jest",
+        {
+          "presets": [
+            "@babel/preset-typescript"
+          ],
+          "plugins": [
+            "@babel/plugin-transform-modules-commonjs"
+          ],
+          "configFile": false,
+          "babelrc": false
+        }
+      ]
+    }
   },
   "dependencies": {
     "@babel/plugin-transform-typescript": "^7.26.8",

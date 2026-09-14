@@ -1,3 +1,4 @@
+import logging
 import threading
 
 from rest_framework.views import APIView
@@ -14,6 +15,8 @@ from django.utils import timezone
 from datetime import timedelta, timezone as dt_timezone
 import h3
 
+logger = logging.getLogger("posts.networking")
+
 
 def is_event_active(post, checkin, now):
     """An event counts as active inside its Luma window, else for 24h after
@@ -25,6 +28,16 @@ def is_event_active(post, checkin, now):
     if start:
         return start <= now <= (start + timedelta(days=1))
     return now <= (checkin.checked_in_at + timedelta(days=1))
+
+
+def get_active_checkins(user):
+    """The user's currently active check-ins as [(post, checkin)], most
+    recent check-in first (EventCheckin's default ordering)."""
+    now = timezone.now()
+    checkins = EventCheckin.objects.filter(
+        user=user, is_registered=True
+    ).select_related('post')
+    return [(c.post, c) for c in checkins if is_event_active(c.post, c, now)]
 
 
 def _utc_day_start(now):
@@ -367,8 +380,8 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
         try:
             # Use resolution 15 for max precision
             h3_geo_val = h3.latlng_to_cell(float(latitude), float(longitude), res=15)
-        except Exception as e:
-            print(f"H3 calculation error: {e}")
+        except Exception:
+            logger.warning("networking.h3_error", exc_info=True)
 
     if not event_id or not scanned_user_id:
         return Response({"error": "event_id and scanned_user_id are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -396,8 +409,8 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
                 user_cell = h3.latlng_to_cell(lat, lng, event_res)
                 if h3.grid_distance(user_cell, post.h3_geo) > 2:
                     return Response({"error": "You must be physically present at the event zone to network."}, status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
-                print(f"Error checking networking geolocation: {e}")
+            except Exception:
+                logger.warning("networking.geofence_error event=%s", post.id, exc_info=True)
                 return Response({"error": "Invalid location coordinates provided."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Check if the scanning user is registered/checked-in
@@ -405,10 +418,13 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
     if not is_registered:
         return Response({"error": "You must check-in to this event first."}, status=status.HTTP_403_FORBIDDEN)
 
-    # Check if they already networked at this event
+    # Check if they already networked at this event. post__isnull=True keeps
+    # post-linked rep rows (event_post awards, collect bonuses) from counting
+    # as a tap — same filter every other consumer of these rows uses.
     already_networked = Reputation.objects.filter(
         event=post,
         is_checkin=False,
+        post__isnull=True,
         user=requesting_user,
         given_by=scanned_user
     ).exists()
@@ -511,8 +527,8 @@ def _send_tap_push_async(receiver, tapper_username):
             title="Tap to Meet",
             body=f"{tapper_username} tapped with you",
         )
-    except Exception as e:
-        print(f"IRL tap push failed: {e}")
+    except Exception:
+        logger.warning("networking.tap_push_failed receiver=%s", receiver.pk, exc_info=True)
 
 
 def _send_tap_push_in_background(receiver, tapper_username):
@@ -581,8 +597,8 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
     if latitude is not None and longitude is not None:
         try:
             h3_geo_val = h3.latlng_to_cell(float(latitude), float(longitude), res=IRL_TAP_H3_RESOLUTION)
-        except Exception as e:
-            print(f"H3 calculation error: {e}")
+        except Exception:
+            logger.warning("networking.h3_error", exc_info=True)
 
     avatar_url = _avatar_url(scanned_user)
 
@@ -663,15 +679,8 @@ class ActiveCheckinView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        now = timezone.now()
         active_events = []
-        checkins = EventCheckin.objects.filter(
-            user=request.user, is_registered=True
-        ).select_related('post')
-        for checkin in checkins:
-            post = checkin.post
-            if not is_event_active(post, checkin, now):
-                continue
+        for post, checkin in get_active_checkins(request.user):
             event_image = None
             media = post.media.first()
             if media and getattr(media, 'file', None):

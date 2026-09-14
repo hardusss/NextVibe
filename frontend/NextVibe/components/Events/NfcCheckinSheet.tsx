@@ -47,6 +47,8 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const removeListenerRef = useRef<{ remove: () => void } | null>(null);
     const lastReadTimestamp = useRef<number>(0);
+    // Synchronous "broadcast is starting/active" flag (state lags behind).
+    const broadcastGuardRef = useRef(false);
 
     const snapPoints = useMemo(() => ["65%", "90%"], []);
     const accent = "#A855F7";
@@ -109,6 +111,11 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     }, []);
 
     const handleBleRead = useCallback(() => {
+        // Same debounce as the NFC path: the native per-central guard resets
+        // whenever the broadcast restarts (token rotation), so JS must dedup.
+        const now = Date.now();
+        if (now - lastReadTimestamp.current <= 2000) return;
+        lastReadTimestamp.current = now;
         setTapCount(prev => prev + 1);
         Vibration.vibrate([0, 80, 60, 80]);
         if (postId !== null) fetchCheckins(postId);
@@ -124,19 +131,25 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     }, [postId, fetchCheckins]);
 
     const startNfcBroadcast = useCallback(async (pid: number) => {
-        if (isBroadcasting) return;
+        // Ref, not state: rapid re-presents would read a stale isBroadcasting
+        // and double-register the read listener.
+        if (broadcastGuardRef.current) return;
+        broadcastGuardRef.current = true;
         try {
             const tokenUrl = await generateToken('checkin', pid);
             if (!tokenUrl) {
                 console.warn("Failed to generate proximity token");
+                broadcastGuardRef.current = false;
                 return;
             }
 
+            // Never stack listeners, whatever path got us here.
+            removeListenerRef.current?.remove();
+            lastReadTimestamp.current = 0;
             if (Platform.OS === 'ios') {
                 removeListenerRef.current = addBleReadListener(handleBleRead);
                 startBroadcasting(tokenUrl);
             } else {
-                lastReadTimestamp.current = 0;
                 removeListenerRef.current = addNfcReadListener(handleNfcRead);
                 startSharing(tokenUrl);
             }
@@ -158,9 +171,10 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             });
         } catch (error) {
             console.warn("Broadcasting not available:", error);
+            broadcastGuardRef.current = false;
             setIsBroadcasting(false);
         }
-    }, [isBroadcasting, handleBleRead, handleNfcRead, generateToken, startAutoRenewal]);
+    }, [handleBleRead, handleNfcRead, generateToken, startAutoRenewal]);
 
     const stopNfcBroadcast = useCallback(() => {
         try {
@@ -177,6 +191,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
         } catch (e) {
             console.warn("Error stopping broadcast:", e);
         } finally {
+            broadcastGuardRef.current = false;
             setIsBroadcasting(false);
         }
     }, [stopAutoRenewal]);

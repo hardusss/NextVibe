@@ -33,7 +33,7 @@ import Web3Toast from "../Shared/Toasts/Web3Toast";
 import validationUsername from "@/src/validation/username-update-validator";
 import { clearFeedCache } from "../Home/MainPage";
 import { clearProfileCache } from "../ProfilePage/ProfilePage";
-import { startScanning, stopScanning } from "@/modules/ble-share";
+import { requestScanStart, requestScanStop } from "@/src/utils/bleScanController";
 import haptics from "@/src/utils/haptics";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
@@ -190,13 +190,11 @@ function PageSettingsContent() {
         setIsBluetoothEnabled(newValue);
         try {
             await AsyncStorage.setItem("bluetooth_scan_enabled", newValue ? "true" : "false");
-            if (newValue) {
-                if (Platform.OS === 'ios' || Platform.OS === 'android') {
-                    startScanning();
-                }
-            } else {
-                if (Platform.OS === 'ios' || Platform.OS === 'android') {
-                    stopScanning();
+            if (Platform.OS === 'ios' || Platform.OS === 'android') {
+                if (newValue) {
+                    await requestScanStart();
+                } else {
+                    requestScanStop();
                 }
             }
         } catch (e) {

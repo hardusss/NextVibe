@@ -64,8 +64,15 @@ class ProximityTokenTests(TestCase):
 
     # --- Token Generation Tests ---
 
+    def _check_in(self, user, event=None):
+        """Networking tokens now require the broadcaster to be checked in."""
+        return EventCheckin.objects.create(
+            user=user, post=event or self.event, is_registered=True
+        )
+
     def test_generate_token_success(self):
         """Test successful token generation."""
+        self._check_in(self.user_broadcaster)
         response = self.broadcaster_client.post(
             "/api/v1/posts/proximity/generate-token/",
             {"interaction_type": "networking", "event_id": self.event.id},
@@ -74,9 +81,12 @@ class ProximityTokenTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("token", response.data)
         self.assertEqual(len(response.data["token"]), 8)
+        self.assertEqual(response.data["interaction_type"], "networking")
+        self.assertEqual(response.data["event_id"], self.event.id)
 
     def test_generate_token_stored_in_cache(self):
         """Test that token is stored in cache with correct payload."""
+        self._check_in(self.user_broadcaster)
         response = self.broadcaster_client.post(
             "/api/v1/posts/proximity/generate-token/",
             {"interaction_type": "networking", "event_id": self.event.id},
@@ -84,10 +94,11 @@ class ProximityTokenTests(TestCase):
         )
         token = response.data["token"]
         cache_key = f"{TOKEN_PREFIX}{token}"
-        stored = cache.get(cache_key)
-        self.assertIsNotNone(stored)
+        payload = cache.get(cache_key)
+        self.assertIsNotNone(payload)
 
-        payload = json.loads(stored)
+        if isinstance(payload, str):
+            payload = json.loads(payload)
         self.assertEqual(str(payload["user_id"]), str(self.user_broadcaster.user_id))
         self.assertEqual(payload["event_id"], self.event.id)
         self.assertEqual(payload["interaction_type"], "networking")
@@ -161,6 +172,7 @@ class ProximityTokenTests(TestCase):
 
     def test_verify_token_self_interaction_prevented(self):
         """Test that a user cannot verify their own token."""
+        self._check_in(self.user_broadcaster)
         gen_response = self.broadcaster_client.post(
             "/api/v1/posts/proximity/generate-token/",
             {"interaction_type": "networking", "event_id": self.event.id},
@@ -379,3 +391,111 @@ class ProximityTokenTests(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("check-in", response.data["error"].lower())
+
+    # --- Server-side mode resolution (event vs IRL) ---
+
+    def test_generate_irl_upgraded_to_networking_when_checked_in(self):
+        """A checked-in broadcaster requesting an 'irl' token gets a
+        networking token for their active event, and the resulting tap is
+        recorded as source='event' at that event — never as an IRL tap."""
+        self._check_in(self.user_broadcaster)
+        self._check_in(self.user_scanner)
+
+        gen_response = self.broadcaster_client.post(
+            "/api/v1/posts/proximity/generate-token/",
+            {"interaction_type": "irl"},
+            format="json",
+        )
+        self.assertEqual(gen_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(gen_response.data["interaction_type"], "networking")
+        self.assertEqual(gen_response.data["event_id"], self.event.id)
+
+        response = self.scanner_client.post(
+            "/api/v1/posts/proximity/verify-token/",
+            {"token": gen_response.data["token"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["interaction_type"], "networking")
+
+        event_rows = Reputation.objects.filter(source="event", event=self.event, is_checkin=False)
+        self.assertEqual(event_rows.count(), 2)
+        self.assertTrue(event_rows.filter(user=self.user_scanner, given_by=self.user_broadcaster).exists())
+        self.assertTrue(event_rows.filter(user=self.user_broadcaster, given_by=self.user_scanner).exists())
+        self.assertEqual(Reputation.objects.filter(source="irl").count(), 0)
+
+    def test_generate_irl_without_checkin_stays_irl(self):
+        """A broadcaster with no active check-in gets a true IRL token and the
+        tap lands as source='irl' with no event attached."""
+        gen_response = self.broadcaster_client.post(
+            "/api/v1/posts/proximity/generate-token/",
+            {"interaction_type": "irl"},
+            format="json",
+        )
+        self.assertEqual(gen_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(gen_response.data["interaction_type"], "irl")
+        self.assertIsNone(gen_response.data["event_id"])
+
+        response = self.scanner_client.post(
+            "/api/v1/posts/proximity/verify-token/",
+            {"token": gen_response.data["token"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["source"], "irl")
+
+        irl_rows = Reputation.objects.filter(source="irl")
+        self.assertEqual(irl_rows.count(), 2)
+        for row in irl_rows:
+            self.assertIsNone(row.event)
+            self.assertEqual(row.points, 1)
+        self.assertEqual(Reputation.objects.filter(source="event").count(), 0)
+
+    def test_generate_networking_without_checkin_403(self):
+        """Requesting a networking token without an active check-in for the
+        event is rejected, mirroring the scanner-side gate."""
+        response = self.broadcaster_client.post(
+            "/api/v1/posts/proximity/generate-token/",
+            {"interaction_type": "networking", "event_id": self.event.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("check in", response.data["error"].lower())
+
+    def test_already_networked_ignores_post_rep_rows(self):
+        """Post-linked reputation rows (event posts, collect bonuses) at the
+        same event must not count as an existing tap between two users."""
+        self._check_in(self.user_broadcaster)
+        self._check_in(self.user_scanner)
+
+        content_post = Post.objects.create(
+            owner=self.user_broadcaster, about="Event photo", on_event=self.event,
+        )
+        Reputation.objects.create(
+            user=self.user_scanner,
+            given_by=self.user_broadcaster,
+            points=10,
+            is_checkin=False,
+            event=self.event,
+            post=content_post,
+            post_type="event_post",
+            source="post",
+        )
+
+        gen_response = self.broadcaster_client.post(
+            "/api/v1/posts/proximity/generate-token/",
+            {"interaction_type": "networking", "event_id": self.event.id},
+            format="json",
+        )
+        response = self.scanner_client.post(
+            "/api/v1/posts/proximity/verify-token/",
+            {"token": gen_response.data["token"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(
+            Reputation.objects.filter(source="event", post__isnull=True).count(), 2
+        )

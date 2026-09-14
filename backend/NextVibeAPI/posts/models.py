@@ -202,10 +202,22 @@ class EventRequest(models.Model):
         return f"{self.user.username} request for event {self.post.id} ({self.status})"
 
 class EventCheckin(models.Model):
+    class MintStatus(models.TextChoices):
+        PENDING = 'pending'
+        MINTED = 'minted'
+        FAILED = 'failed'
+
     user = models.ForeignKey("user.User", on_delete=models.CASCADE, related_name='event_checkins')
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='event_checkins')
     is_registered = models.BooleanField(default=False)
     checked_in_at = models.DateTimeField(auto_now_add=True)
+    # The check-in doubles as the pending-mint record for the POAP cNFT:
+    # created 'pending' at verification, transitioned by ClaimEventNftView.
+    mint_status = models.CharField(
+        max_length=10,
+        choices=MintStatus.choices,
+        default=MintStatus.PENDING,
+    )
 
     class Meta:
         unique_together = ('user', 'post')

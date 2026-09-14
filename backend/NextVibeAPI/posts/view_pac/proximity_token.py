@@ -1,3 +1,4 @@
+import logging
 import secrets
 import json
 from django.core.cache import cache
@@ -9,6 +10,8 @@ from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest, EventCheckin
 from user.models import User
 
+logger = logging.getLogger("posts.proximity")
+
 TOKEN_TTL = 300  # seconds (time-limited window; long enough to cover the responder's confirmation step)
 TOKEN_PREFIX = "proximity:"
 
@@ -17,7 +20,13 @@ class GenerateProximityTokenView(APIView):
     """
     POST /api/v1/posts/proximity/generate-token/
     Body: { "interaction_type": "checkin" | "networking" | "irl", "event_id": int (not for 'irl') }
-    Returns: { "token": "<8-char-token>" }
+    Returns: { "token": "<8-char-token>", "interaction_type": str, "event_id": int|null }
+
+    The server owns the mode: an 'irl' request from a user with an active
+    check-in is upgraded to 'networking' at that event, and a 'networking'
+    request requires an active check-in for the event (mirroring the
+    scanner-side gate in process_nfc_connect). The response echoes the
+    resolved mode so the client UI can follow it.
     """
     permission_classes = [IsAuthenticated]
 
@@ -33,6 +42,18 @@ class GenerateProximityTokenView(APIView):
 
         if interaction_type == 'irl':
             event_id = None
+            from .event_connections import get_active_checkins
+            active = get_active_checkins(request.user)
+            if active:
+                # IRL is only for users with no active check-in; taps from a
+                # checked-in attendee count for their event.
+                post = active[0][0]
+                interaction_type = 'networking'
+                event_id = post.id
+                logger.info(
+                    "proximity.irl_upgraded_to_networking user=%s event=%s",
+                    request.user.pk, post.id,
+                )
         else:
             if not event_id:
                 return Response(
@@ -49,6 +70,20 @@ class GenerateProximityTokenView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
+            if interaction_type == 'networking':
+                is_checked_in = EventCheckin.objects.filter(
+                    user=request.user, post=post, is_registered=True
+                ).exists()
+                if not is_checked_in:
+                    logger.info(
+                        "proximity.networking_denied_no_checkin user=%s event=%s",
+                        request.user.pk, post.id,
+                    )
+                    return Response(
+                        {"error": "You must check in to this event first."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
         # Generate cryptographically secure token
         token = secrets.token_urlsafe(6)  # Produces 8 chars
 
@@ -62,7 +97,15 @@ class GenerateProximityTokenView(APIView):
         cache_key = f"{TOKEN_PREFIX}{token}"
         cache.set(cache_key, payload, timeout=TOKEN_TTL)
 
-        return Response({"token": token}, status=status.HTTP_200_OK)
+        logger.info(
+            "proximity.token_generated user=%s type=%s event=%s",
+            request.user.pk, interaction_type, event_id,
+        )
+        return Response({
+            "token": token,
+            "interaction_type": interaction_type,
+            "event_id": payload["event_id"],
+        }, status=status.HTTP_200_OK)
 
 
 class VerifyProximityTokenView(APIView):
@@ -105,7 +148,7 @@ class VerifyProximityTokenView(APIView):
             try:
                 payload = json.loads(payload)
             except Exception:
-                pass
+                logger.warning("proximity.token_payload_not_json user=%s", request.user.pk)
 
         if not isinstance(payload, dict):
             return Response(
@@ -194,8 +237,8 @@ class VerifyProximityTokenView(APIView):
                         {"error": "You must be physically present at the event zone to check in."},
                         status=status.HTTP_400_BAD_REQUEST
                     )
-            except Exception as e:
-                print(f"Error checking check-in geolocation: {e}")
+            except Exception:
+                logger.warning("proximity.checkin_geofence_error post=%s", post.id, exc_info=True)
                 return Response(
                     {"error": "Invalid location coordinates provided."},
                     status=status.HTTP_400_BAD_REQUEST
@@ -206,6 +249,11 @@ class VerifyProximityTokenView(APIView):
             post=post,
             status=EventRequest.Status.APPROVED
         ).exists()
+
+        earned_points = 0
+        if is_registered:
+            from .event_checkin import grant_checkin, _res15_cell
+            _, earned_points = grant_checkin(user, post, _res15_cell(latitude, longitude))
 
         post_image = None
         media = post.media.first()
@@ -222,6 +270,7 @@ class VerifyProximityTokenView(APIView):
             "verified": is_registered,
             "interaction_type": "checkin",
             "post_id": post.id,
+            "earned_points": earned_points,
             "user_id": user.user_id,
             "username": user.username,
             "avatar": avatar_url,

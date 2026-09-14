@@ -1,3 +1,5 @@
 // This file is intentionally empty.
-// The JS-side scan session (seenUrlsInScanSession) has been removed.
-// Deduplication is now handled by a time-based debounce in useBleScanner.ts.
+// Discovery deduplication lives in two places:
+// - natively, per device id with a 3s debounce, while a scan session runs
+// - in JS, per token/path with a 60s TTL map in hooks/useBleScanner.tsx
+//   (one prompt per unique broadcast token, which rotates every 50s)

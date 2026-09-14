@@ -2,9 +2,17 @@ import { requireNativeModule, EventEmitter, EventSubscription } from 'expo-modul
 
 const BleShare = requireNativeModule('BleShare');
 
+export type BluetoothState =
+  | 'poweredOn'
+  | 'poweredOff'
+  | 'unauthorized'
+  | 'unsupported'
+  | 'unknown';
+
 const emitter = new EventEmitter<{
   onBleRead: () => void;
   onBleDiscovered: (event: { url: string }) => void;
+  onBluetoothStateChanged: (event: { state: BluetoothState }) => void;
 }>(BleShare as any);
 
 // ── Broadcaster (Peripheral) API ──
@@ -25,6 +33,24 @@ export function startScanning(): void {
 
 export function stopScanning(): void {
   BleShare.stopScanning();
+}
+
+// ── Bluetooth state ──
+
+/**
+ * Current adapter state. On iOS this is "unknown" until a broadcast or scan
+ * has been requested at least once (querying earlier would trigger the
+ * system permission prompt).
+ */
+export function getBluetoothState(): BluetoothState {
+  return BleShare.getBluetoothState();
+}
+
+/** Fires whenever the Bluetooth adapter changes state (e.g. user toggles it) */
+export function addBluetoothStateListener(
+  listener: (event: { state: BluetoothState }) => void
+): EventSubscription {
+  return emitter.addListener('onBluetoothStateChanged', listener);
 }
 
 // ── Events ──

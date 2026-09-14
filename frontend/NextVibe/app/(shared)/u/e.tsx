@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, Vibration, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -15,12 +15,17 @@ export default function ProximityTokenScreen() {
     const token = params.t;
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    // One preview per mount, even if navigation re-fires the effect with the
+    // same token (e.g. duplicate NFC/NDEF deliveries of one link).
+    const handledRef = useRef(false);
 
     useEffect(() => {
         if (!token) {
             router.back();
             return;
         }
+        if (handledRef.current) return;
+        handledRef.current = true;
 
         const verify = async () => {
             // Immediate haptic feedback

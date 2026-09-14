@@ -12,7 +12,10 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
@@ -38,6 +41,69 @@ class BleShareModule : Module() {
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var isScanning = false
+
+    // Pending-start: remembers that JS asked to scan so the state receiver
+    // can start the scan the moment the adapter powers on.
+    private var isScanRequested = false
+    private var stateReceiver: BroadcastReceiver? = null
+
+    private fun currentBluetoothState(): String {
+        val context = appContext.reactContext ?: return "unknown"
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = manager?.adapter ?: return "unsupported"
+        return if (adapter.isEnabled) "poweredOn" else "poweredOff"
+    }
+
+    private fun sendStateEvent(state: String) {
+        Handler(Looper.getMainLooper()).post {
+            try {
+                this@BleShareModule.sendEvent("onBluetoothStateChanged", mapOf("state" to state))
+            } catch (e: Exception) {
+                // Ignore exception if the event emitter is not ready
+            }
+        }
+    }
+
+    private fun registerStateReceiver() {
+        if (stateReceiver != null) return
+        val context = appContext.reactContext ?: return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                when (intent?.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
+                    BluetoothAdapter.STATE_ON -> {
+                        sendStateEvent("poweredOn")
+                        if (isScanRequested && !isScanning) {
+                            startScan()
+                        }
+                    }
+                    BluetoothAdapter.STATE_OFF, BluetoothAdapter.STATE_TURNING_OFF -> {
+                        // The system already killed the scan; drop our bookkeeping
+                        // but keep isScanRequested so power-on resumes it.
+                        isScanning = false
+                        for ((_, gatt) in activeGatts) {
+                            try { gatt.close() } catch (e: Exception) { }
+                        }
+                        activeGatts.clear()
+                        sendStateEvent("poweredOff")
+                    }
+                }
+            }
+        }
+        try {
+            context.registerReceiver(receiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+            stateReceiver = receiver
+        } catch (e: Exception) {
+        }
+    }
+
+    private fun unregisterStateReceiver() {
+        val receiver = stateReceiver ?: return
+        stateReceiver = null
+        try {
+            appContext.reactContext?.unregisterReceiver(receiver)
+        } catch (e: Exception) {
+        }
+    }
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -170,7 +236,19 @@ class BleShareModule : Module() {
     override fun definition() = ModuleDefinition {
         Name("BleShare")
 
-        Events("onBleRead", "onBleDiscovered")
+        Events("onBleRead", "onBleDiscovered", "onBluetoothStateChanged")
+
+        OnCreate {
+            registerStateReceiver()
+        }
+
+        OnDestroy {
+            unregisterStateReceiver()
+        }
+
+        Function("getBluetoothState") {
+            currentBluetoothState()
+        }
 
         // Broadcaster API - No-op on Android (NFC is used for broadcasting instead)
         Function("startBroadcasting") { _: String -> }
@@ -178,10 +256,14 @@ class BleShareModule : Module() {
 
         // Scanner API
         Function("startScanning") {
+            isScanRequested = true
+            // OnCreate can run before the react context exists — retry here.
+            registerStateReceiver()
             startScan()
         }
 
         Function("stopScanning") {
+            isScanRequested = false
             stopScan()
         }
     }

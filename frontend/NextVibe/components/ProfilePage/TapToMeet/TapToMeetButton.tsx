@@ -12,6 +12,8 @@ import { MOTION } from "@/constants/motion";
 import { space, radius, colors, type as typeScale } from "@/src/theme/tokens";
 import { useActiveCheckin } from "@/hooks/useActiveCheckin";
 import { getActiveCheckins, ActiveEvent } from "@/src/api/active.checkin";
+import { resolveTapMode } from "@/src/utils/resolveTapMode";
+import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
 /**
  * Tap to Meet — the profile's primary action.
@@ -60,14 +62,16 @@ export function TapToMeetButton() {
         try {
             events = await getActiveCheckins();
         } catch (e) {
-            console.warn("[TapToMeet] active checkin fetch failed:", e);
+            walletLogger.warn(WalletTag.PROXIMITY, 'Active check-in fetch failed; using cached list');
         }
         setBusy(false);
 
-        if (events.length === 1) {
-            openForEvent(events[0].event_id);
-        } else if (events.length > 1) {
-            setChoices(events);
+        const resolved = resolveTapMode(events);
+        walletLogger.info(WalletTag.PROXIMITY, 'Tap to Meet mode resolved', { mode: resolved.mode });
+        if (resolved.mode === 'event') {
+            openForEvent(resolved.eventId);
+        } else if (resolved.mode === 'choose') {
+            setChoices(resolved.events);
             chooserRef.current?.present();
         } else {
             router.push("/event-nfc-share?mode=irl" as any);

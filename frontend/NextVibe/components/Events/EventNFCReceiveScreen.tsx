@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ShieldX, Radio, Users } from "lucide-react-native";
@@ -20,6 +20,7 @@ import * as Location from 'expo-location';
 import { verifyProximityToken, previewProximityToken } from '@/src/api/proximity.token';
 import getUserDetail from '@/src/api/user.detail';
 import haptics from "@/src/utils/haptics";
+import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 import { space, colors, type as typeScale } from "@/src/theme/tokens";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
 import EventScreenShell from "@/components/Events/EventScreenShell";
@@ -59,6 +60,10 @@ export default function EventNFCReceiveScreen() {
     const [earnedPoints, setEarnedPoints] = useState(0);
     const [scannedUser, setScannedUser] = useState<any>(null);
     const [isIrlTap, setIsIrlTap] = useState(irlRequested);
+
+    // Single in-flight grant: a double-tapped CTA or a re-run of the routing
+    // effect must never fire a second verify while one is running.
+    const inFlightRef = useRef(false);
 
     const main = isDark ? colors.text : "#111827";
     const mutedColor = isDark ? colors.sub : "rgba(17,24,39,0.5)";
@@ -158,7 +163,7 @@ export default function EventNFCReceiveScreen() {
                 is_seeker_verified: !!res?.seeker_verified,
             });
         } catch (e) {
-            console.warn("Peer preview error:", e);
+            walletLogger.warn(WalletTag.PROXIMITY, 'Peer preview failed');
             setScannedUser(null);
         }
         setState("ready");
@@ -179,29 +184,31 @@ export default function EventNFCReceiveScreen() {
             setMessage("Invalid token.");
             return;
         }
+        if (inFlightRef.current) return;
+        inFlightRef.current = true;
 
-        setState("locating");
-        // Location is best-effort here: IRL taps don't need it at all, and
-        // event taps are rejected server-side when an event requires it.
-        let coords: { latitude: number; longitude: number } | null = null;
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === 'granted') {
-                const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                if (location.mocked) {
-                    setState("error");
-                    setMessage("Fake GPS detected. Real moments only.");
-                    haptics.notification('error');
-                    return;
+            setState("locating");
+            // Location is best-effort here: IRL taps don't need it at all, and
+            // event taps are rejected server-side when an event requires it.
+            let coords: { latitude: number; longitude: number } | null = null;
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    if (location.mocked) {
+                        setState("error");
+                        setMessage("Fake GPS detected. Real moments only.");
+                        haptics.notification('error');
+                        return;
+                    }
+                    coords = location.coords;
                 }
-                coords = location.coords;
+            } catch (e) {
+                walletLogger.warn(WalletTag.PROXIMITY, 'Location unavailable for token connect');
             }
-        } catch (e) {
-            console.warn("Location error:", e);
-        }
 
-        setState("connecting");
-        try {
+            setState("connecting");
             const result = await verifyProximityToken(
                 proximityToken,
                 coords?.latitude,
@@ -220,9 +227,15 @@ export default function EventNFCReceiveScreen() {
                 haptics.notification('error');
             }
         } catch (error: any) {
+            walletLogger.error(WalletTag.PROXIMITY, 'Token connect failed', error);
             setState("error");
-            setMessage(error?.response?.data?.error || "Failed to connect. Please try again.");
+            setMessage(
+                error?.response?.data?.error
+                || (error?.code === 'ECONNABORTED' ? 'Connection timed out. Check your network and try again.' : 'Failed to connect. Please try again.')
+            );
             haptics.notification('error');
+        } finally {
+            inFlightRef.current = false;
         }
     };
 
@@ -232,40 +245,42 @@ export default function EventNFCReceiveScreen() {
             setMessage("Invalid tap data.");
             return;
         }
+        if (inFlightRef.current) return;
+        inFlightRef.current = true;
 
-        setState("locating");
-        let location = null;
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
+            setState("locating");
+            let location = null;
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') {
+                    if (!irlRequested) {
+                        setState("error");
+                        setMessage("Location permission is required to connect with other attendees.");
+                        haptics.notification('error');
+                        return;
+                    }
+                } else {
+                    location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    if (location.mocked) {
+                        setState("error");
+                        setMessage("Fake GPS detected. Real moments only.");
+                        haptics.notification('error');
+                        return;
+                    }
+                }
+            } catch (e) {
+                walletLogger.warn(WalletTag.PROXIMITY, 'Location unavailable for legacy connect');
                 if (!irlRequested) {
                     setState("error");
-                    setMessage("Location permission is required to connect with other attendees.");
+                    setMessage("Failed to get location coordinates.");
                     haptics.notification('error');
                     return;
                 }
-            } else {
-                location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                if (location.mocked) {
-                    setState("error");
-                    setMessage("Fake GPS detected. Real moments only.");
-                    haptics.notification('error');
-                    return;
-                }
+                location = null;
             }
-        } catch (e) {
-            console.warn("Location error:", e);
-            if (!irlRequested) {
-                setState("error");
-                setMessage("Failed to get location coordinates.");
-                haptics.notification('error');
-                return;
-            }
-            location = null;
-        }
 
-        setState("connecting");
-        try {
+            setState("connecting");
             const token = await storage.getItem('access');
             const endpoint = irlRequested ? 'irl-tap' : 'event-nfc-connect';
             const body: any = irlRequested
@@ -276,7 +291,8 @@ export default function EventNFCReceiveScreen() {
                 body.longitude = location.coords.longitude;
             }
             const response = await axios.post(`${GetApiUrl()}/posts/${endpoint}/`, body, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
+                timeout: 12000,
             });
 
             if (response.data.success) {
@@ -285,11 +301,23 @@ export default function EventNFCReceiveScreen() {
                 setScannedUser(response.data.scanned_user);
                 setState("success");
                 haptics.notification('success');
+            } else {
+                // A 200 with success:false must not strand the screen in
+                // "connecting" — surface it as an error.
+                setState("error");
+                setMessage(response.data?.error || "Connection failed.");
+                haptics.notification('error');
             }
         } catch (error: any) {
+            walletLogger.error(WalletTag.PROXIMITY, 'Legacy connect failed', error);
             setState("error");
-            setMessage(error.response?.data?.error || "Failed to connect. Please try again.");
+            setMessage(
+                error?.response?.data?.error
+                || (error?.code === 'ECONNABORTED' ? 'Connection timed out. Check your network and try again.' : 'Failed to connect. Please try again.')
+            );
             haptics.notification('error');
+        } finally {
+            inFlightRef.current = false;
         }
     };
 
@@ -372,6 +400,12 @@ export default function EventNFCReceiveScreen() {
                         </Text>
 
                         <View style={styles.ctaWidth}>
+                            {scannedUser && (
+                                <EventCta
+                                    label="Try Again"
+                                    onPress={() => setState("ready")}
+                                />
+                            )}
                             <EventCta
                                 label="Go Back"
                                 variant="secondary"
