@@ -12,7 +12,6 @@ import {
     ActivityIndicator,
     Pressable,
     Linking,
-    Share,
 } from "react-native";
 import Header from "./Header";
 import { StatusBar } from "expo-status-bar";
@@ -50,6 +49,7 @@ import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 import { setFeedFlatListRef } from "@/src/utils/feedScrollRef";
 import * as Haptics from 'expo-haptics';
 import { ShimmerSkeleton } from '@/components/Shared/motion';
+import useShareGuard, { ShareTouchBlocker } from '@/hooks/useShareGuard';
 import EmptyState from '@/components/Shared/EmptyState';
 import AnimatedReanimated, {
     useSharedValue,
@@ -460,20 +460,13 @@ const PostItem = memo(({
     onOpenMint,
     handleRequestToAttend,
     onOpenPhotoModal,
+    onShare,
 }: any) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [eventImageHeight, setEventImageHeight] = useState<number | null>(null);
 
-    const handleSharePost = async () => {
-        try {
-            await Share.share({
-                message: `https://nextvibe.io/u/post/${item.id}`,
-            });
-        } catch (error) {
-            console.error("Error sharing post:", error);
-        }
-    };
+    const handleSharePost = () => onShare(item.id);
 
     const handleMediaSize = useCallback((width: number, height: number) => {
         if (width > 0) setEventImageHeight((screenWidth / width) * height);
@@ -513,10 +506,14 @@ const PostItem = memo(({
                     />
                 </TouchableOpacity>
                 <View style={styles.userInfo}>
-                    <View style={styles.usernameRow}>
+                    <TouchableOpacity
+                        style={[styles.usernameRow, { alignSelf: "flex-start" }]}
+                        hitSlop={{ top: 12, bottom: 12, right: 8 }}
+                        onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
+                    >
                         <Text style={styles.username} numberOfLines={1}>{item.owner__username}</Text>
                         <UserBadges official={item.owner__official} seekerVerified={item.owner__seeker_verified} isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
-                    </View>
+                    </TouchableOpacity>
                 </View>
 
 
@@ -846,6 +843,7 @@ export default function MainPage() {
     const theme = colorScheme === "dark" ? darkTheme : lightTheme;
     const styles = getStyles(theme, insets.bottom > 0 ? insets.bottom + 100 : 110, headerHeight);
     const [refreshing, setRefreshing] = useState(false);
+    const { isSharing, share } = useShareGuard();
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string>("Post successfully deleted");
     const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
@@ -1088,11 +1086,16 @@ export default function MainPage() {
         ? Array.from({ length: 2 }).map((_, i) => ({ id: `skeleton-${i}`, type: 'skeleton' }))
         : posts.filter(p => p.moderation_status === "approved");
 
+    const sharePost = useCallback((postId: number) => {
+        share({ message: `https://nextvibe.io/u/post/${postId}` });
+    }, [share]);
+
     const renderItem = useCallback(({ item }: { item: any }) => {
         if (loading || item.type === 'skeleton') return <PostSkeleton />;
         return (
             <PostItem
                 item={item}
+                onShare={sharePost}
                 isLiked={!!likedPosts[item.id]}
                 isVisible={visiblePostId === item.id}
                 userID={userID}
@@ -1112,7 +1115,7 @@ export default function MainPage() {
                 onOpenPhotoModal={handleOpenPhotoModal}
             />
         );
-    }, [loading, likedPosts, visiblePostId, userID, theme, styles, activeDropdownId, handleOpenMint, handleRequestToAttend]);
+    }, [loading, likedPosts, visiblePostId, userID, theme, styles, activeDropdownId, handleOpenMint, handleRequestToAttend, sharePost]);
 
     return (
         <View style={styles.container}>
@@ -1216,6 +1219,8 @@ export default function MainPage() {
             ]}>
                 <HomeHeaderTitle />
             </AnimatedReanimated.View>
+
+            <ShareTouchBlocker active={isSharing} />
         </View>
     );
 }

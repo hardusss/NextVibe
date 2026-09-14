@@ -13,7 +13,6 @@ import {
     UIManager,
     View,
     useColorScheme,
-    Share,
 } from "react-native";
 import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,6 +32,7 @@ import formatNumber from "@/src/utils/formatNumber";
 import timeAgo from "@/src/utils/formatTime";
 import { storage } from "@/src/utils/storage";
 import useWalletAddress from "@/hooks/useWalletAddress";
+import useShareGuard, { ShareTouchBlocker } from "@/hooks/useShareGuard";
 
 
 import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityIndicator";
@@ -116,6 +116,7 @@ export default function PostDetailsScreen() {
 
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [toastConfig, setToastConfig] = useState({ visible: false, message: "", isSuccess: true });
+    const { isSharing, share } = useShareGuard();
 
     const [photoModalVisible, setPhotoModalVisible] = useState(false);
     const [photoModalIndex, setPhotoModalIndex] = useState(0);
@@ -189,15 +190,9 @@ export default function PostDetailsScreen() {
         });
     };
 
-    const handleSharePost = useCallback(async () => {
-        try {
-            await Share.share({
-                message: `https://nextvibe.io/u/post/${id}`,
-            });
-        } catch (error) {
-            console.error("Error sharing post:", error);
-        }
-    }, [id]);
+    const handleSharePost = useCallback(() => {
+        share({ message: `https://nextvibe.io/u/post/${id}` });
+    }, [id, share]);
 
     const toggleLike = useCallback(async () => {
         if (!post || likingRef.current) return;
@@ -392,10 +387,14 @@ export default function PostDetailsScreen() {
                             <AvatarWithFrame avatarUrl={post.avatar} size={42} isOg={post.is_og} ogEdition={post.og_edition} invitedCount={post.invited_count} />
                         </TouchableOpacity>
                         <View style={{ flex: 1, marginLeft: 12 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                            <TouchableOpacity
+                                style={{ flexDirection: "row", alignItems: "center", alignSelf: "flex-start" }}
+                                hitSlop={{ top: 12, bottom: 12, right: 8 }}
+                                onPress={() => router.push({ pathname: "/user-profile", params: { id: post.user_id } })}
+                            >
                                 <Text style={[s.username, { color: theme.textPrimary }]} numberOfLines={1}>{post.username}</Text>
                                 <UserBadges official={post.official} seekerVerified={post.seeker_verified} isLooped isVisible haveModal={false} isStatic={false} size={16} />
-                            </View>
+                            </TouchableOpacity>
                         </View>
                         <View style={{ flexDirection: "row", alignItems: "center" }}>
                             {collectState !== null && !post.is_luma_event && (
@@ -619,6 +618,8 @@ export default function PostDetailsScreen() {
                     theme={theme}
                 />
             )}
+
+            <ShareTouchBlocker active={isSharing} />
         </View>
     );
 };
