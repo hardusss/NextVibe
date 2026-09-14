@@ -22,7 +22,7 @@ def trigger_push_and_cache(sender, instance, created, **kwargs):
             body_text = instance.post.about
 
         elif instance.comment and instance.notification_type in ['comment_like', 'comment_reply']:
-            body_text = instance.comment.text 
+            body_text = instance.comment.content
             
         elif instance.notification_type == 'follow':
             body_text = "Check out their profile!"
@@ -57,12 +57,16 @@ def trigger_push_and_cache(sender, instance, created, **kwargs):
                 title = f"Announcement: {instance.post.about if instance.post and instance.post.about else 'Event'}"
                 body = instance.text_preview
 
-            send(
-                token=token,
-                title=title, 
-                body=body,
-                link="nextvibe://transactions" if instance.notification_type == 'revived_transaction' else "nextvibe://notifications"
-            )
+            try:
+                send(
+                    token=token,
+                    title=title,
+                    body=body,
+                    link="nextvibe://transactions" if instance.notification_type == 'revived_transaction' else "nextvibe://notifications"
+                )
+            except Exception as error:
+                # A failed push must never fail the request that created the notification.
+                logger.warning("Push send failed for user %s: %s", instance.recipient.user_id, error)
 
 
 @receiver(post_save, sender=User)

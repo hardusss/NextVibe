@@ -278,22 +278,27 @@ export default function PostDetailsScreen() {
     const handleSendComment = async () => {
         if (!commentText.trim() || !post?.is_comments_enabled) return;
 
-        if (replyingTo === null) {
-            const res = await createComment(commentText, post.post_id);
-            setComments((p) => [res, ...p]);
-        } else {
-            const isReply = "reply_id" in replyingTo;
-            const commentId = isReply
-                ? (comments.find((c) => c.replies.some((r) => r.reply_id === (replyingTo as Reply).reply_id))?.id ?? (replyingTo as Reply).reply_id)
-                : (replyingTo as Comment).id;
+        try {
+            if (replyingTo === null) {
+                const res = await createComment(commentText, post.post_id);
+                setComments((p) => [res, ...p]);
+            } else {
+                const isReply = "reply_id" in replyingTo;
+                const commentId = isReply
+                    ? (comments.find((c) => c.replies.some((r) => r.reply_id === (replyingTo as Reply).reply_id))?.id ?? (replyingTo as Reply).reply_id)
+                    : (replyingTo as Comment).id;
 
-            const res = await createCommentReply(commentText, commentId);
-            if (res) {
-                setComments((p) => p.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, res] } : c));
+                const res = await createCommentReply(commentText, commentId);
+                if (res) {
+                    setComments((p) => p.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, res] } : c));
+                }
+                setReplyingTo(null);
             }
-            setReplyingTo(null);
+            setCommentText("");
+        } catch {
+            // Keep the drafted text so the user can retry.
+            setToastConfig({ visible: true, message: "Couldn't send. Try again.", isSuccess: false });
         }
-        setCommentText("");
     };
 
     const handleRequestToAttend = async () => {

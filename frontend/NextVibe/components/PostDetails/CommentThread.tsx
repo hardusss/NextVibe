@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { LayoutAnimation, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Heart, ChevronDown, ChevronUp } from "lucide-react-native";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
@@ -160,6 +160,17 @@ export const CommentItem: React.FC<CommentProps> = ({
         }
         return 0;
     });
+
+    // When a reply is added while this thread is mounted (the user just sent one),
+    // reveal the tail of the list so they see it land instead of a count bump.
+    const prevTotal = useRef(total);
+    useEffect(() => {
+        if (total > prevTotal.current) {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setVisibleReplies(total);
+        }
+        prevTotal.current = total;
+    }, [total]);
 
     const isLong = item.content.length > TRUNCATE_AT;
     const allShown = visibleReplies >= total;

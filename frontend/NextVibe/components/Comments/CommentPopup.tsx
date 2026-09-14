@@ -16,6 +16,7 @@ import {
     Pressable,
     StatusBar,
     useColorScheme,
+    Alert,
 } from 'react-native';
 import getComments from '@/src/api/get.comments';
 import { Heart, ChevronDown, ChevronUp, X, MessageSquareOff, MessageSquare, ArrowUp } from 'lucide-react-native';
@@ -235,34 +236,39 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
     const handleSendComment = async () => {
         if (!commentText.trim() || !isCommentsEnabled) return;
 
-        if (replyingTo === null) {
-            const response = await createComment(commentText, post_id);
-            setCommentText('');
-            setComments(prev => [response, ...prev]);
-        } else {
-            const commentId =
-                'id' in replyingTo
-                    ? replyingTo.id
-                    : (findParentComment(replyingTo.reply_id)?.id || replyingTo.reply_id);
+        try {
+            if (replyingTo === null) {
+                const response = await createComment(commentText, post_id);
+                setCommentText('');
+                setComments(prev => [response, ...prev]);
+            } else {
+                const commentId =
+                    'id' in replyingTo
+                        ? replyingTo.id
+                        : (findParentComment(replyingTo.reply_id)?.id || replyingTo.reply_id);
 
-            const response = await createCommentReply(commentText, commentId);
-            if (response) {
-                let newTotal = 0;
-                setComments(prev =>
-                    prev.map(c => {
-                        if (c.id === commentId) {
-                            const updated = [...(c.replies || []), response];
-                            newTotal = updated.length;
-                            return { ...c, replies: updated };
-                        }
-                        return c;
-                    })
-                );
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setExpandedComments(prev => ({ ...prev, [commentId]: newTotal }));
+                const response = await createCommentReply(commentText, commentId);
+                if (response) {
+                    let newTotal = 0;
+                    setComments(prev =>
+                        prev.map(c => {
+                            if (c.id === commentId) {
+                                const updated = [...(c.replies || []), response];
+                                newTotal = updated.length;
+                                return { ...c, replies: updated };
+                            }
+                            return c;
+                        })
+                    );
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setExpandedComments(prev => ({ ...prev, [commentId]: newTotal }));
+                }
+                setCommentText('');
+                setReplyingTo(null);
             }
-            setCommentText('');
-            setReplyingTo(null);
+        } catch {
+            // Keep the drafted text so the user can retry.
+            Alert.alert("Couldn't send", 'Your comment was not sent. Please try again.');
         }
     };
 
