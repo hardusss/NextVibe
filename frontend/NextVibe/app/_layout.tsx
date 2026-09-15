@@ -349,7 +349,8 @@ export default function RootLayout() {
         const interceptor = axios.interceptors.response.use(
             (res) => res,
             (error) => {
-                if (error.response?.status === 429) {
+                // The IRL daily tap limit is a 429 too, but the tap sheet explains it.
+                if (error.response?.status === 429 && error.response?.data?.code !== 'IRL_DAILY_LIMIT') {
                     setToastMessage("You exceeded the request limit!");
                     setVisible(true);
                 }

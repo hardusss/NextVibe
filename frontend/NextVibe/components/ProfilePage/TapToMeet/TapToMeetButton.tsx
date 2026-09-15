@@ -14,6 +14,7 @@ import { useActiveCheckin } from "@/hooks/useActiveCheckin";
 import { getActiveCheckins, ActiveEvent } from "@/src/api/active.checkin";
 import { resolveTapMode } from "@/src/utils/resolveTapMode";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
+import { useSheetBackHandler } from "@/hooks/useSheetBackHandler";
 
 /**
  * Tap to Meet — the profile's primary action.
@@ -36,6 +37,7 @@ export function TapToMeetButton() {
     const chooserRef = useRef<BottomSheetModal>(null);
     const [busy, setBusy] = useState(false);
     const [choices, setChoices] = useState<ActiveEvent[]>([]);
+    const [chooserOpen, setChooserOpen] = useState(false);
     const { activeEvents } = useActiveCheckin();
 
     const disabled = !Device.isDevice;
@@ -84,6 +86,8 @@ export function TapToMeetButton() {
             router.push("/event-nfc-share?mode=irl" as any);
         }
     }, [busy, disabled, activeEvents, openForEvent, router]);
+
+    useSheetBackHandler(chooserOpen, () => chooserRef.current?.dismiss());
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -134,6 +138,8 @@ export function TapToMeetButton() {
             <BottomSheetModal
                 ref={chooserRef}
                 index={0}
+                onChange={(index) => setChooserOpen(index >= 0)}
+                onDismiss={() => setChooserOpen(false)}
                 enableDynamicSizing
                 backdropComponent={renderBackdrop}
                 backgroundStyle={{ backgroundColor: sheetBg }}

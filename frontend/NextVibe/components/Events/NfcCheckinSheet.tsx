@@ -1,11 +1,12 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
-    StyleSheet, Text, View, useColorScheme, FlatList,
+    StyleSheet, Text, View, useColorScheme,
     ActivityIndicator, Platform,
 } from "react-native";
 import {
     BottomSheetBackdrop,
     BottomSheetBackdropProps,
+    BottomSheetFlatList,
     BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
@@ -28,6 +29,7 @@ import { describeProximityError } from '@/src/proximity/errors';
 import haptics from '@/src/utils/haptics';
 import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
+import { useSheetBackHandler } from '@/hooks/useSheetBackHandler';
 import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
 import TapQrCode from '@/components/Proximity/TapQrCode';
 import HowToTapCard from '@/components/Proximity/HowToTapCard';
@@ -218,6 +220,11 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
         stopPolling();
         stopAutoRenewal();
     }, [stopPolling, stopAutoRenewal]);
+
+    useSheetBackHandler(isOpen, () => {
+        cleanup();
+        bottomSheetModalRef.current?.dismiss();
+    });
 
     const retryStart = () => {
         if (postId === null) return;
@@ -434,9 +441,9 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                         </Text>
                     </Animated.View>
                 ) : (
-                    <FlatList
+                    <BottomSheetFlatList
                         data={checkins}
-                        keyExtractor={item => item.user_id.toString()}
+                        keyExtractor={(item: any) => item.user_id.toString()}
                         renderItem={renderCheckin}
                         contentContainerStyle={{ paddingBottom: 40, paddingTop: 4 }}
                         showsVerticalScrollIndicator={false}

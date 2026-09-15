@@ -40,6 +40,10 @@ export function useProximityToken() {
     // Bumped by start/stop so a renewal already in flight can't reschedule
     // itself after auto-renewal was stopped.
     const renewalGenerationRef = useRef(0);
+    // Each request wins only if nothing newer was asked for meanwhile: the
+    // organizer sheet can be closed for event A and reopened for event B
+    // while A's code is still in flight.
+    const requestIdRef = useRef(0);
 
     const clearTimers = useCallback(() => {
         if (renewalTimerRef.current) {
@@ -93,6 +97,7 @@ export function useProximityToken() {
         interactionType: InteractionType,
         eventId?: number
     ): Promise<string | null> => {
+        const myRequest = ++requestIdRef.current;
         try {
             setIsGenerating(true);
             setError(null);
@@ -100,14 +105,14 @@ export function useProximityToken() {
             currentParamsRef.current = { interactionType, eventId };
 
             const result = await generateProximityToken(interactionType, eventId);
-            if (!mountedRef.current) return null;
+            if (!mountedRef.current || myRequest !== requestIdRef.current) return null;
             const newUrl = applyResult(result, { interactionType, eventId });
             setIsGenerating(false);
             startCountdown();
             return newUrl;
         } catch (e: any) {
             walletLogger.error(WalletTag.PROXIMITY, 'Token generation failed', e);
-            if (!mountedRef.current) return null;
+            if (!mountedRef.current || myRequest !== requestIdRef.current) return null;
             setError(e?.response?.data?.error || e?.message || 'Token generation failed');
             setErrorObject(e);
             setIsGenerating(false);
@@ -131,9 +136,10 @@ export function useProximityToken() {
 
             renewingRef.current = true;
             setIsRenewing(true);
+            const myRequest = ++requestIdRef.current;
             try {
                 const result = await generateProximityToken(params.interactionType, params.eventId);
-                if (!current()) return;
+                if (!current() || myRequest !== requestIdRef.current) return;
                 const newUrl = applyResult(result, params);
                 onNewUrlRef.current?.(newUrl);
                 scheduleRenewal(RENEWAL_INTERVAL_MS);
@@ -169,6 +175,8 @@ export function useProximityToken() {
 
     const stopAutoRenewal = useCallback(() => {
         renewalGenerationRef.current++;
+        // Anything still in flight belongs to the session being stopped.
+        requestIdRef.current++;
         clearTimers();
         onNewUrlRef.current = null;
     }, [clearTimers]);

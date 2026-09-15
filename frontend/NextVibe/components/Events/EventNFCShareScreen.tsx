@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform, ScrollView, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Camera, CheckCircle2, Radio, ShieldX, WifiOff } from 'lucide-react-native';
 import LottieView from 'lottie-react-native';
@@ -34,7 +35,9 @@ import { useShareChannel } from '@/hooks/useShareChannel';
 
 type Phase = 'starting' | 'live' | 'failed' | 'success';
 
-type ConnectionEntry = { id: number; user: MeetUser & { user_id?: number }; points: number };
+// Keyed across every mode: a meet can land as an IRL tap or under any event,
+// whatever this screen was opened for (the other person's code decides).
+type ConnectionEntry = { key: string; user: MeetUser & { user_id?: number }; points: number };
 
 const POLL_MS = 2500;
 const FAST_POLL_MS = 1000;
@@ -42,11 +45,9 @@ const FAST_POLL_MS = 1000;
 const FAST_POLL_WINDOW_MS = 25_000;
 // How long "they picked you up" stays on screen without a confirmation.
 const READ_NOTICE_MS = 20_000;
-// After someone reads this phone, hand out a fresh code shortly after. The
-// native broadcaster reports one read per phone per code, so without a new
-// code a second tap by the same person (after "Not now") went unnoticed here.
-const RENEW_AFTER_READ_MS = 1500;
-const MIN_READ_RENEW_GAP_MS = 10_000;
+// The baseline decides what counts as a new meet — worth a couple of retries
+// on shaky venue Wi-Fi before going live.
+const BASELINE_RETRY_DELAYS_MS = [800, 2000];
 
 /**
  * Tap to Meet. This phone both broadcasts its tap code (Bluetooth, plus an
@@ -71,7 +72,7 @@ export default function EventNFCShareScreen() {
     const sessionRef = useRef(0);
     const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pollInFlightRef = useRef(false);
-    const knownIdsRef = useRef<number[] | null>(null);
+    const knownIdsRef = useRef<string[] | null>(null);
     const fastPollUntilRef = useRef(0);
     const pickedUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -99,31 +100,31 @@ export default function EventNFCShareScreen() {
     }, []);
 
     const readEntries = (data: any): ConnectionEntry[] => {
-        if (effectiveIrlRef.current) {
-            return (data?.irl_taps || []).map((t: any) => ({
-                id: t.id,
-                user: {
-                    user_id: t.user_id,
-                    username: t.username,
-                    avatar: t.avatar,
-                    is_official: t.is_official,
-                    is_seeker_verified: t.is_seeker_verified,
-                },
-                points: t.points || 1,
-            }));
-        }
-        const event = (data?.events || []).find((e: any) => e.event_id === effectiveEventIdRef.current);
-        return (event?.connections || []).map((c: any) => ({
-            id: c.user_id,
+        const irl: ConnectionEntry[] = (data?.irl_taps || []).map((t: any) => ({
+            key: `irl:${t.id}`,
             user: {
-                user_id: c.user_id,
-                username: c.username,
-                avatar: c.avatar,
-                is_official: c.is_official,
-                is_seeker_verified: c.is_seeker_verified,
+                user_id: t.user_id,
+                username: t.username,
+                avatar: t.avatar,
+                is_official: t.is_official,
+                is_seeker_verified: t.is_seeker_verified,
             },
-            points: c.rep_received || 2,
+            points: t.points || 1,
         }));
+        const events: ConnectionEntry[] = (data?.events || []).flatMap((e: any) =>
+            (e?.connections || []).map((c: any) => ({
+                key: `ev:${e.event_id}:${c.user_id}`,
+                user: {
+                    user_id: c.user_id,
+                    username: c.username,
+                    avatar: c.avatar,
+                    is_official: c.is_official,
+                    is_seeker_verified: c.is_seeker_verified,
+                },
+                points: c.rep_received || 2,
+            }))
+        );
+        return [...irl, ...events];
     };
 
     const fetchEntries = async (): Promise<ConnectionEntry[]> => {
@@ -148,7 +149,7 @@ export default function EventNFCShareScreen() {
         setSuccessUser(entry.user);
         setSuccessPoints(entry.points);
         setPhase('success');
-        walletLogger.info(WalletTag.PROXIMITY, 'Meet confirmed', { irl: effectiveIrlRef.current });
+        walletLogger.info(WalletTag.PROXIMITY, 'Meet confirmed', { kind: entry.key.split(':')[0] });
     }, [stopPolling, stopAutoRenewal]);
 
     const pollOnce = useCallback(async (session: number) => {
@@ -157,16 +158,17 @@ export default function EventNFCShareScreen() {
         try {
             const entries = await fetchEntries();
             if (!mountedRef.current || session !== sessionRef.current) return;
-            const ids = entries.map((e) => e.id);
+            const keys = entries.map((e) => e.key);
             if (knownIdsRef.current === null) {
                 // Baseline wasn't available at start — establish it now instead
                 // of treating every old connection as a new meet.
-                knownIdsRef.current = ids;
+                knownIdsRef.current = keys;
                 return;
             }
-            const fresh = entries.find((e) => !knownIdsRef.current!.includes(e.id));
+            const known = new Set(knownIdsRef.current);
+            const fresh = entries.find((e) => !known.has(e.key));
             if (fresh) {
-                knownIdsRef.current = [...knownIdsRef.current, fresh.id];
+                knownIdsRef.current = keys;
                 finishWithMeet(fresh);
             }
         } catch {
@@ -189,7 +191,6 @@ export default function EventNFCShareScreen() {
 
     // ── Broadcast ──
 
-    const lastReadRenewAtRef = useRef(0);
     const onPickedUp = useCallback(() => {
         if (!mountedRef.current) return;
         haptics.impact('rigid');
@@ -200,13 +201,7 @@ export default function EventNFCShareScreen() {
             if (mountedRef.current) setPickedUp(false);
         }, READ_NOTICE_MS);
         schedulePoll(sessionRef.current, 300);
-        if (Date.now() - lastReadRenewAtRef.current > MIN_READ_RENEW_GAP_MS) {
-            lastReadRenewAtRef.current = Date.now();
-            setTimeout(() => {
-                if (mountedRef.current) renewNow();
-            }, RENEW_AFTER_READ_MS);
-        }
-    }, [schedulePoll, renewNow]);
+    }, [schedulePoll]);
 
     const shareChannel = useShareChannel();
     const broadcast = useProximityBroadcast({ onRead: onPickedUp, channels: shareChannel.broadcastChannels });
@@ -246,10 +241,15 @@ export default function EventNFCShareScreen() {
         }
         syncEffectiveMode();
 
-        try {
-            knownIdsRef.current = (await fetchEntries()).map((e) => e.id);
-        } catch {
-            knownIdsRef.current = null;
+        knownIdsRef.current = null;
+        for (let attempt = 0; attempt <= BASELINE_RETRY_DELAYS_MS.length; attempt++) {
+            try {
+                knownIdsRef.current = (await fetchEntries()).map((e) => e.key);
+                break;
+            } catch {
+                if (attempt === BASELINE_RETRY_DELAYS_MS.length || !alive()) break;
+                await new Promise((resolve) => setTimeout(resolve, BASELINE_RETRY_DELAYS_MS[attempt]));
+            }
         }
         if (!alive()) return;
 
@@ -275,20 +275,27 @@ export default function EventNFCShareScreen() {
         // The screen listens with the normal (close-range) sensitivity. The
         // looser "active" mode (−62 dBm) picked up phones 30 cm+ away and
         // prompted several nearby phones at once.
-        useProximityPrompt.getState().setShareScreenActive(true);
         warmUpLocation();
         if (eventId || isIrl) startSession();
 
         return () => {
             mountedRef.current = false;
             sessionRef.current++;
-            useProximityPrompt.getState().setShareScreenActive(false);
             stopPolling();
             stopAutoRenewal();
             if (pickedUpTimerRef.current) clearTimeout(pickedUpTimerRef.current);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [eventId, isIrl]);
+
+    // The prompt hands its success moment to this screen only while this
+    // screen can actually show it: live, and not covered by another screen.
+    const isFocused = useIsFocused();
+    useEffect(() => {
+        if (phase !== 'live' || !isFocused) return;
+        useProximityPrompt.getState().setShareScreenActive(true);
+        return () => useProximityPrompt.getState().setShareScreenActive(false);
+    }, [phase, isFocused]);
 
     // Timers are paused in the background: refresh the code and check for a
     // meet that happened meanwhile as soon as the app is back.
@@ -493,7 +500,9 @@ export default function EventNFCShareScreen() {
                 {broadcast.broadcastError && shareChannel.channel === 'bluetooth' && !readiness.issues.some((i) => i.id.startsWith('bluetooth')) && (
                     <Text style={[styles.footnote, { color: mutedColor }]}>
                         {broadcast.broadcastError.code === 'unsupported'
-                            ? "This phone can't broadcast over Bluetooth — others can still tap you if their phone reads NFC, or you can pick up theirs."
+                            ? (Platform.OS === 'android' && shareChannel.canChoose
+                                ? "This phone can't broadcast over Bluetooth — switch to NFC above, or pick up their phone instead."
+                                : "This phone can't broadcast over Bluetooth — ask them to open Tap to Meet so your phone picks up theirs.")
                             : 'Bluetooth broadcasting hit a snag. If nothing happens, turn Bluetooth off and on again.'}
                     </Text>
                 )}

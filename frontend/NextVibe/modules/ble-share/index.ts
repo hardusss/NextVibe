@@ -15,7 +15,7 @@ export type BluetoothAuthorization = 'granted' | 'denied' | 'restricted' | 'notD
 export type NativeProximityError = { code: string; message: string };
 
 const emitter = new EventEmitter<{
-  onBleRead: () => void;
+  onBleRead: (event: { deviceId?: string }) => void;
   onBleDiscovered: (event: { url: string; rssi?: number }) => void;
   onBluetoothStateChanged: (event: { state: BluetoothState }) => void;
   onBroadcastError: (event: NativeProximityError) => void;
@@ -96,8 +96,11 @@ export function addBluetoothStateListener(
 
 // ── Events ──
 
-/** Fires on the broadcaster when a nearby scanner reads the payload */
-export function addBleReadListener(listener: () => void): EventSubscription {
+/**
+ * Fires on the broadcaster for every completed read by a nearby scanner.
+ * `deviceId` identifies the reader (absent on older binaries).
+ */
+export function addBleReadListener(listener: (event: { deviceId?: string }) => void): EventSubscription {
   return emitter.addListener('onBleRead', listener);
 }
 

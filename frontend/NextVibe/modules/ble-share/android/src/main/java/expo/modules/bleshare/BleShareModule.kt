@@ -33,7 +33,6 @@ import android.os.SystemClock
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * BLE proximity sharing: a GATT server + advertisement that serves the current
@@ -95,9 +94,7 @@ class BleShareModule : Module() {
     private var advertiser: BluetoothLeAdvertiser? = null
     private var isAdvertising = false
     private var serviceReady = false
-    // Payload hash each central was last reported for — one onBleRead per
-    // device per code, not per reconnect.
-    private val notifiedPayloadByDevice = ConcurrentHashMap<String, Int>()
+
 
     private var stateReceiver: BroadcastReceiver? = null
 
@@ -346,12 +343,12 @@ class BleShareModule : Module() {
                 return
             }
 
-            // Long values arrive as several reads with growing offsets.
+            // Long values arrive as several reads with growing offsets. Every
+            // completed read is reported with the reader's address; JS decides
+            // what counts as a new tap.
             if (offset != 0) return
             val address = device.address ?: return
-            val payloadHash = payload.contentHashCode()
-            if (notifiedPayloadByDevice.put(address, payloadHash) == payloadHash) return
-            emit("onBleRead")
+            emit("onBleRead", mapOf("deviceId" to address))
         }
     }
 
@@ -454,7 +451,6 @@ class BleShareModule : Module() {
         }
         gattServer = null
         serviceReady = false
-        notifiedPayloadByDevice.clear()
     }
 
     // ═══════════════════════════════════════

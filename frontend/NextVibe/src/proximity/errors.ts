@@ -98,7 +98,7 @@ function fromKind(kind: ProximityErrorKind, stage: ProximityStage, server?: stri
                     { tone: 'warning' });
         case 'notAtVenue':
             return info(kind, "You're outside the event area",
-                stage === 'checkin'
+                stage === 'checkin' || /check in/i.test(server ?? '')
                     ? 'Check-in only works at the venue. Move closer and try again.'
                     : 'Networking only works at the venue. Move closer and try again.',
                 { tone: 'warning', retryable: true });

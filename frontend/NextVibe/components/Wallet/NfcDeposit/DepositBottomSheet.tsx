@@ -24,6 +24,7 @@ import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
 import { useProximityReadiness } from '@/hooks/useProximityReadiness';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
 import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import { useSheetBackHandler } from '@/hooks/useSheetBackHandler';
 import TapQrCode from '@/components/Proximity/TapQrCode';
 import { useShareChannel } from '@/hooks/useShareChannel';
 import haptics from '@/src/utils/haptics';
@@ -74,6 +75,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
     const [selectedToken, setSelectedToken] = useState(TOKENS.SOL.symbol);
     const [useSolanaPay, setUseSolanaPay] = useState(false);
 
+    const [isOpen, setIsOpen] = useState(false);
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastIsSuccess, setToastIsSuccess] = useState(true);
@@ -95,8 +97,10 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
     };
 
     // Solana Pay URIs are for wallets reading the NFC tag (Android only).
-    const solanaPayMode = Platform.OS === 'android' && useSolanaPay;
     const shareChannel = useShareChannel();
+    // Android without NFC can't hold a Solana Pay tag for a wallet to read.
+    const nfcShareAvailable = shareChannel.canChoose;
+    const solanaPayMode = Platform.OS === 'android' && useSolanaPay && nfcShareAvailable;
     const channels = solanaPayMode ? 'nfc' : shareChannel.broadcastChannels;
     const qrMode = !solanaPayMode && shareChannel.channel === 'qr';
     const broadcast = useProximityBroadcast({ onRead: handleRead, channels });
@@ -127,6 +131,12 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
     const stopHceTransaction = () => {
         broadcast.stop();
     };
+
+    const dismissSheet = () => {
+        stopHceTransaction();
+        bottomSheetModalRef.current?.dismiss();
+    };
+    useSheetBackHandler(isOpen, dismissSheet);
 
     useImperativeHandle(ref, () => ({
         present: () => {
@@ -194,7 +204,11 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
             backdropComponent={CustomBackdrop}
             backgroundStyle={{ backgroundColor: bg }}
             handleIndicatorStyle={{ backgroundColor: handleColor, width: 36 }}
-            onDismiss={stopHceTransaction}
+            onChange={(index) => setIsOpen(index >= 0)}
+            onDismiss={() => {
+                setIsOpen(false);
+                stopHceTransaction();
+            }}
         >
             <BottomSheetView style={[styles.container, { backgroundColor: bg }]}>
                 <Web3Toast visible={toastVisible} message={toastMessage} isSuccess={toastIsSuccess} onHide={() => setToastVisible(false)} />
@@ -264,7 +278,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                 </View>
 
                 {/* Solana Pay toggle — Android only: iPhones can't emulate the NFC tag a wallet reads */}
-                {Platform.OS === 'android' && (
+                {Platform.OS === 'android' && nfcShareAvailable && (
                 <TouchableOpacity
                     onPress={() => !isBroadcasting && setUseSolanaPay(v => !v)}
                     activeOpacity={0.7}

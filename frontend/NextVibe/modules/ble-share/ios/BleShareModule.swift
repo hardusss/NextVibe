@@ -266,14 +266,9 @@ public class BleShareModule: Module {
 private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
     weak var module: BleShareModule?
 
-    // Payload each central was last reported for during this broadcast session:
-    // one onBleRead per central per code — a neighbour that keeps re-reading
-    // the same code is not a new tap.
-    private var notifiedPayloads: [UUID: Data] = [:]
-
-    func resetBroadcastSession() {
-        notifiedPayloads.removeAll()
-    }
+    // Every completed read is reported with the reader's id; JS decides what
+    // counts as a new tap (a phone left next to this one re-reads every ~15s).
+    func resetBroadcastSession() {}
 
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         module?.peripheralStateDidChange(peripheral.state)
@@ -313,12 +308,7 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
         // only the first one counts as "someone read us".
         guard offset == 0 else { return }
 
-        let centralId = request.central.identifier
-        if notifiedPayloads[centralId] == value {
-            return
-        }
-        notifiedPayloads[centralId] = value
-        module.sendEvent("onBleRead")
+        module.sendEvent("onBleRead", ["deviceId": request.central.identifier.uuidString])
     }
 }
 

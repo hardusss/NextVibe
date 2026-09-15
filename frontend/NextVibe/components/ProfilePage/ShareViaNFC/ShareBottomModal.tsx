@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, forwardRef, useImperativeHandle, useState, useEffect } from 'react';
 import {
     Text, StyleSheet, View, useColorScheme,
-    TouchableOpacity, Animated, StatusBar, Modal, Platform
+    TouchableOpacity, Animated, StatusBar, Platform
 } from 'react-native';
 import {
     BottomSheetModal,
@@ -19,6 +19,7 @@ import haptics from '@/src/utils/haptics';
 import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
 import { useProximityReadiness } from '@/hooks/useProximityReadiness';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
+import { useSheetBackHandler } from '@/hooks/useSheetBackHandler';
 import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
 import TapQrCode from '@/components/Proximity/TapQrCode';
 import { useShareChannel } from '@/hooks/useShareChannel';
@@ -38,14 +39,10 @@ const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
     const BOTTOM = 70;
     const CORNER = 65;
 
+    // A React Native <Modal> here swallowed every touch for the ~1.4s the glow
+    // played, so Done and Copy link stopped responding after each read.
     return (
-        <Modal
-            visible
-            transparent
-            animationType="none"
-            statusBarTranslucent
-            pointerEvents="none"
-        >
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
             <Animated.View
                 pointerEvents="none"
                 style={[StyleSheet.absoluteFillObject, { opacity }]}
@@ -109,7 +106,7 @@ const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
                     }}
                 />
             </Animated.View>
-        </Modal>
+        </View>
     );
 };
 
@@ -288,9 +285,15 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         bottomSheetModalRef.current?.dismiss();
     };
 
+    useSheetBackHandler(isOpen, handleClose);
+
     return (
         <>
-            {showGlow && <NeonGlowOverlay opacity={glowOpacity} />}
+            {showGlow && (
+                <View style={styles.glowLayer} pointerEvents="none">
+                    <NeonGlowOverlay opacity={glowOpacity} />
+                </View>
+            )}
 
             <BottomSheetModal
                 ref={bottomSheetModalRef}
@@ -441,6 +444,11 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 });
 
 const styles = StyleSheet.create({
+    glowLayer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 20,
+        elevation: 20,
+    },
     contentContainer: {
         flex: 1,
         alignItems: 'center',

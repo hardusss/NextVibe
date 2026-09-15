@@ -11,7 +11,12 @@ import { addNfcReadListener, getNfcState, startSharing, stopSharing } from '@/mo
 import { ensureBluetoothPermissions, type BluetoothPermissionStatus } from '@/src/utils/bleScanController';
 import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 
+// One tap can produce a couple of reads (NFC select + read, BLE retries).
 const READ_DEBOUNCE_MS = 2000;
+// A phone left next to this one re-reads it every ~15s. Reads from the same
+// phone keep extending this window, so only a phone that went quiet for a
+// while (moved away and came back) counts as a new tap.
+const SAME_DEVICE_QUIET_MS = 25_000;
 
 /**
  * "all"       — Bluetooth plus the NFC tag on Android.
@@ -57,11 +62,17 @@ export function useProximityBroadcast({ onRead, channels = 'all' }: Options = {}
     // What is actually running natively, so switching only stops what's on.
     const nativeRef = useRef({ ble: false, nfc: false });
     const lastReadRef = useRef(0);
+    const deviceReadsRef = useRef(new Map<string, number>());
     const onReadRef = useRef(onRead);
     onReadRef.current = onRead;
 
-    const handleRead = useCallback((source: 'BLE' | 'NFC') => {
+    const handleRead = useCallback((source: 'BLE' | 'NFC', deviceId?: string) => {
         const now = Date.now();
+        if (deviceId) {
+            const previous = deviceReadsRef.current.get(deviceId);
+            deviceReadsRef.current.set(deviceId, now);
+            if (previous !== undefined && now - previous < SAME_DEVICE_QUIET_MS) return;
+        }
         if (now - lastReadRef.current < READ_DEBOUNCE_MS) return;
         lastReadRef.current = now;
         walletLogger.info(WalletTag.PROXIMITY, 'Payload read by a nearby phone', { source });
@@ -72,7 +83,7 @@ export function useProximityBroadcast({ onRead, channels = 'all' }: Options = {}
     useEffect(() => {
         if (!isActive) return;
         const subs = [
-            addBleReadListener(() => handleRead('BLE')),
+            addBleReadListener((event) => handleRead('BLE', event?.deviceId)),
             addBroadcastErrorListener((error) => {
                 walletLogger.warn(WalletTag.PROXIMITY, 'Broadcast error', error);
                 setBroadcastError(error);
@@ -150,6 +161,7 @@ export function useProximityBroadcast({ onRead, channels = 'all' }: Options = {}
         activeRef.current = false;
         urlRef.current = null;
         stopNative({ ble: true, nfc: true });
+        deviceReadsRef.current.clear();
         setIsActive(false);
         setLastReadAt(null);
     }, [stopNative]);

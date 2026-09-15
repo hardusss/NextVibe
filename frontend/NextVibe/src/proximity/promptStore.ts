@@ -332,7 +332,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             if (!repeat) {
                 // First result for this event (or it changed, e.g. the organizer
                 // approved them since) — open the check-in screen.
-                haptics.notification(verified ? 'success' : 'error');
+                // The check-in screen plays the success/error haptic itself.
                 block(currentKey, DUPLICATE_MS);
                 currentKey = null;
                 set({ ...INITIAL, navigation: { pathname: '/event-checkin', params } });
@@ -398,6 +398,12 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
                 const user: any = await getUserDetail(payload.userId);
                 if (myRun !== runId) return;
                 clearLoadingTimer();
+                const repeatKey = `profile:${payload.userId}`;
+                if (get().source === 'ble' && dismissedTooOften(repeatKey)) {
+                    quietly(REPEAT_QUIET_MS);
+                    return;
+                }
+                currentRepeatKey = repeatKey;
                 haptics.impact('rigid');
                 set({
                     visible: true,
@@ -434,7 +440,8 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
 
             // Old installs' formats open their original screens.
             if (payload.kind === 'legacy') {
-                block(key, DUPLICATE_MS);
+                // Bluetooth re-reads a phone left nearby every ~15s.
+                block(key, source === 'ble' ? 60_000 : DUPLICATE_MS);
                 set({ navigation: { pathname: payload.path } });
                 return true;
             }
@@ -493,7 +500,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             }
             if (kind === 'profile' && payload.kind === 'profile') {
                 set({ navigation: { pathname: `/u/${payload.userId}` } });
-                block(currentKey, AFTER_SUCCESS_MS);
+                block(currentKey, DUPLICATE_MS);
                 currentKey = null;
                 set({ ...INITIAL });
                 return;
@@ -501,7 +508,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             if ((kind === 'payment' && payload.kind === 'payment') || (kind === 'post' && payload.kind === 'post')) {
                 const pathname = payload.kind === 'payment' ? payload.path : `/u/post/${payload.postId}`;
                 set({ navigation: { pathname } });
-                block(currentKey, AFTER_SUCCESS_MS);
+                block(currentKey, DUPLICATE_MS);
                 currentKey = null;
                 set({ ...INITIAL });
                 return;
@@ -554,10 +561,11 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
         },
 
         retry: () => {
-            const { payload, errorStage } = get();
+            const { payload, errorStage, error } = get();
             if (!payload) return;
-            // "Outside the event area" can only improve with a new GPS fix.
-            freshLocationNext = true;
+            // "Outside the event area" can only improve with a new GPS fix;
+            // other failures (offline, timeout) keep the quick cached one.
+            freshLocationNext = !!error && (error.kind === 'notAtVenue' || error.kind.startsWith('location'));
             if (errorStage === 'confirm') {
                 get().confirm();
                 return;
@@ -604,9 +612,13 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             // Symmetric tap: the other person confirmed first. If this phone is
             // still asking "Meet them?" (or confirming, or showing an error for
             // the same person), there's nothing left to do here.
-            const { visible, phase, peer } = get();
-            if (visible && userId && peer?.user_id === userId && phase !== 'success') {
-                quietly(AFTER_SUCCESS_MS);
+            const { visible, phase, peer, errorStage } = get();
+            const samePerson = !!userId && peer?.user_id === userId && phase !== 'success';
+            // A preview error ("check in to their event first"…) knows no
+            // person — after a meet it only contradicts the success underneath.
+            const staleError = phase === 'error' && errorStage === 'preview';
+            if (visible && (samePerson || staleError)) {
+                quietly(samePerson ? AFTER_SUCCESS_MS : DUPLICATE_MS);
             }
         },
 

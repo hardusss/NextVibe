@@ -121,7 +121,14 @@ export default function EventsScreen() {
 
     const renderEvent = ({ item }: { item: any }) => {
         const mediaUrl = item.media?.[0]?.media_url;
-        const isEnded = (item.luma_event_end_time || item.luma_event_start_time) ? new Date(item.luma_event_end_time || item.luma_event_start_time) < new Date() : false;
+        // Same window the backend uses (is_event_active): the Luma end time, or
+        // 24h after the start when there's no end time.
+        const endsAt = item.luma_event_end_time
+            ? new Date(item.luma_event_end_time).getTime()
+            : item.luma_event_start_time
+                ? new Date(item.luma_event_start_time).getTime() + 24 * 60 * 60 * 1000
+                : null;
+        const isEnded = endsAt !== null && endsAt < Date.now();
 
         return (
             <View style={[styles.eventCard, { backgroundColor: t.card, borderColor: t.border }]}>

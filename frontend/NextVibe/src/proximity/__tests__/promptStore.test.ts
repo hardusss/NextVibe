@@ -5,7 +5,7 @@ jest.mock('@/src/api/proximity.token', () => ({
     previewProximityToken: (...args: unknown[]) => mockPreview(...args),
     verifyProximityToken: (...args: unknown[]) => mockVerify(...args),
 }));
-jest.mock('@/src/api/user.detail', () => ({ __esModule: true, default: jest.fn() }));
+jest.mock('@/src/api/user.detail', () => ({ __esModule: true, default: jest.fn(async () => ({ username: 'carol' })) }));
 jest.mock('@/src/utils/storage', () => ({ storage: { getItem: jest.fn(async () => 'access-token') } }));
 jest.mock('@/src/utils/haptics', () => ({
     __esModule: true,
@@ -227,6 +227,34 @@ describe('promptStore', () => {
         await flush();
         advance(4 * 60_000);
         expect(state().handle(link('tokenJJJ2'), 'nfc')).toBe(true);
+    });
+
+    it('lets a payment link be tapped again right away', async () => {
+        const payment = 'https://nextvibe.io/u/send?amount=1.5&token=SOL&address=Abc';
+        expect(state().handle(payment, 'ble')).toBe(true);
+        expect(state().kind).toBe('payment');
+        await state().confirm();
+        expect(state().takeNavigation()?.pathname).toContain('/u/send');
+
+        advance(4_000);
+        expect(state().handle(payment, 'ble')).toBe(true);
+        expect(state().kind).toBe('payment');
+        state().close();
+    });
+
+    it('stops re-offering a profile that stays next to this phone', async () => {
+        const profile = 'https://nextvibe.io/u/321';
+        for (let i = 0; i < 2; i++) {
+            advance(4_000);
+            expect(state().handle(profile, 'ble')).toBe(true);
+            await flush();
+            expect(state().kind).toBe('profile');
+            state().close();
+        }
+        advance(16_000);
+        state().handle(profile, 'ble');
+        await flush();
+        expect(state().visible).toBe(false);
     });
 
     it('ignores links that are not ours', () => {

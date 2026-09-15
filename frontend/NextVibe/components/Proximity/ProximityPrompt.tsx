@@ -3,6 +3,7 @@ import {
     AccessibilityInfo,
     Animated,
     Easing,
+    Keyboard,
     Linking,
     Modal,
     Platform,
@@ -96,6 +97,9 @@ export default function ProximityPrompt() {
 
     useEffect(() => {
         if (visible) {
+            // The sheet sits above the keyboard's window on iOS — a keyboard
+            // left open (chat, search) would cover its buttons.
+            Keyboard.dismiss();
             setMounted(true);
             translateY.setValue(reduceMotion ? 0 : SHEET_OFFSET);
             Animated.parallel([
@@ -146,8 +150,10 @@ export default function ProximityPrompt() {
                 Linking.openSettings().catch(() => {});
             }
         } else if (action === 'signIn') {
+            // Goes through the store so a cold start finishes its splash
+            // redirect first, instead of being replaced by it.
+            useProximityPrompt.setState({ navigation: { pathname: '/login' } });
             close();
-            router.push('/login' as any);
         }
     };
 
