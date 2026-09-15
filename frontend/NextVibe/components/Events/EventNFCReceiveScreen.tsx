@@ -16,11 +16,13 @@ import Animated, {
 import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
-import * as Location from 'expo-location';
-import { verifyProximityToken, previewProximityToken } from '@/src/api/proximity.token';
 import getUserDetail from '@/src/api/user.detail';
 import haptics from "@/src/utils/haptics";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
+import { safeBack } from "@/src/utils/safeBack";
+import { describeProximityError, ProximityClientError } from "@/src/proximity/errors";
+import { getQuickLocation } from "@/src/proximity/location";
+import { enqueueProximityLink } from "@/src/proximity/linkQueue";
 import { space, colors, type as typeScale } from "@/src/theme/tokens";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
 import EventScreenShell from "@/components/Events/EventScreenShell";
@@ -31,6 +33,11 @@ import MeetSuccess from "@/components/Events/MeetSuccess";
 // confirmation. Nothing is granted to either side before that confirmation.
 type ConnectionState = "idle" | "loading" | "ready" | "locating" | "connecting" | "success" | "error";
 
+/**
+ * Receive screen for the pre-token link format
+ * (`/event-nfc-receive?eventId=…&userId=…`) that old installs may still
+ * broadcast. Token links (`?t=…`) are handed to the shared tap prompt.
+ */
 export default function EventNFCReceiveScreen() {
     const router = useRouter();
     const isDark = useColorScheme() === "dark";
@@ -42,8 +49,6 @@ export default function EventNFCReceiveScreen() {
         mode?: string;
         _source?: string;
         _verified?: string;
-        _preview?: string;
-        _confirmed?: string;
         _earned_points?: string;
         _username?: string;
         _avatar?: string;
@@ -57,6 +62,7 @@ export default function EventNFCReceiveScreen() {
 
     const [state, setState] = useState<ConnectionState>("idle");
     const [message, setMessage] = useState("");
+    const [errorTitle, setErrorTitle] = useState("Connection failed");
     const [earnedPoints, setEarnedPoints] = useState(0);
     const [scannedUser, setScannedUser] = useState<any>(null);
     const [isIrlTap, setIsIrlTap] = useState(irlRequested);
@@ -88,7 +94,21 @@ export default function EventNFCReceiveScreen() {
         transform: [{ scale: pulseScale.value }],
     }));
 
+    const showError = (error: unknown) => {
+        const info = describeProximityError(error, 'confirm');
+        setErrorTitle(info.title);
+        setMessage(info.message);
+        setState("error");
+        haptics.notification('error');
+    };
+
     useEffect(() => {
+        if (proximityToken) {
+            // One receive experience for every tap: the shared prompt.
+            enqueueProximityLink(`/u/e?t=${encodeURIComponent(proximityToken)}`);
+            safeBack(router);
+            return;
+        }
         if (params._verified === "1") {
             setEarnedPoints(params._earned_points ? parseInt(params._earned_points, 10) : 2);
             setScannedUser({
@@ -99,60 +119,18 @@ export default function EventNFCReceiveScreen() {
             });
             setState("success");
             haptics.notification('success');
-        } else if (params._preview === "1" && state === "idle") {
-            // The opening screen already previewed the token — show the
-            // confirmation step, don't grant anything yet.
-            setEarnedPoints(params._earned_points ? parseInt(params._earned_points, 10) : 0);
-            setScannedUser({
-                username: params._username || "Attendee",
-                avatar: params._avatar || null,
-                is_official: params._is_official === "1",
-                is_seeker_verified: params._is_seeker_verified === "1",
-            });
-            setState("ready");
-        } else if (proximityToken && state === "idle") {
-            // Only a flow where the user already confirmed (BLE modal) may
-            // connect straight away; everything else stops at "ready" first.
-            if (params._confirmed === "1") {
-                handleTokenConnect();
-            } else {
-                handleTokenPreview();
-            }
         } else if ((eventId || irlRequested) && scannedUserId && state === "idle") {
-            if (params._confirmed === "1") {
-                handleConnect();
-            } else {
-                handlePeerPreview();
-            }
-        }
-    }, [eventId, scannedUserId, proximityToken, params._verified, params._preview]);
-
-    const handleTokenPreview = async () => {
-        if (!proximityToken) {
+            handlePeerPreview();
+        } else if (state === "idle") {
+            setErrorTitle("Invalid tap");
+            setMessage("This tap link is incomplete. Ask them to tap again.");
             setState("error");
-            setMessage("Invalid token.");
-            return;
         }
-        setState("loading");
-        try {
-            const result = await previewProximityToken(proximityToken);
-            if (result.source === 'irl' || result.interaction_type === 'irl') setIsIrlTap(true);
-            setEarnedPoints(result.earned_points || 0);
-            setScannedUser(result.scanned_user || null);
-            setState("ready");
-        } catch (error: any) {
-            setState("error");
-            setMessage(error?.response?.data?.error || "Failed to load tap details. Please try again.");
-            haptics.notification('error');
-        }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [eventId, scannedUserId, proximityToken, params._verified]);
 
     const handlePeerPreview = async () => {
-        if (!scannedUserId) {
-            setState("error");
-            setMessage("Invalid tap data.");
-            return;
-        }
+        if (!scannedUserId) return;
         setState("loading");
         try {
             const res: any = await getUserDetail(Number(scannedUserId));
@@ -171,78 +149,14 @@ export default function EventNFCReceiveScreen() {
 
     const handleConfirmMeet = () => {
         // EventCta already fires the press haptic.
-        if (proximityToken) {
-            handleTokenConnect();
-        } else {
-            handleConnect();
-        }
-    };
-
-    const handleTokenConnect = async () => {
-        if (!proximityToken) {
-            setState("error");
-            setMessage("Invalid token.");
-            return;
-        }
-        if (inFlightRef.current) return;
-        inFlightRef.current = true;
-
-        try {
-            setState("locating");
-            // Location is best-effort here: IRL taps don't need it at all, and
-            // event taps are rejected server-side when an event requires it.
-            let coords: { latitude: number; longitude: number } | null = null;
-            try {
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                if (status === 'granted') {
-                    const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                    if (location.mocked) {
-                        setState("error");
-                        setMessage("Fake GPS detected. Real moments only.");
-                        haptics.notification('error');
-                        return;
-                    }
-                    coords = location.coords;
-                }
-            } catch (e) {
-                walletLogger.warn(WalletTag.PROXIMITY, 'Location unavailable for token connect');
-            }
-
-            setState("connecting");
-            const result = await verifyProximityToken(
-                proximityToken,
-                coords?.latitude,
-                coords?.longitude
-            );
-
-            if (result.success || result.interaction_type === 'networking' || result.interaction_type === 'irl') {
-                if (result.source === 'irl' || result.interaction_type === 'irl') setIsIrlTap(true);
-                setEarnedPoints(result.earned_points || 0);
-                setScannedUser(result.scanned_user || null);
-                setState("success");
-                haptics.notification('success');
-            } else {
-                setState("error");
-                setMessage(result.error || "Connection failed.");
-                haptics.notification('error');
-            }
-        } catch (error: any) {
-            walletLogger.error(WalletTag.PROXIMITY, 'Token connect failed', error);
-            setState("error");
-            setMessage(
-                error?.response?.data?.error
-                || (error?.code === 'ECONNABORTED' ? 'Connection timed out. Check your network and try again.' : 'Failed to connect. Please try again.')
-            );
-            haptics.notification('error');
-        } finally {
-            inFlightRef.current = false;
-        }
+        handleConnect();
     };
 
     const handleConnect = async () => {
         if ((!eventId && !irlRequested) || !scannedUserId) {
+            setErrorTitle("Invalid tap");
+            setMessage("This tap link is incomplete. Ask them to tap again.");
             setState("error");
-            setMessage("Invalid tap data.");
             return;
         }
         if (inFlightRef.current) return;
@@ -250,34 +164,11 @@ export default function EventNFCReceiveScreen() {
 
         try {
             setState("locating");
-            let location = null;
-            try {
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== 'granted') {
-                    if (!irlRequested) {
-                        setState("error");
-                        setMessage("Location permission is required to connect with other attendees.");
-                        haptics.notification('error');
-                        return;
-                    }
-                } else {
-                    location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                    if (location.mocked) {
-                        setState("error");
-                        setMessage("Fake GPS detected. Real moments only.");
-                        haptics.notification('error');
-                        return;
-                    }
-                }
-            } catch (e) {
-                walletLogger.warn(WalletTag.PROXIMITY, 'Location unavailable for legacy connect');
-                if (!irlRequested) {
-                    setState("error");
-                    setMessage("Failed to get location coordinates.");
-                    haptics.notification('error');
-                    return;
-                }
-                location = null;
+            const location = await getQuickLocation({ request: !irlRequested, timeoutMs: 8000 });
+            if (location.status === 'mocked') throw new ProximityClientError('mockLocation');
+            if (!irlRequested) {
+                if (location.status === 'denied') throw new ProximityClientError('locationDenied');
+                if (location.status === 'servicesOff') throw new ProximityClientError('locationServicesOff');
             }
 
             setState("connecting");
@@ -286,9 +177,9 @@ export default function EventNFCReceiveScreen() {
             const body: any = irlRequested
                 ? { scanned_user_id: scannedUserId }
                 : { event_id: eventId, scanned_user_id: scannedUserId };
-            if (location) {
-                body.latitude = location.coords.latitude;
-                body.longitude = location.coords.longitude;
+            if (location.status === 'ok') {
+                body.latitude = location.latitude;
+                body.longitude = location.longitude;
             }
             const response = await axios.post(`${GetApiUrl()}/posts/${endpoint}/`, body, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -304,18 +195,11 @@ export default function EventNFCReceiveScreen() {
             } else {
                 // A 200 with success:false must not strand the screen in
                 // "connecting" — surface it as an error.
-                setState("error");
-                setMessage(response.data?.error || "Connection failed.");
-                haptics.notification('error');
+                showError({ response: { status: 400, data: response.data } });
             }
         } catch (error: any) {
             walletLogger.error(WalletTag.PROXIMITY, 'Legacy connect failed', error);
-            setState("error");
-            setMessage(
-                error?.response?.data?.error
-                || (error?.code === 'ECONNABORTED' ? 'Connection timed out. Check your network and try again.' : 'Failed to connect. Please try again.')
-            );
-            haptics.notification('error');
+            showError(error);
         } finally {
             inFlightRef.current = false;
         }
@@ -337,10 +221,10 @@ export default function EventNFCReceiveScreen() {
                         </Animated.View>
 
                         <Text style={[styles.heading, { color: main }]}>
-                            Networking...
+                            Tap to Meet
                         </Text>
                         <Text style={[styles.description, { color: mutedColor }]}>
-                            {state === "locating" ? "Getting your location..." : "Waiting for reputation..."}
+                            {state === "locating" ? "Checking your location…" : state === "connecting" ? "Connecting…" : "Loading…"}
                         </Text>
                     </Animated.View>
                 );
@@ -376,7 +260,7 @@ export default function EventNFCReceiveScreen() {
                             <EventCta
                                 label="Not Now"
                                 variant="secondary"
-                                onPress={() => router.back()}
+                                onPress={() => safeBack(router)}
                             />
                         </View>
                     </Animated.View>
@@ -393,7 +277,7 @@ export default function EventNFCReceiveScreen() {
                         </View>
 
                         <Text style={[styles.heading, { color: colors.danger }]}>
-                            Connection Failed
+                            {errorTitle}
                         </Text>
                         <Text style={[styles.description, { color: mutedColor }]}>
                             {message}
@@ -409,7 +293,7 @@ export default function EventNFCReceiveScreen() {
                             <EventCta
                                 label="Go Back"
                                 variant="secondary"
-                                onPress={() => router.back()}
+                                onPress={() => safeBack(router)}
                             />
                         </View>
                     </Animated.View>
@@ -423,7 +307,7 @@ export default function EventNFCReceiveScreen() {
                         actions={
                             <EventCta
                                 label="Awesome"
-                                onPress={() => router.back()}
+                                onPress={() => safeBack(router)}
                             />
                         }
                     />

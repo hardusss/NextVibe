@@ -20,8 +20,8 @@ import { BlurView } from 'expo-blur';
 import useWalletAddress from '@/hooks/useWalletAddress';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 
-import { startSharing, stopSharing, addNfcReadListener } from '@/modules/nfc-send';
-import { startBroadcasting, stopBroadcasting, addBleReadListener } from '@/modules/ble-share';
+import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
+import haptics from '@/src/utils/haptics';
 
 export interface DepositSheetRef {
     present: () => void;
@@ -67,7 +67,6 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
 
     const [amount, setAmount] = useState('');
     const [selectedToken, setSelectedToken] = useState(TOKENS.SOL.symbol);
-    const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [useSolanaPay, setUseSolanaPay] = useState(false);
 
     const [toastVisible, setToastVisible] = useState(false);
@@ -76,8 +75,6 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
 
     const { address } = useWalletAddress();
 
-    const removeListenerRef = useRef<{ remove: () => void } | null>(null);
-    const lastReadTimestamp = useRef<number>(0);
 
     const pulseScale = useSharedValue(1);
     const pulseOpacity = useSharedValue(1);
@@ -85,6 +82,15 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
     const showToast = (message: string, isSuccess: boolean) => {
         setToastMessage(message); setToastIsSuccess(isSuccess); setToastVisible(true);
     };
+
+    const handleRead = () => {
+        haptics.notification('success');
+        showToast("Payment details sent!", true);
+        broadcast.stop();
+    };
+
+    const broadcast = useProximityBroadcast({ onRead: handleRead });
+    const isBroadcasting = broadcast.isActive;
 
     useEffect(() => {
         if (isBroadcasting) {
@@ -101,21 +107,8 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
         opacity: pulseOpacity.value,
     }));
 
-    const stopHceTransaction = async () => {
-        try {
-            if (removeListenerRef.current) {
-                removeListenerRef.current.remove();
-                removeListenerRef.current = null;
-            }
-            if (Platform.OS === 'ios') {
-                stopBroadcasting();
-            } else {
-                stopSharing();
-            }
-            setIsBroadcasting(false);
-        } catch (e) {
-            console.error("Failed to stop HCE/BLE:", e);
-        }
+    const stopHceTransaction = () => {
+        broadcast.stop();
     };
 
     useImperativeHandle(ref, () => ({
@@ -153,42 +146,12 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
         return `https://nextvibe.io/u/send?amount=${amount}&token=${selectedToken}&address=${address}`;
     };
 
-    const handleBleRead = () => {
-        Vibration.vibrate([0, 100, 100, 100]);
-        showToast("Tap details sent successfully!", true);
-        stopHceTransaction();
-    };
-
-    const handleNfcRead = () => {
-        const now = Date.now();
-        if (now - lastReadTimestamp.current <= 2000) return;
-        lastReadTimestamp.current = now;
-        Vibration.vibrate([0, 100, 100, 100]);
-        showToast("NFC details sent successfully!", true);
-        stopHceTransaction();
-    };
-
     const startHceTransaction = async () => {
         try {
-            setIsBroadcasting(true);
-            const url = buildPayload();
-
-            if (Platform.OS === 'ios') {
-                // iOS: BLE read dedup is per-central per broadcast session (native layer)
-                removeListenerRef.current = addBleReadListener(handleBleRead);
-                startBroadcasting(url);
-                console.log("✅ Custom Native BLE started with payload:", url);
-            } else {
-                lastReadTimestamp.current = 0;
-                removeListenerRef.current = addNfcReadListener(handleNfcRead);
-                startSharing(url);
-                console.log("✅ Custom Native HCE started with payload:", url);
-            }
-
+            await broadcast.start(buildPayload());
         } catch (e: any) {
-            showToast(`Failed to start ${Platform.OS === 'ios' ? 'BLE' : 'NFC'}. Please try again.`, false);
-            setIsBroadcasting(false);
-            console.error(`❌ Failed to start custom ${Platform.OS === 'ios' ? 'BLE' : 'HCE'}:`, e);
+            showToast("Couldn't start sharing. Please try again.", false);
+            console.error('Failed to start tap sharing:', e);
         }
     };
 

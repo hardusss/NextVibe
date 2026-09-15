@@ -1,3 +1,6 @@
+import { extractProximityToken } from '@/src/proximity/payload';
+import { enqueueProximityLink } from '@/src/proximity/linkQueue';
+
 /**
  * Intercepts incoming system deep links before expo-router navigates.
  *
@@ -7,11 +10,21 @@
  * `/wallet-redirect` route, so without this file expo-router lands on the
  * "Unmatched Route" screen. Returning `null` keeps the app on the current
  * screen while the wallet handshake completes.
+ *
+ * Tap links (`/u/e?t=…`, delivered when an iPhone or Android phone reads
+ * another phone's NFC tag, or when such a link is opened) don't navigate at
+ * all: they go to the shared tap prompt, which slides up over whatever is on
+ * screen. On a cold start the app boots normally (splash → home) with the
+ * prompt on top, so there is never a dead-end screen without a back stack.
  */
-export function redirectSystemPath({ path }: { path: string; initial: boolean }): string | null {
+export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): string | null {
     try {
         if (path.includes('wallet-redirect')) {
             return null;
+        }
+        if (extractProximityToken(path)) {
+            enqueueProximityLink(path);
+            return initial ? '/' : null;
         }
         return path;
     } catch {

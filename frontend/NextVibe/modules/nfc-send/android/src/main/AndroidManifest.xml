@@ -1,11 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="expo.modules.nfcsend">
-  
+
   <uses-permission android:name="android.permission.NFC" />
-  <uses-feature android:name="android.hardware.nfc.hce" android:required="true" />
-  
+  <!-- Optional: phones without NFC can still install the app (they share over Bluetooth). -->
+  <uses-feature android:name="android.hardware.nfc" android:required="false" />
+  <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
+
   <application>
-    <service android:name=".NdefHostApduService" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
+    <!-- Disabled until a sharing screen turns it on, so the phone never
+         emulates a tag in the background. -->
+    <service
+      android:name=".NdefHostApduService"
+      android:enabled="false"
+      android:exported="true"
+      android:permission="android.permission.BIND_NFC_SERVICE">
       <intent-filter>
         <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
       </intent-filter>

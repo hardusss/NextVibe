@@ -60,7 +60,14 @@ export function TapToMeetButton() {
         setBusy(true);
         let events: ActiveEvent[] = activeEvents;
         try {
-            events = await getActiveCheckins();
+            // Never keep someone waiting on a slow network — the server
+            // re-resolves the mode when the tap code is generated anyway.
+            const fresh = await Promise.race<ActiveEvent[] | null>([
+                getActiveCheckins(),
+                new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+            ]);
+            if (fresh) events = fresh;
+            else walletLogger.warn(WalletTag.PROXIMITY, 'Active check-in fetch slow; using cached list');
         } catch (e) {
             walletLogger.warn(WalletTag.PROXIMITY, 'Active check-in fetch failed; using cached list');
         }

@@ -5,6 +5,7 @@ import {
     View,
     useColorScheme,
     AccessibilityInfo,
+    Linking,
     Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -20,11 +21,13 @@ import Animated, {
     withSpring,
 } from "react-native-reanimated";
 import { Image } from "expo-image";
-import * as Location from "expo-location";
 import * as Device from "expo-device";
 import { checkinEvent, claimEventNft } from "@/src/api/event.checkin";
 import { verifyProximityToken } from "@/src/api/proximity.token";
 import haptics from "@/src/utils/haptics";
+import { safeBack } from "@/src/utils/safeBack";
+import { describeProximityError, ProximityClientError, type ProximityErrorAction } from "@/src/proximity/errors";
+import { getQuickLocation } from "@/src/proximity/location";
 import { MOTION } from "@/constants/motion";
 import { space, radius, colors, type as typeScale } from "@/src/theme/tokens";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
@@ -58,6 +61,8 @@ export default function EventCheckinScreen() {
 
     const [state, setState] = useState<CheckinState>("idle");
     const [message, setMessage] = useState("");
+    const [errorTitle, setErrorTitle] = useState("Couldn't check you in");
+    const [errorAction, setErrorAction] = useState<ProximityErrorAction | undefined>(undefined);
     const [postImage, setPostImage] = useState<string | null>(null);
     const [postName, setPostName] = useState<string>("");
     const [resolvedPostId, setResolvedPostId] = useState<number | null>(null);
@@ -123,42 +128,48 @@ export default function EventCheckinScreen() {
         }
     }, [state, effectivePostId]);
 
+    const showError = (error: unknown) => {
+        const info = describeProximityError(error, 'checkin');
+        setErrorTitle(info.title);
+        setMessage(info.message);
+        setErrorAction(info.action === 'openSettings' || info.action === 'openLocationSettings' ? info.action : undefined);
+        setState("error");
+        haptics.notification('error');
+    };
+
+    /** Location for the venue check; throws a mapped client error when it can't be had. */
+    const requireLocation = async () => {
+        const loc = await getQuickLocation({ request: true, timeoutMs: 8000 });
+        if (loc.status === 'denied') throw new ProximityClientError('locationDenied');
+        if (loc.status === 'servicesOff') throw new ProximityClientError('locationServicesOff');
+        if (loc.status === 'mocked') throw new ProximityClientError('mockLocation');
+        if (loc.status !== 'ok') throw new ProximityClientError('locationUnavailable');
+        return loc;
+    };
+
     const handleVerify = async () => {
         if (!postId && !proximityToken) {
+            setErrorTitle("Invalid event link");
+            setMessage("This check-in link is incomplete. Ask the organizer to tap you again.");
+            setErrorAction(undefined);
             setState("error");
-            setMessage("Invalid event link.");
             return;
         }
 
         setState("loading");
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                setState("error");
-                setMessage("Location permission is required to check in to this event.");
-                haptics.notification('error');
-                return;
-            }
-
-            const locData = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            if (locData.mocked) {
-                setState("error");
-                setMessage("Fake GPS detected. Real moments only.");
-                haptics.notification('error');
-                return;
-            }
+            const loc = await requireLocation();
 
             let result: any;
             if (proximityToken) {
-                result = await verifyProximityToken(proximityToken, locData.coords.latitude, locData.coords.longitude);
+                result = await verifyProximityToken(proximityToken, loc.latitude, loc.longitude);
             } else if (postId) {
-                result = await checkinEvent(postId, {
-                    lat: locData.coords.latitude,
-                    lng: locData.coords.longitude
-                });
+                result = await checkinEvent(postId, { lat: loc.latitude, lng: loc.longitude });
             }
 
-            if (result.verified || result.interaction_type === 'checkin') {
+            // `interaction_type` is echoed on every token response, including
+            // "not registered" — only `verified` means checked in.
+            if (result?.verified === true) {
                 if (result.post_image) {
                     setPostImage(result.post_image.startsWith("http") ? result.post_image : `https://nextvibe.s3.amazonaws.com/${result.post_image}`);
                 }
@@ -168,20 +179,13 @@ export default function EventCheckinScreen() {
                 setMessage("You're verified! Welcome to the event.");
                 haptics.notification('success');
             } else {
+                setPostName(result?.post_name || "Event");
                 setState("not_registered");
-                setMessage(result.message || result.error || "You are not registered for this event.");
+                setMessage(result?.message || result?.error || "You are not registered for this event.");
                 haptics.notification('error');
             }
         } catch (error: any) {
-            setState("error");
-            if (error.response?.status === 401) {
-                setMessage("Please log in to verify your attendance.");
-            } else if (error.response?.status === 404) {
-                setMessage("Event not found.");
-            } else {
-                setMessage(error.response?.data?.error || "Something went wrong. Please try again.");
-            }
-            haptics.notification('error');
+            showError(error);
         }
     };
 
@@ -190,27 +194,23 @@ export default function EventCheckinScreen() {
         setMintError(null);
         AccessibilityInfo.announceForAccessibility?.("Minting your event NFT");
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
+            const loc = await getQuickLocation({ request: true, timeoutMs: 8000 });
             if (!mountedRef.current) return;
-            if (status !== 'granted') {
+            if (loc.status !== 'ok') {
+                const info = describeProximityError(new ProximityClientError(
+                    loc.status === 'denied' ? 'locationDenied'
+                        : loc.status === 'servicesOff' ? 'locationServicesOff'
+                            : loc.status === 'mocked' ? 'mockLocation' : 'locationUnavailable'
+                ), 'checkin');
                 setMintStatus("failed");
-                setMintError("Location permission is required to mint.");
-                haptics.notification('error');
-                return;
-            }
-
-            const locData = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            if (!mountedRef.current) return;
-            if (locData.mocked) {
-                setMintStatus("failed");
-                setMintError("Fake GPS detected. Real moments only.");
+                setMintError(`You're checked in — ${info.message.charAt(0).toLowerCase()}${info.message.slice(1)}`);
                 haptics.notification('error');
                 return;
             }
 
             const result = await claimEventNft(targetPostId, {
-                lat: locData.coords.latitude,
-                lng: locData.coords.longitude
+                lat: loc.latitude,
+                lng: loc.longitude
             });
             if (!mountedRef.current) return;
             if (result.success) {
@@ -370,7 +370,7 @@ export default function EventCheckinScreen() {
                             <EventCta
                                 label="Done"
                                 variant="secondary"
-                                onPress={() => router.back()}
+                                onPress={() => safeBack(router)}
                             />
                         </Animated.View>
                     </Animated.View>
@@ -397,7 +397,7 @@ export default function EventCheckinScreen() {
                             <EventCta
                                 label="Go Back"
                                 variant="secondary"
-                                onPress={() => router.back()}
+                                onPress={() => safeBack(router)}
                             />
                         </View>
                     </Animated.View>
@@ -414,24 +414,39 @@ export default function EventCheckinScreen() {
                         </View>
 
                         <Text style={[styles.heading, { color: colors.warning }]}>
-                            Error
+                            {errorTitle}
                         </Text>
                         <Text style={[styles.description, { color: mutedColor }]}>
                             {message}
                         </Text>
 
+                        {errorAction && (
+                            <View style={styles.ctaWidth}>
+                                <EventCta
+                                    label="Open Settings"
+                                    onPress={() => {
+                                        if (errorAction === 'openLocationSettings' && Platform.OS === 'android') {
+                                            Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS').catch(() => Linking.openSettings().catch(() => {}));
+                                        } else {
+                                            Linking.openSettings().catch(() => {});
+                                        }
+                                    }}
+                                />
+                            </View>
+                        )}
                         <View style={styles.errorActions}>
                             <View style={{ flex: 1 }}>
                                 <EventCta
-                                    label="Retry"
-                                    onPress={() => { setState("idle"); setMessage(""); }}
+                                    label="Try again"
+                                    variant={errorAction ? "secondary" : "primary"}
+                                    onPress={handleVerify}
                                 />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <EventCta
                                     label="Go Back"
                                     variant="secondary"
-                                    onPress={() => router.back()}
+                                    onPress={() => safeBack(router)}
                                 />
                             </View>
                         </View>

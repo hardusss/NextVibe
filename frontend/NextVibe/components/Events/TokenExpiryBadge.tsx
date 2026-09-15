@@ -16,13 +16,19 @@ interface TokenExpiryBadgeProps {
     totalDuration?: number;
     isRenewing?: boolean;
     label?: string;
+    /** The code on air has expired server-side (renewals kept failing). */
+    isStale?: boolean;
+    /** The last renewal failed; the previous code is still valid. */
+    renewalFailing?: boolean;
 }
 
 export default function TokenExpiryBadge({
     secondsLeft,
     totalDuration = 50,
     isRenewing = false,
-    label = "Dynamic Proximity Token",
+    label = "Tap code",
+    isStale = false,
+    renewalFailing = false,
 }: TokenExpiryBadgeProps) {
     const isDark = useColorScheme() === 'dark';
 
@@ -91,7 +97,11 @@ export default function TokenExpiryBadge({
                 <View style={styles.textContainer}>
                     <Text style={[styles.title, { color: mainColor }]}>{label}</Text>
                     <Text style={[styles.subtitle, { color: mutedColor }]}>
-                        {isRenewing ? 'Refreshing security token...' : 'Temporary & Anti-Sybil Protected'}
+                        {isStale
+                            ? 'Offline — code expired, reconnecting…'
+                            : renewalFailing
+                                ? 'Connection is shaky — retrying'
+                                : isRenewing ? 'Refreshing…' : 'Refreshes automatically'}
                     </Text>
                 </View>
 

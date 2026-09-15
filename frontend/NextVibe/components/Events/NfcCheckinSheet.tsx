@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
     StyleSheet, Text, View, useColorScheme, FlatList,
-    ActivityIndicator, Vibration, Platform,
+    ActivityIndicator, Platform,
 } from "react-native";
 import {
     BottomSheetBackdrop,
@@ -10,7 +10,7 @@ import {
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "expo-blur";
-import { Nfc, Users, Check, X, Radio, AlertTriangle } from "lucide-react-native";
+import { Nfc, Users, Check, X, Radio, RefreshCw } from "lucide-react-native";
 import { Image } from "expo-image";
 import Animated, {
     FadeInDown,
@@ -21,10 +21,13 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { getCheckinList } from "@/src/api/event.checkin";
-import { startSharing, stopSharing, addNfcReadListener } from "@/modules/nfc-send";
-import { startBroadcasting, stopBroadcasting, addBleReadListener } from "@/modules/ble-share";
 import { useProximityToken } from '@/hooks/useProximityToken';
+import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
+import { useProximityReadiness } from '@/hooks/useProximityReadiness';
+import { describeProximityError } from '@/src/proximity/errors';
+import haptics from '@/src/utils/haptics';
 import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
+import ReadinessCard from '@/components/Proximity/ReadinessCard';
 
 export interface NfcCheckinSheetRef {
     presentForPost: (postId: number, eventTitle?: string) => void;
@@ -39,14 +42,18 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const [loading, setLoading] = useState(false);
     const [postId, setPostId] = useState<number | null>(null);
     const [eventTitle, setEventTitle] = useState<string | undefined>(undefined);
-    const [isBroadcasting, setIsBroadcasting] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const [tapCount, setTapCount] = useState(0);
+    const [startError, setStartError] = useState<string | null>(null);
 
-    const { generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing } = useProximityToken();
+    const {
+        generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing,
+        isStale, renewalFailing, errorObject,
+    } = useProximityToken();
 
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const removeListenerRef = useRef<{ remove: () => void } | null>(null);
-    const lastReadTimestamp = useRef<number>(0);
+    // Latest event id for callbacks created before the state update landed.
+    const postIdRef = useRef<number | null>(null);
     // Synchronous "broadcast is starting/active" flag (state lags behind).
     const broadcastGuardRef = useRef(false);
 
@@ -58,6 +65,30 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const border = isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.07)";
     const cardBg = isDark ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.025)";
     const accentText = isDark ? "#d8b4fe" : "#7c3aed";
+
+    const fetchCheckins = useCallback(async (pid: number) => {
+        try {
+            const data = await getCheckinList(pid);
+            if (postIdRef.current === pid) setCheckins(data.checkins ?? []);
+        } catch (e) {
+            console.warn("Failed to fetch checkins", e);
+        }
+    }, []);
+
+    const broadcast = useProximityBroadcast({
+        onRead: () => {
+            setTapCount((prev) => prev + 1);
+            haptics.impact('rigid');
+            if (postIdRef.current !== null) fetchCheckins(postIdRef.current);
+        },
+    });
+    const isBroadcasting = broadcast.isActive;
+
+    const readiness = useProximityReadiness({
+        role: 'share',
+        enabled: isOpen,
+        onFixed: () => broadcast.restart(),
+    });
 
     // Pulse animation for NFC icon
     const pulseScale = useSharedValue(1);
@@ -88,15 +119,6 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
         opacity: pulseOpacity.value,
     }));
 
-    const fetchCheckins = useCallback(async (pid: number) => {
-        try {
-            const data = await getCheckinList(pid);
-            setCheckins(data.checkins ?? []);
-        } catch (e) {
-            console.error("Failed to fetch checkins", e);
-        }
-    }, []);
-
     const startPolling = useCallback((pid: number) => {
         if (pollingRef.current) clearInterval(pollingRef.current);
         fetchCheckins(pid);
@@ -110,93 +132,35 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
         }
     }, []);
 
-    const handleBleRead = useCallback(() => {
-        // Same debounce as the NFC path: the native per-central guard resets
-        // whenever the broadcast restarts (token rotation), so JS must dedup.
-        const now = Date.now();
-        if (now - lastReadTimestamp.current <= 2000) return;
-        lastReadTimestamp.current = now;
-        setTapCount(prev => prev + 1);
-        Vibration.vibrate([0, 80, 60, 80]);
-        if (postId !== null) fetchCheckins(postId);
-    }, [postId, fetchCheckins]);
-
-    const handleNfcRead = useCallback(() => {
-        const now = Date.now();
-        if (now - lastReadTimestamp.current <= 2000) return;
-        lastReadTimestamp.current = now;
-        setTapCount(prev => prev + 1);
-        Vibration.vibrate([0, 80, 60, 80]);
-        if (postId !== null) fetchCheckins(postId);
-    }, [postId, fetchCheckins]);
-
     const startNfcBroadcast = useCallback(async (pid: number) => {
-        // Ref, not state: rapid re-presents would read a stale isBroadcasting
-        // and double-register the read listener.
+        // Ref, not state: rapid re-presents would read a stale flag and start twice.
         if (broadcastGuardRef.current) return;
         broadcastGuardRef.current = true;
-        try {
-            const tokenUrl = await generateToken('checkin', pid);
-            if (!tokenUrl) {
-                console.warn("Failed to generate proximity token");
-                broadcastGuardRef.current = false;
-                return;
-            }
-
-            // Never stack listeners, whatever path got us here.
-            removeListenerRef.current?.remove();
-            lastReadTimestamp.current = 0;
-            if (Platform.OS === 'ios') {
-                removeListenerRef.current = addBleReadListener(handleBleRead);
-                startBroadcasting(tokenUrl);
-            } else {
-                removeListenerRef.current = addNfcReadListener(handleNfcRead);
-                startSharing(tokenUrl);
-            }
-            setIsBroadcasting(true);
-
-            // Start auto-renewal to keep token fresh
-            startAutoRenewal('checkin', pid, (newUrl) => {
-                try {
-                    if (Platform.OS === 'ios') {
-                        stopBroadcasting();
-                        startBroadcasting(newUrl);
-                    } else {
-                        stopSharing();
-                        startSharing(newUrl);
-                    }
-                } catch (e) {
-                    console.warn('Error updating broadcast URL:', e);
-                }
-            });
-        } catch (error) {
-            console.warn("Broadcasting not available:", error);
+        setStartError(null);
+        const tokenUrl = await generateToken('checkin', pid);
+        if (postIdRef.current !== pid) {
             broadcastGuardRef.current = false;
-            setIsBroadcasting(false);
+            return;
         }
-    }, [handleBleRead, handleNfcRead, generateToken, startAutoRenewal]);
+        if (!tokenUrl) {
+            broadcastGuardRef.current = false;
+            setStartError("failed");
+            haptics.notification('error');
+            return;
+        }
+        await broadcast.start(tokenUrl);
+        // Keep the code fresh; rotations swap the payload in place.
+        startAutoRenewal('checkin', pid, (newUrl) => broadcast.update(newUrl));
+    }, [generateToken, startAutoRenewal, broadcast.start, broadcast.update]);
 
     const stopNfcBroadcast = useCallback(() => {
-        try {
-            if (removeListenerRef.current) {
-                removeListenerRef.current.remove();
-                removeListenerRef.current = null;
-            }
-            if (Platform.OS === 'ios') {
-                stopBroadcasting();
-            } else {
-                stopSharing();
-            }
-            stopAutoRenewal();
-        } catch (e) {
-            console.warn("Error stopping broadcast:", e);
-        } finally {
-            broadcastGuardRef.current = false;
-            setIsBroadcasting(false);
-        }
-    }, [stopAutoRenewal]);
+        broadcast.stop();
+        stopAutoRenewal();
+        broadcastGuardRef.current = false;
+    }, [broadcast.stop, stopAutoRenewal]);
 
     const cleanup = useCallback(() => {
+        postIdRef.current = null;
         stopNfcBroadcast();
         stopPolling();
         setCheckins([]);
@@ -204,15 +168,19 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
         setEventTitle(undefined);
         setTapCount(0);
         setLoading(false);
+        setStartError(null);
+        setIsOpen(false);
     }, [stopNfcBroadcast, stopPolling]);
 
     useImperativeHandle(ref, () => ({
         presentForPost: async (pid: number, title?: string) => {
+            postIdRef.current = pid;
             setCheckins([]);
             setPostId(pid);
             setEventTitle(title);
             setTapCount(0);
             setLoading(true);
+            setIsOpen(true);
             bottomSheetModalRef.current?.present();
 
             try {
@@ -229,6 +197,14 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             bottomSheetModalRef.current?.dismiss();
         },
     }));
+
+    const retryStart = () => {
+        if (postId === null) return;
+        broadcastGuardRef.current = false;
+        startNfcBroadcast(postId);
+    };
+
+    const startErrorInfo = startError ? describeProximityError(errorObject, 'generate') : null;
 
     const backdrop = useCallback(
         (props: BottomSheetBackdropProps) => (
@@ -330,42 +306,59 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                     )}
                 </View>
 
-                {/* NFC Status Bar */}
-                <View style={[styles.nfcStatusBar, {
-                    backgroundColor: isBroadcasting ? "rgba(5,240,216,0.08)" : "rgba(168,85,247,0.08)",
-                    borderColor: isBroadcasting ? "rgba(5,240,216,0.2)" : "rgba(168,85,247,0.2)",
-                }]}>
-                    <Radio
-                        size={14}
-                        color={isBroadcasting ? "#05f0d8" : accentText}
-                        strokeWidth={2}
-                    />
-                    <Text style={[styles.nfcStatusText, {
-                        color: isBroadcasting ? "#05f0d8" : accentText,
+                {/* Broadcast status */}
+                {startErrorInfo ? (
+                    <View style={[styles.nfcStatusBar, { backgroundColor: "rgba(248,113,113,0.08)", borderColor: "rgba(248,113,113,0.25)" }]}>
+                        <X size={14} color="#f87171" strokeWidth={2} />
+                        <Text style={[styles.nfcStatusText, { color: "#f87171", flex: 1 }]} numberOfLines={2}>
+                            {startErrorInfo.title}. {startErrorInfo.message}
+                        </Text>
+                        {startErrorInfo.retryable && (
+                            <Text onPress={retryStart} style={[styles.retryText, { color: accentText }]} accessibilityRole="button">
+                                Retry
+                            </Text>
+                        )}
+                    </View>
+                ) : (
+                    <View style={[styles.nfcStatusBar, {
+                        backgroundColor: isBroadcasting ? "rgba(5,240,216,0.08)" : "rgba(168,85,247,0.08)",
+                        borderColor: isBroadcasting ? "rgba(5,240,216,0.2)" : "rgba(168,85,247,0.2)",
                     }]}>
-                        {isBroadcasting
-                            ? `Broadcasting · ${tapCount} tap${tapCount !== 1 ? "s" : ""} detected`
-                            : "Tap sharing not active"
-                        }
-                    </Text>
-                </View>
+                        {isBroadcasting ? (
+                            <Radio size={14} color="#05f0d8" strokeWidth={2} />
+                        ) : (
+                            <RefreshCw size={14} color={accentText} strokeWidth={2} />
+                        )}
+                        <Text style={[styles.nfcStatusText, {
+                            color: isBroadcasting ? "#05f0d8" : accentText,
+                        }]}>
+                            {isBroadcasting
+                                ? `Live · ${tapCount} phone${tapCount !== 1 ? "s" : ""} reached`
+                                : "Getting ready…"
+                            }
+                        </Text>
+                    </View>
+                )}
 
                 {isBroadcasting && (
                     <TokenExpiryBadge
                         secondsLeft={secondsLeft}
                         totalDuration={totalDuration}
                         isRenewing={isRenewing}
-                        label="Active Check-in Token"
+                        isStale={isStale}
+                        renewalFailing={renewalFailing}
+                        label="Check-in code"
                     />
                 )}
 
-                {Platform.OS === 'ios' && isBroadcasting && (
-                    <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.05)', borderColor: 'rgba(168,85,247,0.2)' }]}>
-                        <AlertTriangle size={16} color={accentText} />
-                        <Text style={[styles.warningText, { color: main }]}>
-                            Ask attendees to enable <Text style={{ fontFamily: "Dank Mono Bold", color: main }}>Bluetooth</Text> and open the <Text style={{ fontFamily: "Dank Mono Bold", color: main }}>NextVibe</Text> app on their phones to check in.
-                        </Text>
-                    </View>
+                <ReadinessCard issues={readiness.issues} compact />
+
+                {isBroadcasting && readiness.issues.length === 0 && (
+                    <Text style={[styles.hintText, { color: muted }]}>
+                        {Platform.OS === 'android'
+                            ? 'Attendees open NextVibe and hold their phone against yours. With NFC on, their phone can read yours even without the app open.'
+                            : 'Attendees open NextVibe and hold their phone against yours for a second.'}
+                    </Text>
                 )}
 
                 {/* Stats Row */}
@@ -422,6 +415,18 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
 NfcCheckinSheet.displayName = "NfcCheckinSheet";
 
 const styles = StyleSheet.create({
+    retryText: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: 12,
+        paddingHorizontal: 6,
+    },
+    hintText: {
+        fontFamily: "Dank Mono",
+        fontSize: 12,
+        lineHeight: 17,
+        marginTop: 8,
+        marginBottom: 4,
+    },
     container: {
         flex: 1,
         paddingHorizontal: 20,

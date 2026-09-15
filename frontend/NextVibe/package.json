@@ -14,7 +14,8 @@
   "jest": {
     "testEnvironment": "node",
     "roots": [
-      "<rootDir>/src/utils"
+      "<rootDir>/src/utils",
+      "<rootDir>/src/proximity"
     ],
     "testMatch": [
       "**/__tests__/**/*.test.ts"

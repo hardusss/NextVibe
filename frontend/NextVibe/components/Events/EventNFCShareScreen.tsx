@@ -1,18 +1,23 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, useColorScheme, Platform } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Radio, AlertTriangle, Camera, ShieldX } from 'lucide-react-native';
-import { FEATURE_PROOF_OF_MEET } from '@/constants/FeatureFlags';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Platform, ScrollView, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useKeepAwake } from 'expo-keep-awake';
+import { Camera, CheckCircle2, Radio, ShieldX, WifiOff } from 'lucide-react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import axios from 'axios';
-import { startSharing, stopSharing } from '@/modules/nfc-send';
-import { startBroadcasting, stopBroadcasting, addBluetoothStateListener, getBluetoothState, BluetoothState } from '@/modules/ble-share';
+import { FEATURE_PROOF_OF_MEET } from '@/constants/FeatureFlags';
 import { storage } from '@/src/utils/storage';
 import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 import GetApiUrl from '@/src/utils/url_api';
+import { safeBack } from '@/src/utils/safeBack';
+import { acquireActiveScanMode, requestScanStart } from '@/src/utils/bleScanController';
 import { useProximityToken } from '@/hooks/useProximityToken';
-import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
+import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
+import { useProximityReadiness } from '@/hooks/useProximityReadiness';
+import { useProximityPrompt } from '@/src/proximity/promptStore';
+import { describeProximityError } from '@/src/proximity/errors';
+import { warmUpLocation } from '@/src/proximity/location';
 import haptics from '@/src/utils/haptics';
 import { MOTION } from '@/constants/motion';
 import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
@@ -20,9 +25,28 @@ import { useReduceMotion } from '@/hooks/useReduceMotion';
 import CustomActivityIndicator from '@/components/CustomActivityIndicator';
 import EventScreenShell from '@/components/Events/EventScreenShell';
 import EventCta from '@/components/Events/EventCta';
-import MeetSuccess from '@/components/Events/MeetSuccess';
+import MeetSuccess, { type MeetUser } from '@/components/Events/MeetSuccess';
+import ReadinessCard from '@/components/Proximity/ReadinessCard';
+import HowToTapCard from '@/components/Proximity/HowToTapCard';
 
+type Phase = 'starting' | 'live' | 'failed' | 'success';
+
+type ConnectionEntry = { id: number; user: MeetUser & { user_id?: number }; points: number };
+
+const POLL_MS = 2500;
+const FAST_POLL_MS = 1000;
+// After someone reads this phone, poll quickly while they decide.
+const FAST_POLL_WINDOW_MS = 25_000;
+// How long "they picked you up" stays on screen without a confirmation.
+const READ_NOTICE_MS = 20_000;
+
+/**
+ * Tap to Meet. This phone both broadcasts its tap code (Bluetooth, plus an
+ * NFC tag on Android) and listens for the other person's, so it works no
+ * matter which of the two opened the screen — or if both did.
+ */
 export default function EventNFCShareScreen() {
+    useKeepAwake();
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
     const reduceMotion = useReduceMotion();
@@ -30,268 +54,274 @@ export default function EventNFCShareScreen() {
     const eventId = params.eventId;
     const isIrl = params.mode === 'irl';
 
-    const [userId, setUserId] = useState<string | null>(null);
-    const [initialConnections, setInitialConnections] = useState<number[]>([]);
-    const [successUser, setSuccessUser] = useState<any>(null);
-    const [successPoints, setSuccessPoints] = useState<number>(0);
-    const [successState, setSuccessState] = useState<boolean>(false);
+    const [phase, setPhase] = useState<Phase>('starting');
+    const [successUser, setSuccessUser] = useState<MeetUser | null>(null);
+    const [successPoints, setSuccessPoints] = useState(0);
+    const [pickedUp, setPickedUp] = useState(false);
 
-    const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const isBroadcastingRef = useRef<boolean>(false);
+    const mountedRef = useRef(true);
+    const sessionRef = useRef(0);
+    const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pollInFlightRef = useRef(false);
+    const knownIdsRef = useRef<number[] | null>(null);
+    const fastPollUntilRef = useRef(0);
+    const pickedUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Effective mode after the server resolves it (an 'irl' request from a
-    // checked-in user comes back as networking + event). Kept in refs so the
-    // polling closure always reads the current values.
+    // checked-in user comes back as networking + event).
     const effectiveIrlRef = useRef<boolean>(isIrl);
     const effectiveEventIdRef = useRef<number | null>(eventId ? Number(eventId) : null);
 
-    const { generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing, resolvedType, resolvedEventId, error: tokenError, getResolvedParams } = useProximityToken();
-
-    const [btState, setBtState] = useState<BluetoothState>('unknown');
-    useEffect(() => {
-        if (Platform.OS !== 'ios') return;
-        setBtState(getBluetoothState());
-        const sub = addBluetoothStateListener(({ state }) => setBtState(state));
-        return () => sub.remove();
-    }, []);
+    const tokenApi = useProximityToken();
+    const {
+        generateToken, startAutoRenewal, stopAutoRenewal, renewNow, getResolvedParams,
+        resolvedType, renewalFailing, isStale, errorObject,
+    } = tokenApi;
 
     const main = isDark ? colors.text : '#111827';
-    const mutedColor = isDark ? colors.sub : 'rgba(17,24,39,0.5)';
+    const mutedColor = isDark ? colors.sub : 'rgba(17,24,39,0.6)';
 
-    const startSharingSession = (url: string) => {
-        walletLogger.info(WalletTag.PROXIMITY, 'Starting sharing session');
-        if (isBroadcastingRef.current) return;
-        isBroadcastingRef.current = true;
-        if (Platform.OS === 'ios') {
-            startBroadcasting(url);
-        } else {
-            startSharing(url);
+    // ── Connections polling (how the broadcaster learns the other side confirmed) ──
+
+    const stopPolling = useCallback(() => {
+        if (pollTimerRef.current) {
+            clearTimeout(pollTimerRef.current);
+            pollTimerRef.current = null;
         }
-    };
+    }, []);
 
-    const stopSharingSession = () => {
-        if (!isBroadcastingRef.current) return;
-        isBroadcastingRef.current = false;
-        if (Platform.OS === 'ios') {
-            stopBroadcasting();
-        } else {
-            stopSharing();
-        }
-    };
-
-    const onNewTapDetected = (user: any, points: number) => {
-        stopSharingSession();
-
-        haptics.notification('success');
-
-        setSuccessUser(user);
-        setSuccessPoints(points);
-        setSuccessState(true);
-
-        if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-        }
-    };
-
-    const syncEffectiveMode = () => {
-        const params = getResolvedParams();
-        if (params) {
-            effectiveIrlRef.current = params.interactionType === 'irl';
-            effectiveEventIdRef.current = params.eventId ?? null;
-        }
-    };
-
-    // Snapshot of what's already there in the effective mode, so polling only
-    // fires on genuinely new taps/connections.
-    const fetchBaseline = async (): Promise<number[]> => {
-        const token = await storage.getItem('access');
-        const res = await axios.get(`${GetApiUrl()}/posts/user-event-connections/`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+    const readEntries = (data: any): ConnectionEntry[] => {
         if (effectiveIrlRef.current) {
-            return (res.data.irl_taps || []).map((t: any) => t.id);
+            return (data?.irl_taps || []).map((t: any) => ({
+                id: t.id,
+                user: {
+                    user_id: t.user_id,
+                    username: t.username,
+                    avatar: t.avatar,
+                    is_official: t.is_official,
+                    is_seeker_verified: t.is_seeker_verified,
+                },
+                points: t.points || 1,
+            }));
         }
-        const eventsArray = res.data.events || [];
-        const eventData = eventsArray.find((e: any) => e.event_id === effectiveEventIdRef.current);
-        return (eventData?.connections || []).map((c: any) => c.user_id);
+        const event = (data?.events || []).find((e: any) => e.event_id === effectiveEventIdRef.current);
+        return (event?.connections || []).map((c: any) => ({
+            id: c.user_id,
+            user: {
+                user_id: c.user_id,
+                username: c.username,
+                avatar: c.avatar,
+                is_official: c.is_official,
+                is_seeker_verified: c.is_seeker_verified,
+            },
+            points: c.rep_received || 2,
+        }));
     };
 
-    const checkNewConnections = async (currentKnownIds: number[]) => {
+    const fetchEntries = async (): Promise<ConnectionEntry[]> => {
+        const access = await storage.getItem('access');
+        const res = await axios.get(`${GetApiUrl()}/posts/user-event-connections/`, {
+            headers: { Authorization: `Bearer ${access}` },
+            timeout: 10000,
+        });
+        return readEntries(res.data);
+    };
+
+    const finishWithMeet = useCallback((entry: ConnectionEntry) => {
+        sessionRef.current++;
+        stopPolling();
+        stopAutoRenewal();
+        broadcastStopRef.current();
+        const { lastMet } = useProximityPrompt.getState();
+        const confirmedHere = !!lastMet && lastMet.userId === entry.user.user_id && Date.now() - lastMet.at < 10_000;
+        if (!confirmedHere) haptics.notification('success');
+        useProximityPrompt.getState().reportMet(entry.user.user_id ?? null);
+        setPickedUp(false);
+        setSuccessUser(entry.user);
+        setSuccessPoints(entry.points);
+        setPhase('success');
+        walletLogger.info(WalletTag.PROXIMITY, 'Meet confirmed', { irl: effectiveIrlRef.current });
+    }, [stopPolling, stopAutoRenewal]);
+
+    const pollOnce = useCallback(async (session: number) => {
+        if (pollInFlightRef.current) return;
+        pollInFlightRef.current = true;
         try {
-            const token = await storage.getItem('access');
-            const res = await axios.get(`${GetApiUrl()}/posts/user-event-connections/`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (effectiveIrlRef.current) {
-                // IRL mode: watch for a new entry in irl_taps (keyed by rep row id)
-                const taps = res.data.irl_taps || [];
-                const newTap = taps.find((t: any) => !currentKnownIds.includes(t.id));
-                if (newTap) {
-                    onNewTapDetected({
-                        username: newTap.username,
-                        avatar: newTap.avatar,
-                        is_official: newTap.is_official,
-                        is_seeker_verified: newTap.is_seeker_verified
-                    }, newTap.points || 1);
-                    return [...currentKnownIds, newTap.id];
-                }
-                return currentKnownIds;
+            const entries = await fetchEntries();
+            if (!mountedRef.current || session !== sessionRef.current) return;
+            const ids = entries.map((e) => e.id);
+            if (knownIdsRef.current === null) {
+                // Baseline wasn't available at start — establish it now instead
+                // of treating every old connection as a new meet.
+                knownIdsRef.current = ids;
+                return;
             }
-
-            const eventsArray = res.data.events || [];
-            const eventData = eventsArray.find((e: any) => e.event_id === effectiveEventIdRef.current);
-
-            if (!eventData) return currentKnownIds;
-
-            const currentConns = eventData.connections || [];
-            const newConn = currentConns.find((c: any) => !currentKnownIds.includes(c.user_id));
-
-            if (newConn) {
-                onNewTapDetected({
-                    username: newConn.username,
-                    avatar: newConn.avatar,
-                    is_official: newConn.is_official,
-                    is_seeker_verified: newConn.is_seeker_verified
-                }, newConn.rep_received || 2);
-                return [...currentKnownIds, newConn.user_id];
+            const fresh = entries.find((e) => !knownIdsRef.current!.includes(e.id));
+            if (fresh) {
+                knownIdsRef.current = [...knownIdsRef.current, fresh.id];
+                finishWithMeet(fresh);
             }
-            return currentKnownIds;
-        } catch (e) {
+        } catch {
             walletLogger.warn(WalletTag.PROXIMITY, 'Polling connections failed');
-            return currentKnownIds;
+        } finally {
+            pollInFlightRef.current = false;
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [finishWithMeet]);
 
-    // Generate (server resolves the real mode) → baseline → broadcast → poll.
-    const startSession = async (isActive: () => boolean) => {
-        const tokenUrl = await generateToken(
-            isIrl ? 'irl' : 'networking',
-            isIrl ? undefined : Number(eventId)
-        );
-        if (!isActive() || !tokenUrl) return;
+    const schedulePoll = useCallback((session: number, delay?: number) => {
+        stopPolling();
+        const wait = delay ?? (Date.now() < fastPollUntilRef.current ? FAST_POLL_MS : POLL_MS);
+        pollTimerRef.current = setTimeout(async () => {
+            if (!mountedRef.current || session !== sessionRef.current) return;
+            await pollOnce(session);
+            if (mountedRef.current && session === sessionRef.current) schedulePoll(session);
+        }, wait);
+    }, [pollOnce, stopPolling]);
+
+    // ── Broadcast ──
+
+    const onPickedUp = useCallback(() => {
+        if (!mountedRef.current) return;
+        haptics.impact('rigid');
+        setPickedUp(true);
+        fastPollUntilRef.current = Date.now() + FAST_POLL_WINDOW_MS;
+        if (pickedUpTimerRef.current) clearTimeout(pickedUpTimerRef.current);
+        pickedUpTimerRef.current = setTimeout(() => {
+            if (mountedRef.current) setPickedUp(false);
+        }, READ_NOTICE_MS);
+        schedulePoll(sessionRef.current, 300);
+    }, [schedulePoll]);
+
+    const broadcast = useProximityBroadcast({ onRead: onPickedUp });
+    const broadcastStopRef = useRef(broadcast.stop);
+    broadcastStopRef.current = broadcast.stop;
+
+    const readiness = useProximityReadiness({
+        role: 'both',
+        onFixed: () => {
+            broadcast.restart();
+            requestScanStart({ prompt: false });
+        },
+    });
+
+    const syncEffectiveMode = useCallback(() => {
+        const resolved = getResolvedParams();
+        if (resolved) {
+            effectiveIrlRef.current = resolved.interactionType === 'irl';
+            effectiveEventIdRef.current = resolved.eventId ?? null;
+        }
+    }, [getResolvedParams]);
+
+    // Generate (server resolves the real mode) → baseline → broadcast → listen → poll.
+    const startSession = useCallback(async () => {
+        const session = ++sessionRef.current;
+        const alive = () => mountedRef.current && session === sessionRef.current;
+        setPhase('starting');
+        setPickedUp(false);
+
+        const url = await generateToken(isIrl ? 'irl' : 'networking', isIrl ? undefined : Number(eventId));
+        if (!alive()) return;
+        if (!url) {
+            setPhase('failed');
+            haptics.notification('error');
+            return;
+        }
         syncEffectiveMode();
 
-        let knownIds: number[] = [];
         try {
-            knownIds = await fetchBaseline();
-        } catch (e) {
-            walletLogger.warn(WalletTag.PROXIMITY, 'Baseline fetch failed');
+            knownIdsRef.current = (await fetchEntries()).map((e) => e.id);
+        } catch {
+            knownIdsRef.current = null;
         }
-        if (!isActive()) return;
-        setInitialConnections(knownIds);
+        if (!alive()) return;
 
-        startSharingSession(tokenUrl);
-        // Keep the token fresh; the mode may re-resolve on each rotation.
+        await broadcast.start(url);
+        if (!alive()) return;
+        // Listen too: if the other person also opened Tap to Meet, this
+        // phone picks up their code and asks to confirm. (iOS: the permission
+        // sheet is already up from broadcasting — starting the scanner joins
+        // it. Android already asked for the superset above.)
+        requestScanStart({ prompt: Platform.OS === 'ios' });
+
         startAutoRenewal(isIrl ? 'irl' : 'networking', isIrl ? undefined : Number(eventId), (newUrl) => {
             syncEffectiveMode();
-            stopSharingSession();
-            startSharingSession(newUrl);
+            broadcast.update(newUrl);
         });
-
-        if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-        }
-        pollingRef.current = setInterval(async () => {
-            if (!isActive()) return;
-            knownIds = await checkNewConnections(knownIds);
-            setInitialConnections(knownIds);
-        }, 2500);
-    };
-
-    const handleContinue = async () => {
-        setSuccessState(false);
-        setSuccessUser(null);
-        setSuccessPoints(0);
-        await startSession(() => true);
-    };
+        setPhase('live');
+        schedulePoll(session);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [eventId, isIrl, generateToken, startAutoRenewal, syncEffectiveMode, schedulePoll, broadcast.start, broadcast.update]);
 
     useEffect(() => {
-        let active = true;
-
-        const init = async () => {
-            try {
-                const storedId = await storage.getItem('id');
-                if (!storedId) {
-                    walletLogger.error(WalletTag.PROXIMITY, 'No user ID found in storage');
-                    return;
-                }
-                setUserId(storedId);
-                await startSession(() => active);
-            } catch (e) {
-                walletLogger.error(WalletTag.PROXIMITY, 'Failed to initialize sharing & polling', e);
-            }
-        };
-
-        if (eventId || isIrl) {
-            init();
-        }
+        mountedRef.current = true;
+        const releaseActiveScan = acquireActiveScanMode();
+        warmUpLocation();
+        if (eventId || isIrl) startSession();
 
         return () => {
-            active = false;
-            stopSharingSession();
+            mountedRef.current = false;
+            sessionRef.current++;
+            releaseActiveScan();
+            stopPolling();
             stopAutoRenewal();
-            if (pollingRef.current) {
-                clearInterval(pollingRef.current);
-                pollingRef.current = null;
-            }
+            if (pickedUpTimerRef.current) clearTimeout(pickedUpTimerRef.current);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [eventId, isIrl]);
 
-    const broadcastLabel = Platform.OS === 'ios' ? 'Bluetooth' : 'NFC';
-    // Display follows the server-resolved mode once known (an IRL request
-    // from a checked-in user broadcasts as event networking).
+    // Timers are paused in the background: refresh the code and check for a
+    // meet that happened meanwhile as soon as the app is back.
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', (next) => {
+            if (next !== 'active' || phase !== 'live') return;
+            renewNow();
+            schedulePoll(sessionRef.current, 0);
+        });
+        return () => sub.remove();
+    }, [phase, renewNow, schedulePoll]);
+
+    // This phone confirmed a meet in the prompt — check right away.
+    const lastMetAt = useProximityPrompt((s) => s.lastMet?.at);
+    useEffect(() => {
+        if (lastMetAt && phase === 'live') schedulePoll(sessionRef.current, 0);
+    }, [lastMetAt, phase, schedulePoll]);
+
+    const handleContinue = () => {
+        setSuccessUser(null);
+        setSuccessPoints(0);
+        startSession();
+    };
+
+    // ── Render ──
+
     const effectiveIrl = resolvedType ? resolvedType === 'irl' : isIrl;
     const subtitle = effectiveIrl
-        ? 'Not at an event · IRL tap'
-        : (isIrl && resolvedType === 'networking' ? 'Checked in · counts for your event' : null);
-
-    if (tokenError && !successState) {
-        return (
-            <EventScreenShell title="Tap to Meet">
-                <View style={styles.centerContent}>
-                    <View style={[styles.errorCircle]}>
-                        <ShieldX size={48} color={colors.danger} strokeWidth={1.5} />
-                    </View>
-                    <Text style={[styles.heading, { color: colors.danger }]}>Can't Start Tapping</Text>
-                    <Text style={[styles.description, { color: mutedColor }]}>
-                        {tokenError.toLowerCase().includes('check in')
-                            ? 'Your event check-in has expired — check in again to network at this event.'
-                            : tokenError}
-                    </Text>
-                    <View style={styles.ctaWidth}>
-                        <EventCta label="Go Back" variant="secondary" onPress={() => router.back()} />
-                    </View>
-                </View>
-            </EventScreenShell>
-        );
-    }
+        ? 'In person · not at an event'
+        : (isIrl && resolvedType === 'networking' ? 'Checked in · counts for your event' : 'Event networking');
 
     if (!eventId && !isIrl) {
         return (
             <EventScreenShell title="Tap to Meet">
                 <View style={styles.centerContent}>
-                    <View style={[styles.errorCircle]}>
-                        <ShieldX size={48} color={colors.danger} strokeWidth={1.5} />
+                    <View style={[styles.stateCircle, styles.dangerCircle]}>
+                        <ShieldX size={44} color={colors.danger} strokeWidth={1.5} />
                     </View>
-                    <Text style={[styles.heading, { color: colors.danger }]}>Invalid Event</Text>
+                    <Text style={[styles.heading, { color: main }]}>Invalid event</Text>
                     <Text style={[styles.description, { color: mutedColor }]}>
                         This link is missing its event. Head back and try again.
                     </Text>
-                    <View style={styles.ctaWidth}>
-                        <EventCta label="Go Back" variant="secondary" onPress={() => router.back()} />
+                    <View style={styles.ctaBlock}>
+                        <EventCta label="Go Back" variant="secondary" onPress={() => safeBack(router)} />
                     </View>
                 </View>
             </EventScreenShell>
         );
     }
 
-    return (
-        <EventScreenShell title="Tap to Meet" subtitle={subtitle}>
-            {!userId ? (
-                <CustomActivityIndicator size="large" />
-            ) : successState ? (
+    if (phase === 'success') {
+        return (
+            <EventScreenShell title="Tap to Meet" subtitle={subtitle}>
                 <MeetSuccess
                     user={successUser}
                     points={successPoints}
@@ -305,183 +335,256 @@ export default function EventNFCShareScreen() {
                                     onPress={() => {}}
                                 />
                             )}
-                            <EventCta
-                                label={effectiveIrl ? 'Keep tapping' : 'Continue Networking'}
-                                onPress={handleContinue}
-                            />
-                            <EventCta
-                                label="Done"
-                                variant="ghost"
-                                onPress={() => router.back()}
-                            />
+                            <EventCta label={effectiveIrl ? 'Keep tapping' : 'Continue networking'} onPress={handleContinue} />
+                            <EventCta label="Done" variant="ghost" onPress={() => safeBack(router)} />
                         </>
                     }
                 />
-            ) : (
+            </EventScreenShell>
+        );
+    }
+
+    if (phase === 'failed') {
+        const error = describeProximityError(errorObject, 'generate');
+        return (
+            <EventScreenShell title="Tap to Meet" subtitle={subtitle}>
                 <Animated.View
                     entering={reduceMotion ? undefined : FadeInUp.springify().damping(15)}
                     style={styles.centerContent}
                 >
-                    <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(100).duration(MOTION.duration.normal)}>
-                        <View style={styles.animationContainer}>
-                            {!reduceMotion && (
-                                <LottieView
-                                    autoPlay
-                                    loop
-                                    style={styles.lottie}
-                                    source={require('@/assets/lottie/scanning.json')}
-                                />
-                            )}
-                            <View style={styles.iconCircle}>
-                                <Radio size={32} color="#ffffff" />
-                            </View>
-                        </View>
-                    </Animated.View>
-
-                    <Text style={[styles.heading, { color: main }]}>
-                        {effectiveIrl ? 'Ready to Tap' : 'Ready to Network'}
-                    </Text>
-                    <Text style={[styles.description, { color: mutedColor }]}>
-                        {effectiveIrl
-                            ? `Hold your phone near a friend's phone to meet — you'll both get +1 REP (via ${broadcastLabel}).`
-                            : `Hold your phone near another attendee's phone to connect and share reputation via ${broadcastLabel}!`}
-                    </Text>
-
-                    <TokenExpiryBadge
-                        secondsLeft={secondsLeft}
-                        totalDuration={totalDuration}
-                        isRenewing={isRenewing}
-                        label={effectiveIrl ? 'Active Tap Token' : 'Active Networking Token'}
-                    />
-
-                    {Platform.OS === 'ios' && btState === 'poweredOff' && (
-                        <View style={styles.warningCard}>
-                            <AlertTriangle size={18} color={colors.accent} style={{ marginBottom: 2 }} />
-                            <Text style={[styles.warningTitle, { color: main }]}>Bluetooth is Off</Text>
-                            <Text style={[styles.warningText, { color: mutedColor }]}>
-                                Turn on Bluetooth to broadcast — sharing resumes automatically.
-                            </Text>
-                        </View>
-                    )}
-
-                    {Platform.OS === 'ios' ? (
-                        <View style={styles.warningCard}>
-                            <AlertTriangle size={18} color={colors.accent} style={{ marginBottom: 2 }} />
-                            <Text style={[styles.warningTitle, { color: main }]}>iOS Proximity Requirements</Text>
-                            <Text style={[styles.warningText, { color: mutedColor }]}>
-                                Please ask the other person to enable <Text style={{ fontFamily: 'Dank Mono Bold', color: main }}>Bluetooth</Text> and open the <Text style={{ fontFamily: 'Dank Mono Bold', color: main }}>NextVibe</Text> app on their phone to receive.
-                            </Text>
-                        </View>
-                    ) : (
-                        <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-                            <Text style={[styles.infoCardText, { color: mutedColor }]}>
-                                Make sure the other person's screen is unlocked.
-                            </Text>
-                        </View>
-                    )}
+                    <View style={[styles.stateCircle, error.tone === 'error' ? styles.dangerCircle : styles.warningCircle]}>
+                        {error.kind === 'network' || error.kind === 'timeout'
+                            ? <WifiOff size={44} color={colors.warning} strokeWidth={1.5} />
+                            : <ShieldX size={44} color={error.tone === 'error' ? colors.danger : colors.warning} strokeWidth={1.5} />}
+                    </View>
+                    <Text style={[styles.heading, { color: main }]}>{error.title}</Text>
+                    <Text style={[styles.description, { color: mutedColor }]}>{error.message}</Text>
+                    <View style={styles.ctaBlock}>
+                        {error.action === 'goIrl' && (
+                            <EventCta
+                                label="Meet outside the event"
+                                onPress={() => router.replace('/event-nfc-share?mode=irl' as any)}
+                            />
+                        )}
+                        {error.retryable && <EventCta label="Try again" onPress={startSession} />}
+                        <EventCta
+                            label="Go Back"
+                            variant={error.action === 'goIrl' || error.retryable ? 'ghost' : 'secondary'}
+                            onPress={() => safeBack(router)}
+                        />
+                    </View>
                 </Animated.View>
-            )}
+            </EventScreenShell>
+        );
+    }
+
+    const starting = phase === 'starting';
+    const statusTone: 'live' | 'warn' | 'off' | 'starting' = starting
+        ? 'starting'
+        : isStale ? 'off' : renewalFailing ? 'warn' : 'live';
+    const statusLabel = {
+        starting: 'Getting ready…',
+        live: 'Live — others nearby can tap you',
+        warn: 'Connection is shaky — still live',
+        off: 'Offline — your tap code expired',
+    }[statusTone];
+    const statusColor = { starting: colors.accent, live: colors.success, warn: colors.warning, off: colors.danger }[statusTone];
+
+    const heading = pickedUp
+        ? 'They picked you up'
+        : effectiveIrl ? 'Ready to tap' : 'Ready to network';
+    const description = pickedUp
+        ? 'Waiting for them to confirm on their phone…'
+        : 'Hold your phone back to back with theirs for a second.';
+
+    return (
+        <EventScreenShell title="Tap to Meet" subtitle={subtitle} bodyStyle={styles.shellBody}>
+            <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                <Animated.View
+                    entering={reduceMotion ? undefined : FadeInDown.delay(60).duration(MOTION.duration.normal)}
+                    style={styles.hero}
+                >
+                    <View style={styles.animationContainer}>
+                        {!reduceMotion && !starting && (
+                            <LottieView
+                                autoPlay
+                                loop
+                                style={styles.lottie}
+                                source={require('@/assets/lottie/scanning.json')}
+                            />
+                        )}
+                        <View style={[styles.iconCircle, pickedUp && styles.iconCircleActive]}>
+                            {starting
+                                ? <CustomActivityIndicator size="small" />
+                                : pickedUp
+                                    ? <CheckCircle2 size={34} color="#ffffff" />
+                                    : <Radio size={32} color="#ffffff" />}
+                        </View>
+                    </View>
+
+                    <Text style={[styles.heading, { color: main }]} accessibilityLiveRegion="polite">{heading}</Text>
+                    <Text style={[styles.description, { color: mutedColor }]}>{description}</Text>
+
+                    <View
+                        style={[
+                            styles.statusPill,
+                            { borderColor: `${statusColor}55`, backgroundColor: `${statusColor}14` },
+                        ]}
+                    >
+                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                        <Text style={[styles.statusText, { color: main }]}>{statusLabel}</Text>
+                    </View>
+                </Animated.View>
+
+                {isStale && (
+                    <View style={styles.ctaInline}>
+                        <EventCta label="Reconnect" variant="secondary" onPress={startSession} />
+                    </View>
+                )}
+
+                <ReadinessCard issues={readiness.issues} />
+
+                {broadcast.broadcastError && !readiness.issues.some((i) => i.id.startsWith('bluetooth')) && (
+                    <Text style={[styles.footnote, { color: mutedColor }]}>
+                        {broadcast.broadcastError.code === 'unsupported'
+                            ? "This phone can't broadcast over Bluetooth — others can still tap you if their phone reads NFC, or you can pick up theirs."
+                            : 'Bluetooth broadcasting hit a snag. If nothing happens, turn Bluetooth off and on again.'}
+                    </Text>
+                )}
+
+                <HowToTapCard audience={effectiveIrl ? 'friend' : 'attendee'} />
+            </ScrollView>
         </EventScreenShell>
     );
 }
 
 const styles = StyleSheet.create({
-    centerContent: {
-        alignItems: 'center',
-        gap: space.lg,
+    shellBody: {
+        justifyContent: 'flex-start',
+        paddingHorizontal: 0,
+        paddingBottom: 0,
+    },
+    scroll: {
         width: '100%',
     },
-    animationContainer: {
-        width: 250,
-        height: 250,
+    scrollContent: {
+        paddingHorizontal: space.lg + 4,
+        paddingBottom: space.xxl,
+        alignItems: 'center',
+    },
+    hero: {
+        alignItems: 'center',
+        width: '100%',
+        paddingTop: space.md,
+    },
+    centerContent: {
+        flex: 1,
+        width: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        position: 'relative',
-        marginBottom: space.xl - space.xs,
+    },
+    animationContainer: {
+        width: 200,
+        height: 200,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: space.md,
     },
     lottie: {
-        width: 250,
-        height: 250,
         position: 'absolute',
+        width: 280,
+        height: 280,
     },
     iconCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: 76,
+        height: 76,
+        borderRadius: 38,
+        backgroundColor: colors.accent,
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 10,
-        backgroundColor: colors.accent,
         shadowColor: colors.accent,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.45,
         shadowRadius: 16,
-        elevation: 10,
+        elevation: 8,
     },
-    errorCircle: {
-        width: 110,
-        height: 110,
-        borderRadius: 55,
+    iconCircleActive: {
+        backgroundColor: '#22c55e',
+        shadowColor: '#22c55e',
+    },
+    stateCircle: {
+        width: 96,
+        height: 96,
+        borderRadius: 48,
         borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: space.lg,
+    },
+    dangerCircle: {
         backgroundColor: 'rgba(248,113,113,0.1)',
         borderColor: 'rgba(248,113,113,0.25)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: space.sm,
+    },
+    warningCircle: {
+        backgroundColor: 'rgba(251,191,36,0.1)',
+        borderColor: 'rgba(251,191,36,0.25)',
     },
     heading: {
         fontFamily: 'Dank Mono Bold',
         fontSize: typeScale.title,
-        includeFontPadding: false,
+        lineHeight: typeScale.title + 4,
         textAlign: 'center',
+        includeFontPadding: false,
     },
     description: {
         fontFamily: 'Dank Mono',
-        fontSize: 15,
-        lineHeight: 22,
+        fontSize: typeScale.sub,
+        lineHeight: typeScale.sub + 6,
         textAlign: 'center',
+        marginTop: space.sm,
+        paddingHorizontal: space.md,
         includeFontPadding: false,
-        paddingHorizontal: space.sm + 2,
     },
-    infoCard: {
-        marginTop: space.xs,
-        paddingHorizontal: space.lg,
-        paddingVertical: space.md,
-        borderRadius: radius.md,
-        width: '100%',
-    },
-    infoCardText: {
-        fontFamily: 'Dank Mono',
-        fontSize: typeScale.mono,
-        textAlign: 'center',
-    },
-    warningCard: {
-        marginTop: space.xs,
-        paddingHorizontal: space.lg,
-        paddingVertical: space.md + 2,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        width: '100%',
+    statusPill: {
+        flexDirection: 'row',
         alignItems: 'center',
-        gap: space.xs + 2,
-        backgroundColor: 'rgba(168,85,247,0.1)',
-        borderColor: 'rgba(168,85,247,0.2)',
+        gap: space.sm,
+        borderWidth: 1,
+        borderRadius: radius.pill,
+        paddingHorizontal: space.md,
+        paddingVertical: 6,
+        marginTop: space.lg,
     },
-    warningTitle: {
-        fontFamily: 'Dank Mono Bold',
-        fontSize: typeScale.mono,
-        textAlign: 'center',
-        includeFontPadding: false,
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
-    warningText: {
+    statusText: {
         fontFamily: 'Dank Mono',
         fontSize: typeScale.caption,
-        textAlign: 'center',
-        lineHeight: 18,
         includeFontPadding: false,
     },
-    ctaWidth: {
+    ctaBlock: {
         width: '100%',
-        marginTop: space.sm,
+        gap: space.md,
+        marginTop: space.xl,
+        paddingHorizontal: space.sm,
+    },
+    ctaInline: {
+        width: '100%',
+        marginTop: space.md,
+    },
+    footnote: {
+        fontFamily: 'Dank Mono',
+        fontSize: typeScale.caption,
+        lineHeight: typeScale.caption + 5,
+        textAlign: 'center',
+        marginTop: space.md,
+        includeFontPadding: false,
     },
 });

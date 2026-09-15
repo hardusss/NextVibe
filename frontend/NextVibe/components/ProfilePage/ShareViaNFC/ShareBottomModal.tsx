@@ -14,10 +14,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import { Wifi, WifiOff, Users, CheckCircle, AlertTriangle, Link2, Check } from 'lucide-react-native';
 
-import { startSharing, stopSharing, addNfcReadListener } from '../../../modules/nfc-send';
-import { startBroadcasting, stopBroadcasting, addBleReadListener } from '../../../modules/ble-share';
 import { storage } from '@/src/utils/storage';
 import haptics from '@/src/utils/haptics';
+import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
+import { useProximityReadiness } from '@/hooks/useProximityReadiness';
+import ReadinessCard from '@/components/Proximity/ReadinessCard';
 
 export interface ShareModalRef {
     present: () => void;
@@ -28,8 +29,6 @@ export interface ShareModalProps {
     avatarUrl: string | null;
     profileUrl?: string;
 }
-
-const READ_EVENT_DEBOUNCE_MS = 5000;
 
 const NeonGlowOverlay = ({ opacity }: { opacity: Animated.Value }) => {
     const SIDE = 55;
@@ -138,16 +137,12 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     };
 
     const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-    const [isBroadcasting, setIsBroadcasting] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const [vibes, setVibes] = useState(0);
     const [showGlow, setShowGlow] = useState(false);
     const [copied, setCopied] = useState(false);
     const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const removeListenerRef = useRef<{ remove: () => void } | null>(null);
-    const lastReadTimestamp = useRef<number>(0);
-    // Always holds the latest handleReadEvent — fixes stale closure in BLE listener
-    const handleReadEventRef = useRef<(source: 'BLE' | 'NFC') => void>(() => {});
 
     const glowAnimRef = useRef<Animated.CompositeAnimation | null>(null);
     const glowOpacity = useRef(new Animated.Value(0)).current;
@@ -161,7 +156,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
     useEffect(() => {
         return () => {
-            stopHceBroadcast();
             if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
         };
     }, []);
@@ -173,8 +167,6 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
     const resetState = () => {
         setVibes(0);
-        setIsBroadcasting(false);
-        lastReadTimestamp.current = 0;
         setShowGlow(false);
         glowOpacity.setValue(0);
         setCopied(false);
@@ -237,98 +229,52 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         });
     };
 
-    const handleReadEvent = (source: 'BLE' | 'NFC') => {
-        if (source === 'NFC') {
-            const now = Date.now();
-            if (now - lastReadTimestamp.current <= READ_EVENT_DEBOUNCE_MS) {
-                if (__DEV__) console.log(`⚠️ Debounced duplicate ${source} read (ignored)`);
-                return;
-            }
-            lastReadTimestamp.current = now;
-        }
-
-        console.log(`[ShareModal] ${source} read — incrementing vibes counter`);
-        setVibes(prev => {
-            console.log(`[ShareModal] vibes: ${prev} -> ${prev + 1}`);
-            return prev + 1;
-        });
+    // Another phone read the profile (either channel; debounced in the hook).
+    const handleReadEvent = () => {
+        haptics.impact('rigid');
+        setVibes(prev => prev + 1);
         triggerNeonGlow();
     };
 
-    // Sync ref on every render so the listener never captures a stale closure
-    handleReadEventRef.current = handleReadEvent;
+    const broadcast = useProximityBroadcast({ onRead: handleReadEvent });
+    const isBroadcasting = broadcast.isActive;
+    const readiness = useProximityReadiness({
+        role: 'share',
+        enabled: isOpen,
+        onFixed: () => broadcast.restart(),
+    });
 
     const startHceBroadcast = async () => {
-        if (isBroadcasting) return;
-        try {
-            let urlToShare = props.profileUrl;
-            if (!urlToShare || urlToShare.includes('undefined')) {
-                const storedId = await storage.getItem('id');
-                if (storedId) {
-                    urlToShare = `https://nextvibe.io/u/${storedId}`;
-                }
-            }
-
-            if (!urlToShare || urlToShare.includes('undefined')) {
-                console.warn('[ShareModal] Cannot broadcast: no user ID available');
-                return;
-            }
-
-            if (Platform.OS === 'ios') {
-                // Listener always calls ref.current — never stale even after re-renders
-                removeListenerRef.current = addBleReadListener(() => {
-                    console.log('[ShareModal] RAW onBleRead event fired from native');
-                    handleReadEventRef.current('BLE');
-                });
-                startBroadcasting(urlToShare);
-                if (__DEV__) console.log("✅ BLE Broadcasting started:", urlToShare);
-            } else {
-                // Android: Use NFC HCE
-                lastReadTimestamp.current = 0;
-                removeListenerRef.current = addNfcReadListener(() => handleReadEvent('NFC'));
-                startSharing(urlToShare);
-                if (__DEV__) console.log("✅ Custom Native HCE Broadcasting started with URL:", urlToShare);
-            }
-
-            setIsBroadcasting(true);
-        } catch (error) {
-            console.error("❌ Failed to start broadcasting:", error);
+        const urlToShare = await resolveProfileUrl();
+        if (!urlToShare) {
+            console.warn('[ShareModal] Cannot broadcast: no user ID available');
+            return;
         }
+        await broadcast.start(urlToShare);
     };
 
-    const stopHceBroadcast = async () => {
-        try {
-            if (removeListenerRef.current) {
-                removeListenerRef.current.remove();
-                removeListenerRef.current = null;
-            }
-
-            if (Platform.OS === 'ios') {
-                stopBroadcasting();
-                if (__DEV__) console.log("🛑 BLE Broadcasting stopped.");
-            } else {
-                stopSharing();
-                if (__DEV__) console.log("🛑 Custom Native HCE Broadcasting stopped.");
-            }
-        } catch (error) {
-            console.warn("Error stopping broadcasting:", error);
-        } finally {
-            setIsBroadcasting(false);
-        }
+    const stopHceBroadcast = () => {
+        broadcast.stop();
     };
 
     const hasStartedRef = useRef(false);
+    // The sheet callback is memoized once; always run the latest start (props.profileUrl may arrive later).
+    const startRef = useRef(startHceBroadcast);
+    startRef.current = startHceBroadcast;
 
     const handleSheetChanges = useCallback((index: number) => {
         if (index >= 0 && !hasStartedRef.current) {
             hasStartedRef.current = true;
-            startHceBroadcast();
+            setIsOpen(true);
+            startRef.current();
         } else if (index === -1) {
             hasStartedRef.current = false;
+            setIsOpen(false);
             stopHceBroadcast();
             resetState();
         }
-    }, [startHceBroadcast, stopHceBroadcast, resetState]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleClose = () => {
         stopHceBroadcast();
@@ -353,6 +299,8 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                 )}
                 onChange={handleSheetChanges}
                 onDismiss={() => {
+                    hasStartedRef.current = false;
+                    setIsOpen(false);
                     stopHceBroadcast();
                     resetState();
                 }}
@@ -362,7 +310,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                 <BottomSheetView style={[styles.contentContainer, { backgroundColor: colors.background }]}>
                     <View style={styles.headerRow}>
                         <Text style={[styles.title, { color: colors.textColor }]}>
-                            {isBroadcasting ? "Broadcasting Profile..." : "Ready to Share"}
+                            {isBroadcasting ? "Sharing your profile" : "Getting ready…"}
                         </Text>
                         {isBroadcasting ? (
                             <Wifi
@@ -401,7 +349,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
 
                     <View style={[styles.infoCard, { backgroundColor: colors.cardBg }]}>
                         <Text style={[styles.subtitle, { color: colors.subText }]}>
-                            Keep tapping! Multiple friends can collect.
+                            Hold phones back to back — each friend gets your profile.
                         </Text>
                         <View style={styles.statsRow}>
                             <View style={styles.statItem}>
@@ -410,16 +358,20 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                                     color={colors.iconColor}
                                 />
                                 <Text style={[styles.statValue, { color: colors.accent }]}>{vibes}</Text>
-                                <Text style={[styles.statLabel, { color: colors.subText }]}>vibes shared</Text>
+                                <Text style={[styles.statLabel, { color: colors.subText }]}>{vibes === 1 ? 'phone reached' : 'phones reached'}</Text>
                             </View>
                         </View>
                     </View>
 
-                    {Platform.OS === 'ios' && (
+                    <ReadinessCard issues={readiness.issues} compact />
+
+                    {readiness.issues.length === 0 && (
                         <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.06)', borderColor: 'rgba(168,85,247,0.2)' }]}>
                             <AlertTriangle size={18} color={colors.accent} />
                             <Text style={[styles.warningText, { color: colors.textColor }]}>
-                                Ask the other person to enable <Text style={{ fontFamily: "Dank Mono Bold" }}>Bluetooth</Text> and open the <Text style={{ fontFamily: "Dank Mono Bold" }}>NextVibe</Text> app on their phone to receive.
+                                {Platform.OS === 'android'
+                                    ? <>Friends with NextVibe open pick you up over <Text style={{ fontFamily: "Dank Mono Bold" }}>Bluetooth</Text>. With <Text style={{ fontFamily: "Dank Mono Bold" }}>NFC</Text> on, any phone can read you with a tap.</>
+                                    : <>Ask your friend to open <Text style={{ fontFamily: "Dank Mono Bold" }}>NextVibe</Text> with <Text style={{ fontFamily: "Dank Mono Bold" }}>Bluetooth</Text> on, then hold the phones together.</>}
                             </Text>
                         </View>
                     )}

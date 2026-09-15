@@ -192,7 +192,7 @@ function PageSettingsContent() {
             await AsyncStorage.setItem("bluetooth_scan_enabled", newValue ? "true" : "false");
             if (Platform.OS === 'ios' || Platform.OS === 'android') {
                 if (newValue) {
-                    await requestScanStart();
+                    await requestScanStart({ prompt: true });
                 } else {
                     requestScanStop();
                 }

@@ -3,11 +3,17 @@
 
   <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
   <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
+  <!-- Scan results are never used to derive location, so Android 12+ does not
+       need location permission or Location Services switched on to scan. -->
+  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+  <!-- Android 11 and below: BLE scanning requires location permission. -->
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-  <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
+  <!-- Optional: phones without BLE can still install the app. -->
+  <uses-feature android:name="android.hardware.bluetooth_le" android:required="false"/>
 </manifest>

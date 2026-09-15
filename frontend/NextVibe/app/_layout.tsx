@@ -28,6 +28,7 @@ import { vexo, identifyDevice } from 'vexo-analytics';
 import { StatusBar } from "expo-status-bar";
 import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
 import { useBleScanner } from "@/hooks/useBleScanner";
+import ProximityPrompt from "@/components/Proximity/ProximityPrompt";
 import { clearProfileCache } from "@/components/ProfilePage/ProfilePage";
 import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
@@ -131,9 +132,6 @@ const SHARED_SCREENS = [
 ];
 
 export default function RootLayout() {
-    // Enable background-style foreground BLE scanning on iOS
-    const { renderBleScanModal } = useBleScanner();
-
     const [fontsLoaded, fontError] = useFonts({
         'Dank Mono': require('@/assets/fonts/PlusJakartaSans-VariableFont_wght.ttf'),
         'Dank Mono Bold': require('@/assets/fonts/PlusJakartaSans-Bold.ttf'),
@@ -150,6 +148,9 @@ export default function RootLayout() {
     const [userID, setUserID] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [visible, setVisible] = useState<boolean>(false);
+
+    // App-wide nearby detection for taps, only while signed in.
+    useBleScanner(userID !== null);
 
     useEffect(() => {
         loadSettings();
@@ -448,7 +449,7 @@ export default function RootLayout() {
                                     ))}
                                 </Stack>
                                 <PromoBanner />
-                                {renderBleScanModal()}
+                                <ProximityPrompt />
                             </WebSocketProvider>
                         </ErrorBoundary>
                     </LazorKitProvider>

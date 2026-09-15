@@ -1,22 +1,25 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft } from 'lucide-react-native';
 import { space, colors, radius, type as typeScale } from '@/src/theme/tokens';
+import { safeBack } from '@/src/utils/safeBack';
 
 type EventScreenShellProps = {
     title: string;
     subtitle?: string | null;
     children: React.ReactNode;
+    /** Overrides for the content area (e.g. a top-aligned scroll layout). */
+    bodyStyle?: StyleProp<ViewStyle>;
 };
 
 /**
  * Shared chrome for the event flow screens (check-in, tap-to-meet share/receive):
  * full-bleed gradient background in dark mode, back button, centered title.
  */
-export default function EventScreenShell({ title, subtitle, children }: EventScreenShellProps) {
+export default function EventScreenShell({ title, subtitle, children, bodyStyle }: EventScreenShellProps) {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
@@ -36,7 +39,7 @@ export default function EventScreenShell({ title, subtitle, children }: EventScr
                 <View style={styles.header}>
                     <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => router.back()}
+                        onPress={() => safeBack(router)}
                         style={styles.backBtn}
                         accessibilityRole="button"
                         accessibilityLabel="Go back"
@@ -51,7 +54,7 @@ export default function EventScreenShell({ title, subtitle, children }: EventScr
                     </View>
                     <View style={{ width: 44 }} />
                 </View>
-                <View style={styles.main}>{children}</View>
+                <View style={[styles.main, bodyStyle]}>{children}</View>
             </View>
         </View>
     );

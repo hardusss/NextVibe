@@ -2,18 +2,34 @@ import ExpoModulesCore
 import CoreBluetooth
 
 // ── Constants ──
-// Custom UUIDs for NextVibe BLE sharing
+// Custom UUIDs for NextVibe BLE sharing (must match the Android module)
 private let kServiceUUID = CBUUID(string: "A1B2C3D4-E5F6-7890-ABCD-EF1234567890")
 private let kCharacteristicUUID = CBUUID(string: "A1B2C3D4-E5F6-7890-ABCD-EF1234567891")
 
-// RSSI threshold for proximity detection (~5-15cm)
-private let kRSSIThreshold: Int = -35
-
-// Moving average filter window size
+// Proximity thresholds (average RSSI over the last few advertisements).
+// "passive" is the always-on app-wide scanner: phones must be really close.
+// "active" is used while the user has a tap screen open and is deliberately
+// holding phones together — looser, so cases/hands/orientation don't block it.
+private let kPassiveRSSIThreshold: Double = -50
+private let kActiveRSSIThreshold: Double = -62
 private let kRSSIFilterWindow = 3
+private let kMinRSSISamples = 2
 
-// Minimum interval between discovery events for the same device (seconds)
-private let kDiscoveryDebounceInterval: TimeInterval = 3.0
+// When several phones cross the threshold at once, wait this long and pick
+// the strongest one instead of whichever advertised first.
+private let kSelectionWindow: TimeInterval = 0.35
+
+// A connection that hasn't produced the payload by now is abandoned.
+private let kConnectTimeout: TimeInterval = 6.0
+
+// Per-device cooldowns. After a successful read JS dedups per token, so the
+// native side only needs to avoid reconnect storms; after a failure the same
+// phone can be retried almost immediately.
+private let kSuccessCooldown: TimeInterval = 8.0
+private let kFailureCooldown: TimeInterval = 1.5
+
+// Broadcaster: one onBleRead per central within this window.
+private let kReadEventDebounce: TimeInterval = 3.0
 
 private func bluetoothStateString(_ state: CBManagerState) -> String {
     switch state {
@@ -28,24 +44,29 @@ private func bluetoothStateString(_ state: CBManagerState) -> String {
 public class BleShareModule: Module {
 
     // ── Peripheral (Broadcaster) state ──
+    // One manager for the module's lifetime: recreating it on every token
+    // rotation dropped the advertisement and re-ran state callbacks.
     private var peripheralManager: CBPeripheralManager?
     private var peripheralDelegate: PeripheralDelegate?
-    private var urlToShare: String = ""
-    private var characteristic: CBMutableCharacteristic?
+    fileprivate var payload = Data()
+    fileprivate var isBroadcastRequested = false
+    private var serviceAdded = false
+    private var serviceAdding = false
 
     // ── Central (Scanner) state ──
     private var centralManager: CBCentralManager?
     private var centralDelegate: CentralDelegate?
     fileprivate var isScanningRequested = false
+    fileprivate var rssiThreshold: Double = kPassiveRSSIThreshold
 
     public func definition() -> ModuleDefinition {
         Name("BleShare")
 
-        Events("onBleRead", "onBleDiscovered", "onBluetoothStateChanged")
+        Events("onBleRead", "onBleDiscovered", "onBluetoothStateChanged", "onBroadcastError", "onScanError")
 
         // Reads the state of whichever manager exists. Deliberately does NOT
-        // create one: instantiating CBCentralManager triggers the system
-        // permission prompt, so before any start* call the state is "unknown".
+        // create one: instantiating a manager triggers the system permission
+        // prompt, so before any start* call the state is "unknown".
         Function("getBluetoothState") { () -> String in
             if let cm = self.centralManager {
                 return bluetoothStateString(cm.state)
@@ -53,28 +74,69 @@ public class BleShareModule: Module {
             if let pm = self.peripheralManager {
                 return bluetoothStateString(pm.state)
             }
+            if CBManager.authorization == .denied || CBManager.authorization == .restricted {
+                return "unauthorized"
+            }
             return "unknown"
+        }
+
+        // Permission status without prompting.
+        Function("getBluetoothAuthorization") { () -> String in
+            switch CBManager.authorization {
+            case .allowedAlways: return "granted"
+            case .denied: return "denied"
+            case .restricted: return "restricted"
+            case .notDetermined: return "notDetermined"
+            @unknown default: return "notDetermined"
+            }
+        }
+
+        Function("isBroadcastSupported") { () -> Bool in
+            return true
+        }
+
+        Function("setScanSensitivity") { (mode: String) in
+            DispatchQueue.main.async {
+                self.rssiThreshold = mode == "active" ? kActiveRSSIThreshold : kPassiveRSSIThreshold
+            }
         }
 
         // ── Broadcaster API ──
 
+        // Safe to call repeatedly: a new payload while already advertising is
+        // swapped in place (reads are served on demand), no restart needed.
         Function("startBroadcasting") { (url: String) in
-            self.urlToShare = url
-            self.startPeripheral()
+            DispatchQueue.main.async {
+                self.payload = url.data(using: .utf8) ?? Data()
+                self.isBroadcastRequested = true
+                self.startPeripheral()
+            }
         }
 
         Function("stopBroadcasting") {
-            self.stopPeripheral()
+            DispatchQueue.main.async {
+                self.stopPeripheral()
+            }
         }
 
         // ── Scanner API ──
 
         Function("startScanning") {
-            self.isScanningRequested = true
-            self.startCentral()
+            DispatchQueue.main.async {
+                self.isScanningRequested = true
+                self.startCentral()
+            }
         }
 
         Function("stopScanning") {
+            DispatchQueue.main.async {
+                self.isScanningRequested = false
+                self.stopCentral()
+            }
+        }
+
+        OnDestroy {
+            self.stopPeripheral()
             self.isScanningRequested = false
             self.stopCentral()
         }
@@ -85,55 +147,84 @@ public class BleShareModule: Module {
     // ═══════════════════════════════════════
 
     private func startPeripheral() {
-        stopPeripheral()
-
-        let delegate = PeripheralDelegate()
-        delegate.onReady = { [weak self] in
-            self?.setupServiceAndAdvertise()
+        if peripheralManager == nil {
+            let delegate = PeripheralDelegate()
+            delegate.module = self
+            peripheralDelegate = delegate
+            peripheralManager = CBPeripheralManager(delegate: delegate, queue: .main)
+            // Advertising starts from peripheralManagerDidUpdateState.
+            return
         }
-        delegate.onRead = { [weak self] in
-            self?.sendEvent("onBleRead")
-        }
-        delegate.onStateChanged = { [weak self] state in
-            self?.sendEvent("onBluetoothStateChanged", ["state": state])
-        }
-
-        self.peripheralDelegate = delegate
-        self.peripheralManager = CBPeripheralManager(delegate: delegate, queue: .main)
+        ensureAdvertising()
     }
 
-    private func setupServiceAndAdvertise() {
-        guard let pm = peripheralManager else { return }
+    fileprivate func ensureAdvertising() {
+        guard isBroadcastRequested, let pm = peripheralManager, pm.state == .poweredOn else { return }
 
-        // Create a readable characteristic containing the URL
-        let urlData = urlToShare.data(using: .utf8) ?? Data()
-        let char = CBMutableCharacteristic(
-            type: kCharacteristicUUID,
-            properties: [.read],
-            value: urlData,
-            permissions: [.readable]
-        )
-        self.characteristic = char
+        if !serviceAdded {
+            guard !serviceAdding else { return }
+            // Dynamic value (nil): iOS asks us on every read, so the payload
+            // can rotate in place and didReceiveRead actually fires. A cached
+            // value is served by the OS and never reaches the delegate.
+            let char = CBMutableCharacteristic(
+                type: kCharacteristicUUID,
+                properties: [.read],
+                value: nil,
+                permissions: [.readable]
+            )
+            let service = CBMutableService(type: kServiceUUID, primary: true)
+            service.characteristics = [char]
+            serviceAdding = true
+            pm.add(service)
+            return
+        }
 
-        let service = CBMutableService(type: kServiceUUID, primary: true)
-        service.characteristics = [char]
+        if !pm.isAdvertising {
+            pm.startAdvertising([
+                CBAdvertisementDataServiceUUIDsKey: [kServiceUUID]
+            ])
+        }
+    }
 
-        pm.add(service)
+    fileprivate func serviceDidAdd(error: Error?) {
+        serviceAdding = false
+        if let error = error {
+            sendEvent("onBroadcastError", ["code": "service_add_failed", "message": error.localizedDescription])
+            return
+        }
+        serviceAdded = true
+        ensureAdvertising()
+    }
 
-        // Start advertising
-        pm.startAdvertising([
-            CBAdvertisementDataServiceUUIDsKey: [kServiceUUID],
-            CBAdvertisementDataLocalNameKey: "NextVibe"
-        ])
+    fileprivate func advertisingDidStart(error: Error?) {
+        if let error = error {
+            sendEvent("onBroadcastError", ["code": "advertise_failed", "message": error.localizedDescription])
+        }
+    }
+
+    fileprivate func peripheralStateDidChange(_ state: CBManagerState) {
+        sendEvent("onBluetoothStateChanged", ["state": bluetoothStateString(state)])
+        if state == .poweredOn {
+            ensureAdvertising()
+        } else {
+            // Published services are dropped when Bluetooth goes down.
+            serviceAdded = false
+            serviceAdding = false
+        }
     }
 
     private func stopPeripheral() {
+        isBroadcastRequested = false
+        payload = Data()
         peripheralDelegate?.resetBroadcastSession()
-        peripheralManager?.stopAdvertising()
-        peripheralManager?.removeAllServices()
-        peripheralManager = nil
-        peripheralDelegate = nil
-        characteristic = nil
+        if let pm = peripheralManager {
+            if pm.isAdvertising {
+                pm.stopAdvertising()
+            }
+            pm.removeAllServices()
+        }
+        serviceAdded = false
+        serviceAdding = false
     }
 
     // ═══════════════════════════════════════
@@ -141,29 +232,29 @@ public class BleShareModule: Module {
     // ═══════════════════════════════════════
 
     private func startCentral() {
-        if self.centralManager == nil {
+        if centralManager == nil {
             let delegate = CentralDelegate()
             delegate.module = self
-            delegate.onDiscovered = { [weak self] url in
-                self?.sendEvent("onBleDiscovered", ["url": url])
+            delegate.onDiscovered = { [weak self] url, rssi in
+                self?.sendEvent("onBleDiscovered", ["url": url, "rssi": rssi])
             }
-            self.centralDelegate = delegate
+            centralDelegate = delegate
             let manager = CBCentralManager(delegate: delegate, queue: .main)
             delegate.centralManager = manager
-            self.centralManager = manager
-        } else {
-            centralDelegate?.centralManager = centralManager
-            if let cm = centralManager, cm.state == .poweredOn {
-                cm.scanForPeripherals(
-                    withServices: [kServiceUUID],
-                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
-                )
-            }
+            centralManager = manager
+            // Scanning starts from centralManagerDidUpdateState.
+            return
+        }
+        if let cm = centralManager, cm.state == .poweredOn, !cm.isScanning {
+            cm.scanForPeripherals(
+                withServices: [kServiceUUID],
+                options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+            )
         }
     }
 
     private func stopCentral() {
-        if let cm = centralManager, cm.state == .poweredOn {
+        if let cm = centralManager, cm.state == .poweredOn, cm.isScanning {
             cm.stopScan()
         }
         centralDelegate?.disconnectAndReset()
@@ -175,9 +266,7 @@ public class BleShareModule: Module {
 // ═══════════════════════════════════════
 
 private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
-    var onReady: (() -> Void)?
-    var onRead: (() -> Void)?
-    var onStateChanged: ((String) -> Void)?
+    weak var module: BleShareModule?
 
     // Last read time per central UUID during this broadcast session
     private var lastReadTimes: [UUID: Date] = [:]
@@ -187,42 +276,50 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
     }
 
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
-        onStateChanged?(bluetoothStateString(peripheral.state))
-        if peripheral.state == .poweredOn {
-            onReady?()
-        }
+        module?.peripheralStateDidChange(peripheral.state)
+    }
+
+    func peripheralManager(_ peripheral: CBPeripheralManager, didAdd service: CBService, error: Error?) {
+        module?.serviceDidAdd(error: error)
+    }
+
+    func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
+        module?.advertisingDidStart(error: error)
     }
 
     func peripheralManager(
         _ peripheral: CBPeripheralManager,
         didReceiveRead request: CBATTRequest
     ) {
-        // A nearby device is reading our characteristic
-        if request.characteristic.uuid == kCharacteristicUUID {
-            if let value = request.characteristic.value {
-                let offset = request.offset
-                if offset > value.count {
-                    peripheral.respond(to: request, withResult: .invalidOffset)
-                    return
-                }
-                request.value = value.subdata(in: offset..<value.count)
-                peripheral.respond(to: request, withResult: .success)
-
-                // Permit reads from the same central identifier if at least 3 seconds have passed since its last read
-                let centralId = request.central.identifier
-                let now = Date()
-                if let lastReadTime = lastReadTimes[centralId], now.timeIntervalSince(lastReadTime) < 3.0 {
-                    return
-                }
-                lastReadTimes[centralId] = now
-
-                DispatchQueue.main.async { [weak self] in
-                    self?.onRead?()
-                }
-            } else {
-                peripheral.respond(to: request, withResult: .attributeNotFound)
-            }
+        guard request.characteristic.uuid == kCharacteristicUUID else {
+            peripheral.respond(to: request, withResult: .attributeNotFound)
+            return
         }
+        guard let module = module, module.isBroadcastRequested, !module.payload.isEmpty else {
+            peripheral.respond(to: request, withResult: .readNotPermitted)
+            return
+        }
+
+        let value = module.payload
+        let offset = request.offset
+        if offset > value.count {
+            peripheral.respond(to: request, withResult: .invalidOffset)
+            return
+        }
+        request.value = value.subdata(in: offset..<value.count)
+        peripheral.respond(to: request, withResult: .success)
+
+        // Long values arrive as several reads with growing offsets —
+        // only the first one counts as "someone read us".
+        guard offset == 0 else { return }
+
+        let centralId = request.central.identifier
+        let now = Date()
+        if let last = lastReadTimes[centralId], now.timeIntervalSince(last) < kReadEventDebounce {
+            return
+        }
+        lastReadTimes[centralId] = now
+        module.sendEvent("onBleRead")
     }
 }
 
@@ -233,46 +330,52 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
 private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     weak var module: BleShareModule?
     weak var centralManager: CBCentralManager?
-    var onDiscovered: ((String) -> Void)?
+    var onDiscovered: ((String, Double) -> Void)?
 
     // RSSI moving average buffer per device
     private var rssiBuffers: [UUID: [Int]] = [:]
 
-    // Debounce: last time we fired a discovery event per device
-    private var lastDiscoveryTime: [UUID: Date] = [:]
+    // Devices that may not be connected again until the given time
+    private var cooldownUntil: [UUID: Date] = [:]
 
-    // Devices already read during this scan session.
-    private var readDeviceIds: Set<UUID> = []
+    // Phones over the threshold during the current selection window
+    private var candidates: [UUID: (peripheral: CBPeripheral, rssi: Double)] = [:]
+    private var selectionScheduled = false
 
-    // Keep strong references to peripherals we're connecting to
-    private var connectingPeripherals: [UUID: CBPeripheral] = [:]
-
-    func resetScanSession() {
-        rssiBuffers.removeAll()
-        lastDiscoveryTime.removeAll()
-        readDeviceIds.removeAll()
-    }
+    // Single in-flight connection (JS handles one prompt at a time anyway)
+    private var activePeripheral: CBPeripheral?
+    private var activeRSSI: Double = 0
+    private var attemptToken = UUID()
 
     func disconnectAndReset() {
-        let manager = centralManager
-        for peripheral in connectingPeripherals.values {
-            manager?.cancelPeripheralConnection(peripheral)
+        if let peripheral = activePeripheral {
+            centralManager?.cancelPeripheralConnection(peripheral)
             peripheral.delegate = nil
         }
-        connectingPeripherals.removeAll()
-        resetScanSession()
+        activePeripheral = nil
+        attemptToken = UUID()
+        candidates.removeAll()
+        selectionScheduled = false
+        rssiBuffers.removeAll()
+        cooldownUntil.removeAll()
     }
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         module?.sendEvent("onBluetoothStateChanged", ["state": bluetoothStateString(central.state)])
         if central.state == .poweredOn {
-            if module?.isScanningRequested == true {
-                // Scan specifically for our service UUID
+            if module?.isScanningRequested == true, !central.isScanning {
                 central.scanForPeripherals(
                     withServices: [kServiceUUID],
                     options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
                 )
             }
+        } else {
+            activePeripheral?.delegate = nil
+            activePeripheral = nil
+            attemptToken = UUID()
+            candidates.removeAll()
+            selectionScheduled = false
+            rssiBuffers.removeAll()
         }
     }
 
@@ -283,48 +386,67 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         rssi RSSI: NSNumber
     ) {
         let rssiValue = RSSI.intValue
-
-        // Ignore out-of-range or invalid RSSI
-        guard rssiValue != 127 else { return }
+        // 127 = RSSI unavailable
+        guard rssiValue != 127, rssiValue < 0 else { return }
+        guard let module = module, module.isScanningRequested else { return }
 
         let deviceId = peripheral.identifier
+        if let until = cooldownUntil[deviceId], until > Date() { return }
+        if activePeripheral?.identifier == deviceId { return }
 
-        guard !readDeviceIds.contains(deviceId) else { return }
-        guard connectingPeripherals[deviceId] == nil else { return }
-
-        // Update RSSI moving average buffer
         var buffer = rssiBuffers[deviceId] ?? []
         buffer.append(rssiValue)
         if buffer.count > kRSSIFilterWindow {
             buffer.removeFirst()
         }
         rssiBuffers[deviceId] = buffer
+        guard buffer.count >= kMinRSSISamples else { return }
 
-        // Calculate moving average
-        let avgRSSI = buffer.reduce(0, +) / buffer.count
+        let avgRSSI = Double(buffer.reduce(0, +)) / Double(buffer.count)
+        guard avgRSSI >= module.rssiThreshold else { return }
 
-        // Check proximity threshold
-        guard avgRSSI >= kRSSIThreshold else { return }
+        candidates[deviceId] = (peripheral, avgRSSI)
+        if !selectionScheduled {
+            selectionScheduled = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + kSelectionWindow) { [weak self] in
+                self?.pickCandidate()
+            }
+        }
+    }
 
-        // Debounce check
-        let now = Date()
-        if let lastTime = lastDiscoveryTime[deviceId],
-           now.timeIntervalSince(lastTime) < kDiscoveryDebounceInterval {
+    private func pickCandidate() {
+        selectionScheduled = false
+        guard let central = centralManager, central.state == .poweredOn,
+              module?.isScanningRequested == true, activePeripheral == nil else {
+            candidates.removeAll()
             return
         }
-        lastDiscoveryTime[deviceId] = now
+        guard let best = candidates.max(by: { $0.value.rssi < $1.value.rssi }) else { return }
+        candidates.removeAll()
 
-        // Device is close enough — connect to read the URL
-        connectingPeripherals[deviceId] = peripheral
+        let peripheral = best.value.peripheral
+        let token = UUID()
+        attemptToken = token
+        activePeripheral = peripheral
+        activeRSSI = best.value.rssi
         peripheral.delegate = self
         central.connect(peripheral, options: nil)
+
+        // CoreBluetooth never times out a pending connect on its own.
+        DispatchQueue.main.asyncAfter(deadline: .now() + kConnectTimeout) { [weak self] in
+            guard let self = self, self.attemptToken == token, let active = self.activePeripheral else { return }
+            self.finishConnection(active, cooldown: kFailureCooldown)
+        }
     }
 
     func centralManager(
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
-        // Discover our specific service
+        guard peripheral.identifier == activePeripheral?.identifier else {
+            central.cancelPeripheralConnection(peripheral)
+            return
+        }
         peripheral.discoverServices([kServiceUUID])
     }
 
@@ -333,9 +455,7 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         didFailToConnect peripheral: CBPeripheral,
         error: Error?
     ) {
-        central.cancelPeripheralConnection(peripheral)
-        peripheral.delegate = nil
-        connectingPeripherals.removeValue(forKey: peripheral.identifier)
+        finishConnection(peripheral, cooldown: kFailureCooldown)
     }
 
     func centralManager(
@@ -343,8 +463,9 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         didDisconnectPeripheral peripheral: CBPeripheral,
         error: Error?
     ) {
-        peripheral.delegate = nil
-        connectingPeripherals.removeValue(forKey: peripheral.identifier)
+        if peripheral.identifier == activePeripheral?.identifier {
+            finishConnection(peripheral, cooldown: kFailureCooldown)
+        }
     }
 
     // ── Peripheral Delegate (for the connected remote device) ──
@@ -353,24 +474,12 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
-        if error != nil {
-            finishConnection(peripheral)
+        guard error == nil,
+              let service = peripheral.services?.first(where: { $0.uuid == kServiceUUID }) else {
+            finishConnection(peripheral, cooldown: kFailureCooldown)
             return
         }
-
-        guard let services = peripheral.services else {
-            finishConnection(peripheral)
-            return
-        }
-
-        var foundService = false
-        for service in services where service.uuid == kServiceUUID {
-            foundService = true
-            peripheral.discoverCharacteristics([kCharacteristicUUID], for: service)
-        }
-        if !foundService {
-            finishConnection(peripheral)
-        }
+        peripheral.discoverCharacteristics([kCharacteristicUUID], for: service)
     }
 
     func peripheral(
@@ -378,24 +487,12 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        if error != nil {
-            finishConnection(peripheral)
+        guard error == nil,
+              let char = service.characteristics?.first(where: { $0.uuid == kCharacteristicUUID }) else {
+            finishConnection(peripheral, cooldown: kFailureCooldown)
             return
         }
-
-        guard let chars = service.characteristics else {
-            finishConnection(peripheral)
-            return
-        }
-
-        var foundCharacteristic = false
-        for char in chars where char.uuid == kCharacteristicUUID {
-            foundCharacteristic = true
-            peripheral.readValue(for: char)
-        }
-        if !foundCharacteristic {
-            finishConnection(peripheral)
-        }
+        peripheral.readValue(for: char)
     }
 
     func peripheral(
@@ -405,19 +502,24 @@ private class CentralDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralD
     ) {
         if error == nil,
            let data = characteristic.value,
+           !data.isEmpty,
            let url = String(data: data, encoding: .utf8) {
-            readDeviceIds.insert(peripheral.identifier)
-            DispatchQueue.main.async { [weak self] in
-                self?.onDiscovered?(url)
-            }
+            let rssi = activeRSSI
+            finishConnection(peripheral, cooldown: kSuccessCooldown)
+            onDiscovered?(url, rssi)
+            return
         }
-
-        finishConnection(peripheral)
+        finishConnection(peripheral, cooldown: kFailureCooldown)
     }
 
-    private func finishConnection(_ peripheral: CBPeripheral) {
+    private func finishConnection(_ peripheral: CBPeripheral, cooldown: TimeInterval) {
         centralManager?.cancelPeripheralConnection(peripheral)
         peripheral.delegate = nil
-        connectingPeripherals.removeValue(forKey: peripheral.identifier)
+        cooldownUntil[peripheral.identifier] = Date().addingTimeInterval(cooldown)
+        rssiBuffers.removeValue(forKey: peripheral.identifier)
+        if peripheral.identifier == activePeripheral?.identifier {
+            activePeripheral = nil
+            attemptToken = UUID()
+        }
     }
 }

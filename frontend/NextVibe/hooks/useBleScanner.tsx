@@ -1,659 +1,91 @@
-import React, { useState, useEffect, useRef } from "react";
-import { AppState, Platform, Vibration, Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, useColorScheme, Animated } from "react-native";
-import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
-import { addBleDiscoveredListener, addBluetoothStateListener } from "@/modules/ble-share";
-import { previewProximityToken, VerifyTokenResponse } from '@/src/api/proximity.token';
-import * as Location from 'expo-location';
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
-import { User, Calendar, Users, Scan, X } from "lucide-react-native";
-import { Image } from "expo-image";
+import { useEffect } from "react";
+import { AppState, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+    addBleDiscoveredListener,
+    addBluetoothStateListener,
+    addScanErrorListener,
+} from "@/modules/ble-share";
 import { requestScanStart, requestScanStop, isScanWanted } from "@/src/utils/bleScanController";
+import { useProximityPrompt } from "@/src/proximity/promptStore";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
-// API
-import getUserDetail from "@/src/api/user.detail";
-import getPost from "@/src/api/get.post";
+// The very first time a signed-in user opens the app we ask for Bluetooth
+// once, so they can be tapped without visiting a tap screen first. After that
+// the app-wide scanner never prompts again — tap screens ask with context.
+const AUTO_PROMPT_KEY = "proximity_scan_prompted_v1";
 
-// One prompt per unique payload: broadcast tokens rotate every 50s, so a TTL
-// just above that means each rotated token can prompt at most once — including
-// after a decline — while the next rotation naturally re-offers the peer.
-const SEEN_PAYLOAD_TTL_MS = 60_000;
-const seenPayloads = new Map<string, number>();
-
-function isDuplicatePayload(key: string): boolean {
-    const now = Date.now();
-    for (const [k, t] of seenPayloads) {
-        if (now - t > SEEN_PAYLOAD_TTL_MS) seenPayloads.delete(k);
-    }
-    if (seenPayloads.has(key)) return true;
-    seenPayloads.set(key, now);
-    return false;
-}
-
-interface ScannedInfo {
-    type: 'profile' | 'checkin' | 'networking' | 'proximity_token' | 'unknown';
-    id?: string;
-    eventId?: string;
-    userId?: string;
-    token?: string;
-}
-
-function parseScannedPath(path: string): ScannedInfo {
-    let cleanPath = path;
-    if (!cleanPath.startsWith('/')) {
-        cleanPath = '/' + cleanPath;
-    }
-
-    const [pathname, queryString] = cleanPath.split('?');
-
-    // 1. Proximity Token: any path with ?t=[token] or /u/e or /e
-    const tokenMatch = queryString?.match(/[?&]t=([^&#]*)/i) || cleanPath.match(/[?&]t=([^&#]*)/i);
-    if (tokenMatch) {
-        return { type: 'proximity_token', token: decodeURIComponent(tokenMatch[1]) };
-    }
-
-    // 2. Profile: /u/[id]
-    const uMatch = pathname.match(/^\/u\/([^/]+)$/);
-    if (uMatch) {
-        return { type: 'profile', id: uMatch[1] };
-    }
-
-    // 3. Check-in: /event-checkin?postId=[id]
-    if (pathname === '/event-checkin') {
-        const postIdMatch = queryString?.match(/[?&]postId=([^&#]*)/i) || cleanPath.match(/[?&]postId=([^&#]*)/i);
-        if (postIdMatch) {
-            return { type: 'checkin', id: decodeURIComponent(postIdMatch[1]) };
-        }
-    }
-
-    // 4. Networking: /event-nfc-receive?eventId=[eventId]&userId=[userId]
-    if (pathname === '/event-nfc-receive') {
-        const eventIdMatch = queryString?.match(/[?&]eventId=([^&#]*)/i) || cleanPath.match(/[?&]eventId=([^&#]*)/i);
-        const userIdMatch = queryString?.match(/[?&]userId=([^&#]*)/i) || cleanPath.match(/[?&]userId=([^&#]*)/i);
-        const eventId = eventIdMatch ? decodeURIComponent(eventIdMatch[1]) : undefined;
-        const userId = userIdMatch ? decodeURIComponent(userIdMatch[1]) : undefined;
-        if (userId) {
-            return { type: 'networking', eventId, userId };
-        }
-    }
-
-    return { type: 'unknown' };
-}
-
-export function useBleScanner() {
-    const router = useRouter();
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === "dark";
-
-    // Hook states
-    const [modalVisible, setModalVisible] = useState(false);
-    const [scannedPath, setScannedPath] = useState("");
-    const [loadingDetail, setLoadingDetail] = useState(false);
-    const [details, setDetails] = useState<{
-        type: 'profile' | 'checkin' | 'networking' | 'proximity_token' | 'unknown' | 'error';
-        data: any;
-    } | null>(null);
-
-    // True from the moment a discovery is being handled until the user
-    // accepts or declines — further discoveries are dropped, not queued.
-    const processingRef = useRef(false);
-
-    // Animation values
-    const scaleAnim = useRef(new Animated.Value(0.88)).current;
-    const opacityAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        if (modalVisible) {
-            Animated.parallel([
-                Animated.spring(scaleAnim, {
-                    toValue: 1,
-                    tension: 120,
-                    friction: 9,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(opacityAnim, {
-                    toValue: 1,
-                    duration: 180,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-        } else {
-            scaleAnim.setValue(0.88);
-            opacityAnim.setValue(0);
-        }
-    }, [modalVisible]);
-
+/**
+ * App-wide nearby scanner: while a signed-in user has NextVibe in the
+ * foreground, phones held against this one are detected and handed to the
+ * shared tap prompt (src/proximity/promptStore → ProximityPrompt).
+ */
+export function useBleScanner(enabled: boolean) {
     useEffect(() => {
         if (Platform.OS !== "ios" && Platform.OS !== "android") return;
+        if (!enabled) {
+            requestScanStop();
+            return;
+        }
 
-        // Start scanning if app is already active
+        let cancelled = false;
+
+        const start = async () => {
+            let prompt = false;
+            try {
+                if (!(await AsyncStorage.getItem(AUTO_PROMPT_KEY))) {
+                    await AsyncStorage.setItem(AUTO_PROMPT_KEY, "1");
+                    prompt = true;
+                }
+            } catch {}
+            if (cancelled || AppState.currentState !== "active") return;
+            await requestScanStart({ prompt });
+        };
+
         if (AppState.currentState === "active") {
-            requestScanStart();
+            start();
         }
 
         const appStateSub = AppState.addEventListener("change", (nextAppState) => {
             if (nextAppState === "active") {
-                requestScanStart();
-            } else {
+                start();
+            } else if (nextAppState === "background") {
+                // Not on "inactive": iOS reports that for Control Center,
+                // notification pulls and system alerts, where stopping would
+                // just churn the radio.
                 requestScanStop();
             }
         });
 
-        // Core of the "BLE needs an app switch" fix: when the user turns
-        // Bluetooth on while the app stays foregrounded, re-issue the start.
-        // (Native also self-resumes; this covers permission/settings re-checks.)
+        // When Bluetooth is turned on while the app stays foregrounded,
+        // re-issue the start (native also self-resumes; this covers
+        // permission re-checks).
         const stateSub = addBluetoothStateListener(({ state }) => {
-            walletLogger.info(WalletTag.BLE, 'Bluetooth state changed', { state });
-            if (state === 'poweredOn' && isScanWanted() && AppState.currentState === "active") {
+            walletLogger.info(WalletTag.BLE, "Bluetooth state changed", { state });
+            if (state === "poweredOn" && isScanWanted() && AppState.currentState === "active") {
                 requestScanStart();
             }
         });
 
-        const bleSub = addBleDiscoveredListener(async (event) => {
+        const errorSub = addScanErrorListener((error) => {
+            walletLogger.warn(WalletTag.BLE, "Scan error", error);
+        });
+
+        const discoverSub = addBleDiscoveredListener((event) => {
             if (!event.url) return;
-
-            // A prompt is already on screen — drop further discoveries.
-            if (processingRef.current) return;
-
-            // Extract in-app path from full URL
-            let path = event.url;
-            try {
-                if (path.startsWith("https://nextvibe.io")) {
-                    path = path.substring("https://nextvibe.io".length);
-                } else if (path.startsWith("nextvibe.io")) {
-                    path = path.substring("nextvibe.io".length);
-                }
-            } catch (_) {}
-
-            const info = parseScannedPath(path);
-
-            // One prompt per unique token (or raw path for non-token payloads),
-            // regardless of how often the radio re-delivers the advertisement.
-            if (isDuplicatePayload(info.token ?? path)) return;
-
-            processingRef.current = true;
-            walletLogger.info(WalletTag.BLE, 'BLE payload discovered', { type: info.type });
-
-            // Haptic + vibration feedback
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-            Vibration.vibrate([0, 80, 50, 80]);
-
-            setScannedPath(path);
-            setModalVisible(true);
-            setLoadingDetail(true);
-            setDetails(null);
-
-            try {
-                if (info.type === 'proximity_token' && info.token) {
-                    // For token-based interactions, verify the token directly
-                    try {
-                        // Get location for geo-verification
-                        let lat: number | undefined;
-                        let lng: number | undefined;
-                        try {
-                            const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
-                            if (locStatus === 'granted') {
-                                const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                                if (!location.mocked) {
-                                    lat = location.coords.latitude;
-                                    lng = location.coords.longitude;
-                                }
-                            }
-                        } catch (locErr) {
-                            console.warn('[useBleScanner] Location error:', locErr);
-                        }
-
-                        // Preview only — nothing is granted until the user accepts.
-                        const result = await previewProximityToken(info.token, lat, lng);
-                        if (result.interaction_type === 'irl' || result.source === 'irl') {
-                            setDetails({ type: 'proximity_token', data: { ...result, flow: 'irl' } });
-                        } else if (result.interaction_type === 'networking') {
-                            setDetails({ type: 'proximity_token', data: { ...result, flow: 'networking' } });
-                        } else if (result.interaction_type === 'checkin') {
-                            setDetails({ type: 'proximity_token', data: { ...result, flow: 'checkin' } });
-                        } else {
-                            setDetails({ type: 'proximity_token', data: result });
-                        }
-                    } catch (verifyErr: any) {
-                        walletLogger.error(WalletTag.PROXIMITY, 'Token preview failed', verifyErr);
-                        const errorMsg = verifyErr?.response?.data?.error
-                            || (verifyErr?.code === 'ECONNABORTED' ? 'Connection timed out. Try again.' : 'Verification failed');
-                        setDetails({ type: 'error', data: { error: errorMsg } });
-                    }
-                } else if (info.type === 'profile' && info.id) {
-                    const res = await getUserDetail(Number(info.id));
-                    setDetails({ type: 'profile', data: res });
-                } else if (info.type === 'checkin' && info.id) {
-                    const res = await getPost(Number(info.id));
-                    setDetails({ type: 'checkin', data: res?.data || res });
-                } else if (info.type === 'networking' && info.userId) {
-                    const res = await getUserDetail(Number(info.userId));
-                    setDetails({ type: 'networking', data: res });
-                } else {
-                    setDetails({ type: 'unknown', data: null });
-                }
-            } catch (err) {
-                walletLogger.error(WalletTag.BLE, 'Error fetching discovery details', err);
-                setDetails({ type: 'error', data: null });
-            } finally {
-                setLoadingDetail(false);
+            const accepted = useProximityPrompt.getState().handle(event.url, "ble");
+            if (accepted) {
+                walletLogger.info(WalletTag.BLE, "Nearby payload accepted", { rssi: event.rssi });
             }
         });
 
         return () => {
+            cancelled = true;
             appStateSub.remove();
             stateSub.remove();
-            bleSub.remove();
+            errorSub.remove();
+            discoverSub.remove();
             requestScanStop();
         };
-    }, []);
-
-    // Shared teardown for accept/decline: close the modal, drop the payload
-    // and re-arm the discovery handler. The scanner itself never stopped.
-    const finishPrompt = () => {
-        setModalVisible(false);
-        setScannedPath("");
-        setDetails(null);
-        setLoadingDetail(false);
-        processingRef.current = false;
-    };
-
-    const handleAccept = () => {
-        const info = parseScannedPath(scannedPath);
-        if (info.type === 'proximity_token') {
-            if ((details?.data?.flow === 'networking' || details?.data?.flow === 'irl') && (details?.data?.preview || details?.data?.success)) {
-                // The user confirmed in the modal — the receive screen performs
-                // the actual (granting) verify call.
-                try {
-                    router.push({
-                        pathname: '/event-nfc-receive',
-                        params: {
-                            t: info.token,
-                            _confirmed: '1',
-                            ...(details.data.flow === 'irl' && { _source: 'irl' }),
-                        }
-                    } as any);
-                } catch (err) {
-                    walletLogger.error(WalletTag.BLE, 'Navigation error', err);
-                }
-            } else if (details?.data?.flow === 'checkin' && details?.data?.verified) {
-                try {
-                    router.push({
-                        pathname: '/event-checkin',
-                        params: {
-                            _verified: '1',
-                            _post_name: details.data.post_name || '',
-                            _message: details.data.message || '',
-                            _post_image: details.data.post_image || '',
-                        }
-                    } as any);
-                } catch (err) {
-                    walletLogger.error(WalletTag.BLE, 'Navigation error', err);
-                }
-            }
-        } else {
-            try {
-                router.push(scannedPath as any);
-            } catch (err) {
-                walletLogger.error(WalletTag.BLE, 'Navigation error', err);
-            }
-        }
-        finishPrompt();
-    };
-
-    const handleDecline = () => {
-        finishPrompt();
-    };
-
-    const renderBleScanModal = () => {
-        if (!modalVisible) return null;
-
-        // Custom titles and buttons
-        let modalTitle = "Link Found";
-        let message = "Would you like to open this link?";
-        let confirmLabel = "Open";
-        let detailName = "";
-        let avatarUrl: string | null = null;
-        let isOfficial = false;
-
-        const info = parseScannedPath(scannedPath);
-
-        if (details) {
-            if (details.type === 'profile') {
-                modalTitle = "Profile Found";
-                detailName = details.data?.username ? `@${details.data.username}` : "";
-                avatarUrl = details.data?.avatar || details.data?.avatar_url || null;
-                isOfficial = !!details.data?.official;
-                message = "Would you like to visit this user's profile?";
-                confirmLabel = "Visit";
-            } else if (details.type === 'checkin') {
-                modalTitle = "Event Check-in";
-                detailName = details.data?.about || "NextVibe Event";
-                message = "Would you like to register and check in to this event?";
-                confirmLabel = "Check In";
-            } else if (details.type === 'networking') {
-                modalTitle = "Contact Exchange";
-                detailName = details.data?.username ? `@${details.data.username}` : "";
-                avatarUrl = details.data?.avatar || details.data?.avatar_url || null;
-                isOfficial = !!details.data?.official;
-                message = "Would you like to connect and start exchanging contacts?";
-                confirmLabel = "Connect";
-            } else if (details.type === 'proximity_token') {
-                const flow = details.data?.flow;
-                if (flow === 'networking' || flow === 'irl') {
-                    modalTitle = flow === 'irl' ? "Tap to Meet" : "Event Networking";
-                    detailName = details.data?.scanned_user?.username ? `@${details.data.scanned_user.username}` : "";
-                    avatarUrl = details.data?.scanned_user?.avatar || null;
-                    isOfficial = !!details.data?.scanned_user?.is_official;
-                    const points = details.data?.earned_points || 0;
-                    message = flow === 'irl'
-                        ? (points > 0 ? `Confirm you met ${detailName} in person — you'll both get +${points} REP.` : `Confirm you met ${detailName} in person?`)
-                        : (points > 0 ? `Connect with ${detailName}? You'll both get REP for networking.` : `Connect with ${detailName}?`);
-                    confirmLabel = "Confirm";
-                } else if (flow === 'checkin') {
-                    modalTitle = details.data?.verified ? "Checked In!" : "Not Registered";
-                    detailName = details.data?.post_name || "Event";
-                    message = details.data?.message || (details.data?.verified ? "Welcome to the event!" : "You are not registered.");
-                    confirmLabel = details.data?.verified ? "Continue" : "OK";
-                }
-            } else if (details.type === 'error') {
-                message = details.data?.error || "Failed to load details. Would you like to open the link anyway?";
-            }
-        }
-
-        const bgStyle = isDark ? styles.modalDark : styles.modalLight;
-        const textStyle = isDark ? styles.textDark : styles.textLight;
-        const subTextStyle = isDark ? styles.subTextDark : styles.subTextLight;
-
-        return (
-            <Modal
-                visible={modalVisible}
-                transparent
-                animationType="none"
-                statusBarTranslucent
-                onRequestClose={handleDecline}
-            >
-                {/* Backdrop */}
-                <View style={styles.backdrop}>
-                    <BlurView style={StyleSheet.absoluteFill} tint={isDark ? "dark" : "light"} intensity={25} />
-                    <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={handleDecline} />
-                </View>
-
-                {/* Dialog Container */}
-                <View style={styles.center} pointerEvents="box-none">
-                    <Animated.View style={[
-                        styles.dialog,
-                        bgStyle,
-                        { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }
-                    ]}>
-                        {/* Top Accent Gradient Line */}
-                        <LinearGradient
-                            colors={['#A855F7', '#7C3AED']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.topLine}
-                        />
-
-                        {/* Close Button */}
-                        <TouchableOpacity
-                            style={styles.closeBtn}
-                            onPress={handleDecline}
-                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        >
-                            <X size={16} color={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)"} strokeWidth={2} />
-                        </TouchableOpacity>
-
-                        <View style={styles.content}>
-                            {/* Top Icon Ring */}
-                            <View style={styles.iconRing}>
-                                <LinearGradient
-                                    colors={['rgba(168,85,247,0.15)', 'rgba(124,58,237,0.08)']}
-                                    style={styles.iconBg}
-                                >
-                                    {info.type === 'checkin' ? (
-                                        <Calendar size={28} color="#A855F7" strokeWidth={1.8} />
-                                    ) : info.type === 'networking' ? (
-                                        <Users size={28} color="#A855F7" strokeWidth={1.8} />
-                                    ) : (
-                                        <User size={28} color="#A855F7" strokeWidth={1.8} />
-                                    )}
-                                </LinearGradient>
-                            </View>
-
-                            <Text style={[styles.title, textStyle]}>{modalTitle}</Text>
-
-                            {/* Loading State or Details Content */}
-                            {loadingDetail ? (
-                                <View style={styles.loadingContainer}>
-                                    <ActivityIndicator size="small" color="#A855F7" />
-                                    <Text style={[styles.loadingText, subTextStyle]}>Loading details...</Text>
-                                </View>
-                            ) : (
-                                <View style={styles.detailContainer}>
-                                    {/* Optional avatar view */}
-                                    {info.type !== 'checkin' && (avatarUrl || details?.type === 'profile' || details?.type === 'networking') && (
-                                        <View style={styles.avatarWrapper}>
-                                            <Image
-                                                source={{ uri: avatarUrl || 'https://media.nextvibe.io/images/default.png' }}
-                                                style={styles.avatar}
-                                            />
-                                        </View>
-                                    )}
-
-                                    {!!detailName && (
-                                        <Text style={[styles.detailNameText, textStyle]} numberOfLines={2}>
-                                            {detailName}
-                                        </Text>
-                                    )}
-
-                                    <Text style={[styles.message, subTextStyle]}>{message}</Text>
-                                </View>
-                            )}
-
-                            {/* Action Buttons */}
-                            <View style={styles.buttons}>
-                                <TouchableOpacity
-                                    style={[styles.cancelBtn, isDark ? styles.cancelBtnDark : styles.cancelBtnLight]}
-                                    onPress={handleDecline}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={[styles.cancelLabel, isDark ? styles.cancelLabelDark : styles.cancelLabelLight]}>Cancel</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={styles.confirmBtn}
-                                    onPress={handleAccept}
-                                    activeOpacity={0.8}
-                                    disabled={loadingDetail}
-                                >
-                                    <LinearGradient
-                                        colors={loadingDetail ? ['#cbd5e1', '#94a3b8'] : ['#A855F7', '#7C3AED']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={styles.confirmGradient}
-                                    >
-                                        <Text style={styles.confirmLabel}>{confirmLabel}</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </Animated.View>
-                </View>
-            </Modal>
-        );
-    };
-
-    return { renderBleScanModal };
+    }, [enabled]);
 }
-
-const styles = StyleSheet.create({
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.45)',
-    },
-    center: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        zIndex: 9999,
-    },
-    dialog: {
-        width: '100%',
-        maxWidth: 340,
-        borderRadius: 24,
-        borderWidth: 1,
-        overflow: 'hidden',
-    },
-    modalDark: {
-        backgroundColor: '#110a1e',
-        borderColor: 'rgba(168,85,247,0.25)',
-    },
-    modalLight: {
-        backgroundColor: '#ffffff',
-        borderColor: 'rgba(168,85,247,0.15)',
-    },
-    topLine: {
-        height: 3,
-        width: '100%',
-    },
-    closeBtn: {
-        position: 'absolute',
-        top: 14,
-        right: 14,
-        zIndex: 10,
-    },
-    content: {
-        padding: 24,
-        alignItems: 'center',
-    },
-    iconRing: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        borderWidth: 1,
-        borderColor: 'rgba(168,85,247,0.2)',
-        overflow: 'hidden',
-        marginBottom: 16,
-    },
-    iconBg: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    title: {
-        fontSize: 18,
-        fontFamily: 'Dank Mono Bold',
-        textAlign: 'center',
-        marginBottom: 12,
-        letterSpacing: 0.2,
-        includeFontPadding: false,
-    },
-    textDark: {
-        color: '#ffffff',
-    },
-    textLight: {
-        color: '#111827',
-    },
-    subTextDark: {
-        color: 'rgba(255,255,255,0.6)',
-    },
-    subTextLight: {
-        color: 'rgba(17,24,39,0.6)',
-    },
-    loadingContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginVertical: 16,
-        gap: 8,
-    },
-    loadingText: {
-        fontSize: 12,
-        fontFamily: 'Dank Mono',
-        includeFontPadding: false,
-    },
-    detailContainer: {
-        alignItems: 'center',
-        width: '100%',
-        marginBottom: 20,
-    },
-    avatarWrapper: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        borderWidth: 2,
-        borderColor: '#A855F7',
-        overflow: 'hidden',
-        marginBottom: 10,
-    },
-    avatar: {
-        width: '100%',
-        height: '100%',
-    },
-    detailNameText: {
-        fontSize: 15,
-        fontFamily: 'Dank Mono Bold',
-        textAlign: 'center',
-        marginBottom: 8,
-        includeFontPadding: false,
-    },
-    message: {
-        fontSize: 13,
-        fontFamily: 'Dank Mono',
-        textAlign: 'center',
-        lineHeight: 18,
-        paddingHorizontal: 8,
-        includeFontPadding: false,
-    },
-    buttons: {
-        flexDirection: 'row',
-        gap: 10,
-        width: '100%',
-    },
-    cancelBtn: {
-        flex: 1,
-        height: 44,
-        borderRadius: 12,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    cancelBtnDark: {
-        backgroundColor: 'rgba(168,85,247,0.07)',
-        borderColor: 'rgba(168,85,247,0.15)',
-    },
-    cancelBtnLight: {
-        backgroundColor: 'rgba(168,85,247,0.04)',
-        borderColor: 'rgba(168,85,247,0.1)',
-    },
-    cancelLabel: {
-        fontSize: 13,
-        fontFamily: 'Dank Mono Bold',
-        includeFontPadding: false,
-    },
-    cancelLabelDark: {
-        color: 'rgba(255,255,255,0.7)',
-    },
-    cancelLabelLight: {
-        color: 'rgba(17,24,39,0.7)',
-    },
-    confirmBtn: {
-        flex: 1,
-        height: 44,
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    confirmGradient: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    confirmLabel: {
-        fontSize: 13,
-        color: '#ffffff',
-        fontFamily: 'Dank Mono Bold',
-        includeFontPadding: false,
-    },
-});
