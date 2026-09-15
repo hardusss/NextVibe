@@ -66,24 +66,56 @@ describe('promptStore', () => {
         expect(state().handle(link('tokenBBB2'), 'ble')).toBe(false);
     });
 
-    it('"Not now" silences the same person across rotated codes', async () => {
+    it('tapping again after "Not now" asks again — same code or a new one', async () => {
         mockPreview.mockResolvedValue({ preview: true, interaction_type: 'irl', scanned_user: alice });
-        state().handle(link('tokenCCC1'), 'ble');
+        state().handle(link('tokenCCC1'), 'nfc');
         await flush();
         state().close();
+        expect(state().lastClose?.outcome).toBe('declined');
 
-        advance(55_000); // next rotation, past the per-token decline window
-        expect(state().handle(link('tokenCCC2'), 'ble')).toBe(true);
+        // The same tap delivered twice (tag read + app link) is absorbed…
+        expect(state().handle(link('tokenCCC1'), 'link')).toBe(false);
+
+        // …but a real second tap a few seconds later works, same code.
+        advance(4_000);
+        expect(state().handle(link('tokenCCC1'), 'nfc')).toBe(true);
         await flush();
-        expect(state().visible).toBe(false);
+        expect(state().phase).toBe('confirm');
+        // NFC taps are always deliberate — no limit, no hint.
+        expect(state().notNowCount).toBeNull();
+        state().close();
 
-        advance(120_000); // past the per-person window it may ask again
-        expect(state().handle(link('tokenCCC3'), 'ble')).toBe(true);
+        // And with a rotated code.
+        advance(4_000);
+        expect(state().handle(link('tokenCCC2'), 'nfc')).toBe(true);
         await flush();
         expect(state().phase).toBe('confirm');
     });
 
-    it('a failed tap from Bluetooth stays quiet for a while, but Try again works at once', async () => {
+    it('phones left together over Bluetooth stop asking after two "Not now"s', async () => {
+        mockPreview.mockResolvedValue({ preview: true, interaction_type: 'irl', scanned_user: alice });
+        for (const [i, t] of ['tokenLLL1', 'tokenLLL2'].entries()) {
+            advance(4_000);
+            state().handle(link(t), 'ble');
+            await flush();
+            expect(state().phase).toBe('confirm');
+            // The card knows how many "Not now"s are left before it pauses.
+            expect(state().notNowCount).toBe(i);
+            state().close();
+        }
+        advance(15_000);
+        state().handle(link('tokenLLL3'), 'ble');
+        await flush();
+        expect(state().visible).toBe(false);
+
+        // A minute later it may ask again.
+        advance(61_000);
+        state().handle(link('tokenLLL4'), 'ble');
+        await flush();
+        expect(state().phase).toBe('confirm');
+    });
+
+    it('after a failed tap, tapping again works at once (and Try again too)', async () => {
         mockPreview.mockRejectedValueOnce({ message: 'Network Error', request: {} });
         state().handle(link('tokenDDD1'), 'ble');
         await flush();
@@ -96,14 +128,17 @@ describe('promptStore', () => {
         expect(state().phase).toBe('confirm');
         state().close();
 
-        mockPreview.mockRejectedValue({ message: 'Network Error', request: {} });
+        mockPreview.mockRejectedValueOnce({ message: 'Network Error', request: {} });
+        advance(4_000);
         state().handle(link('tokenDDD2'), 'ble');
         await flush();
         state().close();
-        advance(5_000);
-        expect(state().handle(link('tokenDDD2'), 'ble')).toBe(false);
-        advance(11_000);
+        expect(state().lastClose?.outcome).toBe('error');
+        advance(4_000);
+        mockPreview.mockResolvedValueOnce({ preview: true, interaction_type: 'irl', scanned_user: alice });
         expect(state().handle(link('tokenDDD2'), 'ble')).toBe(true);
+        await flush();
+        expect(state().phase).toBe('confirm');
     });
 
     it('treats a simultaneous confirm on the other phone as success', async () => {
@@ -133,16 +168,45 @@ describe('promptStore', () => {
         expect(state().visible).toBe(false);
     });
 
-    it('opens the check-in screen once per event while the organizer code rotates', async () => {
+    it('opens the check-in screen once, then a compact sheet on repeat taps', async () => {
         mockPreview.mockResolvedValue({ interaction_type: 'checkin', verified: true, post_id: 55, post_name: 'Meetup' });
-        state().handle(link('tokenHHH1'), 'ble');
+        state().handle(link('tokenHHH1'), 'nfc');
         await flush();
         expect(state().takeNavigation()?.params?._post_id).toBe('55');
 
         advance(55_000);
-        state().handle(link('tokenHHH2'), 'ble');
+        state().handle(link('tokenHHH2'), 'nfc');
         await flush();
         expect(state().takeNavigation()).toBeNull();
+        expect(state().kind).toBe('checkin');
+        expect(state().visible).toBe(true);
+        await state().confirm();
+        expect(state().takeNavigation()?.pathname).toBe('/event-checkin');
+    });
+
+    it('stays quiet while an attendee lingers at the organizer over Bluetooth', async () => {
+        mockPreview.mockResolvedValue({ interaction_type: 'checkin', verified: true, post_id: 77, post_name: 'Expo' });
+        state().handle(link('tokenMMM1'), 'ble');
+        await flush();
+        expect(state().takeNavigation()?.params?._post_id).toBe('77');
+        advance(16_000);
+        state().handle(link('tokenMMM2'), 'ble');
+        await flush();
+        expect(state().visible).toBe(false);
+        expect(state().takeNavigation()).toBeNull();
+    });
+
+    it('opens the check-in screen again once the organizer approved them', async () => {
+        mockPreview.mockResolvedValueOnce({ interaction_type: 'checkin', verified: false, post_id: 66, post_name: 'Party' });
+        state().handle(link('tokenKKK1'), 'nfc');
+        await flush();
+        expect(state().takeNavigation()?.params?._verified).toBe('0');
+
+        advance(30_000);
+        mockPreview.mockResolvedValueOnce({ interaction_type: 'checkin', verified: true, post_id: 66, post_name: 'Party' });
+        state().handle(link('tokenKKK2'), 'nfc');
+        await flush();
+        expect(state().takeNavigation()?.params?._verified).toBe('1');
     });
 
     it('hands the success to an open Tap to Meet screen instead of stacking a sheet', async () => {

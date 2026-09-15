@@ -13,28 +13,36 @@ import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 
 const READ_DEBOUNCE_MS = 2000;
 
+/**
+ * "all"       — Bluetooth plus the NFC tag on Android.
+ * "nfc"       — NFC tag only (Android). Also for payloads only other apps
+ *               understand, e.g. a Solana Pay URI a wallet reads.
+ * "bluetooth" — Bluetooth only.
+ * iPhones can't emulate an NFC tag, so on iOS every option means Bluetooth.
+ */
+export type BroadcastChannels = 'all' | 'nfc' | 'bluetooth';
+
 type Options = {
     /** Another phone read this one's payload (either channel). */
     onRead?: () => void;
+    /** Which channels to use; changing it while active switches on the fly. */
+    channels?: BroadcastChannels;
 };
 
-/**
- * "all" — Bluetooth everywhere plus the NFC tag on Android.
- * "nfc" — NFC tag only, for payloads only other apps understand (e.g. a
- *         Solana Pay URI a wallet reads; a NextVibe phone would read it over
- *         Bluetooth, drop it, and the sender would think it was delivered).
- */
-export type BroadcastChannels = 'all' | 'nfc';
+function usesBluetooth(channels: BroadcastChannels): boolean {
+    return Platform.OS !== 'android' || channels !== 'nfc';
+}
+
+function usesNfc(channels: BroadcastChannels): boolean {
+    return Platform.OS === 'android' && channels !== 'bluetooth' && getNfcState() !== 'unsupported';
+}
 
 /**
- * Makes this phone discoverable with a payload URL on every channel it has:
- * Bluetooth on both platforms, plus an emulated NFC tag on Android (so
- * iPhones and Android phones can also read it with a tap).
- *
+ * Makes this phone discoverable with a payload URL on the chosen channels.
  * The native side is a singleton — only one surface should broadcast at a
  * time. Everything is stopped on unmount.
  */
-export function useProximityBroadcast({ onRead }: Options = {}) {
+export function useProximityBroadcast({ onRead, channels = 'all' }: Options = {}) {
     const [isActive, setIsActive] = useState(false);
     const [permission, setPermission] = useState<BluetoothPermissionStatus | null>(null);
     const [broadcastError, setBroadcastError] = useState<NativeProximityError | null>(null);
@@ -42,7 +50,10 @@ export function useProximityBroadcast({ onRead }: Options = {}) {
 
     const activeRef = useRef(false);
     const urlRef = useRef<string | null>(null);
-    const channelsRef = useRef<BroadcastChannels>('all');
+    const channelsRef = useRef<BroadcastChannels>(channels);
+    channelsRef.current = channels;
+    // What is actually running natively, so switching only stops what's on.
+    const nativeRef = useRef({ ble: false, nfc: false });
     const lastReadRef = useRef(0);
     const onReadRef = useRef(onRead);
     onReadRef.current = onRead;
@@ -69,46 +80,60 @@ export function useProximityBroadcast({ onRead }: Options = {}) {
         return () => subs.forEach((s) => s.remove());
     }, [isActive, handleRead]);
 
+    const stopNative = useCallback((which: { ble: boolean; nfc: boolean }) => {
+        if (which.ble) {
+            try {
+                stopBroadcasting();
+            } catch {}
+            nativeRef.current.ble = false;
+        }
+        if (which.nfc && Platform.OS === 'android') {
+            try {
+                stopSharing();
+            } catch {}
+            nativeRef.current.nfc = false;
+        }
+    }, []);
+
     const pushToNative = useCallback((url: string) => {
-        if (channelsRef.current === 'all') {
+        const current = channelsRef.current;
+        const wantBle = usesBluetooth(current);
+        const wantNfc = usesNfc(current);
+        stopNative({ ble: !wantBle && nativeRef.current.ble, nfc: !wantNfc && nativeRef.current.nfc });
+
+        if (wantBle) {
             try {
                 startBroadcasting(url);
+                nativeRef.current.ble = true;
             } catch (e) {
                 walletLogger.error(WalletTag.PROXIMITY, 'startBroadcasting threw', e);
             }
         }
-        if (Platform.OS === 'android' && getNfcState() !== 'unsupported') {
+        if (wantNfc) {
             try {
                 // Enabled even while NFC is switched off, so turning it on
                 // in Settings makes the tag work without restarting.
                 startSharing(url);
+                nativeRef.current.nfc = true;
             } catch (e) {
                 walletLogger.error(WalletTag.PROXIMITY, 'startSharing threw', e);
             }
         }
-    }, []);
+    }, [stopNative]);
 
     /** Ask for permission if needed and start. Safe to call again. */
-    const start = useCallback(async (url: string, channels: BroadcastChannels = 'all') => {
+    const start = useCallback(async (url: string) => {
         urlRef.current = url;
         activeRef.current = true;
-        channelsRef.current = channels;
-        if (channels === 'nfc') {
-            try {
-                stopBroadcasting();
-            } catch {}
-            setPermission(null);
-            setBroadcastError(null);
-            pushToNative(url);
-            setIsActive(true);
-            return;
-        }
-        const status = await ensureBluetoothPermissions({ prompt: true, forBroadcast: true });
-        if (!activeRef.current || urlRef.current !== url) return;
-        setPermission(status);
         setBroadcastError(null);
-        // Even without Bluetooth permission Android can still share over NFC.
-        pushToNative(urlRef.current);
+        if (usesBluetooth(channelsRef.current)) {
+            const status = await ensureBluetoothPermissions({ prompt: true, forBroadcast: true });
+            if (!activeRef.current || urlRef.current !== url) return;
+            setPermission(status);
+        } else {
+            setPermission(null);
+        }
+        pushToNative(url);
         setIsActive(true);
     }, [pushToNative]);
 
@@ -122,23 +147,25 @@ export function useProximityBroadcast({ onRead }: Options = {}) {
     const stop = useCallback(() => {
         activeRef.current = false;
         urlRef.current = null;
-        try {
-            stopBroadcasting();
-        } catch {}
-        if (Platform.OS === 'android') {
-            try {
-                stopSharing();
-            } catch {}
-        }
+        stopNative({ ble: true, nfc: true });
         setIsActive(false);
         setLastReadAt(null);
-    }, []);
+    }, [stopNative]);
 
     /** Re-run permission + start after the person fixed something in Settings. */
     const restart = useCallback(async () => {
         const url = urlRef.current;
-        if (url) await start(url, channelsRef.current);
+        if (url) await start(url);
     }, [start]);
+
+    // Switching channels while broadcasting.
+    const previousChannels = useRef(channels);
+    useEffect(() => {
+        if (previousChannels.current === channels) return;
+        previousChannels.current = channels;
+        const url = urlRef.current;
+        if (activeRef.current && url) start(url);
+    }, [channels, start]);
 
     useEffect(() => stop, [stop]);
 

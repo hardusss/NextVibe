@@ -19,6 +19,8 @@ import haptics from '@/src/utils/haptics';
 import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
 import { useProximityReadiness } from '@/hooks/useProximityReadiness';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
+import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import { useShareChannel } from '@/hooks/useShareChannel';
 
 export interface ShareModalRef {
     present: () => void;
@@ -236,11 +238,13 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
         triggerNeonGlow();
     };
 
-    const broadcast = useProximityBroadcast({ onRead: handleReadEvent });
+    const shareChannel = useShareChannel();
+    const broadcast = useProximityBroadcast({ onRead: handleReadEvent, channels: shareChannel.channel });
     const isBroadcasting = broadcast.isActive;
     const readiness = useProximityReadiness({
         role: 'share',
         enabled: isOpen,
+        channels: shareChannel.channel,
         onFixed: () => broadcast.restart(),
     });
 
@@ -363,15 +367,19 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                         </View>
                     </View>
 
+                    <ShareChannelSwitch
+                        channel={shareChannel.channel}
+                        onChange={shareChannel.setPreference}
+                        nfcAvailable={shareChannel.nfcAvailable}
+                    />
+
                     <ReadinessCard issues={readiness.issues} compact />
 
-                    {readiness.issues.length === 0 && (
+                    {readiness.issues.length === 0 && Platform.OS === 'ios' && (
                         <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.06)', borderColor: 'rgba(168,85,247,0.2)' }]}>
                             <AlertTriangle size={18} color={colors.accent} />
                             <Text style={[styles.warningText, { color: colors.textColor }]}>
-                                {Platform.OS === 'android'
-                                    ? <>Friends with NextVibe open pick you up over <Text style={{ fontFamily: "Dank Mono Bold" }}>Bluetooth</Text>. With <Text style={{ fontFamily: "Dank Mono Bold" }}>NFC</Text> on, any phone can read you with a tap.</>
-                                    : <>Ask your friend to open <Text style={{ fontFamily: "Dank Mono Bold" }}>NextVibe</Text> with <Text style={{ fontFamily: "Dank Mono Bold" }}>Bluetooth</Text> on, then hold the phones together.</>}
+                                Ask your friend to open <Text style={{ fontFamily: "Dank Mono Bold" }}>NextVibe</Text> with <Text style={{ fontFamily: "Dank Mono Bold" }}>Bluetooth</Text> on, then hold the phones together.
                             </Text>
                         </View>
                     )}

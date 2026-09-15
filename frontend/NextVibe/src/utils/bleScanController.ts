@@ -155,6 +155,22 @@ export async function requestScanStart({ prompt = false }: { prompt?: boolean } 
     }
 }
 
+/**
+ * Restart a running scan so the native scanner forgets its per-phone
+ * cooldowns. Without it, a phone that was just read (and then declined or
+ * failed) isn't read again for ~15s, so tapping again "did nothing".
+ */
+export function refreshScanSession(): void {
+    if (!wantScan) return;
+    try {
+        stopScanning();
+        startScanning();
+        walletLogger.debug(WalletTag.BLE, 'Scan session refreshed');
+    } catch (e) {
+        walletLogger.error(WalletTag.BLE, 'Scan refresh failed', e);
+    }
+}
+
 /** Stop the scanner and clear the intent. */
 export function requestScanStop(): void {
     generation++;

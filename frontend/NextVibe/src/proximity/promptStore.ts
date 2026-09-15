@@ -23,7 +23,7 @@ import { parseProximityPayload, payloadKey, type ProximityPayload } from './payl
 
 export type ProximitySource = 'ble' | 'nfc' | 'link';
 export type PromptPhase = 'loading' | 'confirm' | 'connecting' | 'success' | 'error';
-export type PromptKind = 'meet' | 'profile' | 'post' | 'payment';
+export type PromptKind = 'meet' | 'profile' | 'post' | 'payment' | 'checkin';
 
 export interface PromptPeer {
     user_id?: number;
@@ -53,6 +53,16 @@ interface PromptState {
     navigation: PendingNavigation | null;
     /** Last successful meet, from this prompt or reported by a share screen. */
     lastMet: { userId: number | null; at: number } | null;
+    /**
+     * Bluetooth meet card only: how many times "Not now" was already pressed
+     * for this person within the repeat window (0 or 1), so the card can say
+     * what happens next. null when no limit applies (NFC/link taps).
+     */
+    notNowCount: number | null;
+    /** Repeat check-in tap for an event already opened recently (compact sheet). */
+    checkin: { verified: boolean; postName: string; params: Record<string, string> } | null;
+    /** How the last sheet was closed — the scanner re-arms after declines/errors. */
+    lastClose: { at: number; outcome: 'declined' | 'error' | 'success' } | null;
 
     handle: (rawUrl: string, source: ProximitySource) => boolean;
     confirm: () => Promise<void>;
@@ -65,26 +75,31 @@ interface PromptState {
 }
 
 // ── Dedup ──
-// Keyed by token (or path). The value is "ignore until". While a prompt is
-// being handled the key is blocked; when it closes the window depends on how
-// it ended, so a failed tap can be retried while a declined one doesn't pop
-// up again the instant phones touch.
+// Keyed by token (or path). The value is "ignore until".
+//
+// A deliberate second tap must always work — after "Not now", after an error,
+// with the same code. So closing a sheet only blocks the same payload for a
+// moment (one tap is often delivered twice: NFC tag read + app link, or a
+// Bluetooth re-read). What stops phones that are simply left lying together
+// from nagging is the repeat limit: the same outcome dismissed REPEAT_LIMIT
+// times within REPEAT_WINDOW_MS goes quiet for REPEAT_QUIET_MS.
 const PROCESSING_MS = 120_000;
-const AFTER_DECLINE_MS = 30_000;
-// A token lives 300s server-side; nothing about it changes after a result.
-const TOKEN_LIFETIME_MS = 5 * 60_000;
+const DUPLICATE_MS = 3_000;
+const REPEAT_WINDOW_MS = 60_000;
+const REPEAT_LIMIT = 2;
+const REPEAT_QUIET_MS = 60_000;
+// After a meet the same pair keeps reading each other's rotating codes; the
+// backend answers "already met" — nothing to show right after a success.
 const AFTER_SUCCESS_MS = 10 * 60_000;
-// Bluetooth keeps re-reading a phone that stays next to this one, so a closed
-// error from Bluetooth stays quiet longer than one from a deliberate NFC/link tap.
-const AFTER_RETRYABLE_ERROR_MS = { ble: 15_000, nfc: 2_000, link: 2_000 } as const;
-const AFTER_FINAL_ERROR_MS = 30_000;
-// Tokens rotate while two people stand together. Remember people, not tokens:
 const RECENTLY_MET_MS = 10 * 60_000;
-const DECLINED_PERSON_MS = 90_000;
-// The organizer's code rotates too; one check-in screen per event is enough.
+// A token lives 300s server-side; a "self" answer can't change.
+const TOKEN_LIFETIME_MS = 5 * 60_000;
+// Check-in: the first result for an event opens the check-in screen; repeats
+// within this window get a compact sheet instead of pushing the screen again.
 const RECENT_CHECKIN_MS = 10 * 60_000;
-// "You've already met" is worth saying once, not after every rotation.
-const ALREADY_MET_NOTICE_MS = 10 * 60_000;
+// …except over Bluetooth right after the result: that's the attendee still
+// standing at the organizer's phone, not a new tap.
+const CHECKIN_LINGER_MS = 2 * 60_000;
 // Don't flash the sheet for lookups that resolve almost instantly.
 const SHOW_LOADING_AFTER_MS = 250;
 // Safety net: a flow that hasn't moved for this long (e.g. the sheet could
@@ -93,10 +108,11 @@ const STUCK_AFTER_MS = 3 * 60_000;
 
 const blockedUntil = new Map<string, number>();
 const recentlyMet = new Map<number, number>();
-const declinedPeople = new Map<number, number>();
-const recentCheckins = new Map<number, number>();
-let lastAlreadyMetNoticeAt = 0;
+const checkinResults = new Map<number, { verified: boolean; at: number }>();
+const dismissals = new Map<string, number[]>();
 let currentKey: string | null = null;
+// What the visible sheet is "about", for the repeat limit (person, error, event).
+let currentRepeatKey: string | null = null;
 let runId = 0;
 let lastTransitionAt = 0;
 let shareScreens = 0;
@@ -113,6 +129,24 @@ function isBlocked(key: string): boolean {
 
 function block(key: string | null, ms: number) {
     if (key) blockedUntil.set(key, Date.now() + ms);
+}
+
+function recentDismissals(repeatKey: string): number {
+    const now = Date.now();
+    const recent = (dismissals.get(repeatKey) ?? []).filter((at) => now - at < REPEAT_WINDOW_MS);
+    dismissals.set(repeatKey, recent);
+    return recent.length;
+}
+
+function dismissedTooOften(repeatKey: string): boolean {
+    return recentDismissals(repeatKey) >= REPEAT_LIMIT;
+}
+
+function noteDismissal(repeatKey: string | null) {
+    if (!repeatKey) return;
+    const list = dismissals.get(repeatKey) ?? [];
+    list.push(Date.now());
+    dismissals.set(repeatKey, list);
 }
 
 function within(map: Map<number, number>, id: number | null | undefined, ms: number): boolean {
@@ -139,6 +173,8 @@ const INITIAL = {
     points: 0,
     error: null,
     errorStage: null,
+    checkin: null,
+    notNowCount: null,
 };
 
 export const useProximityPrompt = create<PromptState>((rawSet, get) => {
@@ -157,6 +193,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             runId++;
             clearLoadingTimer();
             currentKey = null;
+            currentRepeatKey = null;
             rawSet({ ...INITIAL });
             return false;
         }
@@ -169,6 +206,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
         clearLoadingTimer();
         block(currentKey, blockMs);
         currentKey = null;
+        currentRepeatKey = null;
         set({ ...INITIAL });
     };
 
@@ -194,17 +232,23 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
                 return;
             }
             // The preview is rejected before it says who it is, so this can't
-            // be keyed by person. Say it once; after a meet (or a notice)
-            // rotated codes from the same pair stay silent.
+            // be keyed by person. Right after a meet it's the same pair reading
+            // each other's rotated codes — stay silent.
             const { lastMet } = get();
-            const metJustNow = !!lastMet && Date.now() - lastMet.at < RECENTLY_MET_MS;
-            if (metJustNow || Date.now() - lastAlreadyMetNoticeAt < ALREADY_MET_NOTICE_MS) {
+            if (lastMet && Date.now() - lastMet.at < RECENTLY_MET_MS) {
                 quietly(TOKEN_LIFETIME_MS);
                 return;
             }
-            lastAlreadyMetNoticeAt = Date.now();
         }
 
+        const repeatKey = `error:${error.kind}`;
+        if (stage === 'preview' && source === 'ble' && dismissedTooOften(repeatKey)) {
+            // Phones left together keep re-reading; this answer was already
+            // dismissed twice in the last minute.
+            quietly(REPEAT_QUIET_MS);
+            return;
+        }
+        currentRepeatKey = repeatKey;
         set({ visible: true, phase: 'error', error, errorStage: stage });
         haptics.notification(error.tone === 'info' ? 'warning' : 'error');
     };
@@ -266,40 +310,67 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
         clearLoadingTimer();
 
         if (result.interaction_type === 'checkin') {
-            // Already recorded server-side — hand over to the check-in screen,
-            // once per event (the organizer's code keeps rotating nearby).
+            // Already recorded server-side (the backend checks in on this call).
             const postId = result.post_id ?? null;
-            if (within(recentCheckins, postId, RECENT_CHECKIN_MS)) {
-                quietly(TOKEN_LIFETIME_MS);
+            const verified = !!result.verified;
+            const params = {
+                _verified: verified ? '1' : '0',
+                _post_id: postId ? String(postId) : '',
+                _post_name: result.post_name || '',
+                _message: result.message || '',
+                _post_image: result.post_image || '',
+            };
+            const previous = postId ? checkinResults.get(postId) : undefined;
+            if (postId) checkinResults.set(postId, { verified, at: Date.now() });
+            const sameResult = !!previous && previous.verified === verified;
+            const repeat = sameResult && Date.now() - previous!.at < RECENT_CHECKIN_MS;
+            if (repeat && get().source === 'ble' && Date.now() - previous!.at < CHECKIN_LINGER_MS) {
+                quietly(REPEAT_QUIET_MS);
                 return;
             }
-            if (postId) recentCheckins.set(postId, Date.now());
-            const verified = !!result.verified;
-            haptics.notification(verified ? 'success' : 'error');
-            block(currentKey, TOKEN_LIFETIME_MS);
-            currentKey = null;
+
+            if (!repeat) {
+                // First result for this event (or it changed, e.g. the organizer
+                // approved them since) — open the check-in screen.
+                haptics.notification(verified ? 'success' : 'error');
+                block(currentKey, DUPLICATE_MS);
+                currentKey = null;
+                set({ ...INITIAL, navigation: { pathname: '/event-checkin', params } });
+                return;
+            }
+
+            // Tapped again: a compact sheet instead of pushing the screen again.
+            const repeatKey = `checkin:${postId}`;
+            if (get().source === 'ble' && dismissedTooOften(repeatKey)) {
+                quietly(REPEAT_QUIET_MS);
+                return;
+            }
+            currentRepeatKey = repeatKey;
+            haptics.impact('rigid');
             set({
-                ...INITIAL,
-                navigation: {
-                    pathname: '/event-checkin',
-                    params: {
-                        _verified: verified ? '1' : '0',
-                        _post_id: postId ? String(postId) : '',
-                        _post_name: result.post_name || '',
-                        _message: result.message || '',
-                        _post_image: result.post_image || '',
-                    },
-                },
+                visible: true,
+                phase: 'confirm',
+                kind: 'checkin',
+                checkin: { verified, postName: result.post_name || 'this event', params },
+                error: null,
+                errorStage: null,
             });
             return;
         }
 
         const peer = result.scanned_user ?? null;
-        if (within(recentlyMet, peer?.user_id, RECENTLY_MET_MS) || within(declinedPeople, peer?.user_id, DECLINED_PERSON_MS)) {
-            // Same person, rotated token — already met or just said "Not now".
+        if (within(recentlyMet, peer?.user_id, RECENTLY_MET_MS)) {
+            // Same person, rotated token — already met.
             quietly(TOKEN_LIFETIME_MS);
             return;
         }
+        const repeatKey = peer?.user_id ? `meet:${peer.user_id}` : null;
+        if (repeatKey && get().source === 'ble' && dismissedTooOften(repeatKey)) {
+            // "Not now" twice in the last minute while the phones stay together.
+            quietly(REPEAT_QUIET_MS);
+            return;
+        }
+        currentRepeatKey = repeatKey;
 
         const mode = result.interaction_type === 'irl' || result.source === 'irl' ? 'irl' : 'networking';
         haptics.impact('rigid');
@@ -312,6 +383,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             points: result.earned_points || 0,
             error: null,
             errorStage: null,
+            notNowCount: repeatKey && get().source === 'ble' ? recentDismissals(repeatKey) : null,
         });
     };
 
@@ -350,6 +422,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
         ...INITIAL,
         navigation: null,
         lastMet: null,
+        lastClose: null,
 
         handle: (rawUrl, source) => {
             const payload = parseProximityPayload(rawUrl);
@@ -361,13 +434,14 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
 
             // Old installs' formats open their original screens.
             if (payload.kind === 'legacy') {
-                block(key, AFTER_DECLINE_MS);
+                block(key, DUPLICATE_MS);
                 set({ navigation: { pathname: payload.path } });
                 return true;
             }
 
             const myRun = ++runId;
             currentKey = key;
+            currentRepeatKey = null;
             block(key, PROCESSING_MS);
             clearLoadingTimer();
             walletLogger.info(WalletTag.PROXIMITY, 'Tap received', { source, kind: payload.kind });
@@ -409,6 +483,14 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             const { payload, kind, mode, phase } = get();
             if (!payload || (phase !== 'confirm' && phase !== 'error')) return;
 
+            if (kind === 'checkin') {
+                const checkin = get().checkin;
+                block(currentKey, DUPLICATE_MS);
+                currentKey = null;
+                currentRepeatKey = null;
+                set({ ...INITIAL, navigation: checkin ? { pathname: '/event-checkin', params: checkin.params } : null });
+                return;
+            }
             if (kind === 'profile' && payload.kind === 'profile') {
                 set({ navigation: { pathname: `/u/${payload.userId}` } });
                 block(currentKey, AFTER_SUCCESS_MS);
@@ -486,21 +568,28 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
         },
 
         close: () => {
-            const { phase, error, source, peer, kind } = get();
+            const { phase } = get();
             runId++;
             clearLoadingTimer();
+            let outcome: 'declined' | 'error' | 'success';
             if (phase === 'success') {
+                outcome = 'success';
                 block(currentKey, AFTER_SUCCESS_MS);
-            } else if (phase === 'error') {
-                block(currentKey, error?.retryable ? AFTER_RETRYABLE_ERROR_MS[source] : AFTER_FINAL_ERROR_MS);
             } else {
-                block(currentKey, AFTER_DECLINE_MS);
-                if (phase === 'confirm' && kind === 'meet' && peer?.user_id) {
-                    declinedPeople.set(peer.user_id, Date.now());
-                }
+                outcome = phase === 'error' ? 'error' : 'declined';
+                // Only absorb a duplicate delivery — tapping again must work.
+                block(currentKey, DUPLICATE_MS);
+                noteDismissal(currentRepeatKey);
             }
             currentKey = null;
-            set({ visible: false, phase: 'loading', error: null, errorStage: null });
+            currentRepeatKey = null;
+            set({
+                visible: false,
+                phase: 'loading',
+                error: null,
+                errorStage: null,
+                lastClose: { at: Date.now(), outcome },
+            });
         },
 
         takeNavigation: () => {

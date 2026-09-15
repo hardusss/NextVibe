@@ -23,6 +23,8 @@ import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
 import { useProximityReadiness } from '@/hooks/useProximityReadiness';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
+import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import { useShareChannel } from '@/hooks/useShareChannel';
 import haptics from '@/src/utils/haptics';
 
 export interface DepositSheetRef {
@@ -91,22 +93,19 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
         broadcast.stop();
     };
 
-    const broadcast = useProximityBroadcast({ onRead: handleRead });
-    const isBroadcasting = broadcast.isActive;
     // Solana Pay URIs are for wallets reading the NFC tag (Android only).
     const solanaPayMode = Platform.OS === 'android' && useSolanaPay;
+    const shareChannel = useShareChannel();
+    const channels = solanaPayMode ? 'nfc' : shareChannel.channel;
+    const broadcast = useProximityBroadcast({ onRead: handleRead, channels });
+    const isBroadcasting = broadcast.isActive;
     const readiness = useProximityReadiness({
         role: 'share',
         enabled: isBroadcasting,
+        channels,
         onFixed: () => broadcast.restart(),
     });
-    // In Solana Pay mode the NFC tag is the only channel: Bluetooth doesn't
-    // matter and NFC being off blocks it.
-    const readinessIssues = solanaPayMode
-        ? readiness.issues
-            .filter((i) => !i.id.startsWith('bluetooth'))
-            .map((i) => (i.id === 'nfcOff' ? { ...i, severity: 'blocking' as const } : i))
-        : readiness.issues;
+    const readinessIssues = readiness.issues;
 
     useEffect(() => {
         if (isBroadcasting) {
@@ -164,7 +163,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
 
     const startHceTransaction = async () => {
         try {
-            await broadcast.start(buildPayload(), solanaPayMode ? 'nfc' : 'all');
+            await broadcast.start(buildPayload());
         } catch (e: any) {
             showToast("Couldn't start sharing. Please try again.", false);
             console.error('Failed to start tap sharing:', e);
@@ -296,6 +295,15 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                         </Text>
                     </View>
                 </TouchableOpacity>
+                )}
+
+                {!solanaPayMode && (
+                    <ShareChannelSwitch
+                        channel={shareChannel.channel}
+                        onChange={shareChannel.setPreference}
+                        nfcAvailable={shareChannel.nfcAvailable}
+                        disabled={isBroadcasting}
+                    />
                 )}
 
                 {/* Ready button */}

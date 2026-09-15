@@ -61,10 +61,13 @@ function openAndroidSettings(action: string) {
 export function useProximityReadiness({
     role,
     enabled = true,
+    channels = 'all',
     onFixed,
 }: {
     role: ReadinessRole;
     enabled?: boolean;
+    /** How this phone shares (Android NFC/Bluetooth switch) — decides which problems block. */
+    channels?: 'all' | 'nfc' | 'bluetooth';
     /** Called after an in-app fix (permission granted, setting re-enabled) so the caller can restart. */
     onFixed?: () => void;
 }) {
@@ -74,9 +77,12 @@ export function useProximityReadiness({
 
     const wantsBroadcast = role !== 'receive';
     const wantsScan = role !== 'share';
+    const isAndroid = Platform.OS === 'android';
+    // In NFC mode Android doesn't advertise, so the advertise permission doesn't matter.
+    const broadcastNeedsBluetooth = wantsBroadcast && (!isAndroid || channels !== 'nfc');
 
     const refresh = useCallback(async () => {
-        const permission = await getBluetoothPermissionStatus(wantsBroadcast);
+        const permission = await getBluetoothPermissionStatus(broadcastNeedsBluetooth);
         let bluetooth: BluetoothState = 'unknown';
         try {
             bluetooth = getBluetoothState();
@@ -97,7 +103,7 @@ export function useProximityReadiness({
             scanEnabled,
             locationServices,
         });
-    }, [wantsBroadcast, wantsScan]);
+    }, [broadcastNeedsBluetooth, wantsScan]);
 
     useEffect(() => {
         if (!enabled) return;
@@ -117,61 +123,80 @@ export function useProximityReadiness({
     const issues: ReadinessIssue[] = [];
     if (enabled && snapshot) {
         const nfcUsable = snapshot.nfc === 'enabled';
-        const hasNfcChannel = Platform.OS === 'android' && snapshot.nfc !== 'unsupported';
+        const hasNfc = isAndroid && snapshot.nfc !== 'unsupported';
+        // What this phone actually shares on right now.
+        const sharesNfc = wantsBroadcast && hasNfc && channels !== 'bluetooth';
+        const sharesBluetooth = wantsBroadcast && (!isAndroid || channels !== 'nfc' || !hasNfc);
+        // Bluetooth also receives: picking up the other person's phone.
+        const needsBluetooth = sharesBluetooth || wantsScan;
+        // A Bluetooth problem blocks only when nothing else can carry the tap.
+        const bluetoothSeverity: ReadinessIssue['severity'] =
+            sharesBluetooth && !(sharesNfc && nfcUsable) ? 'blocking'
+                : role === 'receive' ? 'blocking'
+                    : 'warning';
+        const bluetoothWhy = sharesBluetooth
+            ? 'NextVibe uses Bluetooth to find the phone right next to you.'
+            : 'Your tap works over NFC — Bluetooth is only needed to pick up phones that share over Bluetooth, like iPhones.';
 
-        if (snapshot.permission === 'blocked') {
+        if (needsBluetooth && snapshot.permission === 'blocked') {
             issues.push({
                 id: 'bluetoothDenied',
-                severity: wantsBroadcast && nfcUsable ? 'warning' : 'blocking',
+                severity: bluetoothSeverity,
                 title: 'Bluetooth access is off for NextVibe',
-                message: 'NextVibe uses Bluetooth to find the phone right next to you. Allow it in Settings.',
+                message: `${bluetoothWhy} Allow it in Settings.`,
                 actionLabel: 'Open Settings',
                 onAction: () => Linking.openSettings().catch(() => {}),
             });
-        } else if (snapshot.permission === 'denied' && Platform.OS === 'android') {
+        } else if (needsBluetooth && snapshot.permission === 'denied' && isAndroid) {
             issues.push({
                 id: 'bluetoothDenied',
-                severity: wantsBroadcast && nfcUsable ? 'warning' : 'blocking',
+                severity: bluetoothSeverity,
                 title: 'Allow nearby devices',
-                message: 'NextVibe needs the "Nearby devices" permission to find the phone next to you.',
+                message: sharesBluetooth
+                    ? 'NextVibe needs the "Nearby devices" permission to find the phone next to you.'
+                    : bluetoothWhy,
                 actionLabel: 'Allow',
                 onAction: async () => {
-                    const status = await ensureBluetoothPermissions({ prompt: true, forBroadcast: wantsBroadcast });
+                    const status = await ensureBluetoothPermissions({ prompt: true, forBroadcast: sharesBluetooth });
                     if (status === 'blocked') Linking.openSettings().catch(() => {});
                     await refresh();
                     if (status === 'granted') onFixedRef.current?.();
                 },
             });
-        } else if (snapshot.bluetooth === 'poweredOff') {
+        } else if (needsBluetooth && snapshot.bluetooth === 'poweredOff') {
             issues.push({
                 id: 'bluetoothOff',
-                severity: wantsBroadcast && nfcUsable ? 'warning' : 'blocking',
+                severity: bluetoothSeverity,
                 title: 'Bluetooth is off',
-                message: Platform.OS === 'ios'
-                    ? 'Turn it on in Control Center — tapping starts again by itself.'
-                    : 'Turn it on to tap with people nearby — tapping starts again by itself.',
-                ...(Platform.OS === 'android' && {
+                message: sharesBluetooth
+                    ? (Platform.OS === 'ios'
+                        ? 'Turn it on in Control Center — tapping starts again by itself.'
+                        : 'Turn it on to tap with people nearby — tapping starts again by itself.')
+                    : bluetoothWhy,
+                ...(isAndroid && {
                     actionLabel: 'Turn on',
                     onAction: () => openAndroidSettings('android.settings.BLUETOOTH_SETTINGS'),
                 }),
             });
-        } else if (snapshot.bluetooth === 'unsupported' || (wantsBroadcast && !snapshot.broadcastSupported)) {
+        } else if (sharesBluetooth && (snapshot.bluetooth === 'unsupported' || !snapshot.broadcastSupported)) {
             issues.push({
                 id: 'bluetoothUnsupported',
-                severity: hasNfcChannel ? 'warning' : 'blocking',
+                severity: hasNfc ? 'warning' : 'blocking',
                 title: "This phone can't broadcast over Bluetooth",
-                message: hasNfcChannel
-                    ? 'Others can still pick you up with an NFC tap — hold the backs of the phones together.'
+                message: hasNfc
+                    ? 'Switch to NFC above and hold the backs of the phones together.'
                     : 'Ask the other person to open Tap to Meet on their phone instead — yours can still pick them up.',
             });
         }
 
-        if (wantsBroadcast && Platform.OS === 'android' && snapshot.nfc === 'disabled') {
+        if (sharesNfc && snapshot.nfc === 'disabled') {
             issues.push({
                 id: 'nfcOff',
-                severity: 'warning',
+                severity: sharesBluetooth ? 'warning' : 'blocking',
                 title: 'NFC is off',
-                message: 'Turn it on so any phone can read you with a quick tap, even without the app open.',
+                message: sharesBluetooth
+                    ? 'Turn it on so any phone can read you with a quick tap, even without the app open.'
+                    : 'Turn on NFC to share with a tap, or switch to Bluetooth above.',
                 actionLabel: 'Turn on',
                 onAction: () => openAndroidSettings('android.settings.NFC_SETTINGS'),
             });

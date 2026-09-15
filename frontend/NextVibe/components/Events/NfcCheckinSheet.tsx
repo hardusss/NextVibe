@@ -28,6 +28,8 @@ import { describeProximityError } from '@/src/proximity/errors';
 import haptics from '@/src/utils/haptics';
 import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
+import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import { useShareChannel } from '@/hooks/useShareChannel';
 
 export interface NfcCheckinSheetRef {
     presentForPost: (postId: number, eventTitle?: string) => void;
@@ -75,7 +77,9 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
         }
     }, []);
 
+    const shareChannel = useShareChannel();
     const broadcast = useProximityBroadcast({
+        channels: shareChannel.channel,
         onRead: () => {
             setTapCount((prev) => prev + 1);
             haptics.impact('rigid');
@@ -87,6 +91,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const readiness = useProximityReadiness({
         role: 'share',
         enabled: isOpen,
+        channels: shareChannel.channel,
         onFixed: () => broadcast.restart(),
     });
 
@@ -365,12 +370,18 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                     />
                 )}
 
+                <ShareChannelSwitch
+                    channel={shareChannel.channel}
+                    onChange={shareChannel.setPreference}
+                    nfcAvailable={shareChannel.nfcAvailable}
+                />
+
                 <ReadinessCard issues={readiness.issues} compact />
 
                 {isBroadcasting && readiness.issues.length === 0 && (
                     <Text style={[styles.hintText, { color: muted }]}>
-                        {Platform.OS === 'android'
-                            ? 'Attendees open NextVibe and hold their phone against yours. With NFC on, their phone can read yours even without the app open.'
+                        {Platform.OS === 'android' && shareChannel.channel === 'nfc'
+                            ? 'Attendees hold their phone against the back of yours — no need to open NextVibe. iPhones show a banner to tap.'
                             : 'Attendees open NextVibe and hold their phone against yours for a second.'}
                     </Text>
                 )}

@@ -18,7 +18,7 @@ import { FullWindowOverlay } from 'react-native-screens';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AlertTriangle, Info, Newspaper, Radio, ShieldX, Sparkles, Users, Wallet } from 'lucide-react-native';
+import { AlertTriangle, CalendarCheck, Info, Newspaper, Radio, ShieldX, Sparkles, Users, Wallet } from 'lucide-react-native';
 import EventCta from '@/components/Events/EventCta';
 import UserBadges from '@/components/Shared/UserBadges';
 import SuccessBurst from '@/components/NftClaim/MintBottomSheet/SuccessBurst';
@@ -29,7 +29,7 @@ import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
 
 type Snapshot = Pick<
     ReturnType<typeof useProximityPrompt.getState>,
-    'phase' | 'kind' | 'mode' | 'peer' | 'points' | 'error' | 'payload'
+    'phase' | 'kind' | 'mode' | 'peer' | 'points' | 'error' | 'payload' | 'checkin' | 'notNowCount'
 >;
 
 const SHEET_OFFSET = 420;
@@ -58,17 +58,19 @@ export default function ProximityPrompt() {
     const points = useProximityPrompt((s) => s.points);
     const error = useProximityPrompt((s) => s.error);
     const payload = useProximityPrompt((s) => s.payload);
+    const checkin = useProximityPrompt((s) => s.checkin);
+    const notNowCount = useProximityPrompt((s) => s.notNowCount);
     const navigation = useProximityPrompt((s) => s.navigation);
 
     // Keep showing the last content while the sheet animates out.
-    const [snapshot, setSnapshot] = useState<Snapshot>({ phase, kind, mode, peer, points, error, payload });
+    const [snapshot, setSnapshot] = useState<Snapshot>({ phase, kind, mode, peer, points, error, payload, checkin, notNowCount });
     const [mounted, setMounted] = useState(false);
     const translateY = useRef(new Animated.Value(SHEET_OFFSET)).current;
     const backdrop = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        if (visible) setSnapshot({ phase, kind, mode, peer, points, error, payload });
-    }, [visible, phase, kind, mode, peer, points, error, payload]);
+        if (visible) setSnapshot({ phase, kind, mode, peer, points, error, payload, checkin, notNowCount });
+    }, [visible, phase, kind, mode, peer, points, error, payload, checkin, notNowCount]);
 
     // OS-delivered tap links (NFC tag read, universal/app link).
     useEffect(() => subscribeProximityLinks((url) => {
@@ -83,7 +85,10 @@ export default function ProximityPrompt() {
         const nav = useProximityPrompt.getState().takeNavigation();
         if (!nav) return;
         try {
-            router.push((nav.params ? { pathname: nav.pathname, params: nav.params } : nav.pathname) as any);
+            const href = (nav.params ? { pathname: nav.pathname, params: nav.params } : nav.pathname) as any;
+            // Already looking at a check-in result: swap it rather than stacking another.
+            if (pathname === nav.pathname) router.replace(href);
+            else router.push(href);
         } catch {
             // An unmatched legacy path — nothing sensible to open.
         }
@@ -272,6 +277,13 @@ export default function ProximityPrompt() {
                             <EventCta label="Confirm" onPress={() => store.confirm()} busy={busy} />
                         </View>
                     </View>
+                    {s.notNowCount !== null && (
+                        <Text style={[styles.hint, { color: muted }]}>
+                            {s.notNowCount === 0
+                                ? "Not now just hides this card. If your phones stay close, it can pop up once more — after that it pauses for a minute."
+                                : `Pressing Not now again pauses this card for a minute while your phones stay close. To meet ${name} later, tap again after that.`}
+                        </Text>
+                    )}
                 </>
             );
         }
@@ -294,6 +306,42 @@ export default function ProximityPrompt() {
                         <View style={styles.flex}>
                             <EventCta label="View profile" onPress={() => store.confirm()} />
                         </View>
+                    </View>
+                </>
+            );
+        }
+
+        if (s.kind === 'checkin' && s.checkin) {
+            const verified = s.checkin.verified;
+            return (
+                <>
+                    <View
+                        style={[
+                            styles.iconCircle,
+                            verified
+                                ? { backgroundColor: 'rgba(74,222,128,0.12)', borderColor: 'rgba(74,222,128,0.35)' }
+                                : { backgroundColor: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.35)' },
+                        ]}
+                    >
+                        {verified
+                            ? <CalendarCheck size={30} color={colors.success} strokeWidth={1.8} />
+                            : <AlertTriangle size={30} color={colors.warning} strokeWidth={1.8} />}
+                    </View>
+                    <Text style={[styles.title, { color: main }]}>{title}</Text>
+                    <Text style={[styles.message, { color: muted }]}>
+                        {verified
+                            ? `Your check-in to ${s.checkin.postName} is already recorded.`
+                            : `You're not on the guest list for ${s.checkin.postName} yet. Ask the organizer to approve you, then tap again.`}
+                    </Text>
+                    <View style={styles.actionsRow}>
+                        <View style={styles.flex}>
+                            <EventCta label="Close" variant="secondary" onPress={close} />
+                        </View>
+                        {verified && (
+                            <View style={styles.flex}>
+                                <EventCta label="Open" onPress={() => store.confirm()} />
+                            </View>
+                        )}
                     </View>
                 </>
             );
@@ -405,6 +453,7 @@ function titleFor(s: Snapshot): string {
     if (s.kind === 'meet') return `Meet @${s.peer?.username ?? 'them'}?`;
     if (s.kind === 'profile') return `@${s.peer?.username ?? 'someone'} shared their profile`;
     if (s.kind === 'payment') return 'Payment request';
+    if (s.kind === 'checkin') return s.checkin?.verified ? "You're checked in" : 'Not registered yet';
     return 'Post shared with you';
 }
 
@@ -538,6 +587,15 @@ const styles = StyleSheet.create({
         fontFamily: 'Dank Mono Bold',
         fontSize: typeScale.body,
         color: '#fff',
+        includeFontPadding: false,
+    },
+    hint: {
+        fontFamily: 'Dank Mono',
+        fontSize: typeScale.caption,
+        lineHeight: typeScale.caption + 5,
+        textAlign: 'center',
+        marginTop: space.md,
+        paddingHorizontal: space.sm,
         includeFontPadding: false,
     },
     actions: {

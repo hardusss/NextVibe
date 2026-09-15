@@ -6,7 +6,7 @@ import {
     addBluetoothStateListener,
     addScanErrorListener,
 } from "@/modules/ble-share";
-import { requestScanStart, requestScanStop, isScanWanted } from "@/src/utils/bleScanController";
+import { requestScanStart, requestScanStop, isScanWanted, refreshScanSession } from "@/src/utils/bleScanController";
 import { useProximityPrompt } from "@/src/proximity/promptStore";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
@@ -14,6 +14,10 @@ import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 // once, so they can be tapped without visiting a tap screen first. After that
 // the app-wide scanner never prompts again — tap screens ask with context.
 const AUTO_PROMPT_KEY = "proximity_scan_prompted_v1";
+
+// After "Not now" or a failed tap, re-arm the scanner once the prompt's
+// duplicate window has passed, so holding the phones together again works.
+const REARM_AFTER_CLOSE_MS = 3_200;
 
 /**
  * App-wide nearby scanner: while a signed-in user has NextVibe in the
@@ -71,6 +75,17 @@ export function useBleScanner(enabled: boolean) {
             walletLogger.warn(WalletTag.BLE, "Scan error", error);
         });
 
+        let rearmTimer: ReturnType<typeof setTimeout> | null = null;
+        const unsubscribeClose = useProximityPrompt.subscribe((state, prev) => {
+            const close = state.lastClose;
+            if (!close || close === prev.lastClose || close.outcome === "success") return;
+            if (rearmTimer) clearTimeout(rearmTimer);
+            rearmTimer = setTimeout(() => {
+                rearmTimer = null;
+                if (AppState.currentState === "active") refreshScanSession();
+            }, REARM_AFTER_CLOSE_MS);
+        });
+
         const discoverSub = addBleDiscoveredListener((event) => {
             if (!event.url) return;
             const accepted = useProximityPrompt.getState().handle(event.url, "ble");
@@ -81,6 +96,8 @@ export function useBleScanner(enabled: boolean) {
 
         return () => {
             cancelled = true;
+            if (rearmTimer) clearTimeout(rearmTimer);
+            unsubscribeClose();
             appStateSub.remove();
             stateSub.remove();
             errorSub.remove();

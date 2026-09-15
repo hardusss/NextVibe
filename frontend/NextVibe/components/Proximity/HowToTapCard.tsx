@@ -1,38 +1,59 @@
 import React from 'react';
 import { View, Text, StyleSheet, useColorScheme, Platform } from 'react-native';
 import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
+import type { ShareChannel } from '@/hooks/useShareChannel';
 
 type Props = {
     /** Who the other person is expected to be. */
     audience: 'friend' | 'attendee' | 'organizer';
+    /** How this phone shares (Android switch); iPhones always use Bluetooth. */
+    channel?: ShareChannel;
 };
 
 /**
  * Three numbered steps that answer "what do we actually do?" for both
- * people. Transport names appear only in the small footnote.
+ * people, for the channel this phone is sharing on.
  */
-export default function HowToTapCard({ audience }: Props) {
+export default function HowToTapCard({ audience, channel = 'bluetooth' }: Props) {
     const isDark = useColorScheme() === 'dark';
     const main = isDark ? colors.text : '#111827';
     const muted = isDark ? colors.sub : 'rgba(17,24,39,0.6)';
+    const nfc = Platform.OS === 'android' && channel === 'nfc';
 
-    const steps = audience === 'organizer'
-        ? [
-            'Attendees open NextVibe on their phone',
-            'They hold their phone against yours for a second',
-            'Their check-in appears in the list below',
-        ]
-        : [
-            audience === 'attendee'
-                ? 'The other attendee opens Profile → Tap to Meet'
-                : 'Your friend opens NextVibe → Profile → Tap to Meet',
-            'Hold the phones back to back for a second',
-            'Tap Confirm on the card that pops up',
-        ];
+    let steps: string[];
+    let footnote: string;
 
-    const footnote = Platform.OS === 'android'
-        ? 'Works over Bluetooth with the app open. With NFC on, any phone can also read yours with a tap — iPhones show a banner to open.'
-        : 'Works over Bluetooth with NextVibe open on both phones. Android phones with NFC can also be tapped against the top of your iPhone.';
+    if (nfc) {
+        steps = audience === 'organizer'
+            ? [
+                'Attendees hold their phone against the back of yours',
+                'iPhones show a NextVibe banner — they tap it',
+                'Their check-in appears in the list below',
+            ]
+            : [
+                'Hold the back of your phone against theirs — on an iPhone, its top edge',
+                'An iPhone shows a NextVibe banner to tap; Android opens NextVibe by itself',
+                'They tap Confirm on the card that pops up',
+            ];
+        footnote = 'NFC works even if NextVibe isn’t open on their phone. If nothing happens, check NFC is on for both — or switch to Bluetooth.';
+    } else {
+        steps = audience === 'organizer'
+            ? [
+                'Attendees open NextVibe on their phone',
+                'They hold their phone against yours for a second',
+                'Their check-in appears in the list below',
+            ]
+            : [
+                audience === 'attendee'
+                    ? 'The other attendee opens Profile → Tap to Meet'
+                    : 'Your friend opens NextVibe → Profile → Tap to Meet',
+                'Hold the phones back to back for a second',
+                'Tap Confirm on the card that pops up',
+            ];
+        footnote = Platform.OS === 'android'
+            ? 'Bluetooth needs NextVibe open on both phones. Switch to NFC to tap phones without the app open.'
+            : 'Works over Bluetooth with NextVibe open on both phones. Android phones sharing over NFC can also be tapped against the top of your iPhone.';
+    }
 
     return (
         <View

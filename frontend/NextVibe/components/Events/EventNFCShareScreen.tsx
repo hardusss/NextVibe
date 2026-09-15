@@ -28,6 +28,8 @@ import EventCta from '@/components/Events/EventCta';
 import MeetSuccess, { type MeetUser } from '@/components/Events/MeetSuccess';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
 import HowToTapCard from '@/components/Proximity/HowToTapCard';
+import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import { useShareChannel } from '@/hooks/useShareChannel';
 
 type Phase = 'starting' | 'live' | 'failed' | 'success';
 
@@ -39,6 +41,11 @@ const FAST_POLL_MS = 1000;
 const FAST_POLL_WINDOW_MS = 25_000;
 // How long "they picked you up" stays on screen without a confirmation.
 const READ_NOTICE_MS = 20_000;
+// After someone reads this phone, hand out a fresh code shortly after. The
+// native broadcaster reports one read per phone per code, so without a new
+// code a second tap by the same person (after "Not now") went unnoticed here.
+const RENEW_AFTER_READ_MS = 1500;
+const MIN_READ_RENEW_GAP_MS = 10_000;
 
 /**
  * Tap to Meet. This phone both broadcasts its tap code (Bluetooth, plus an
@@ -181,6 +188,7 @@ export default function EventNFCShareScreen() {
 
     // ── Broadcast ──
 
+    const lastReadRenewAtRef = useRef(0);
     const onPickedUp = useCallback(() => {
         if (!mountedRef.current) return;
         haptics.impact('rigid');
@@ -191,14 +199,22 @@ export default function EventNFCShareScreen() {
             if (mountedRef.current) setPickedUp(false);
         }, READ_NOTICE_MS);
         schedulePoll(sessionRef.current, 300);
-    }, [schedulePoll]);
+        if (Date.now() - lastReadRenewAtRef.current > MIN_READ_RENEW_GAP_MS) {
+            lastReadRenewAtRef.current = Date.now();
+            setTimeout(() => {
+                if (mountedRef.current) renewNow();
+            }, RENEW_AFTER_READ_MS);
+        }
+    }, [schedulePoll, renewNow]);
 
-    const broadcast = useProximityBroadcast({ onRead: onPickedUp });
+    const shareChannel = useShareChannel();
+    const broadcast = useProximityBroadcast({ onRead: onPickedUp, channels: shareChannel.channel });
     const broadcastStopRef = useRef(broadcast.stop);
     broadcastStopRef.current = broadcast.stop;
 
     const readiness = useProximityReadiness({
         role: 'both',
+        channels: shareChannel.channel,
         onFixed: () => {
             broadcast.restart();
             requestScanStart({ prompt: false });
@@ -400,7 +416,9 @@ export default function EventNFCShareScreen() {
         : readiness.blocking ? 'Almost ready' : effectiveIrl ? 'Ready to tap' : 'Ready to network';
     const description = pickedUp
         ? 'Waiting for them to confirm on their phone…'
-        : 'Hold your phone back to back with theirs for a second.';
+        : shareChannel.channel === 'nfc' && Platform.OS === 'android'
+            ? 'Touch the back of your phone to theirs.'
+            : 'Hold your phone back to back with theirs for a second.';
 
     return (
         <EventScreenShell title="Tap to Meet" subtitle={subtitle} bodyStyle={styles.shellBody}>
@@ -443,6 +461,12 @@ export default function EventNFCShareScreen() {
                         <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
                         <Text style={[styles.statusText, { color: main }]}>{statusLabel}</Text>
                     </View>
+
+                    <ShareChannelSwitch
+                        channel={shareChannel.channel}
+                        onChange={shareChannel.setPreference}
+                        nfcAvailable={shareChannel.nfcAvailable}
+                    />
                 </Animated.View>
 
                 {isStale && (
@@ -453,7 +477,7 @@ export default function EventNFCShareScreen() {
 
                 <ReadinessCard issues={readiness.issues} />
 
-                {broadcast.broadcastError && !readiness.issues.some((i) => i.id.startsWith('bluetooth')) && (
+                {broadcast.broadcastError && shareChannel.channel === 'bluetooth' && !readiness.issues.some((i) => i.id.startsWith('bluetooth')) && (
                     <Text style={[styles.footnote, { color: mutedColor }]}>
                         {broadcast.broadcastError.code === 'unsupported'
                             ? "This phone can't broadcast over Bluetooth — others can still tap you if their phone reads NFC, or you can pick up theirs."
@@ -461,7 +485,7 @@ export default function EventNFCShareScreen() {
                     </Text>
                 )}
 
-                <HowToTapCard audience={effectiveIrl ? 'friend' : 'attendee'} />
+                <HowToTapCard audience={effectiveIrl ? 'friend' : 'attendee'} channel={shareChannel.channel} />
             </ScrollView>
         </EventScreenShell>
     );
