@@ -15,9 +15,11 @@ import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 // the app-wide scanner never prompts again — tap screens ask with context.
 const AUTO_PROMPT_KEY = "proximity_scan_prompted_v1";
 
-// After "Not now" or a failed tap, re-arm the scanner once the prompt's
-// duplicate window has passed, so holding the phones together again works.
-const REARM_AFTER_CLOSE_MS = 3_200;
+// After "Not now" or a failed tap, re-arm the scanner so holding the phones
+// together again works without waiting out the native ~15s cooldown. Not
+// immediately: right after closing the card people still hold their phones
+// 20–30 cm apart, and a fresh scan picked them up from there.
+const REARM_AFTER_CLOSE_MS = 8_000;
 
 /**
  * App-wide nearby scanner: while a signed-in user has NextVibe in the

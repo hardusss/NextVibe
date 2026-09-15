@@ -11,7 +11,7 @@ import { storage } from '@/src/utils/storage';
 import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 import GetApiUrl from '@/src/utils/url_api';
 import { safeBack } from '@/src/utils/safeBack';
-import { acquireActiveScanMode, requestScanStart } from '@/src/utils/bleScanController';
+import { requestScanStart } from '@/src/utils/bleScanController';
 import { useProximityToken } from '@/hooks/useProximityToken';
 import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
 import { useProximityReadiness } from '@/hooks/useProximityReadiness';
@@ -271,7 +271,9 @@ export default function EventNFCShareScreen() {
 
     useEffect(() => {
         mountedRef.current = true;
-        const releaseActiveScan = acquireActiveScanMode();
+        // The screen listens with the normal (close-range) sensitivity. The
+        // looser "active" mode (−62 dBm) picked up phones 30 cm+ away and
+        // prompted several nearby phones at once.
         useProximityPrompt.getState().setShareScreenActive(true);
         warmUpLocation();
         if (eventId || isIrl) startSession();
@@ -279,7 +281,6 @@ export default function EventNFCShareScreen() {
         return () => {
             mountedRef.current = false;
             sessionRef.current++;
-            releaseActiveScan();
             useProximityPrompt.getState().setShareScreenActive(false);
             stopPolling();
             stopAutoRenewal();

@@ -12,7 +12,6 @@ import { Platform, PermissionsAndroid, type Permission } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     getBluetoothAuthorization,
-    setScanSensitivity,
     startScanning,
     stopScanning,
 } from '@/modules/ble-share';
@@ -27,7 +26,6 @@ let wantScan = false;
 // Bumped by every start/stop so a slow async start can't resurrect a scan
 // that was stopped while it awaited storage or a permission dialog.
 let generation = 0;
-let activeScanUsers = 0;
 let permissionRequest: Promise<BluetoothPermissionStatus> | null = null;
 
 function androidPermissions(forBroadcast: boolean): Permission[] {
@@ -181,20 +179,4 @@ export function requestScanStop(): void {
     } catch (e) {
         walletLogger.error(WalletTag.BLE, 'Native stopScanning threw', e);
     }
-}
-
-/**
- * Tap screens call this while open: people are deliberately holding phones
- * together, so the proximity threshold loosens. Returns the release function.
- */
-export function acquireActiveScanMode(): () => void {
-    activeScanUsers++;
-    if (activeScanUsers === 1) setScanSensitivity('active');
-    let released = false;
-    return () => {
-        if (released) return;
-        released = true;
-        activeScanUsers = Math.max(0, activeScanUsers - 1);
-        if (activeScanUsers === 0) setScanSensitivity('passive');
-    };
 }
