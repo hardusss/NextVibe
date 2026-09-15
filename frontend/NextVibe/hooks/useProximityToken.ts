@@ -37,6 +37,9 @@ export function useProximityToken() {
     const failuresRef = useRef(0);
     const renewingRef = useRef(false);
     const mountedRef = useRef(true);
+    // Bumped by start/stop so a renewal already in flight can't reschedule
+    // itself after auto-renewal was stopped.
+    const renewalGenerationRef = useRef(0);
 
     const clearTimers = useCallback(() => {
         if (renewalTimerRef.current) {
@@ -114,22 +117,29 @@ export function useProximityToken() {
 
     const scheduleRenewal = useCallback((delayMs: number) => {
         if (renewalTimerRef.current) clearTimeout(renewalTimerRef.current);
+        const generation = renewalGenerationRef.current;
+        const current = () => mountedRef.current && generation === renewalGenerationRef.current;
         renewalTimerRef.current = setTimeout(async () => {
             renewalTimerRef.current = null;
             const params = currentParamsRef.current;
-            if (!params || renewingRef.current || !mountedRef.current) return;
+            if (!params || !current()) return;
+            if (renewingRef.current) {
+                // A renewal from before a restart is still finishing — try again shortly.
+                scheduleRenewal(1000);
+                return;
+            }
 
             renewingRef.current = true;
             setIsRenewing(true);
             try {
                 const result = await generateProximityToken(params.interactionType, params.eventId);
-                if (!mountedRef.current) return;
+                if (!current()) return;
                 const newUrl = applyResult(result, params);
                 onNewUrlRef.current?.(newUrl);
                 scheduleRenewal(RENEWAL_INTERVAL_MS);
             } catch (e) {
                 walletLogger.error(WalletTag.PROXIMITY, 'Token auto-renewal failed', e);
-                if (!mountedRef.current) return;
+                if (!current()) return;
                 // Keep broadcasting the previous code (still valid server-side)
                 // and retry soon instead of waiting a whole interval.
                 const attempt = failuresRef.current++;
@@ -152,11 +162,13 @@ export function useProximityToken() {
             currentParamsRef.current = { interactionType, eventId };
         }
         onNewUrlRef.current = onNewUrl ?? null;
+        renewalGenerationRef.current++;
         startCountdown();
         scheduleRenewal(RENEWAL_INTERVAL_MS);
     }, [scheduleRenewal, startCountdown]);
 
     const stopAutoRenewal = useCallback(() => {
+        renewalGenerationRef.current++;
         clearTimers();
         onNewUrlRef.current = null;
     }, [clearTimers]);

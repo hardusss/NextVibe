@@ -19,6 +19,14 @@ type Options = {
 };
 
 /**
+ * "all" — Bluetooth everywhere plus the NFC tag on Android.
+ * "nfc" — NFC tag only, for payloads only other apps understand (e.g. a
+ *         Solana Pay URI a wallet reads; a NextVibe phone would read it over
+ *         Bluetooth, drop it, and the sender would think it was delivered).
+ */
+export type BroadcastChannels = 'all' | 'nfc';
+
+/**
  * Makes this phone discoverable with a payload URL on every channel it has:
  * Bluetooth on both platforms, plus an emulated NFC tag on Android (so
  * iPhones and Android phones can also read it with a tap).
@@ -34,6 +42,7 @@ export function useProximityBroadcast({ onRead }: Options = {}) {
 
     const activeRef = useRef(false);
     const urlRef = useRef<string | null>(null);
+    const channelsRef = useRef<BroadcastChannels>('all');
     const lastReadRef = useRef(0);
     const onReadRef = useRef(onRead);
     onReadRef.current = onRead;
@@ -61,10 +70,12 @@ export function useProximityBroadcast({ onRead }: Options = {}) {
     }, [isActive, handleRead]);
 
     const pushToNative = useCallback((url: string) => {
-        try {
-            startBroadcasting(url);
-        } catch (e) {
-            walletLogger.error(WalletTag.PROXIMITY, 'startBroadcasting threw', e);
+        if (channelsRef.current === 'all') {
+            try {
+                startBroadcasting(url);
+            } catch (e) {
+                walletLogger.error(WalletTag.PROXIMITY, 'startBroadcasting threw', e);
+            }
         }
         if (Platform.OS === 'android' && getNfcState() !== 'unsupported') {
             try {
@@ -78,9 +89,20 @@ export function useProximityBroadcast({ onRead }: Options = {}) {
     }, []);
 
     /** Ask for permission if needed and start. Safe to call again. */
-    const start = useCallback(async (url: string) => {
+    const start = useCallback(async (url: string, channels: BroadcastChannels = 'all') => {
         urlRef.current = url;
         activeRef.current = true;
+        channelsRef.current = channels;
+        if (channels === 'nfc') {
+            try {
+                stopBroadcasting();
+            } catch {}
+            setPermission(null);
+            setBroadcastError(null);
+            pushToNative(url);
+            setIsActive(true);
+            return;
+        }
         const status = await ensureBluetoothPermissions({ prompt: true, forBroadcast: true });
         if (!activeRef.current || urlRef.current !== url) return;
         setPermission(status);
@@ -115,7 +137,7 @@ export function useProximityBroadcast({ onRead }: Options = {}) {
     /** Re-run permission + start after the person fixed something in Settings. */
     const restart = useCallback(async () => {
         const url = urlRef.current;
-        if (url) await start(url);
+        if (url) await start(url, channelsRef.current);
     }, [start]);
 
     useEffect(() => stop, [stop]);

@@ -17,6 +17,9 @@
       "<rootDir>/src/utils",
       "<rootDir>/src/proximity"
     ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
+    },
     "testMatch": [
       "**/__tests__/**/*.test.ts"
     ],

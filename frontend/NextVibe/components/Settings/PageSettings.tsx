@@ -128,7 +128,7 @@ function PageSettingsContent() {
         try {
             const res = await linkEmail(newEmail.trim());
             showToast(res.message || "Email linked successfully! +20 Rep 🎉", true);
-            showPopup('success', 'Email Linked', 'You earned +20 Reputation points!');
+            showPopup('success', 'Email Linked', '+20 reputation added to your profile!');
             setNewEmail("");
             await fetchUserData();
         } catch (err: any) {

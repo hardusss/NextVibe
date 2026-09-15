@@ -20,7 +20,6 @@ class NfcSendModule : Module() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var stateReceiver: BroadcastReceiver? = null
     private var preferredActivity: Activity? = null
-    private var discoveryActivity: Activity? = null
     private var componentSynced = false
 
     private fun nfcState(): String {
@@ -95,9 +94,9 @@ class NfcSendModule : Module() {
 
     /**
      * While sharing, make our service win any AID conflict with other tag
-     * emulator apps, and (Android 15+) stop this phone from polling so it
-     * can't read the *other* phone and navigate away from the share screen.
-     * Both are tied to the resumed activity and reset when it pauses.
+     * emulator apps. Tied to the resumed activity; re-applied on foreground.
+     * (This phone keeps reading tags too: a tap link read while sharing opens
+     * the tap prompt over the share screen instead of navigating away.)
      */
     private fun applyForegroundPreferences() {
         mainHandler.post {
@@ -112,23 +111,6 @@ class NfcSendModule : Module() {
                     preferredActivity = activity
                 }
             } catch (e: Exception) {
-            }
-
-            if (Build.VERSION.SDK_INT >= 35) {
-                try {
-                    val readerDisable = NfcAdapter::class.java.getField("FLAG_READER_DISABLE").getInt(null)
-                    val listenKeep = NfcAdapter::class.java.getField("FLAG_LISTEN_KEEP").getInt(null)
-                    NfcAdapter::class.java
-                        .getMethod(
-                            "setDiscoveryTechnology",
-                            Activity::class.java,
-                            Int::class.javaPrimitiveType,
-                            Int::class.javaPrimitiveType
-                        )
-                        .invoke(adapter, activity, readerDisable, listenKeep)
-                    discoveryActivity = activity
-                } catch (e: Exception) {
-                }
             }
         }
     }
@@ -145,16 +127,6 @@ class NfcSendModule : Module() {
                 }
             }
             preferredActivity = null
-
-            discoveryActivity?.let { activity ->
-                try {
-                    NfcAdapter::class.java
-                        .getMethod("resetDiscoveryTechnology", Activity::class.java)
-                        .invoke(adapter, activity)
-                } catch (e: Exception) {
-                }
-            }
-            discoveryActivity = null
         }
     }
 

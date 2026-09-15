@@ -22,14 +22,11 @@ private let kSelectionWindow: TimeInterval = 0.35
 // A connection that hasn't produced the payload by now is abandoned.
 private let kConnectTimeout: TimeInterval = 6.0
 
-// Per-device cooldowns. After a successful read JS dedups per token, so the
-// native side only needs to avoid reconnect storms; after a failure the same
-// phone can be retried almost immediately.
-private let kSuccessCooldown: TimeInterval = 8.0
+// Per-device cooldowns. After a successful read JS dedups per token/person, so
+// the native side only needs to avoid reconnecting to a phone that simply
+// stays next to this one; after a failure it can be retried almost at once.
+private let kSuccessCooldown: TimeInterval = 15.0
 private let kFailureCooldown: TimeInterval = 1.5
-
-// Broadcaster: one onBleRead per central within this window.
-private let kReadEventDebounce: TimeInterval = 3.0
 
 private func bluetoothStateString(_ state: CBManagerState) -> String {
     switch state {
@@ -268,11 +265,13 @@ public class BleShareModule: Module {
 private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
     weak var module: BleShareModule?
 
-    // Last read time per central UUID during this broadcast session
-    private var lastReadTimes: [UUID: Date] = [:]
+    // Payload each central was last reported for during this broadcast session:
+    // one onBleRead per central per code — a neighbour that keeps re-reading
+    // the same code is not a new tap.
+    private var notifiedPayloads: [UUID: Data] = [:]
 
     func resetBroadcastSession() {
-        lastReadTimes.removeAll()
+        notifiedPayloads.removeAll()
     }
 
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
@@ -314,11 +313,10 @@ private class PeripheralDelegate: NSObject, CBPeripheralManagerDelegate {
         guard offset == 0 else { return }
 
         let centralId = request.central.identifier
-        let now = Date()
-        if let last = lastReadTimes[centralId], now.timeIntervalSince(last) < kReadEventDebounce {
+        if notifiedPayloads[centralId] == value {
             return
         }
-        lastReadTimes[centralId] = now
+        notifiedPayloads[centralId] = value
         module.sendEvent("onBleRead")
     }
 }

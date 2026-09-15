@@ -57,9 +57,10 @@ class BleShareModule : Module() {
     private val minRssiSamples = 2
     private val selectionWindowMs = 350L
     private val connectTimeoutMs = 6000L
-    private val successCooldownMs = 8000L
+    // A phone that stays next to this one isn't reconnected in a loop; a
+    // failed read can be retried almost at once.
+    private val successCooldownMs = 15_000L
     private val failureCooldownMs = 1500L
-    private val readEventDebounceMs = 3000L
 
     // Android silently stops delivering results to apps that start scans more
     // than 5 times in 30s — stay under that.
@@ -92,7 +93,9 @@ class BleShareModule : Module() {
     private var advertiser: BluetoothLeAdvertiser? = null
     private var isAdvertising = false
     private var serviceReady = false
-    private val lastReadByDevice = ConcurrentHashMap<String, Long>()
+    // Payload hash each central was last reported for — one onBleRead per
+    // device per code, not per reconnect.
+    private val notifiedPayloadByDevice = ConcurrentHashMap<String, Int>()
 
     private var stateReceiver: BroadcastReceiver? = null
 
@@ -343,10 +346,8 @@ class BleShareModule : Module() {
             // Long values arrive as several reads with growing offsets.
             if (offset != 0) return
             val address = device.address ?: return
-            val now = SystemClock.elapsedRealtime()
-            val last = lastReadByDevice[address]
-            if (last != null && now - last < readEventDebounceMs) return
-            lastReadByDevice[address] = now
+            val payloadHash = payload.contentHashCode()
+            if (notifiedPayloadByDevice.put(address, payloadHash) == payloadHash) return
             emit("onBleRead")
         }
     }
@@ -450,7 +451,7 @@ class BleShareModule : Module() {
         }
         gattServer = null
         serviceReady = false
-        lastReadByDevice.clear()
+        notifiedPayloadByDevice.clear()
     }
 
     // ═══════════════════════════════════════

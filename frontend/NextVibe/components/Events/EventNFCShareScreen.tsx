@@ -256,6 +256,7 @@ export default function EventNFCShareScreen() {
     useEffect(() => {
         mountedRef.current = true;
         const releaseActiveScan = acquireActiveScanMode();
+        useProximityPrompt.getState().setShareScreenActive(true);
         warmUpLocation();
         if (eventId || isIrl) startSession();
 
@@ -263,6 +264,7 @@ export default function EventNFCShareScreen() {
             mountedRef.current = false;
             sessionRef.current++;
             releaseActiveScan();
+            useProximityPrompt.getState().setShareScreenActive(false);
             stopPolling();
             stopAutoRenewal();
             if (pickedUpTimerRef.current) clearTimeout(pickedUpTimerRef.current);
@@ -379,20 +381,23 @@ export default function EventNFCShareScreen() {
     }
 
     const starting = phase === 'starting';
-    const statusTone: 'live' | 'warn' | 'off' | 'starting' = starting
+    const statusTone: 'live' | 'warn' | 'off' | 'blocked' | 'starting' = starting
         ? 'starting'
-        : isStale ? 'off' : renewalFailing ? 'warn' : 'live';
+        : readiness.blocking ? 'blocked' : isStale ? 'off' : renewalFailing ? 'warn' : 'live';
     const statusLabel = {
         starting: 'Getting ready…',
         live: 'Live — others nearby can tap you',
         warn: 'Connection is shaky — still live',
         off: 'Offline — your tap code expired',
+        blocked: 'Not live — fix the item below',
     }[statusTone];
-    const statusColor = { starting: colors.accent, live: colors.success, warn: colors.warning, off: colors.danger }[statusTone];
+    const statusColor = {
+        starting: colors.accent, live: colors.success, warn: colors.warning, off: colors.danger, blocked: colors.danger,
+    }[statusTone];
 
     const heading = pickedUp
         ? 'They picked you up'
-        : effectiveIrl ? 'Ready to tap' : 'Ready to network';
+        : readiness.blocking ? 'Almost ready' : effectiveIrl ? 'Ready to tap' : 'Ready to network';
     const description = pickedUp
         ? 'Waiting for them to confirm on their phone…'
         : 'Hold your phone back to back with theirs for a second.';

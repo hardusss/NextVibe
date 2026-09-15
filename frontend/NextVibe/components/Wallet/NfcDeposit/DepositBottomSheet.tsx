@@ -21,6 +21,8 @@ import useWalletAddress from '@/hooks/useWalletAddress';
 import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 
 import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
+import { useProximityReadiness } from '@/hooks/useProximityReadiness';
+import ReadinessCard from '@/components/Proximity/ReadinessCard';
 import haptics from '@/src/utils/haptics';
 
 export interface DepositSheetRef {
@@ -91,6 +93,20 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
 
     const broadcast = useProximityBroadcast({ onRead: handleRead });
     const isBroadcasting = broadcast.isActive;
+    // Solana Pay URIs are for wallets reading the NFC tag (Android only).
+    const solanaPayMode = Platform.OS === 'android' && useSolanaPay;
+    const readiness = useProximityReadiness({
+        role: 'share',
+        enabled: isBroadcasting,
+        onFixed: () => broadcast.restart(),
+    });
+    // In Solana Pay mode the NFC tag is the only channel: Bluetooth doesn't
+    // matter and NFC being off blocks it.
+    const readinessIssues = solanaPayMode
+        ? readiness.issues
+            .filter((i) => !i.id.startsWith('bluetooth'))
+            .map((i) => (i.id === 'nfcOff' ? { ...i, severity: 'blocking' as const } : i))
+        : readiness.issues;
 
     useEffect(() => {
         if (isBroadcasting) {
@@ -134,7 +150,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
     //Build NFC payload
 
     const buildPayload = (): string => {
-        if (useSolanaPay) {
+        if (solanaPayMode) {
             // Solana Pay URI: solana:<address>?amount=<n>&spl-token=<mint>&label=...
             const mint = SOLANA_PAY_MINTS[selectedToken];
             const params = new URLSearchParams({ amount });
@@ -148,7 +164,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
 
     const startHceTransaction = async () => {
         try {
-            await broadcast.start(buildPayload());
+            await broadcast.start(buildPayload(), solanaPayMode ? 'nfc' : 'all');
         } catch (e: any) {
             showToast("Couldn't start sharing. Please try again.", false);
             console.error('Failed to start tap sharing:', e);
@@ -245,7 +261,8 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                     })}
                 </View>
 
-                {/* Solana Pay toggle */}
+                {/* Solana Pay toggle — Android only: iPhones can't emulate the NFC tag a wallet reads */}
+                {Platform.OS === 'android' && (
                 <TouchableOpacity
                     onPress={() => !isBroadcasting && setUseSolanaPay(v => !v)}
                     activeOpacity={0.7}
@@ -275,10 +292,11 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                             Solana Pay
                         </Text>
                         <Text style={[styles.solanaPaySub, { color: mutedColor }]}>
-                            {useSolanaPay ? `solana:${address?.slice(0, 8)}…` : 'Use Solana Pay URI instead of NextVibe link'}
+                            {useSolanaPay ? `solana:${address?.slice(0, 8)}… · wallets read it by NFC tap` : 'Use Solana Pay URI instead of NextVibe link'}
                         </Text>
                     </View>
                 </TouchableOpacity>
+                )}
 
                 {/* Ready button */}
                 <TouchableOpacity
@@ -296,7 +314,9 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                     {isBroadcasting ? (
                         <>
                             <AnimatedDepositIcon size={18} color={accentText} strokeWidth={1.5} style={animatedIconStyle} />
-                            <Text style={[styles.readyText, { color: accentText }]}>Waiting for phone…</Text>
+                            <Text style={[styles.readyText, { color: accentText }]}>
+                                {readinessIssues.some((i) => i.severity === 'blocking') ? 'Not live — see below' : 'Waiting for phone…'}
+                            </Text>
                         </>
                     ) : (
                         <>
@@ -307,6 +327,8 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                         </>
                     )}
                 </TouchableOpacity>
+
+                {isBroadcasting && <ReadinessCard issues={readinessIssues} compact />}
             </BottomSheetView>
         </BottomSheetModal>
     );

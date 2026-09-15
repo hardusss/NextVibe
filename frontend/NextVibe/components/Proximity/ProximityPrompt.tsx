@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FullWindowOverlay } from 'react-native-screens';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -332,15 +333,8 @@ export default function ProximityPrompt() {
 
     const dismissible = phase !== 'connecting';
 
-    return (
-        <Modal
-            visible
-            transparent
-            animationType="none"
-            statusBarTranslucent
-            navigationBarTranslucent
-            onRequestClose={() => { if (dismissible) close(); }}
-        >
+    const layers = (
+        <>
             <Animated.View style={[StyleSheet.absoluteFill, { opacity: backdrop }]}>
                 <BlurView style={StyleSheet.absoluteFill} tint={isDark ? 'dark' : 'light'} intensity={20} />
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
@@ -375,6 +369,31 @@ export default function ProximityPrompt() {
                     <View style={styles.body}>{renderBody()}</View>
                 </Animated.View>
             </View>
+        </>
+    );
+
+    if (Platform.OS === 'ios') {
+        // A React Native <Modal> presents from the root view controller, and
+        // UIKit refuses that while a native-stack modal (check-in, Tap to Meet
+        // opened from it, deposit…) is on screen — the sheet silently never
+        // appeared. A full-window overlay sits above every presented screen.
+        return (
+            <FullWindowOverlay>
+                <View style={StyleSheet.absoluteFill}>{layers}</View>
+            </FullWindowOverlay>
+        );
+    }
+
+    return (
+        <Modal
+            visible
+            transparent
+            animationType="none"
+            statusBarTranslucent
+            navigationBarTranslucent
+            onRequestClose={() => { if (dismissible) close(); }}
+        >
+            {layers}
         </Modal>
     );
 }

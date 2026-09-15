@@ -149,6 +149,12 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             return;
         }
         await broadcast.start(tokenUrl);
+        if (postIdRef.current !== pid) {
+            // Dismissed while starting.
+            broadcast.stop();
+            broadcastGuardRef.current = false;
+            return;
+        }
         // Keep the code fresh; rotations swap the payload in place.
         startAutoRenewal('checkin', pid, (newUrl) => broadcast.update(newUrl));
     }, [generateToken, startAutoRenewal, broadcast.start, broadcast.update]);
@@ -188,6 +194,8 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             } finally {
                 setLoading(false);
             }
+            // Dismissed during the first fetch — don't start anything.
+            if (postIdRef.current !== pid) return;
 
             startNfcBroadcast(pid);
             startPolling(pid);
@@ -197,6 +205,12 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
             bottomSheetModalRef.current?.dismiss();
         },
     }));
+
+    useEffect(() => () => {
+        postIdRef.current = null;
+        stopPolling();
+        stopAutoRenewal();
+    }, [stopPolling, stopAutoRenewal]);
 
     const retryStart = () => {
         if (postId === null) return;
