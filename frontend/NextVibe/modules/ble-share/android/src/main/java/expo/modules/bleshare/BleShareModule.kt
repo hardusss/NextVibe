@@ -49,10 +49,12 @@ class BleShareModule : Module() {
     private val serviceUuid = UUID.fromString("A1B2C3D4-E5F6-7890-ABCD-EF1234567890")
     private val characteristicUuid = UUID.fromString("A1B2C3D4-E5F6-7890-ABCD-EF1234567891")
 
-    // Proximity thresholds (average RSSI). "passive" = the always-on app-wide
-    // scanner, "active" = a tap screen is open and phones are held together.
-    private val passiveRssiThreshold = -50.0
-    private val activeRssiThreshold = -62.0
+    // Proximity threshold (average RSSI). A tap means phones touching; −50
+    // already reached 20–30 cm. JS sets the value (setRssiThreshold) so it can
+    // be tuned without a native release.
+    private val defaultRssiThreshold = -45.0
+    private val minRssiThreshold = -80.0
+    private val maxRssiThreshold = -20.0
     private val rssiWindow = 3
     private val minRssiSamples = 2
     private val selectionWindowMs = 350L
@@ -70,7 +72,7 @@ class BleShareModule : Module() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     // ── Scanner state (main thread) ──
-    private var rssiThreshold = passiveRssiThreshold
+    private var rssiThreshold = defaultRssiThreshold
     private val rssiBuffers = HashMap<String, MutableList<Int>>()
     private val cooldownUntil = HashMap<String, Long>()
     private val candidates = HashMap<String, Pair<BluetoothDevice, Double>>()
@@ -240,9 +242,10 @@ class BleShareModule : Module() {
             }
         }
 
-        Function("setScanSensitivity") { mode: String ->
+        Function("setRssiThreshold") { dbm: Double ->
+            val clamped = dbm.coerceIn(minRssiThreshold, maxRssiThreshold)
             mainHandler.post {
-                rssiThreshold = if (mode == "active") activeRssiThreshold else passiveRssiThreshold
+                rssiThreshold = clamped
             }
         }
 

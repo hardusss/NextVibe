@@ -24,6 +24,7 @@ import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
 import { useProximityReadiness } from '@/hooks/useProximityReadiness';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
 import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import TapQrCode from '@/components/Proximity/TapQrCode';
 import { useShareChannel } from '@/hooks/useShareChannel';
 import haptics from '@/src/utils/haptics';
 
@@ -96,7 +97,8 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
     // Solana Pay URIs are for wallets reading the NFC tag (Android only).
     const solanaPayMode = Platform.OS === 'android' && useSolanaPay;
     const shareChannel = useShareChannel();
-    const channels = solanaPayMode ? 'nfc' : shareChannel.channel;
+    const channels = solanaPayMode ? 'nfc' : shareChannel.broadcastChannels;
+    const qrMode = !solanaPayMode && shareChannel.channel === 'qr';
     const broadcast = useProximityBroadcast({ onRead: handleRead, channels });
     const isBroadcasting = broadcast.isActive;
     const readiness = useProximityReadiness({
@@ -186,7 +188,8 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
     return (
         <BottomSheetModal
             ref={bottomSheetModalRef}
-            snapPoints={['60%']}
+            // The QR code needs room below the controls.
+            snapPoints={qrMode && isBroadcasting ? ['88%'] : ['60%']}
             index={0}
             backdropComponent={CustomBackdrop}
             backgroundStyle={{ backgroundColor: bg }}
@@ -301,7 +304,7 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                     <ShareChannelSwitch
                         channel={shareChannel.channel}
                         onChange={shareChannel.setPreference}
-                        nfcAvailable={shareChannel.nfcAvailable}
+                        canChoose={shareChannel.canChoose}
                         disabled={isBroadcasting}
                     />
                 )}
@@ -335,6 +338,12 @@ export const DepositBottomSheet = forwardRef<DepositSheetRef>((_, ref) => {
                         </>
                     )}
                 </TouchableOpacity>
+
+                {isBroadcasting && qrMode && (
+                    <View style={{ alignItems: 'center', marginTop: 12 }}>
+                        <TapQrCode value={buildPayload()} size={150} caption="They scan this with their camera" />
+                    </View>
+                )}
 
                 {isBroadcasting && <ReadinessCard issues={readinessIssues} compact />}
             </BottomSheetView>

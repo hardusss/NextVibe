@@ -6,12 +6,12 @@ import CoreBluetooth
 private let kServiceUUID = CBUUID(string: "A1B2C3D4-E5F6-7890-ABCD-EF1234567890")
 private let kCharacteristicUUID = CBUUID(string: "A1B2C3D4-E5F6-7890-ABCD-EF1234567891")
 
-// Proximity thresholds (average RSSI over the last few advertisements).
-// "passive" is the always-on app-wide scanner: phones must be really close.
-// "active" is used while the user has a tap screen open and is deliberately
-// holding phones together — looser, so cases/hands/orientation don't block it.
-private let kPassiveRSSIThreshold: Double = -50
-private let kActiveRSSIThreshold: Double = -62
+// Proximity threshold (average RSSI over the last few advertisements). A tap
+// means phones touching; −50 already reached 20–30 cm. JS sets the value
+// (setRssiThreshold) so it can be tuned without a native release.
+private let kDefaultRSSIThreshold: Double = -45
+private let kMinRSSIThreshold: Double = -80
+private let kMaxRSSIThreshold: Double = -20
 private let kRSSIFilterWindow = 3
 private let kMinRSSISamples = 2
 
@@ -54,7 +54,7 @@ public class BleShareModule: Module {
     private var centralManager: CBCentralManager?
     private var centralDelegate: CentralDelegate?
     fileprivate var isScanningRequested = false
-    fileprivate var rssiThreshold: Double = kPassiveRSSIThreshold
+    fileprivate var rssiThreshold: Double = kDefaultRSSIThreshold
 
     public func definition() -> ModuleDefinition {
         Name("BleShare")
@@ -92,9 +92,10 @@ public class BleShareModule: Module {
             return true
         }
 
-        Function("setScanSensitivity") { (mode: String) in
+        Function("setRssiThreshold") { (dbm: Double) in
+            let clamped = min(max(dbm, kMinRSSIThreshold), kMaxRSSIThreshold)
             DispatchQueue.main.async {
-                self.rssiThreshold = mode == "active" ? kActiveRSSIThreshold : kPassiveRSSIThreshold
+                self.rssiThreshold = clamped
             }
         }
 

@@ -20,6 +20,7 @@ import { useProximityBroadcast } from '@/hooks/useProximityBroadcast';
 import { useProximityReadiness } from '@/hooks/useProximityReadiness';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
 import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import TapQrCode from '@/components/Proximity/TapQrCode';
 import { useShareChannel } from '@/hooks/useShareChannel';
 
 export interface ShareModalRef {
@@ -239,17 +240,19 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
     };
 
     const shareChannel = useShareChannel();
-    const broadcast = useProximityBroadcast({ onRead: handleReadEvent, channels: shareChannel.channel });
+    const broadcast = useProximityBroadcast({ onRead: handleReadEvent, channels: shareChannel.broadcastChannels });
     const isBroadcasting = broadcast.isActive;
     const readiness = useProximityReadiness({
         role: 'share',
         enabled: isOpen,
-        channels: shareChannel.channel,
+        channels: shareChannel.broadcastChannels,
         onFixed: () => broadcast.restart(),
     });
 
+    const [sharedUrl, setSharedUrl] = useState<string | null>(null);
     const startHceBroadcast = async () => {
         const urlToShare = await resolveProfileUrl();
+        setSharedUrl(urlToShare);
         if (!urlToShare) {
             console.warn('[ShareModal] Cannot broadcast: no user ID available');
             return;
@@ -331,51 +334,59 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                         )}
                     </View>
 
-                    <View style={styles.avatarSection}>
-                        <View style={styles.avatarWrapper}>
-                            {isBroadcasting && (
-                                <LottieView
-                                    autoPlay
-                                    loop
-                                    style={styles.lottie}
-                                    source={require('@/assets/lottie/scanning.json')}
-                                />
-                            )}
-                            {props.avatarUrl && (
-                                <Image
-                                    source={{ uri: props.avatarUrl }}
-                                    style={styles.avatar}
-                                    contentFit="cover"
-                                />
-                            )}
+                    {shareChannel.channel === 'qr' ? (
+                        <View style={styles.qrSection}>
+                            <TapQrCode value={sharedUrl} size={170} caption="Friends scan this with their camera" />
                         </View>
-                    </View>
-
-                    <View style={[styles.infoCard, { backgroundColor: colors.cardBg }]}>
-                        <Text style={[styles.subtitle, { color: colors.subText }]}>
-                            Hold phones back to back — each friend gets your profile.
-                        </Text>
-                        <View style={styles.statsRow}>
-                            <View style={styles.statItem}>
-                                <Users
-                                    size={22}
-                                    color={colors.iconColor}
-                                />
-                                <Text style={[styles.statValue, { color: colors.accent }]}>{vibes}</Text>
-                                <Text style={[styles.statLabel, { color: colors.subText }]}>{vibes === 1 ? 'phone reached' : 'phones reached'}</Text>
+                    ) : (
+                        <>
+                        <View style={styles.avatarSection}>
+                            <View style={styles.avatarWrapper}>
+                                {isBroadcasting && (
+                                    <LottieView
+                                        autoPlay
+                                        loop
+                                        style={styles.lottie}
+                                        source={require('@/assets/lottie/scanning.json')}
+                                    />
+                                )}
+                                {props.avatarUrl && (
+                                    <Image
+                                        source={{ uri: props.avatarUrl }}
+                                        style={styles.avatar}
+                                        contentFit="cover"
+                                    />
+                                )}
                             </View>
                         </View>
-                    </View>
+
+                        <View style={[styles.infoCard, { backgroundColor: colors.cardBg }]}>
+                            <Text style={[styles.subtitle, { color: colors.subText }]}>
+                                Hold phones back to back — each friend gets your profile.
+                            </Text>
+                            <View style={styles.statsRow}>
+                                <View style={styles.statItem}>
+                                    <Users
+                                        size={22}
+                                        color={colors.iconColor}
+                                    />
+                                    <Text style={[styles.statValue, { color: colors.accent }]}>{vibes}</Text>
+                                    <Text style={[styles.statLabel, { color: colors.subText }]}>{vibes === 1 ? 'phone reached' : 'phones reached'}</Text>
+                                </View>
+                            </View>
+                        </View>
+                        </>
+                    )}
 
                     <ShareChannelSwitch
                         channel={shareChannel.channel}
                         onChange={shareChannel.setPreference}
-                        nfcAvailable={shareChannel.nfcAvailable}
+                        canChoose={shareChannel.canChoose}
                     />
 
                     <ReadinessCard issues={readiness.issues} compact />
 
-                    {readiness.issues.length === 0 && Platform.OS === 'ios' && (
+                    {readiness.issues.length === 0 && Platform.OS === 'ios' && shareChannel.channel !== 'qr' && (
                         <View style={[styles.warningCard, { backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.06)', borderColor: 'rgba(168,85,247,0.2)' }]}>
                             <AlertTriangle size={18} color={colors.accent} />
                             <Text style={[styles.warningText, { color: colors.textColor }]}>
@@ -446,6 +457,11 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontFamily: "Dank Mono Bold",
         includeFontPadding: false,
+    },
+    qrSection: {
+        alignItems: 'center',
+        marginTop: 8,
+        marginBottom: 8,
     },
     avatarSection: {
         height: 160,

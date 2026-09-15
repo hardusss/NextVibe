@@ -23,7 +23,20 @@ export default function HowToTapCard({ audience, channel = 'bluetooth' }: Props)
     let steps: string[];
     let footnote: string;
 
-    if (nfc) {
+    if (channel === 'qr') {
+        steps = audience === 'organizer'
+            ? [
+                'Attendees open their phone’s camera',
+                'They point it at this code and tap the NextVibe link',
+                'Their check-in appears in the list below',
+            ]
+            : [
+                'They open their phone’s camera and point it at the code',
+                'They tap the NextVibe link that appears',
+                'They tap Confirm on the card that pops up',
+            ];
+        footnote = 'Needs NextVibe installed on their phone. The code refreshes automatically, so show it live — screenshots stop working.';
+    } else if (nfc) {
         steps = audience === 'organizer'
             ? [
                 'Attendees hold their phone against the back of yours',
@@ -52,7 +65,7 @@ export default function HowToTapCard({ audience, channel = 'bluetooth' }: Props)
             ];
         footnote = Platform.OS === 'android'
             ? 'Bluetooth needs NextVibe open on both phones. Switch to NFC to tap phones without the app open.'
-            : 'Works over Bluetooth with NextVibe open on both phones. Android phones sharing over NFC can also be tapped against the top of your iPhone.';
+            : 'Works over Bluetooth with NextVibe open on both phones. If it doesn’t catch, switch to QR code.';
     }
 
     return (

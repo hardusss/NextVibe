@@ -12,10 +12,12 @@ import { Platform, PermissionsAndroid, type Permission } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     getBluetoothAuthorization,
+    setRssiThreshold,
     startScanning,
     stopScanning,
 } from '@/modules/ble-share';
 import { walletLogger, WalletTag } from './walletLogger';
+import { BLE_TAP_RSSI_DBM } from '@/src/proximity/config';
 
 export const SCAN_SETTING_KEY = 'bluetooth_scan_enabled';
 
@@ -144,6 +146,7 @@ export async function requestScanStart({ prompt = false }: { prompt?: boolean } 
 
     wantScan = true;
     try {
+        setRssiThreshold(BLE_TAP_RSSI_DBM);
         startScanning();
         walletLogger.info(WalletTag.BLE, 'Scan requested');
         return true;

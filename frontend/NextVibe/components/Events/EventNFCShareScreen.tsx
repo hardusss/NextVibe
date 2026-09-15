@@ -29,6 +29,7 @@ import MeetSuccess, { type MeetUser } from '@/components/Events/MeetSuccess';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
 import HowToTapCard from '@/components/Proximity/HowToTapCard';
 import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import TapQrCode from '@/components/Proximity/TapQrCode';
 import { useShareChannel } from '@/hooks/useShareChannel';
 
 type Phase = 'starting' | 'live' | 'failed' | 'success';
@@ -81,7 +82,7 @@ export default function EventNFCShareScreen() {
 
     const tokenApi = useProximityToken();
     const {
-        generateToken, startAutoRenewal, stopAutoRenewal, renewNow, getResolvedParams,
+        generateToken, startAutoRenewal, stopAutoRenewal, renewNow, getResolvedParams, tokenUrl,
         resolvedType, renewalFailing, isStale, errorObject,
     } = tokenApi;
 
@@ -208,13 +209,13 @@ export default function EventNFCShareScreen() {
     }, [schedulePoll, renewNow]);
 
     const shareChannel = useShareChannel();
-    const broadcast = useProximityBroadcast({ onRead: onPickedUp, channels: shareChannel.channel });
+    const broadcast = useProximityBroadcast({ onRead: onPickedUp, channels: shareChannel.broadcastChannels });
     const broadcastStopRef = useRef(broadcast.stop);
     broadcastStopRef.current = broadcast.stop;
 
     const readiness = useProximityReadiness({
         role: 'both',
-        channels: shareChannel.channel,
+        channels: shareChannel.broadcastChannels,
         onFixed: () => {
             broadcast.restart();
             requestScanStart({ prompt: false });
@@ -401,9 +402,10 @@ export default function EventNFCShareScreen() {
     const statusTone: 'live' | 'warn' | 'off' | 'blocked' | 'starting' = starting
         ? 'starting'
         : readiness.blocking ? 'blocked' : isStale ? 'off' : renewalFailing ? 'warn' : 'live';
+    const qrMode = shareChannel.channel === 'qr';
     const statusLabel = {
         starting: 'Getting ready…',
-        live: 'Live — others nearby can tap you',
+        live: qrMode ? 'Live — the code is ready to scan' : 'Live — others nearby can tap you',
         warn: 'Connection is shaky — still live',
         off: 'Offline — your tap code expired',
         blocked: 'Not live — fix the item below',
@@ -412,14 +414,18 @@ export default function EventNFCShareScreen() {
         starting: colors.accent, live: colors.success, warn: colors.warning, off: colors.danger, blocked: colors.danger,
     }[statusTone];
 
-    const heading = pickedUp
-        ? 'They picked you up'
-        : readiness.blocking ? 'Almost ready' : effectiveIrl ? 'Ready to tap' : 'Ready to network';
-    const description = pickedUp
-        ? 'Waiting for them to confirm on their phone…'
-        : shareChannel.channel === 'nfc' && Platform.OS === 'android'
-            ? 'Touch the back of your phone to theirs.'
-            : 'Hold your phone back to back with theirs for a second.';
+    const heading = qrMode
+        ? 'Show this code'
+        : pickedUp
+            ? 'They picked you up'
+            : readiness.blocking ? 'Almost ready' : effectiveIrl ? 'Ready to tap' : 'Ready to network';
+    const description = qrMode
+        ? 'Ask them to scan it with their phone’s camera.'
+        : pickedUp
+            ? 'Waiting for them to confirm on their phone…'
+            : shareChannel.channel === 'nfc' && Platform.OS === 'android'
+                ? 'Touch the back of your phone to theirs.'
+                : 'Hold your phone back to back with theirs for a second.';
 
     return (
         <EventScreenShell title="Tap to Meet" subtitle={subtitle} bodyStyle={styles.shellBody}>
@@ -432,23 +438,29 @@ export default function EventNFCShareScreen() {
                     entering={reduceMotion ? undefined : FadeInDown.delay(60).duration(MOTION.duration.normal)}
                     style={styles.hero}
                 >
-                    <View style={styles.animationContainer}>
-                        {!reduceMotion && !starting && (
-                            <LottieView
-                                autoPlay
-                                loop
-                                style={styles.lottie}
-                                source={require('@/assets/lottie/scanning.json')}
-                            />
-                        )}
-                        <View style={[styles.iconCircle, pickedUp && styles.iconCircleActive]}>
-                            {starting
-                                ? <CustomActivityIndicator size="small" />
-                                : pickedUp
-                                    ? <CheckCircle2 size={34} color="#ffffff" />
-                                    : <Radio size={32} color="#ffffff" />}
+                    {qrMode ? (
+                        <View style={styles.qrContainer}>
+                            <TapQrCode value={starting ? null : tokenUrl} caption="Refreshes automatically" />
                         </View>
-                    </View>
+                    ) : (
+                        <View style={styles.animationContainer}>
+                            {!reduceMotion && !starting && (
+                                <LottieView
+                                    autoPlay
+                                    loop
+                                    style={styles.lottie}
+                                    source={require('@/assets/lottie/scanning.json')}
+                                />
+                            )}
+                            <View style={[styles.iconCircle, pickedUp && styles.iconCircleActive]}>
+                                {starting
+                                    ? <CustomActivityIndicator size="small" />
+                                    : pickedUp
+                                        ? <CheckCircle2 size={34} color="#ffffff" />
+                                        : <Radio size={32} color="#ffffff" />}
+                            </View>
+                        </View>
+                    )}
 
                     <Text style={[styles.heading, { color: main }]} accessibilityLiveRegion="polite">{heading}</Text>
                     <Text style={[styles.description, { color: mutedColor }]}>{description}</Text>
@@ -466,7 +478,7 @@ export default function EventNFCShareScreen() {
                     <ShareChannelSwitch
                         channel={shareChannel.channel}
                         onChange={shareChannel.setPreference}
-                        nfcAvailable={shareChannel.nfcAvailable}
+                        canChoose={shareChannel.canChoose}
                     />
                 </Animated.View>
 
@@ -516,6 +528,10 @@ const styles = StyleSheet.create({
         width: '100%',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    qrContainer: {
+        marginBottom: space.lg,
+        marginTop: space.sm,
     },
     animationContainer: {
         width: 200,

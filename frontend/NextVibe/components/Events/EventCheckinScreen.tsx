@@ -356,7 +356,7 @@ export default function EventCheckinScreen() {
                             style={styles.ctaBlock}
                         >
                             <EventCta
-                                label="Tap To Meet"
+                                label="Tap to Meet"
                                 icon={<Smartphone size={18} color={colors.text} />}
                                 onPress={handleTapToMeet}
                                 disabled={!canTapToMeet}

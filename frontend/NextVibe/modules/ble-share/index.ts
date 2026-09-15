@@ -12,13 +12,6 @@ export type BluetoothState =
 /** iOS: CBManager.authorization. Android: whether the runtime permissions are granted. */
 export type BluetoothAuthorization = 'granted' | 'denied' | 'restricted' | 'notDetermined';
 
-/**
- * "passive" — the always-on app-wide scanner; phones must be really close.
- * "active"  — a tap screen is open and people are deliberately holding their
- *             phones together; a looser threshold so cases/orientation don't block it.
- */
-export type ScanSensitivity = 'passive' | 'active';
-
 export type NativeProximityError = { code: string; message: string };
 
 const emitter = new EventEmitter<{
@@ -62,11 +55,15 @@ export function stopScanning(): void {
   BleShare.stopScanning();
 }
 
-export function setScanSensitivity(mode: ScanSensitivity): void {
+/**
+ * Minimum averaged signal strength (dBm) for a nearby phone to count as a
+ * tap. Higher (less negative) = closer. Clamped natively to [-80, -20].
+ */
+export function setRssiThreshold(dbm: number): void {
   try {
-    BleShare.setScanSensitivity(mode);
+    BleShare.setRssiThreshold(dbm);
   } catch {
-    // Older binary without the function — keep the default.
+    // Older binary without the function — it keeps its built-in threshold.
   }
 }
 

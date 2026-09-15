@@ -18,9 +18,10 @@ const READ_DEBOUNCE_MS = 2000;
  * "nfc"       — NFC tag only (Android). Also for payloads only other apps
  *               understand, e.g. a Solana Pay URI a wallet reads.
  * "bluetooth" — Bluetooth only.
- * iPhones can't emulate an NFC tag, so on iOS every option means Bluetooth.
+ * "none"      — no radio (the link is shown as a QR code instead).
+ * iPhones can't emulate an NFC tag, so on iOS "all"/"nfc" mean Bluetooth.
  */
-export type BroadcastChannels = 'all' | 'nfc' | 'bluetooth';
+export type BroadcastChannels = 'all' | 'nfc' | 'bluetooth' | 'none';
 
 type Options = {
     /** Another phone read this one's payload (either channel). */
@@ -30,11 +31,12 @@ type Options = {
 };
 
 function usesBluetooth(channels: BroadcastChannels): boolean {
+    if (channels === 'none') return false;
     return Platform.OS !== 'android' || channels !== 'nfc';
 }
 
 function usesNfc(channels: BroadcastChannels): boolean {
-    return Platform.OS === 'android' && channels !== 'bluetooth' && getNfcState() !== 'unsupported';
+    return Platform.OS === 'android' && (channels === 'all' || channels === 'nfc') && getNfcState() !== 'unsupported';
 }
 
 /**

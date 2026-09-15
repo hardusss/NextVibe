@@ -66,8 +66,8 @@ export function useProximityReadiness({
 }: {
     role: ReadinessRole;
     enabled?: boolean;
-    /** How this phone shares (Android NFC/Bluetooth switch) — decides which problems block. */
-    channels?: 'all' | 'nfc' | 'bluetooth';
+    /** How this phone shares (NFC/Bluetooth/QR switch) — decides which problems block. */
+    channels?: 'all' | 'nfc' | 'bluetooth' | 'none';
     /** Called after an in-app fix (permission granted, setting re-enabled) so the caller can restart. */
     onFixed?: () => void;
 }) {
@@ -79,7 +79,7 @@ export function useProximityReadiness({
     const wantsScan = role !== 'share';
     const isAndroid = Platform.OS === 'android';
     // In NFC mode Android doesn't advertise, so the advertise permission doesn't matter.
-    const broadcastNeedsBluetooth = wantsBroadcast && (!isAndroid || channels !== 'nfc');
+    const broadcastNeedsBluetooth = wantsBroadcast && channels !== 'none' && (!isAndroid || channels !== 'nfc');
 
     const refresh = useCallback(async () => {
         const permission = await getBluetoothPermissionStatus(broadcastNeedsBluetooth);
@@ -125,8 +125,8 @@ export function useProximityReadiness({
         const nfcUsable = snapshot.nfc === 'enabled';
         const hasNfc = isAndroid && snapshot.nfc !== 'unsupported';
         // What this phone actually shares on right now.
-        const sharesNfc = wantsBroadcast && hasNfc && channels !== 'bluetooth';
-        const sharesBluetooth = wantsBroadcast && (!isAndroid || channels !== 'nfc' || !hasNfc);
+        const sharesNfc = wantsBroadcast && hasNfc && (channels === 'all' || channels === 'nfc');
+        const sharesBluetooth = wantsBroadcast && channels !== 'none' && (!isAndroid || channels !== 'nfc' || !hasNfc);
         // Bluetooth also receives: picking up the other person's phone.
         const needsBluetooth = sharesBluetooth || wantsScan;
         // A Bluetooth problem blocks only when nothing else can carry the tap.
@@ -136,7 +136,9 @@ export function useProximityReadiness({
                     : 'warning';
         const bluetoothWhy = sharesBluetooth
             ? 'NextVibe uses Bluetooth to find the phone right next to you.'
-            : 'Your tap works over NFC — Bluetooth is only needed to pick up phones that share over Bluetooth, like iPhones.';
+            : channels === 'none'
+                ? 'Your QR code works without it — Bluetooth is only needed to pick up phones that share over Bluetooth.'
+                : 'Your tap works over NFC — Bluetooth is only needed to pick up phones that share over Bluetooth, like iPhones.';
 
         if (needsBluetooth && snapshot.permission === 'blocked') {
             issues.push({

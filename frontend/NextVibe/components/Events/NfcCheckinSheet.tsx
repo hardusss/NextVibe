@@ -29,6 +29,8 @@ import haptics from '@/src/utils/haptics';
 import TokenExpiryBadge from '@/components/Events/TokenExpiryBadge';
 import ReadinessCard from '@/components/Proximity/ReadinessCard';
 import ShareChannelSwitch from '@/components/Proximity/ShareChannelSwitch';
+import TapQrCode from '@/components/Proximity/TapQrCode';
+import HowToTapCard from '@/components/Proximity/HowToTapCard';
 import { useShareChannel } from '@/hooks/useShareChannel';
 
 export interface NfcCheckinSheetRef {
@@ -50,7 +52,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
 
     const {
         generateToken, startAutoRenewal, stopAutoRenewal, secondsLeft, totalDuration, isRenewing,
-        isStale, renewalFailing, errorObject,
+        isStale, renewalFailing, errorObject, tokenUrl,
     } = useProximityToken();
 
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -79,7 +81,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
 
     const shareChannel = useShareChannel();
     const broadcast = useProximityBroadcast({
-        channels: shareChannel.channel,
+        channels: shareChannel.broadcastChannels,
         onRead: () => {
             setTapCount((prev) => prev + 1);
             haptics.impact('rigid');
@@ -91,7 +93,7 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
     const readiness = useProximityReadiness({
         role: 'share',
         enabled: isOpen,
-        channels: shareChannel.channel,
+        channels: shareChannel.broadcastChannels,
         onFixed: () => broadcast.restart(),
     });
 
@@ -351,9 +353,11 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                         <Text style={[styles.nfcStatusText, {
                             color: isBroadcasting ? "#05f0d8" : accentText,
                         }]}>
-                            {isBroadcasting
-                                ? `Live · ${tapCount} phone${tapCount !== 1 ? "s" : ""} reached`
-                                : "Getting ready…"
+                            {!isBroadcasting
+                                ? "Getting ready…"
+                                : shareChannel.channel === 'qr'
+                                    ? "Live · attendees scan the code"
+                                    : `Live · ${tapCount} phone${tapCount !== 1 ? "s" : ""} reached`
                             }
                         </Text>
                     </View>
@@ -373,12 +377,18 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
                 <ShareChannelSwitch
                     channel={shareChannel.channel}
                     onChange={shareChannel.setPreference}
-                    nfcAvailable={shareChannel.nfcAvailable}
+                    canChoose={shareChannel.canChoose}
                 />
+
+                {shareChannel.channel === 'qr' && isBroadcasting && (
+                    <View style={styles.qrWrap}>
+                        <TapQrCode value={tokenUrl} size={160} caption="Attendees scan this with their camera" />
+                    </View>
+                )}
 
                 <ReadinessCard issues={readiness.issues} compact />
 
-                {isBroadcasting && readiness.issues.length === 0 && (
+                {isBroadcasting && readiness.issues.length === 0 && shareChannel.channel !== 'qr' && (
                     <Text style={[styles.hintText, { color: muted }]}>
                         {Platform.OS === 'android' && shareChannel.channel === 'nfc'
                             ? 'Attendees hold their phone against the back of yours — no need to open NextVibe. iPhones show a banner to tap.'
@@ -440,6 +450,11 @@ const NfcCheckinSheet = forwardRef<NfcCheckinSheetRef>((_, ref) => {
 NfcCheckinSheet.displayName = "NfcCheckinSheet";
 
 const styles = StyleSheet.create({
+    qrWrap: {
+        alignItems: "center",
+        marginTop: 12,
+        marginBottom: 4,
+    },
     retryText: {
         fontFamily: "Dank Mono Bold",
         fontSize: 12,

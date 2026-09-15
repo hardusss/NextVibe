@@ -1,36 +1,49 @@
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
-import { Bluetooth, Nfc } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Bluetooth, Nfc, QrCode } from 'lucide-react-native';
 import haptics from '@/src/utils/haptics';
 import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
-import type { ShareChannel } from '@/hooks/useShareChannel';
+import { SHARE_CHANNEL_OPTIONS, type ShareChannel } from '@/hooks/useShareChannel';
 
 type Props = {
     channel: ShareChannel;
     onChange: (channel: ShareChannel) => void;
-    nfcAvailable: boolean;
+    /** False on Android phones without NFC: there is nothing to choose. */
+    canChoose: boolean;
     disabled?: boolean;
 };
 
-const OPTIONS: { value: ShareChannel; label: string; Icon: typeof Nfc }[] = [
-    { value: 'nfc', label: 'NFC', Icon: Nfc },
-    { value: 'bluetooth', label: 'Bluetooth', Icon: Bluetooth },
-];
+const META: Record<ShareChannel, { label: string; Icon: typeof Nfc; note: string }> = {
+    nfc: {
+        label: 'NFC',
+        Icon: Nfc,
+        note: 'Phones must touch. Their phone reads yours even without NextVibe open.',
+    },
+    bluetooth: {
+        label: 'Bluetooth',
+        Icon: Bluetooth,
+        note: 'Hold the phones together. NextVibe must be open on their phone.',
+    },
+    qr: {
+        label: 'QR code',
+        Icon: QrCode,
+        note: 'They scan the code with their camera — no Bluetooth needed.',
+    },
+};
 
 /**
- * Android-only choice of how this phone shares its tap code. The user asked
- * for an explicit switch here, so the transport names are the labels.
+ * How this phone shares its tap code: NFC / Bluetooth on Android, Bluetooth /
+ * QR code on iPhone. The user asked for an explicit switch, so the transport
+ * names are the labels.
  */
-export default function ShareChannelSwitch({ channel, onChange, nfcAvailable, disabled = false }: Props) {
+export default function ShareChannelSwitch({ channel, onChange, canChoose, disabled = false }: Props) {
     const isDark = useColorScheme() === 'dark';
-    if (Platform.OS !== 'android') return null;
-
     const main = isDark ? colors.text : '#111827';
     const muted = isDark ? colors.sub : 'rgba(17,24,39,0.6)';
 
-    if (!nfcAvailable) {
+    if (!canChoose) {
         return (
-            <Text style={[styles.note, { color: muted }]}>
+            <Text style={[styles.note, styles.wrap, { color: muted }]}>
                 This phone has no NFC — sharing over Bluetooth.
             </Text>
         );
@@ -49,7 +62,8 @@ export default function ShareChannelSwitch({ channel, onChange, nfcAvailable, di
                 ]}
                 accessibilityRole="radiogroup"
             >
-                {OPTIONS.map(({ value, label, Icon }) => {
+                {SHARE_CHANNEL_OPTIONS.map((value) => {
+                    const { label, Icon } = META[value];
                     const selected = channel === value;
                     return (
                         <Pressable
@@ -60,10 +74,11 @@ export default function ShareChannelSwitch({ channel, onChange, nfcAvailable, di
                                 haptics.selection();
                                 onChange(value);
                             }}
+                            hitSlop={4}
                             style={[styles.option, selected && styles.optionSelected]}
                             accessibilityRole="radio"
                             accessibilityState={{ selected, disabled }}
-                            accessibilityLabel={`Share over ${label}`}
+                            accessibilityLabel={`Share with ${label}`}
                         >
                             <Icon size={15} color={selected ? '#ffffff' : muted} strokeWidth={2} />
                             <Text style={[styles.label, { color: selected ? '#ffffff' : main }]}>{label}</Text>
@@ -71,11 +86,7 @@ export default function ShareChannelSwitch({ channel, onChange, nfcAvailable, di
                     );
                 })}
             </View>
-            <Text style={[styles.note, { color: muted }]}>
-                {channel === 'nfc'
-                    ? 'Phones must touch. Their phone reads yours even without NextVibe open.'
-                    : 'Works a few centimetres apart. NextVibe must be open on their phone.'}
-            </Text>
+            <Text style={[styles.note, { color: muted }]}>{META[channel].note}</Text>
         </View>
     );
 }
