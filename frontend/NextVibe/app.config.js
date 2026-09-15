@@ -4,7 +4,7 @@ export default {
     expo: {
         name: "NextVibe",
         slug: "NextVibe",
-        version: "1.0.5",
+        version: "1.0.6",
         orientation: "portrait",
         icon: "./assets/new_icon.png",
         scheme: "nextvibe",
@@ -30,7 +30,7 @@ export default {
             associatedDomains: ["applinks:nextvibe.io"]
         },
         android: {
-            versionCode: 5,
+            versionCode: 6,
             jsEngine: "hermes",
             softwareKeyboardLayoutMode: "resize",
             adaptiveIcon: {
@@ -196,7 +196,7 @@ export default {
             }
         },
         owner: "nextvibe",
-        runtimeVersion: "0.0.1-ios",
+        runtimeVersion: "0.0.2-events",
         updates: {
             url: "https://u.expo.dev/4c7d8842-f989-419d-b3ec-49ceece00b6e"
         }
