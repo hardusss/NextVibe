@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import WebSocketService from '@/src/services/WebSocketService';
 import { getUnreadMessagesCount } from '@/src/api/chat';
+import { hasSession } from '@/src/utils/session';
 
 /**
  * Total unread chat messages for the signed-in user.
@@ -14,6 +15,12 @@ export function useUnreadMessagesCount(enabled = true, pollMs = 30000): number {
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const refresh = useCallback(async () => {
+        // The tab layout stays mounted after a logout; polling then would only
+        // produce 401s.
+        if (!(await hasSession())) {
+            setCount(0);
+            return;
+        }
         const next = await getUnreadMessagesCount();
         setCount(next);
     }, []);

@@ -5,6 +5,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import { Bell, Plus, MessageSquare } from "lucide-react-native";
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
+import { hasSession } from '@/src/utils/session';
 import { useUnreadMessagesCount } from "@/hooks/useUnreadMessagesCount";
 import GlassSurface from "@/components/Shared/GlassSurface";
 
@@ -134,6 +135,7 @@ export default function HomeHeaderTitle() {
     const rightPosition = badgeRightPosition(notificationsCount);
 
     const fetchCount = async () => {
+        if (!(await hasSession())) return;
         const count = await getCountUnreadNotifications();
         setNotificationsCount(count);
     };

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Image } from 'expo-image';
 import getCountUnreadNotifications from "@/src/api/get.count.unread.notification";
+import { hasSession } from '@/src/utils/session';
 import { Bell } from "lucide-react-native"
 
 export default function Header() {
@@ -42,6 +43,7 @@ export default function Header() {
   }
 
   const fetchCountUnreadNotification = async () => {
+    if (!(await hasSession())) return;
     const countUnread = await getCountUnreadNotifications();
     setNotificationsCount(countUnread)
   }

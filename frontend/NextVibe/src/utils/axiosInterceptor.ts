@@ -9,6 +9,12 @@ let lastRedirectTime = 0;
 const REDIRECT_THROTTLE_MS = 2000;
 
 async function handleAuthError(error: any) {
+    // Already signed out: a late background request (badge pollers, a screen
+    // still mounted behind the sign-in form) must not replace the screen the
+    // person is typing on.
+    const [access, refresh] = await Promise.all([getAccess(), getRefresh()]);
+    if (!access && !refresh) return;
+
     if (Date.now() - lastRedirectTime > REDIRECT_THROTTLE_MS) {
         lastRedirectTime = Date.now();
         try {
