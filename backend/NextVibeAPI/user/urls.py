@@ -13,7 +13,8 @@ from .views_pac import (
                             SavePushTokenView, SaveWalletAddressView,
                             GetInviteInfoView, OgNftMintView,
                             WalletSignInView, LinkEmailView,
-                            SeekerVerifyView, DeleteAccountView
+                            SeekerVerifyView, DeleteAccountView,
+                            BlockUserView, UnblockUserView, BlockedUsersView
                         )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -51,4 +52,7 @@ urlpatterns = [
     path("link-email/", LinkEmailView.as_view(), name="link_email"),
     path("seeker/verify/", SeekerVerifyView.as_view(), name="seeker_verify"),
     path("delete-account/", DeleteAccountView.as_view(), name="delete_account"),
+    path("block/", BlockUserView.as_view(), name="block_user"),
+    path("block/<int:user_id>/", UnblockUserView.as_view(), name="unblock_user"),
+    path("blocked/", BlockedUsersView.as_view(), name="blocked_users"),
 ]

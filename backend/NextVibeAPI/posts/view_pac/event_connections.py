@@ -9,6 +9,7 @@ from ..models import EventCheckin, Reputation, Post
 from ..constants import IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
 from user.models import User
 from user.src.send_push_message import send
+from user.src.blocking import blocked_user_ids, is_blocked_between
 from django.db import transaction
 from django.db.models import Sum, Q
 from django.utils import timezone
@@ -44,6 +45,14 @@ def _utc_day_start(now):
     return now.astimezone(dt_timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def _blocked_response():
+    # Same answer for both people and both directions: it never says who blocked whom
+    return Response({
+        "error": "You can't connect with this person.",
+        "code": "BLOCKED",
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
 def _avatar_url(user):
     if not user:
         return None
@@ -65,11 +74,14 @@ class UserEventConnectionsView(APIView):
 
     def get(self, request):
         target_user = request.user
+        hidden = blocked_user_ids(request.user)
         user_id_param = request.query_params.get('user_id')
         if user_id_param:
             try:
                 target_user = User.objects.get(user_id=user_id_param)
             except User.DoesNotExist:
+                return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+            if target_user.user_id in hidden:
                 return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         my_checkins = EventCheckin.objects.filter(
@@ -122,7 +134,8 @@ class UserEventConnectionsView(APIView):
                 else:
                     peer_map[uid]["rep_given"] += rep.points
 
-            connections = list(peer_map.values())
+            # Totals still count everyone; only the people shown are filtered
+            connections = [c for c in peer_map.values() if c["user_id"] not in hidden]
 
             event_image = None
             media = post.media.first()
@@ -136,7 +149,7 @@ class UserEventConnectionsView(APIView):
                 "event_name": post.about or "Event",
                 "event_image": event_image,
                 "checkin_rep": checkin_rep,
-                "total_rep": checkin_rep + sum(c["rep_received"] for c in connections),
+                "total_rep": checkin_rep + sum(c["rep_received"] for c in peer_map.values()),
                 "connections": connections,
                 "checked_in_at": checkin.checked_in_at,
                 "is_active": is_active, 
@@ -333,11 +346,19 @@ class UserEventConnectionsView(APIView):
 
         total_calculated_rep = sum(item.get("points", 0) for item in reputation_items)
 
+        # Rows that name a blocked person ("Met <name>", "awarded by <name>") are
+        # hidden; the total above still counts their points
+        blocked_rep_ids = {f"rep_{rep.id}" for rep in all_reps if rep.given_by_id in hidden}
+        reputation_items = [
+            item for item in reputation_items
+            if not (item["type"] in ("irl_tap", "networking", "generic") and item["id"] in blocked_rep_ids)
+        ]
+
         # 3. IRL taps (outside any event) — one row per tap, newest first
         irl_taps = []
         irl_reps = Reputation.objects.filter(
             user=target_user, source='irl'
-        ).select_related('given_by').order_by('-created_at')
+        ).exclude(given_by_id__in=hidden).select_related('given_by').order_by('-created_at')
         for rep in irl_reps:
             other = rep.given_by
             avatar_url = _avatar_url(other)
@@ -394,6 +415,10 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
         scanned_user = User.objects.get(user_id=scanned_user_id)
     except (Post.DoesNotExist, User.DoesNotExist):
         return Response({"error": "Invalid event or user."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Before anything that could name them — the preview must not show who it is
+    if is_blocked_between(requesting_user.user_id, scanned_user.user_id):
+        return _blocked_response()
 
     # Geolocation check. A preview without coordinates is allowed — the
     # confirming call always re-runs this with coordinates required.
@@ -558,6 +583,10 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
         scanned_user = User.objects.get(user_id=scanned_user_id)
     except User.DoesNotExist:
         return Response({"error": "Invalid user."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Before anything that could name them — the preview must not show who it is
+    if is_blocked_between(requesting_user.user_id, scanned_user.user_id):
+        return _blocked_response()
 
     now = timezone.now()
     day_start = _utc_day_start(now)

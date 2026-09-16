@@ -24,6 +24,13 @@ describe('describeProximityError', () => {
         expect(event.kind).toBe('alreadyMet');
     });
 
+    it('maps a block by code without naming anyone', () => {
+        const e = describeProximityError(axiosError(400, { error: "You can't connect with this person.", code: 'BLOCKED' }));
+        expect(e.kind).toBe('blocked');
+        expect(e.retryable).toBe(false);
+        expect(`${e.title} ${e.message}`).not.toMatch(/block/i);
+    });
+
     it('maps the daily limit by code on 429', () => {
         const e = describeProximityError(axiosError(429, { error: "bob has hit today's tap limit.", code: 'IRL_DAILY_LIMIT' }));
         expect(e.kind).toBe('dailyLimit');
@@ -73,7 +80,7 @@ describe('describeProximityError', () => {
 
     it('never uses banned wording in its own copy', () => {
         const kinds = [
-            'expired', 'self', 'alreadyMet', 'dailyLimit', 'notCheckedIn', 'notAtVenue', 'locationRequired',
+            'expired', 'self', 'alreadyMet', 'blocked', 'dailyLimit', 'notCheckedIn', 'notAtVenue', 'locationRequired',
             'locationDenied', 'locationServicesOff', 'locationUnavailable', 'mockLocation', 'notFound', 'auth', 'network', 'timeout',
             'rateLimited', 'server', 'unknown',
         ] as const;

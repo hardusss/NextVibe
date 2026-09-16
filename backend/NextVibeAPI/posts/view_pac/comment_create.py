@@ -8,8 +8,20 @@ from django.contrib.auth import get_user_model
 from user.models import Notification
 from user.src.clear_notify_cache import clear_notification_cache
 from rest_framework.throttling import ScopedRateThrottle
+from user.src.blocking import blocked_user_ids
 
 User = get_user_model()
+
+
+def _blocks_thread(user, validated_data, replying_to=None):
+    """A blocked pair can't comment under each other's posts or reply to each other."""
+    parent = validated_data.get("comment")
+    post = parent.post if parent else validated_data["post"]
+    owner_ids = {post.owner_id}
+    for item in (parent, replying_to):
+        if item is not None:
+            owner_ids.add(item.owner_id)
+    return bool(owner_ids & blocked_user_ids(user))
 
 
 class CommentCreateView(APIView):
@@ -24,6 +36,9 @@ class CommentCreateView(APIView):
             comment = CommentSerializer(data=request.data)
 
         if comment.is_valid():
+            if _blocks_thread(request.user, comment.validated_data):
+                return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
             comment_obj = comment.save()
             user = User.objects.get(user_id=comment.data["owner"])
 
@@ -83,6 +98,9 @@ class CommentReplyView(APIView):
         reply = CommentReplySerializer(data=request.data)
 
         if reply.is_valid():
+            if _blocks_thread(request.user, reply.validated_data, replying_to=comment):
+                return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+
             reply_obj = reply.save()
             user = reply_obj.owner
 

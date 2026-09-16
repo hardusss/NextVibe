@@ -6,6 +6,7 @@ from posts.models import Post, Comment, UserCollection, EventRequest
 from posts.serializers_pac.recommendation_feed_serializer import PostFeedSerializer
 from posts.src.collect_eligibility import irl_connected_map
 from user.models import HistorySearch, InviteUser
+from user.src.blocking import blocked_user_ids
 from django.db.models import Case, When, Value, IntegerField
 from django.core.cache import cache
 import random
@@ -32,6 +33,7 @@ class RecommendationFeedView(APIView):
             cache.delete(cache_key)
 
         following_ids = user.follow_for or []
+        hidden = blocked_user_ids(user)
 
         last_5_search = list(
             HistorySearch.objects
@@ -58,6 +60,7 @@ class RecommendationFeedView(APIView):
             .select_related('owner', 'owner__og_avatar')
             .prefetch_related('media')
             .exclude(owner__user_id=user.user_id)
+            .exclude(owner__user_id__in=hidden)
             .filter(moderation_status="approved", is_hide=False)
         )
 
@@ -81,6 +84,7 @@ class RecommendationFeedView(APIView):
                 Post.objects
                 .filter(moderation_status="approved", is_hide=False)
                 .exclude(owner__user_id=user.user_id)
+                .exclude(owner__user_id__in=hidden)
                 .exclude(id__in=seen_ids)
                 .exclude(id__in=[p.id for p in posts_list])
                 .values_list('id', flat=True)[:500]

@@ -11,6 +11,7 @@ export type ProximityErrorKind =
     | 'expired'
     | 'self'
     | 'alreadyMet'
+    | 'blocked'
     | 'dailyLimit'
     | 'notCheckedIn'
     | 'notAtVenue'
@@ -85,6 +86,10 @@ function fromKind(kind: ProximityErrorKind, stage: ProximityStage, server?: stri
         case 'alreadyMet':
             return info(kind, "You've already met",
                 server ?? 'You two are already connected — nothing more to do.', { tone: 'info' });
+        case 'blocked':
+            // One answer for both people: it never says who blocked whom or names them
+            return info(kind, "Can't connect",
+                "You can't connect with this person.", { tone: 'info' });
         case 'dailyLimit':
             return info(kind, 'Daily tap limit reached',
                 server ?? "You've hit today's tap limit. Back at it tomorrow!", { tone: 'warning' });
@@ -171,6 +176,7 @@ export function describeProximityError(err: unknown, stage: ProximityStage = 'pr
     const code = typeof data?.code === 'string' ? data.code : undefined;
 
     if (code === 'ALREADY_TAPPED_TODAY') return fromKind('alreadyMet', stage, text);
+    if (code === 'BLOCKED') return fromKind('blocked', stage);
     if (code === 'IRL_DAILY_LIMIT') return fromKind('dailyLimit', stage, text);
 
     if (e.response) {

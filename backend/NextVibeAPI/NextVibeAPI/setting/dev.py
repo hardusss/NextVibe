@@ -166,6 +166,7 @@ REST_FRAMEWORK = {
         "save_push_token": "5/min",
         "seeker_verify": "5/min",
         "follow": "40/min", 
+        "block": "30/min",
         "follows": "100/min",
         "readers": "100/min",
         "search": "100/min",

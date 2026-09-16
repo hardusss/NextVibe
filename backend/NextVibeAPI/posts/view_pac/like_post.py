@@ -8,6 +8,7 @@ from user.models import Notification
 from user.src.clear_notify_cache import clear_notification_cache
 from rest_framework.throttling import ScopedRateThrottle
 from user.src.send_push_message import send
+from user.src.blocking import is_blocked_between
 
 
 User = get_user_model()
@@ -38,6 +39,8 @@ class LikePostView(APIView):
             post = Post.objects.get(id=post_id)
             
         except Post.DoesNotExist:
+            return Response({"data": "Post does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        if is_blocked_between(request.user.user_id, post.owner_id):
             return Response({"data": "Post does not exist"}, status=status.HTTP_404_NOT_FOUND)
         try:
             user = User.objects.get(user_id=request.user.user_id)

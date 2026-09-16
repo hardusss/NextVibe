@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from user.models import InviteUser
+from user.models import InviteUser, Block
 from posts.models import Reputation
 from user.serializers_pac.registration import UserRegistrationSerializer
 from user.src.grant_invite_reward import check_and_grant_invite_rewards
@@ -328,3 +328,182 @@ class DeleteAccountTest(TestCase):
         fresh.wallet_address = "So11111111111111111111111111111111111111112"
         fresh.save()
         self.assertEqual(fresh.email, "doomed@example.com")
+
+
+class BlockUserTest(TestCase):
+    """Block / unblock / blocked list, and what a block hides on the user side."""
+
+    BLOCK_URL = "/api/v1/users/block/"
+    BLOCKED_URL = "/api/v1/users/blocked/"
+
+    def setUp(self):
+        from django.core.cache import cache
+        from rest_framework.test import APIClient
+        # Scoped throttles and list pages live in locmem across tests
+        cache.clear()
+        self.alice = User.objects.create_user(email="alice@example.com", username="alice", password="Password123!")
+        self.bob = User.objects.create_user(email="bob@example.com", username="bob", password="Password123!")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.alice)
+        self.bob_client = APIClient()
+        self.bob_client.force_authenticate(user=self.bob)
+
+    def block(self, user, client=None):
+        return (client or self.client).post(self.BLOCK_URL, {"user_id": user.user_id}, format="json")
+
+    def unblock(self, user, client=None):
+        return (client or self.client).delete(f"{self.BLOCK_URL}{user.user_id}/")
+
+    def follow(self, client, user):
+        return client.put(f"/api/v1/users/follow/{user.user_id}/")
+
+    def test_self_block_rejected(self):
+        response = self.block(self.alice)
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Block.objects.exists())
+
+    def test_double_block_is_idempotent(self):
+        self.assertEqual(self.block(self.bob).status_code, 201)
+        self.assertEqual(self.block(self.bob).status_code, 204)
+        self.assertEqual(Block.objects.filter(blocker=self.alice, blocked=self.bob).count(), 1)
+
+    def test_unknown_user_404(self):
+        response = self.client.post(self.BLOCK_URL, {"user_id": 999999}, format="json")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.client.post(self.BLOCK_URL, {}, format="json").status_code, 400)
+
+    def test_block_removes_follows_both_ways(self):
+        self.assertEqual(self.follow(self.client, self.bob).status_code, 200)
+        self.assertEqual(self.follow(self.bob_client, self.alice).status_code, 200)
+
+        self.assertEqual(self.block(self.bob).status_code, 201)
+
+        for user in (self.alice, self.bob):
+            user.refresh_from_db()
+            self.assertEqual(user.follow_for, [])
+            self.assertEqual(user.readers, [])
+            self.assertEqual(user.follows_count, 0)
+            self.assertEqual(user.readers_count, 0)
+
+        # Neither side can follow again while the block stands
+        self.assertEqual(self.follow(self.client, self.bob).status_code, 404)
+        self.assertEqual(self.follow(self.bob_client, self.alice).status_code, 404)
+
+    def test_block_keeps_other_follows(self):
+        carol = User.objects.create_user(email="carol@example.com", username="carol", password="Password123!")
+        self.follow(self.client, carol)
+        self.follow(self.client, self.bob)
+
+        self.block(self.bob)
+
+        self.alice.refresh_from_db()
+        carol.refresh_from_db()
+        self.assertEqual(self.alice.follow_for, [carol.user_id])
+        self.assertEqual(self.alice.follows_count, 1)
+        self.assertEqual(carol.readers, [self.alice.user_id])
+
+    def test_unblock_is_idempotent_and_only_for_the_blocker(self):
+        self.block(self.bob)
+
+        # Bob can't lift Alice's block
+        self.assertEqual(self.unblock(self.alice, client=self.bob_client).status_code, 204)
+        self.assertTrue(Block.objects.filter(blocker=self.alice, blocked=self.bob).exists())
+
+        self.assertEqual(self.unblock(self.bob).status_code, 204)
+        self.assertEqual(self.unblock(self.bob).status_code, 204)
+        self.assertFalse(Block.objects.exists())
+
+    def test_blocked_list_newest_first(self):
+        carol = User.objects.create_user(email="carol@example.com", username="carol", password="Password123!")
+        self.block(self.bob)
+        self.block(carol)
+
+        response = self.client.get(self.BLOCKED_URL)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([u["username"] for u in response.data["data"]], ["carol", "bob"])
+        self.assertTrue(response.data["end"])
+        for key in ("user_id", "avatar", "official", "seeker_verified"):
+            self.assertIn(key, response.data["data"][0])
+
+        # Being blocked doesn't put anyone on your own list
+        self.assertEqual(self.bob_client.get(self.BLOCKED_URL).data["data"], [])
+
+    def test_blocked_list_paginates(self):
+        for i in range(13):
+            other = User.objects.create_user(email=f"u{i}@example.com", username=f"u{i}", password="Password123!")
+            self.block(other)
+
+        first = self.client.get(self.BLOCKED_URL)
+        self.assertEqual(len(first.data["data"]), 12)
+        self.assertFalse(first.data["end"])
+
+        second = self.client.get(self.BLOCKED_URL, {"index": 12})
+        self.assertEqual(len(second.data["data"]), 1)
+        self.assertTrue(second.data["end"])
+        self.assertEqual(second.data["data"][0]["username"], "u0")
+
+    def test_profile_flags_both_directions(self):
+        self.block(self.bob)
+
+        mine = self.client.get(f"/api/v1/users/user-detail/{self.bob.user_id}/", {"isProfile": "true"})
+        self.assertEqual(mine.status_code, 200)
+        self.assertTrue(mine.data["is_blocked"])
+        self.assertFalse(mine.data["is_blocked_by"])
+        self.assertEqual(mine.data["username"], "bob")
+        # Only the minimal blocked state, no bio/stats/lists
+        for key in ("about", "readers_count", "follow_for", "liked_posts", "reputation"):
+            self.assertNotIn(key, mine.data)
+
+        theirs = self.bob_client.get(f"/api/v1/users/user-detail/{self.alice.user_id}/", {"isProfile": "true"})
+        self.assertFalse(theirs.data["is_blocked"])
+        self.assertTrue(theirs.data["is_blocked_by"])
+        self.assertNotIn("about", theirs.data)
+
+        self.unblock(self.bob)
+        restored = self.client.get(f"/api/v1/users/user-detail/{self.bob.user_id}/", {"isProfile": "true"})
+        self.assertFalse(restored.data["is_blocked"])
+        self.assertFalse(restored.data["is_blocked_by"])
+        self.assertIn("about", restored.data)
+
+    def test_search_and_follower_lists_hide_blocked_people(self):
+        from rest_framework.test import APIClient
+        carol = User.objects.create_user(email="carol@example.com", username="carol", password="Password123!")
+        carol_client = APIClient()
+        carol_client.force_authenticate(user=carol)
+        self.follow(self.client, carol)
+        self.follow(self.bob_client, carol)
+
+        def listed(client, url, params):
+            data = client.get(url, params).data["data"]
+            return sorted(u["username"] for u in data) if isinstance(data, list) else []
+
+        readers_url = "/api/v1/users/get-readers/"
+        # Carol (no blocks) warms the shared page cache first
+        self.assertEqual(listed(carol_client, readers_url, {"user_id": carol.user_id}), ["alice", "bob"])
+
+        self.block(self.bob)
+
+        self.assertEqual(listed(self.client, readers_url, {"user_id": carol.user_id}), ["alice"])
+        self.assertEqual(listed(self.bob_client, readers_url, {"user_id": carol.user_id}), ["bob"])
+        self.assertEqual(listed(carol_client, readers_url, {"user_id": carol.user_id}), ["alice", "bob"])
+        # The blocked person's own lists are empty for the other side
+        self.assertEqual(listed(self.bob_client, "/api/v1/users/get-follows/", {"user_id": self.alice.user_id}), [])
+
+        self.assertEqual(listed(self.client, "/api/v1/users/search/", {"searchName": "bo"}), [])
+        self.assertEqual(listed(self.bob_client, "/api/v1/users/search/", {"searchName": "ali"}), [])
+        self.assertEqual(listed(carol_client, "/api/v1/users/search/", {"searchName": "bo"}), ["bob"])
+
+    def test_notifications_from_blocked_people_hidden(self):
+        # Bob following Alice leaves a notification for her
+        self.follow(self.bob_client, self.alice)
+        count_url = "/api/v1/users/count-unread-notifications/"
+        self.assertEqual(self.client.get(count_url).data["count"], 1)
+
+        self.block(self.bob)
+
+        self.assertEqual(self.client.get(count_url).data["count"], 0)
+        notifications = self.client.get("/api/v1/users/notifications/").data["data"]["notify"]
+        self.assertEqual(notifications, [])
+
+        self.unblock(self.bob)
+        self.assertEqual(self.client.get(count_url).data["count"], 1)

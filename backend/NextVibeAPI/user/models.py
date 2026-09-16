@@ -109,6 +109,22 @@ class HistorySearch(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_history")
     searched_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="searched_user")
 
+class Block(models.Model):
+    """
+    `blocker` blocked `blocked`. Visibility is symmetric: neither sees the
+    other anywhere (see user.src.blocking.blocked_user_ids).
+    NOTE: socket_service/src/models/user_model.py reads this table too.
+    """
+    blocker = models.ForeignKey(User, on_delete=models.CASCADE, related_name="blocking", db_index=True)
+    blocked = models.ForeignKey(User, on_delete=models.CASCADE, related_name="blocked_by", db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('blocker', 'blocked')
+
+    def __str__(self):
+        return f"{self.blocker} blocked {self.blocked}"
+
 class Notification(models.Model):
     NOTIFICATION_TYPES = (
         ('like', 'Like'),

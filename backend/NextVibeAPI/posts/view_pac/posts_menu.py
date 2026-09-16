@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Prefetch
 from rest_framework.throttling import ScopedRateThrottle
+from user.src.blocking import is_blocked_between
 
 User: AbstractUser = get_user_model()
 
@@ -21,6 +22,15 @@ class PostMenuView(APIView):
         index = int(request.query_params.get("index", 0))
         limit = int(request.query_params.get("limit", 9))
         is_event = request.query_params.get("is_event", "false").lower() == "true"
+
+        if is_blocked_between(request.user.user_id, id):
+            return Response({
+                "user": None,
+                "data": [],
+                "more_posts": False,
+                "total_posts": 0,
+                "liked_posts": []
+            }, status=status.HTTP_200_OK)
 
         posts_qs = (
             Post.objects

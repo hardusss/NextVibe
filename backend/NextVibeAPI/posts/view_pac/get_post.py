@@ -8,6 +8,7 @@ from ..src.collect_eligibility import is_irl_connected, reserved_editions_active
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
 from user.models import InviteUser
+from user.src.blocking import blocked_user_ids
 
 User = get_user_model()
 
@@ -29,7 +30,8 @@ class GetPostView(APIView):
             .filter(id=post_id)
             .first()
         )
-        if not post:
+        hidden = blocked_user_ids(request.user)
+        if not post or post.owner_id in hidden:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         owner = post.owner
@@ -42,6 +44,7 @@ class GetPostView(APIView):
         comments = (
             Comment.objects
             .filter(post=post_id)
+            .exclude(owner_id__in=hidden)
             .prefetch_related("replies")
         )
         comments_count = comments.count()

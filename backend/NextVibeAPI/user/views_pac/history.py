@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 from rest_framework.throttling import ScopedRateThrottle
 from user.models import InviteUser
+from user.src.blocking import blocked_user_ids
 
 User = get_user_model()
 
@@ -33,6 +34,7 @@ class HistorySearchView(APIView):
         history = (
             HistorySearch.objects
             .filter(user__user_id=user_id)
+            .exclude(searched_user_id__in=blocked_user_ids(request.user))
             .select_related("searched_user", "searched_user__og_avatar")
             .order_by("-id")[:5]
         )

@@ -14,6 +14,7 @@ import { storage } from '@/src/utils/storage';
 import { Image } from 'expo-image';
 import UserBadges from '../Shared/UserBadges';
 import haptics from '@/src/utils/haptics';
+import { useBlockStore, isBlockedInSession } from '@/src/stores/blockStore';
 
 type UserData = {
     user_id: number;
@@ -287,12 +288,15 @@ export default function FollowsScreen() {
     const isLoadingActive = activeTabState === 'Readers' ? readersLoading : followsLoading;
     const isInitializedActive = activeTabState === 'Readers' ? readersInitialized : followsInitialized;
 
+    const blockOverrides = useBlockStore((state) => state.overrides);
     const activeData = activeTabState === 'Readers' ? readersData : followsData;
     const filteredData = useMemo(() => {
+        // Someone blocked this session drops out before the next refetch
+        const visible = activeData.filter(u => !isBlockedInSession(blockOverrides, u.user_id));
         const q = searchQuery.trim().toLowerCase();
-        if (!q) return activeData;
-        return activeData.filter(u => u.username?.toLowerCase().includes(q));
-    }, [activeData, searchQuery]);
+        if (!q) return visible;
+        return visible.filter(u => u.username?.toLowerCase().includes(q));
+    }, [activeData, searchQuery, blockOverrides]);
 
     const colors = {
         bg: isDark ? '#0A0410' : '#FFFFFF',

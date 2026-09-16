@@ -3,8 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
-from ..models import Comment, Post
+from django.db.models import Prefetch
+from ..models import Comment, CommentReply, Post
 from user.models import InviteUser
+from user.src.blocking import blocked_user_ids
 
 
 class GetCommentView(APIView):
@@ -19,17 +21,22 @@ class GetCommentView(APIView):
             .filter(id=post_id)
             .first()
         )
-        if not post:
+        hidden = blocked_user_ids(request.user)
+        if not post or post.owner_id in hidden:
             return Response({"error": "Post not found"}, status=404)
 
         comments = (
             Comment.objects
             .filter(post_id=post_id)
+            .exclude(owner_id__in=hidden)
             .select_related("owner", "owner__og_avatar")
             .prefetch_related(
-                "replies",
-                "replies__owner",
-                "replies__owner__og_avatar",
+                Prefetch(
+                    "replies",
+                    queryset=CommentReply.objects
+                    .exclude(owner_id__in=hidden)
+                    .select_related("owner", "owner__og_avatar"),
+                ),
             )
             .order_by("-create_at")
         )

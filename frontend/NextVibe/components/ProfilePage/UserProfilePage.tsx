@@ -17,17 +17,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FrostedView from "@/components/Shared/FrostedView";
 import * as Haptics from "expo-haptics";
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import Hyperlink from "react-native-hyperlink";
 import { LinearGradient } from "expo-linear-gradient";
-import { Star, ArrowLeft, Camera, Layers, ChevronRight } from "lucide-react-native";
+import { Star, ArrowLeft, Camera, Layers, ChevronRight, UserRound } from "lucide-react-native";
 
 // API & Utils
 import formatNumber from "@/src/utils/formatNumber";
 import getUserDetail from "@/src/api/user.detail";
 import followUser from "@/src/api/follow";
 import CreateChat from "@/src/api/create.chat";
+import { unblockUser } from "@/src/api/block";
+import { useBlockStore } from "@/src/stores/blockStore";
+import { safeBack } from "@/src/utils/safeBack";
+import { storage } from "@/src/utils/storage";
+import haptics from "@/src/utils/haptics";
 
 // Components
 import PostGallery, { clearPostsCache } from "./PostsMenu";
@@ -38,6 +44,7 @@ import UserBadges from "../Shared/UserBadges";
 import { AvatarWithFrame } from "./AvatarWithFrame";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { EventConnectionsSheet, EventConnectionsSheetRef } from "./EventConnectionsSheet";
+import UserMenuButton from "../Shared/Block/UserMenuButton";
 
 // Styles
 import profileDarkStyles from "@/styles/dark-theme/profileStyles";
@@ -63,6 +70,8 @@ type UserData = {
     is_subscribed: boolean;
     invited_count: number;
     reputation: number;
+    is_blocked: boolean;
+    is_blocked_by: boolean;
 };
 
 const TABS = ["Posts", "cNFTs"] as const;
@@ -131,6 +140,46 @@ const EmptyState = ({
     );
 };
 
+/* ─── Blocked State ─── */
+// "They blocked you" must read like any unavailable profile — never say why.
+const BlockedState = ({
+    blockedByMe, avatarUrl, username, isDark, unblocking, onUnblock,
+}: {
+    blockedByMe: boolean; avatarUrl: string | null; username: string;
+    isDark: boolean; unblocking: boolean; onUnblock: () => void;
+}) => (
+    <View style={st.blockedWrap}>
+        {blockedByMe ? (
+            <>
+                <AvatarWithFrame avatarUrl={avatarUrl} size={90} invitedCount={0} />
+                <Text style={[st.nameText, st.blockedName, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
+                    {username}
+                </Text>
+                <Text style={[st.blockedText, { color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>
+                    You blocked this user
+                </Text>
+                <TouchableOpacity
+                    activeOpacity={0.84}
+                    style={[st.subscribeBtn, st.unblockBtn, unblocking && { opacity: 0.6 }]}
+                    onPress={onUnblock}
+                    disabled={unblocking}
+                >
+                    <Text style={st.subscribeBtnText}>Unblock</Text>
+                </TouchableOpacity>
+            </>
+        ) : (
+            <>
+                <View style={[st.blockedIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
+                    <UserRound size={40} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)'} />
+                </View>
+                <Text style={[st.blockedText, { color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>
+                    This profile isn't available
+                </Text>
+            </>
+        )}
+    </View>
+);
+
 /* ─── Subscribe Button ─── */
 const ButtonSubscribe = ({ isSubscribed, onPress }: { isSubscribed: boolean; onPress: () => void }) => (
     <TouchableOpacity
@@ -158,9 +207,14 @@ const UserProfileView = () => {
         user_id: 0, username: "", about: "", avatar_url: null,
         post_count: 0, cnft_count: 0, readers_count: 0, follows_count: 0,
         official: false, seeker_verified: false, seeker_verified_source: null, is_subscribed: false, isOg: false, ogEdition: null,
-        invited_count: 0, reputation: 0,
+        invited_count: 0, reputation: 0, is_blocked: false, is_blocked_by: false,
     });
     const [loading, setLoading] = useState<boolean>(true);
+    const [myId, setMyId] = useState<number | null>(null);
+    const [unblocking, setUnblocking] = useState(false);
+    const isFocused = useIsFocused();
+    const blockOverride = useBlockStore((state) => state.overrides[Number(id)]);
+    const setBlocked = useBlockStore((state) => state.setBlocked);
     const [refreshing, setRefreshing] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [visible, setVisible] = useState<boolean>(false);
@@ -225,12 +279,37 @@ const UserProfileView = () => {
                 is_subscribed: data?.is_subscribed || false,
                 invited_count: data?.invited_count || 0,
                 reputation: data?.reputation || 0,
+                is_blocked: data?.is_blocked === true,
+                is_blocked_by: data?.is_blocked_by === true,
             });
         } catch (error) {
             console.error("Failed to fetch user data:", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const reloadProfile = () => {
+        setLoading(true);
+        fetchUserData();
+    };
+
+    const handleUnblock = async () => {
+        if (unblocking) return;
+        setUnblocking(true);
+        try {
+            await unblockUser(+id);
+        } catch {
+            haptics.notification('error');
+            return;
+        } finally {
+            setUnblocking(false);
+        }
+        haptics.notification('success');
+        // The override effect below reloads the profile; it can't fire if
+        // this person was already unblocked once this session
+        if (blockOverride === false) reloadProfile();
+        setBlocked(+id, false);
     };
 
     const handleSubscribe = async () => {
@@ -284,6 +363,29 @@ const UserProfileView = () => {
             setTimeout(() => { setIsVisibleContainer(false) }, 200);
         };
     }, [visible]);
+
+    useEffect(() => {
+        storage.getItem("id").then((stored) => setMyId(stored ? Number(stored) : null));
+    }, []);
+
+    // A block or unblock made this session wins over what the profile loaded with
+    const isBlocked = blockOverride ?? userData.is_blocked;
+    const showBlockedState = isBlocked || userData.is_blocked_by;
+    const showMenu = !showBlockedState && userData.user_id !== 0 && myId !== null && userData.user_id !== myId;
+
+    const prevBlockOverrideRef = useRef(blockOverride);
+    useEffect(() => {
+        const previous = prevBlockOverrideRef.current;
+        prevBlockOverrideRef.current = blockOverride;
+        if (blockOverride === previous) return;
+        if (blockOverride === true && isFocused) {
+            // Blocked from this profile (its menu or one of its posts): leave it
+            safeBack(router);
+        } else if (blockOverride === false) {
+            // Unblocked here or in Settings: load the full profile again
+            reloadProfile();
+        }
+    }, [blockOverride]);
 
     const hasFetchedRef = useRef<string | null>(null);
 
@@ -363,6 +465,15 @@ const UserProfileView = () => {
                         >
                             <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
                         </TouchableOpacity>
+                        {showMenu && (
+                            <UserMenuButton
+                                userId={userData.user_id}
+                                username={userData.username}
+                                size={22}
+                                color={isDark ? '#fff' : '#000'}
+                                style={[st.backBtn, st.menuBtn, { backgroundColor: isDark ? 'rgba(10,4,16,0.45)' : 'rgba(255,255,255,0.6)' }]}
+                            />
+                        )}
                     </View>
                 </View>
             )}
@@ -515,9 +626,29 @@ const UserProfileView = () => {
 
     return (
         <View style={[profileStyle.container, { paddingHorizontal: 0 }]}>
-            <StatusBar style="light" />
+            <StatusBar style={showBlockedState && !isDark ? "dark" : "light"} />
             {loading ? (
                 <ActivityIndicator size="large" color="#58a6ff" style={{ flex: 1, justifyContent: "center", alignItems: "center" }} />
+            ) : showBlockedState ? (
+                <>
+                    <View pointerEvents="box-none" style={[st.topBar, { top: insets.top > 0 ? insets.top + 8 : 8 }]}>
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => router.back()}
+                            style={[st.backBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}
+                        >
+                            <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
+                        </TouchableOpacity>
+                    </View>
+                    <BlockedState
+                        blockedByMe={isBlocked}
+                        avatarUrl={userData.avatar_url}
+                        username={userData.username}
+                        isDark={isDark}
+                        unblocking={unblocking}
+                        onUnblock={handleUnblock}
+                    />
+                </>
             ) : (
                 <>
                     {/* iOS Absolute Background Header */}
@@ -602,6 +733,15 @@ const UserProfileView = () => {
                     >
                         <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
                     </TouchableOpacity>
+                    {showMenu && (
+                        <UserMenuButton
+                            userId={userData.user_id}
+                            username={userData.username}
+                            size={22}
+                            color={isDark ? '#fff' : '#000'}
+                            style={[st.backBtn, st.menuBtn, { backgroundColor: isDark ? 'rgba(10,4,16,0.45)' : 'rgba(255,255,255,0.6)' }]}
+                        />
+                    )}
                 </View>
             )}
         </>
@@ -675,6 +815,41 @@ const st = StyleSheet.create({
         borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    menuBtn: {
+        marginLeft: 'auto',
+    },
+    blockedWrap: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 32,
+        paddingBottom: 40,
+    },
+    blockedName: {
+        marginTop: 14,
+    },
+    blockedText: {
+        fontSize: 15,
+        fontFamily: 'Dank Mono',
+        includeFontPadding: false,
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    blockedIcon: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    unblockBtn: {
+        marginTop: 24,
+        minWidth: 160,
+        paddingHorizontal: 24,
+        backgroundColor: '#6A00F4',
+        borderColor: '#6A00F4',
     },
     avatarWrap: {
         alignSelf: 'center',

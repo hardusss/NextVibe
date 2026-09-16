@@ -6,6 +6,8 @@ from rest_framework.views import APIView
 import logging
 from django.db.models import Count
 from rest_framework.throttling import ScopedRateThrottle
+from user.models import Block
+from user.src.blocking import blocked_user_ids
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ class ChatListView(APIView):
                 Chat.objects
                 .filter(participants=user)
                 .filter(messages__isnull=False)
+                .exclude(participants__user_id__in=blocked_user_ids(user))
                 .distinct()
             )
             
@@ -102,6 +105,7 @@ class UnreadMessagesCountView(APIView):
                 Message.objects
                 .filter(chat__participants=user, deleted_at__isnull=True)
                 .exclude(sender=user)
+                .exclude(sender_id__in=blocked_user_ids(user))
                 .exclude(receipts__user=user, receipts__read_at__isnull=False)
                 .count()
             )
@@ -122,7 +126,7 @@ class OnlineUsersView(APIView):
             online_users = User.objects.filter(
                 is_online=True,
                 user_id__in=following_ids  
-            ).exclude(user_id=request.user.user_id)
+            ).exclude(user_id=request.user.user_id).exclude(user_id__in=blocked_user_ids(request.user))
 
             users_data = [{
                 'user_id': user.user_id,
@@ -152,6 +156,11 @@ class CreateChatView(APIView):
             participants = User.objects.filter(user_id__in=user_ids)
             if not participants.exists():
                 return Response({'error': 'No valid users found'}, status=404)
+
+            # Covers reopening an existing chat too, so check before the lookup below
+            member_ids = set(participants.values_list('user_id', flat=True)) | {request.user.user_id}
+            if Block.objects.filter(blocker_id__in=member_ids, blocked_id__in=member_ids).exists():
+                return Response({'error': "You can't message this account.", 'code': 'BLOCKED'}, status=403)
             
             existing_chat = Chat.objects.annotate(
                 num_participants=Count('participants')

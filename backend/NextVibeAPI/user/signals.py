@@ -9,12 +9,17 @@ from django.dispatch import receiver
 from .models import Notification, User
 from user.src.send_push_message import send
 from user.src.clear_notify_cache import clear_notification_cache
+from user.src.blocking import is_blocked_between
 
 logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Notification)
 def trigger_push_and_cache(sender, instance, created, **kwargs):
     if created:
+        # Lists hide these rows anyway; also skip the cache bust and the push
+        if instance.sender_id and is_blocked_between(instance.sender_id, instance.recipient_id):
+            return
+
         clear_notification_cache(instance.recipient.user_id) 
         
         body_text = ""

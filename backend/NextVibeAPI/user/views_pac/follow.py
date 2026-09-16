@@ -8,6 +8,7 @@ from ..models import Notification
 from datetime import timedelta
 from django.utils import timezone
 from user.src.clear_notify_cache import clear_notification_cache
+from user.src.blocking import is_blocked_between
 
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -24,6 +25,9 @@ class FollowView(APIView):
             user = User.objects.get(user_id=id)
             user2 = User.objects.get(user_id=follow_id)
         except ObjectDoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+
+        if is_blocked_between(id, follow_id):
             return Response({"error": "User not found"}, status=404)
         
         if follow_id in user.follow_for:

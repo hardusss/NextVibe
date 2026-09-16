@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
 from r2_storage import r2_storage
+from src.blocks import is_chat_blocked
 
 router = APIRouter()
 MESSAGES_PER_PAGE = 20
@@ -92,7 +93,7 @@ async def get_chat_messages(
         .filter(Chat.id == chat_id, Chat.participants.any(user_id=user_id))
         .first()
     )
-    if not chat:
+    if not chat or is_chat_blocked(u.user_id for u in chat.participants):
         raise HTTPException(status_code=404, detail="Chat not found or access denied")
     
     messages_query = db.query(Message).filter(Message.chat_id == chat_id)
@@ -188,7 +189,7 @@ async def mark_chat_as_read(
         .filter(Chat.id == chat_id, Chat.participants.any(user_id=user_id))
         .first()
     )
-    if not chat:
+    if not chat or is_chat_blocked(u.user_id for u in chat.participants):
         raise HTTPException(status_code=404, detail="Chat not found or access denied")
 
     messages_in_chat = (
@@ -257,7 +258,11 @@ async def get_media_upload_url(
     db: Session = Depends(get_db)
 ):
     chat = db.query(Chat).filter(Chat.id == req.chat_id).first()
-    if not chat or user_id not in [u.user_id for u in chat.participants]:
+    if (
+        not chat
+        or user_id not in [u.user_id for u in chat.participants]
+        or is_chat_blocked(u.user_id for u in chat.participants)
+    ):
         raise HTTPException(status_code=403, detail="Not authorized or chat not found")
 
     max_bytes = settings.MAX_MEDIA_SIZE_MB * 1024 * 1024
@@ -288,7 +293,11 @@ async def add_reaction(
         raise HTTPException(status_code=404, detail="Message not found")
 
     chat = db.query(Chat).filter(Chat.id == message.chat_id).first()
-    if not chat or user_id not in [u.user_id for u in chat.participants]:
+    if (
+        not chat
+        or user_id not in [u.user_id for u in chat.participants]
+        or is_chat_blocked(u.user_id for u in chat.participants)
+    ):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     existing = db.query(MessageReaction).filter(
@@ -360,7 +369,11 @@ async def remove_reaction(
         raise HTTPException(status_code=404, detail="Message not found")
 
     chat = db.query(Chat).filter(Chat.id == message.chat_id).first()
-    if not chat or user_id not in [u.user_id for u in chat.participants]:
+    if (
+        not chat
+        or user_id not in [u.user_id for u in chat.participants]
+        or is_chat_blocked(u.user_id for u in chat.participants)
+    ):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     reaction = db.query(MessageReaction).filter(
@@ -426,6 +439,9 @@ async def edit_message(
 
     if int(message.sender_id) != int(user_id):
         raise HTTPException(status_code=403, detail="Only sender can edit message")
+
+    if is_chat_blocked(u.user_id for u in message.chat.participants):
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     if message.deleted_at is not None:
         raise HTTPException(status_code=400, detail="Cannot edit deleted message")

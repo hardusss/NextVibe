@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatItemSkeleton, OnlineUserSkeleton } from './SkeletonLoaders';
 import { LinearGradient } from 'expo-linear-gradient';
 import { chatColors } from '@/src/theme/chatTheme';
+import { useBlockStore, isBlockedInSession } from '@/src/stores/blockStore';
 
 const SearchBar = React.memo(({ placeholder, value, onChangeText, isDark }: any) => {
   const colors = chatColors[isDark ? 'dark' : 'light'];
@@ -52,6 +53,7 @@ export default function ChatsList() {
   const [onlineLoading, setOnlineLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const isLoadedOnceRef = useRef(false);
+  const blockOverrides = useBlockStore((state) => state.overrides);
 
   const isDark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
@@ -195,14 +197,16 @@ export default function ChatsList() {
   };
 
   useEffect(() => {
+    // Someone blocked this session drops out before the next refetch
+    const visibleChats = chats.filter(chat => !isBlockedInSession(blockOverrides, chat.other_user?.user_id));
     setFilteredChats(
       searchQuery.trim() === ''
-        ? chats
-        : chats.filter(chat =>
+        ? visibleChats
+        : visibleChats.filter(chat =>
             chat.other_user?.username?.toLowerCase().includes(searchQuery.toLowerCase())
           )
     );
-  }, [searchQuery, chats]);
+  }, [searchQuery, chats, blockOverrides]);
 
   const ListHeader = useMemo(
     () => (
@@ -232,7 +236,7 @@ export default function ChatsList() {
             ))}
           </ScrollView>
         ) : (
-          <OnlineUsers users={onlineUsers} />
+          <OnlineUsers users={onlineUsers.filter((user: any) => !isBlockedInSession(blockOverrides, user.user_id))} />
         )}
         <Text style={[styles.sectionLabel, { color: colors.subtext }]}>MESSAGES</Text>
         <TouchableOpacity
@@ -308,7 +312,7 @@ export default function ChatsList() {
         )}
       </LinearGradient>
     ),
-    [isDark, colors, searchQuery, onlineLoading, onlineUsers, chatLoading, chats.length]
+    [isDark, colors, searchQuery, onlineLoading, onlineUsers, chatLoading, chats.length, blockOverrides]
   );
 
   return (

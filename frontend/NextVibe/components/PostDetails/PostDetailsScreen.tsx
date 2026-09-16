@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Dimensions,
     FlatList,
@@ -14,7 +14,7 @@ import {
     View,
     useColorScheme,
 } from "react-native";
-import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import { Calendar, Clock, Heart, Link2, MapPin, Sparkles, ArrowLeft, MoreVertical, MessageSquareOff, MessageSquare, Share2 } from "lucide-react-native";
@@ -31,6 +31,8 @@ import { requestToAttend } from "@/src/api/event.requests";
 import formatNumber from "@/src/utils/formatNumber";
 import timeAgo from "@/src/utils/formatTime";
 import { storage } from "@/src/utils/storage";
+import { safeBack } from "@/src/utils/safeBack";
+import { useBlockStore, isBlockedInSession } from "@/src/stores/blockStore";
 import useWalletAddress from "@/hooks/useWalletAddress";
 import useShareGuard, { ShareTouchBlocker } from "@/hooks/useShareGuard";
 
@@ -133,6 +135,21 @@ export default function PostDetailsScreen() {
     const mintSheetRef = useRef<MintBottomSheetRef>(null);
     const likingRef = useRef(false);
     const { address } = useWalletAddress();
+
+    // People blocked from this screen disappear from the thread right away
+    const blockOverrides = useBlockStore((state) => state.overrides);
+    const visibleComments = useMemo(() => comments
+        .filter((c) => !isBlockedInSession(blockOverrides, c.user_id))
+        .map((c) => ({ ...c, replies: c.replies.filter((r) => !isBlockedInSession(blockOverrides, r.user_id)) })),
+    [comments, blockOverrides]);
+
+    // The author got blocked (post menu, their comment, or their profile on
+    // top of this screen): the post is hidden now, so leave once focused.
+    // Only while focused, or a screen above would be popped instead.
+    const authorBlocked = isBlockedInSession(blockOverrides, post?.user_id);
+    useFocusEffect(useCallback(() => {
+        if (authorBlocked) safeBack(router);
+    }, [authorBlocked]));
 
     useEffect(() => {
         if (!isFocused) {
@@ -335,7 +352,7 @@ export default function PostDetailsScreen() {
 
     const mediaItems = post.media ?? [];
     const hasMedia = mediaItems.length > 0;
-    const totalComments = comments.reduce((t, c) => t + 1 + (c.replies?.length ?? 0), 0);
+    const totalComments = visibleComments.reduce((t, c) => t + 1 + (c.replies?.length ?? 0), 0);
 
     let collectState: CollectState | null = null;
     if (post.is_nft || post.is_owner) {
@@ -413,6 +430,8 @@ export default function PostDetailsScreen() {
                                 postId={post.post_id}
                                 onClose={() => setDropdownOpen(false)}
                                 onPostDeleted={() => router.back()}
+                                ownerId={post.user_id}
+                                ownerUsername={post.username}
                                 onReportResult={(reported, msg) => {
                                     setDropdownOpen(false);
                                     if (msg) setToastConfig({ visible: true, message: msg, isSuccess: false });
@@ -583,13 +602,13 @@ export default function PostDetailsScreen() {
                         <MessageSquareOff size={34} color={theme.textSecondary} />
                         <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Comments are disabled</Text>
                     </View>
-                ) : comments.length === 0 ? (
+                ) : visibleComments.length === 0 ? (
                     <View style={s.emptyState}>
                         <MessageSquare size={34} color={theme.textSecondary} />
                         <Text style={{ color: theme.textSecondary, fontSize: 14 }}>No comments yet. Be the first!</Text>
                     </View>
                 ) : (
-                    comments.map((comment, idx) => (
+                    visibleComments.map((comment, idx) => (
                         <CommentItem
                             key={comment.id}
                             item={comment}
@@ -597,9 +616,10 @@ export default function PostDetailsScreen() {
                             onLike={toggleCommentLike}
                             onReply={(item) => setReplyingTo(item)}
                             theme={theme}
-                            isLast={idx === comments.length - 1}
+                            isLast={idx === visibleComments.length - 1}
                             highlightedCommentId={highlightedCommentId}
                             highlightedReplyId={highlightedReplyId}
+                            viewerId={userID}
                         />
                     ))
                 )}

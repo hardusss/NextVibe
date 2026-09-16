@@ -32,6 +32,7 @@ import { Platform, UIManager } from 'react-native';
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import { storage } from '@/src/utils/storage';
+import { useBlockStore, isBlockedInSession } from '@/src/stores/blockStore';
 
 import UserBadges from "../Shared/UserBadges";
 import Hyperlink from "react-native-hyperlink";
@@ -543,6 +544,8 @@ const PostItem = memo(({
                             setToastSuccess(false);
                             setIsToastVisible(true);
                         }}
+                        ownerId={item.owner__user_id}
+                        ownerUsername={item.owner__username}
                         onReportResult={(reported?: boolean, message?: string) => {
                             setDropdownVisible(null);
                             setTimeout(() => {
@@ -1082,9 +1085,10 @@ export default function MainPage() {
         return <View style={{ height: 20 }} />;
     };
 
+    const blockOverrides = useBlockStore((state) => state.overrides);
     const dataToRender = loading
         ? Array.from({ length: 2 }).map((_, i) => ({ id: `skeleton-${i}`, type: 'skeleton' }))
-        : posts.filter(p => p.moderation_status === "approved");
+        : posts.filter(p => p.moderation_status === "approved" && !isBlockedInSession(blockOverrides, p.owner__user_id));
 
     const sharePost = useCallback((postId: number) => {
         share({ message: `https://nextvibe.io/u/post/${postId}` });

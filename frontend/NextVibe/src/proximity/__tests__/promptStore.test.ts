@@ -20,6 +20,7 @@ jest.mock('../location', () => ({
 }));
 
 import { useProximityPrompt } from '../promptStore';
+import getUserDetail from '@/src/api/user.detail';
 
 const link = (t: string) => `https://nextvibe.io/u/e?t=${t}`;
 const alice = { user_id: 7, username: 'alice', avatar: null, is_official: false };
@@ -255,6 +256,30 @@ describe('promptStore', () => {
         state().handle(profile, 'ble');
         await flush();
         expect(state().visible).toBe(false);
+    });
+
+    it('never names a blocked person: silent over Bluetooth, neutral on a deliberate tap', async () => {
+        mockPreview.mockRejectedValue(axios400({ error: "You can't connect with this person.", code: 'BLOCKED' }));
+        state().handle(link('tokenNNN1'), 'ble');
+        await flush();
+        expect(state().visible).toBe(false);
+
+        advance(4_000);
+        state().handle(link('tokenNNN2'), 'nfc');
+        await flush();
+        expect(state().phase).toBe('error');
+        expect(state().error?.kind).toBe('blocked');
+        expect(state().peer).toBeNull();
+    });
+
+    it('does not offer a shared profile between a blocked pair', async () => {
+        (getUserDetail as jest.Mock).mockResolvedValueOnce({ username: 'carol', is_blocked_by: true });
+        state().handle('https://nextvibe.io/u/654', 'link');
+        await flush();
+        // The error phase shows only the neutral error title, never "@name shared…"
+        expect(state().phase).toBe('error');
+        expect(state().error?.kind).toBe('blocked');
+        expect(state().peer).toBeNull();
     });
 
     it('ignores links that are not ours', () => {

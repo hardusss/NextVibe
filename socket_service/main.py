@@ -13,11 +13,13 @@ from src.models import Message, MediaAttachment, User, Chat, UserOnlineSession, 
 from src.messages import router as messages_router, invalidate_chat_cache
 from src.keys import router as keys_router
 from src.notifications import send_chat_push_notification
+from src.blocks import is_chat_blocked
 from r2_storage import r2_storage  
 from auth import auth_jwt
 from config import settings
 
 ENVIRONMENT = settings.ENVIRONMENT
+BLOCKED_DETAIL = "You can't message this account."
 LOG_LEVEL = settings.LOG_LEVEL
 MAX_MEDIA_SIZE_MB = settings.MAX_MEDIA_SIZE_MB
 MAX_CONNECTIONS_PER_USER = settings.MAX_CONNECTIONS_PER_USER
@@ -175,7 +177,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     db.rollback()
 
                 chat = db.query(Chat).filter(Chat.id == chat_id).first()
-                if not chat or user_id not in [u.user_id for u in chat.participants]:
+                if (
+                    not chat
+                    or user_id not in [u.user_id for u in chat.participants]
+                    or is_chat_blocked(u.user_id for u in chat.participants)
+                ):
                     await websocket.send_json({"type": "error", "detail": "Not authorized or chat not found"})
                     continue
 
@@ -240,7 +246,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 chat = db.query(Chat).filter(Chat.id == chat_id).first()
-                if not chat or user_id not in [u.user_id for u in chat.participants]:
+                if (
+                    not chat
+                    or user_id not in [u.user_id for u in chat.participants]
+                    or is_chat_blocked(u.user_id for u in chat.participants)
+                ):
                     await websocket.send_json({"type": "error", "detail": "Not authorized"})
                     continue
 
@@ -312,7 +322,11 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message_type in ("typing_start", "typing_stop"):
                 chat_id = data.get("chat_id")
                 chat = db.query(Chat).filter(Chat.id == chat_id).first()
-                if chat and user_id in [u.user_id for u in chat.participants]:
+                if (
+                    chat
+                    and user_id in [u.user_id for u in chat.participants]
+                    and not is_chat_blocked(u.user_id for u in chat.participants)
+                ):
                     is_typing = (message_type == "typing_start")
                     redis_key = f"typing:{chat_id}:{user_id}"
                     if is_typing:
@@ -340,7 +354,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 chat = db.query(Chat).filter(Chat.id == chat_id).first()
-                if not chat or user_id not in [u.user_id for u in chat.participants]:
+                if (
+                    not chat
+                    or user_id not in [u.user_id for u in chat.participants]
+                    or is_chat_blocked(u.user_id for u in chat.participants)
+                ):
                     await websocket.send_json({"type": "error", "detail": "Not authorized"})
                     continue
 
@@ -381,6 +399,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 if int(message.sender_id) != int(user_id):
                     await websocket.send_json({"type": "error", "detail": "Only sender can edit message"})
+                    continue
+
+                if is_chat_blocked(u.user_id for u in message.chat.participants):
+                    await websocket.send_json({"type": "error", "code": "blocked", "chat_id": message.chat_id, "detail": BLOCKED_DETAIL})
                     continue
 
                 if message.deleted_at is not None:
@@ -426,6 +448,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_json({"type": "error", "detail": "Only sender can delete message"})
                     continue
 
+                if is_chat_blocked(u.user_id for u in message.chat.participants):
+                    await websocket.send_json({"type": "error", "code": "blocked", "chat_id": message.chat_id, "detail": BLOCKED_DETAIL})
+                    continue
+
                 message.deleted_at = datetime.utcnow()
                 db.commit()
 
@@ -458,6 +484,16 @@ async def websocket_endpoint(websocket: WebSocket):
                 participant_ids = [u.user_id for u in chat.participants]
                 if user_id not in participant_ids:
                     await websocket.send_json({"type": "error", "detail": "Not allowed"})
+                    continue
+
+                if is_chat_blocked(participant_ids):
+                    await websocket.send_json({
+                        "type": "error",
+                        "code": "blocked",
+                        "chat_id": chat_id,
+                        "client_msg_id": data.get("client_msg_id"),
+                        "detail": BLOCKED_DETAIL,
+                    })
                     continue
 
                 reply_to_id = data.get("reply_to_id")

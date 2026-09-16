@@ -30,6 +30,11 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import UserBadges from '../Shared/UserBadges';
 import { AvatarWithFrame } from '@/components/ProfilePage/AvatarWithFrame';
+import UserMenuButton from '../Shared/Block/UserMenuButton';
+import { useBlockStore, isBlockedInSession } from '@/src/stores/blockStore';
+import { storage } from '@/src/utils/storage';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -108,6 +113,18 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
     const [commentText, setCommentText] = useState('');
     const [expandedTexts, setExpandedTexts] = useState<{ [key: string]: boolean }>({});
     const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [viewerId, setViewerId] = useState<number | null>(null);
+    const blockOverrides = useBlockStore((state) => state.overrides);
+
+    // People blocked from this sheet disappear from the thread right away
+    const visibleComments = useMemo(() => comments
+        .filter(c => !isBlockedInSession(blockOverrides, c.user_id))
+        .map(c => ({ ...c, replies: (c.replies || []).filter(r => !isBlockedInSession(blockOverrides, r.user_id)) })),
+    [comments, blockOverrides]);
+
+    useEffect(() => {
+        storage.getItem('id').then(id => setViewerId(id ? Number(id) : null));
+    }, []);
 
     useEffect(() => {
         Animated.spring(slideAnim, {
@@ -290,6 +307,21 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
         );
     };
 
+    const renderMenu = (item: Comment | Reply) => {
+        if (!viewerId || item.user_id === viewerId) return null;
+        return (
+            <UserMenuButton
+                userId={item.user_id}
+                username={item.user.username}
+                size={16}
+                color="#888"
+                style={styles.menuButton}
+                // Blocking closes the sheet; the thread already hides them
+                onBlocked={handleClose}
+            />
+        );
+    };
+
     const renderReply = ({ item }: { item: Reply }) => (
         <View style={styles.replyContainer}>
             <View style={styles.userInfo}>
@@ -304,6 +336,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                     <View style={styles.userDetails}>
                         <Text style={styles.username} numberOfLines={1}>{item.user?.username}</Text>
                         <UserBadges official={item.user?.official} seekerVerified={item.user?.seeker_verified} isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={14} />
+                        {renderMenu(item)}
                     </View>
                     {renderCommentText(item.content, `reply-${item.reply_id}`)}
                     <View style={styles.commentFooter}>
@@ -344,6 +377,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                         <View style={styles.userDetails}>
                             <Text style={styles.username} numberOfLines={1}>{item.user?.username}</Text>
                             <UserBadges official={item.user?.official} seekerVerified={item.user?.seeker_verified} isLooped={false} isVisible={true} haveModal={false} isStatic={true} size={14} />
+                            {renderMenu(item)}
                         </View>
                         {renderCommentText(item.content, `comment-${item.id}`)}
                         <View style={styles.commentFooter}>
@@ -395,7 +429,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
         );
     };
 
-    const totalCount = comments.reduce((total, c) => total + 1 + (c.replies?.length || 0), 0);
+    const totalCount = visibleComments.reduce((total, c) => total + 1 + (c.replies?.length || 0), 0);
 
     const content = (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
@@ -433,7 +467,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                             <MessageSquareOff size={40} color="#333" />
                             <Text style={styles.disabledText}>Comments are disabled</Text>
                         </View>
-                    ) : comments.length === 0 ? (
+                    ) : visibleComments.length === 0 ? (
                         <View style={styles.centered}>
                             <MessageSquare size={40} color="#333" />
                             <Text style={styles.disabledText}>No comments yet</Text>
@@ -442,7 +476,7 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
                     ) : (
                         <FlatList
                             style={{ flex: 1 }}
-                            data={comments}
+                            data={visibleComments}
                             renderItem={renderComment}
                             keyExtractor={item => item.id.toString()}
                             contentContainerStyle={styles.listContent}
@@ -510,7 +544,13 @@ const PopupModal = ({ post_id, isCommentsEnabled = true, onClose, isFocused, use
             statusBarTranslucent
             onRequestClose={handleClose}
         >
-            {content}
+            {/* The block sheet portals into the nearest provider — inside this
+                Modal, so it isn't hidden behind it on Android */}
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <BottomSheetModalProvider>
+                    {content}
+                </BottomSheetModalProvider>
+            </GestureHandlerRootView>
         </Modal>
     );
 };
@@ -646,6 +686,10 @@ const getStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 3,
+    },
+    menuButton: {
+        marginLeft: 'auto',
+        paddingLeft: 8,
     },
     username: {
         color: colors.textPrimary,

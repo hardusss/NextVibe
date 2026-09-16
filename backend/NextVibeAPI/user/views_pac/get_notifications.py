@@ -10,6 +10,7 @@ from django.db.models.functions import Concat
 from django.conf import settings
 from typing import Self, Any
 from rest_framework.throttling import ScopedRateThrottle
+from user.src.blocking import blocked_user_ids
 
 PAGE_SIZE: int = 15
 
@@ -31,6 +32,7 @@ class GetNotificationsView(APIView):
         
         notifications = (
             Notification.objects.filter(recipient=user)
+            .exclude(sender_id__in=blocked_user_ids(user))
             .select_related("sender", "post", "comment", "comment_reply")
             .annotate(
                 sender_avatar_url=Concat(

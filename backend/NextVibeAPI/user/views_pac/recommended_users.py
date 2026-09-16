@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from user.models import InviteUser
+from user.src.blocking import blocked_user_ids
 import random
 
 User = get_user_model()
@@ -18,11 +19,13 @@ class RecommendedUsersView(APIView):
             return Response({"error": "User not found"}, status=404)
 
         follow_for = user.follow_for or []
+        hidden = blocked_user_ids(request.user)
 
         qs = list(
             User.objects
             .exclude(user_id=user.user_id)
             .exclude(user_id__in=follow_for)
+            .exclude(user_id__in=hidden)
             .select_related("og_avatar")
             .only("user_id", "username", "avatar", "official", "seeker_verified", "about")
             [:200]
@@ -36,6 +39,7 @@ class RecommendedUsersView(APIView):
                 User.objects
                 .exclude(user_id=user.user_id)
                 .exclude(user_id__in=[u.user_id for u in recommended_users])
+                .exclude(user_id__in=hidden)
                 .select_related("og_avatar")
                 .only("user_id", "username", "avatar", "official", "seeker_verified", "about")
                 [:50]

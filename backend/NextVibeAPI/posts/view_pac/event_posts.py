@@ -6,6 +6,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from posts.models import Post, UserCollection, EventRequest
 from posts.serializers_pac.recommendation_feed_serializer import PostFeedSerializer
 from user.models import InviteUser
+from user.src.blocking import blocked_user_ids
 
 
 class EventPostsView(APIView):
@@ -24,9 +25,9 @@ class EventPostsView(APIView):
         limit = int(request.query_params.get("limit", 20))
 
         # Verify the event post exists and is actually an event
-        try:
-            event_post = Post.objects.get(id=post_id, is_luma_event=True)
-        except Post.DoesNotExist:
+        hidden = blocked_user_ids(user)
+        event_post = Post.objects.filter(id=post_id, is_luma_event=True).first()
+        if not event_post or event_post.owner_id in hidden:
             return Response(
                 {"error": "Event not found"},
                 status=status.HTTP_404_NOT_FOUND,
@@ -37,6 +38,7 @@ class EventPostsView(APIView):
             Post.objects
             .filter(on_event=event_post, is_hide=False)
             .exclude(moderation_status="denied")
+            .exclude(owner_id__in=hidden)
             .count()
         )
 
@@ -46,6 +48,7 @@ class EventPostsView(APIView):
             .prefetch_related("media")
             .filter(on_event=event_post, is_hide=False)
             .exclude(moderation_status="denied")
+            .exclude(owner_id__in=hidden)
             .order_by("-create_at")
         )[index:index + limit]
 

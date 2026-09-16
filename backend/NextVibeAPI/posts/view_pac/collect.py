@@ -27,6 +27,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from user.src.send_push_message import send
+from user.src.blocking import is_blocked_between
 
 from ..constants import (
     COLLECT_CLAIM_TTL_SECONDS,
@@ -156,7 +157,7 @@ class CollectPrepareView(APIView):
                           user=request.user)
 
         post = Post.objects.select_related("owner", "on_event").filter(id=post_id).first()
-        if not post or not post.is_approved or post.is_hide:
+        if not post or not post.is_approved or post.is_hide or is_blocked_between(request.user.user_id, post.owner_id):
             return _error("POST_NOT_FOUND", "Post not found.", status.HTTP_404_NOT_FOUND,
                           user=request.user, post_id=post_id)
 

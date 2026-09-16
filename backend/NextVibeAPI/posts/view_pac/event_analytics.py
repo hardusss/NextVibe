@@ -7,6 +7,7 @@ from django.db.models import Sum, Count
 from django.conf import settings
 from collections import defaultdict
 from user.models import User, Notification
+from user.src.blocking import blocked_user_ids
 import traceback
 
 
@@ -302,7 +303,7 @@ class EventBroadcastView(APIView):
             approved_requests = EventRequest.objects.filter(
                 post=post,
                 status=EventRequest.Status.APPROVED
-            ).select_related('user')
+            ).exclude(user_id__in=blocked_user_ids(request.user)).select_related('user')
 
             sent_count = 0
             for req in approved_requests:

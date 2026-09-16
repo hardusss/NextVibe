@@ -4,6 +4,7 @@ import { Heart, ChevronDown, ChevronUp } from "lucide-react-native";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 import UserBadges from "@/components/Shared/UserBadges";
 import timeAgo from "@/src/utils/formatTime";
+import UserMenuButton from "@/components/Shared/Block/UserMenuButton";
 
 const REPLIES_BATCH = 3;
 const TRUNCATE_AT = 200;
@@ -57,9 +58,11 @@ interface ReplyProps {
     onReply: () => void;
     theme: Theme;
     isHighlighted?: boolean;
+    /** Signed-in user; others' replies get a "…" menu. */
+    viewerId?: number;
 }
 
-export const ReplyItem: React.FC<ReplyProps> = ({ item, isLiked, onLike, onReply, theme, isHighlighted }) => {
+export const ReplyItem: React.FC<ReplyProps> = ({ item, isLiked, onLike, onReply, theme, isHighlighted, viewerId }) => {
     const [expanded, setExpanded] = useState(false);
     const isLong = item.content.length > TRUNCATE_AT;
 
@@ -93,6 +96,15 @@ export const ReplyItem: React.FC<ReplyProps> = ({ item, isLiked, onLike, onReply
                     <Text style={[s.time, { color: theme.textSecondary }]}>
                         · {timeAgo(item.create_at)}
                     </Text>
+                    {!!viewerId && item.user_id !== viewerId && (
+                        <UserMenuButton
+                            userId={item.user_id}
+                            username={item.user.username}
+                            size={16}
+                            color={theme.textSecondary}
+                            style={s.menuButton}
+                        />
+                    )}
                 </View>
 
                 <Text style={{ color: theme.textSecondary, fontSize: 14, lineHeight: 20 }}>
@@ -136,6 +148,8 @@ interface CommentProps {
     isLast: boolean;
     highlightedCommentId?: number | null;
     highlightedReplyId?: number | null;
+    /** Signed-in user; others' comments get a "…" menu. */
+    viewerId?: number;
 }
 
 /**
@@ -146,7 +160,7 @@ interface CommentProps {
  */
 export const CommentItem: React.FC<CommentProps> = ({
     item, likedComments, onLike, onReply, theme, isLast,
-    highlightedCommentId, highlightedReplyId,
+    highlightedCommentId, highlightedReplyId, viewerId,
 }) => {
     const [textExpanded, setTextExpanded] = useState(false);
     const total = item.replies?.length ?? 0;
@@ -225,6 +239,15 @@ export const CommentItem: React.FC<CommentProps> = ({
                         <Text style={[s.time, { color: theme.textSecondary }]}>
                             · {timeAgo(item.create_at)}
                         </Text>
+                        {!!viewerId && item.user_id !== viewerId && (
+                            <UserMenuButton
+                                userId={item.user_id}
+                                username={item.user.username}
+                                size={16}
+                                color={theme.textSecondary}
+                                style={s.menuButton}
+                            />
+                        )}
                     </View>
 
                     <Text style={{ color: theme.textSecondary, fontSize: 14, lineHeight: 21 }}>
@@ -273,6 +296,7 @@ export const CommentItem: React.FC<CommentProps> = ({
                                     onReply={() => onReply(r)}
                                     theme={theme}
                                     isHighlighted={highlightedReplyId ? r.reply_id === Number(highlightedReplyId) : false}
+                                    viewerId={viewerId}
                                 />
                             ))}
                         </View>
@@ -321,6 +345,7 @@ const s = StyleSheet.create({
         flexShrink: 1,
     },
     time: { fontSize: 12, marginLeft: 5 },
+    menuButton: { marginLeft: "auto", paddingLeft: 8 },
     actionsRow: {
         flexDirection: "row",
         alignItems: "center",

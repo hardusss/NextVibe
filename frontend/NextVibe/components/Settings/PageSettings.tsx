@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     ArrowLeft, Palette, Mail, Sparkles, Moon, Droplets, Radar,
-    ShieldCheck, KeyRound, LogOut, ChevronRight, Trash2
+    ShieldCheck, KeyRound, LogOut, ChevronRight, Trash2, Ban
 } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import linkEmail from "@/src/api/link.email";
@@ -35,6 +35,7 @@ import { clearFeedCache } from "../Home/MainPage";
 import { clearProfileCache } from "../ProfilePage/ProfilePage";
 import { requestScanStart, requestScanStop } from "@/src/utils/bleScanController";
 import haptics from "@/src/utils/haptics";
+import { useBlockStore } from "@/src/stores/blockStore";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
 import GaslessIndicator from "@/components/Shared/GaslessIndicator";
@@ -214,6 +215,7 @@ function PageSettingsContent() {
         setIsVisibleLogoutConfirmation(false);
         clearFeedCache();
         clearProfileCache();
+        useBlockStore.getState().reset();
         if (address) {
             await disconnect();
         }
@@ -240,6 +242,7 @@ function PageSettingsContent() {
         GoogleSignin.signOut();
         clearFeedCache();
         clearProfileCache();
+        useBlockStore.getState().reset();
         if (address) {
             await disconnect();
         }
@@ -750,6 +753,27 @@ function PageSettingsContent() {
                                 </View>
                             </>
                         )}
+
+                        <Text style={styles.sectionHeader}>PRIVACY</Text>
+                        <View style={styles.card}>
+                            <TouchableOpacity
+                                style={styles.row}
+                                onPress={() => {
+                                    haptics.impact('light');
+                                    router.push("/blocked-accounts");
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <IconChip tint={colors.accentSoft}>
+                                    <Ban size={18} color={colors.accent} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.rowText}>Blocked Accounts</Text>
+                                    <Text style={styles.rowDescription}>People you've blocked</Text>
+                                </View>
+                                <ChevronRight size={18} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
 
                         <Text style={styles.sectionHeader}>SECURITY & ACCOUNT</Text>
                         <View style={styles.card}>

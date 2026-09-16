@@ -28,6 +28,7 @@ import Web3Toast from "../Shared/Toasts/Web3Toast";
 import UserBadges from "../Shared/UserBadges";
 import Hyperlink from "react-native-hyperlink";
 import { storage } from '@/src/utils/storage';
+import { safeBack } from '@/src/utils/safeBack';
 
 const { width: screenWidth } = Dimensions.get("window");
 const ESTIMATED_POST_HEIGHT = screenWidth + 200
@@ -686,6 +687,10 @@ const UserPosts = () => {
                     [item.post_id]: false
                   }))}
                   onPostDeleted={() => handlePostDeleted(item.post_id)}
+                  ownerId={item.user_id}
+                  ownerUsername={userData?.username}
+                  // Every post here is theirs — leave the list
+                  onBlocked={() => safeBack(router)}
                   onPostDeletedFail={() => {
                     setToastMessage("Error deleting post")
                     setToastSuccess(false);

@@ -9,6 +9,7 @@ import getRoccomendationsProfiles from "@/src/api/recommendations.profiles";
 import followUser from "@/src/api/follow";
 import UserBadges from "../Shared/UserBadges";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
+import { useBlockStore, isBlockedInSession } from "@/src/stores/blockStore";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -40,6 +41,7 @@ const RecommendedUsers = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [expanded, setExpanded] = useState(true);
     const [followedUsers, setFollowedUsers] = useState<number[]>([]);
+    const blockOverrides = useBlockStore((state) => state.overrides);
     const theme = useColorScheme() === "dark" ? darkTheme : lightTheme;
     const router = useRouter();
 
@@ -89,7 +91,7 @@ const RecommendedUsers = () => {
             {expanded && (
                 <FlatList
                     horizontal
-                    data={users}
+                    data={users.filter((user) => !isBlockedInSession(blockOverrides, user.id))}
                     keyExtractor={(item) => item.id.toString()}
                     showsHorizontalScrollIndicator={false}
                     renderItem={({ item }) => {

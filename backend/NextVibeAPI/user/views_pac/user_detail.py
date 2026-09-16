@@ -7,8 +7,8 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from ..serializers_pac import UserDetailSerializer
 from posts.models import UserCollection, Reputation
-from user.models import InviteUser, OgAvatarMint
-from django.db.models import Sum
+from user.models import InviteUser, OgAvatarMint, Block
+from django.db.models import Sum, Q
 
 User = get_user_model()
 
@@ -33,6 +33,31 @@ class UserDetailView(APIView):
         try:
             user = User.objects.get(user_id=id)
             isProfile = request.query_params.get('isProfile')
+
+            viewer_id = request.user.user_id
+            blocker_ids = set()
+            if id != viewer_id:
+                blocker_ids = set(
+                    Block.objects.filter(
+                        Q(blocker_id=viewer_id, blocked_id=id) | Q(blocker_id=id, blocked_id=viewer_id)
+                    ).values_list("blocker_id", flat=True)
+                )
+            is_blocked = viewer_id in blocker_ids
+            is_blocked_by = id in blocker_ids
+
+            if is_blocked or is_blocked_by:
+                # Only what the blocked-profile state needs: no bio, stats or lists
+                return Response(
+                    {
+                        "user_id": user.user_id,
+                        "username": user.username,
+                        "avatar": user.avatar.url if user.avatar else None,
+                        "is_subscribed": False,
+                        "is_blocked": is_blocked,
+                        "is_blocked_by": is_blocked_by,
+                    },
+                    status=status.HTTP_200_OK
+                )
 
             # Count cNFTs posts and og
             cnft_count = UserCollection.objects.filter(user=user, post__is_ai_generated=False).count() + OgAvatarMint.objects.filter(user=user).count()
@@ -73,6 +98,8 @@ class UserDetailView(APIView):
                 {
                     **data, 
                     "is_subscribed": is_subscribed, 
+                    "is_blocked": False,
+                    "is_blocked_by": False,
                     "cnft_count": cnft_count,
                     "invited_count": invited_count,
                     "reputation": reputation_count,

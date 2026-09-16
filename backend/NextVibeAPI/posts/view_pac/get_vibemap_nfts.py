@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from user.src.blocking import blocked_user_ids
 from ..models import Post, PostsMedia
 import h3
 
@@ -20,6 +21,7 @@ class GetVibemapNFTsView(APIView):
             .exclude(h3_geo="")
             .exclude(is_hide=True)
             .exclude(moderation_status="denied")
+            .exclude(owner_id__in=blocked_user_ids(request.user))
             .select_related("owner")
             .prefetch_related("media")
             .order_by("-id")

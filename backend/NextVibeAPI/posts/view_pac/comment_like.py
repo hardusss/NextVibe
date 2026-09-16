@@ -8,6 +8,7 @@ from ..models import Comment, CommentReply
 from user.models import Notification
 from user.src.clear_notify_cache import clear_notification_cache
 from rest_framework.throttling import ScopedRateThrottle
+from user.src.blocking import blocked_user_ids
 
 User = get_user_model()
 
@@ -49,6 +50,14 @@ class LikeCommentView(APIView):
                 comment = Comment.objects.select_related('post', 'owner').get(id=comment_id)
                 liked_field = 'liked_comments'
         except (Comment.DoesNotExist, CommentReply.DoesNotExist):
+            return Response(
+                {"data": f"{'Reply' if is_reply else 'Comment'} does not exist"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Hidden for a blocked pair: their comments, and anything under their posts
+        post = comment.comment.post if is_reply else comment.post
+        if {comment.owner_id, post.owner_id} & blocked_user_ids(user):
             return Response(
                 {"data": f"{'Reply' if is_reply else 'Comment'} does not exist"}, 
                 status=status.HTTP_404_NOT_FOUND

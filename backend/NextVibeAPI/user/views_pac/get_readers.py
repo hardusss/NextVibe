@@ -8,6 +8,7 @@ from django.db.models import Case, When, CharField, Value, F
 from django.db.models.functions import Concat
 from django.conf import settings
 from rest_framework.throttling import ScopedRateThrottle
+from user.src.blocking import blocked_user_ids
 
 
 class GetReaders(APIView):
@@ -29,10 +30,11 @@ class GetReaders(APIView):
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
         
-        if not user.readers:
+        hidden = blocked_user_ids(request.user)
+        if user.user_id in hidden or not user.readers:
             return Response({"data": [], "end": True}, status=200)
             
-        readers_ids = user.readers[::-1]
+        readers_ids = [uid for uid in user.readers[::-1] if int(uid) not in hidden]
         
         if not readers_ids:
             return Response({"data": [], "end": True}, status=200)
@@ -43,7 +45,8 @@ class GetReaders(APIView):
         is_end = end >= len(readers_ids)
         
         cache_key = f"readers_{user_id}_page_{index}_end_{is_end}"
-        cached_data = cache.get(cache_key)
+        # Pages are cached per listed user, so they only fit viewers with no blocks
+        cached_data = cache.get(cache_key) if not hidden else None
         
         if cached_data:
             return Response(cached_data, status=200)
@@ -53,7 +56,8 @@ class GetReaders(APIView):
         
         if not slice_ids:
             response_data = {"data": [], "end": True}
-            cache.set(cache_key, response_data, timeout=35)
+            if not hidden:
+                cache.set(cache_key, response_data, timeout=35)
             return Response(response_data, status=200)
         
         preserved_order = Case(
@@ -78,5 +82,6 @@ class GetReaders(APIView):
 
         response_data = {"data": readers_qs, "end": is_end}
         
-        cache.set(cache_key, response_data, timeout=35)
+        if not hidden:
+            cache.set(cache_key, response_data, timeout=35)
         return Response(response_data, status=200)

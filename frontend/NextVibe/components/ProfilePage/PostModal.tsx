@@ -14,6 +14,8 @@ import {
     Share,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import GlassBadge from "@/components/Shared/GlassBadge";
 import GlassPill from "@/components/Shared/GlassPill";
 import GlassModalCard from "@/components/Shared/GlassModalCard";
@@ -314,337 +316,346 @@ const PostPopup: React.FC<PostPopupProps> = ({
             statusBarTranslucent={false}
             onRequestClose={handleClose}
         >
-            <Web3Toast 
-                visible={toastConfig.visible}
-                message={toastConfig.message}
-                isSuccess={toastConfig.isSuccess}
-                onHide={() => setToastConfig(prev => ({ ...prev, visible: false }))}
-            />
-            <Animated.View style={[styles.backdrop, Platform.OS === 'ios' && styles.backdropIOS, { opacity: backdropOpacity }]} pointerEvents="auto">
-                <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
-            </Animated.View>
+            {/* The block sheet portals into the nearest provider — inside this
+                Modal, so it isn't hidden behind it on Android */}
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <BottomSheetModalProvider>
+                    <Web3Toast 
+                        visible={toastConfig.visible}
+                        message={toastConfig.message}
+                        isSuccess={toastConfig.isSuccess}
+                        onHide={() => setToastConfig(prev => ({ ...prev, visible: false }))}
+                    />
+                    <Animated.View style={[styles.backdrop, Platform.OS === 'ios' && styles.backdropIOS, { opacity: backdropOpacity }]} pointerEvents="auto">
+                        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
+                    </Animated.View>
 
-            <Animated.View
-                style={[
-                    styles.cardWrapper,
-                    Platform.OS === 'ios'
-                        ? { transform: [{ translateY }, { scale }] }
-                        : { opacity: cardOpacity, transform: [{ translateY }, { scale }] },
-                ]}
-                pointerEvents="box-none"
-            >
-                <View style={styles.glowWrapper}>
-                    <GlassModalCard style={styles.card}>
+                    <Animated.View
+                        style={[
+                            styles.cardWrapper,
+                            Platform.OS === 'ios'
+                                ? { transform: [{ translateY }, { scale }] }
+                                : { opacity: cardOpacity, transform: [{ translateY }, { scale }] },
+                        ]}
+                        pointerEvents="box-none"
+                    >
+                        <View style={styles.glowWrapper}>
+                            <GlassModalCard style={styles.card}>
 
-                        {/* Header */}
-                        <View style={styles.postHeader}>
-                            <View style={styles.userInfo}>
-                                <AvatarWithFrame
-                                    avatarUrl={post?.avatar ?? null}
-                                    size={38}
-                                    isOg={post?.is_og ?? false}
-                                    ogEdition={post?.og_edition ?? null}
-                                    invitedCount={post?.invited_count ?? 0}
-                                />
-                                <View style={styles.usernameRow}>
-                                    <Text style={styles.username} numberOfLines={1}>{post?.username ?? ""}</Text>
-                                    <UserBadges
-                                        official={post?.official}
-                                        seekerVerified={post?.seeker_verified}
-                                        isLooped={false}
-                                        isVisible={true}
-                                        haveModal={false}
-                                        isStatic={true}
-                                        size={15}
-                                    />
-                                </View>
-                            </View>
-
-                            <View style={styles.headerActions}>
-                                {collectState !== null && !post?.is_luma_event && (
-                                    <ButtonCollect
-                                        onPress={handleOpenMint}
-                                        state={collectState}
-                                        supplyLabel={supplyLabel}
-                                    />
-                                )}
-
-                                <View style={{ position: "relative" }}>
-                                    <TouchableOpacity
-                                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                                        onPress={() => setDropdownVisible(prev => !prev)}
-                                    >
-                                        <MoreVertical size={22} color="rgba(255,255,255,0.75)" />
-                                    </TouchableOpacity>
-                                    {post && (
-                                        <DropDown
-                                            isVisible={dropdownVisible}
-                                            isOwner={currentUserId === post.user_id}
-                                            postId={post.post_id}
-                                            onClose={() => setDropdownVisible(false)}
-                                            onPostDeleted={() => { setDropdownVisible(false); handleClose(); }}
-                                            onPostDeletedFail={() => setDropdownVisible(false)}
-                                            onReportResult={() => setDropdownVisible(false)}
-                                            useModal={false}
+                                {/* Header */}
+                                <View style={styles.postHeader}>
+                                    <View style={styles.userInfo}>
+                                        <AvatarWithFrame
+                                            avatarUrl={post?.avatar ?? null}
+                                            size={38}
+                                            isOg={post?.is_og ?? false}
+                                            ogEdition={post?.og_edition ?? null}
+                                            invitedCount={post?.invited_count ?? 0}
                                         />
-                                    )}
-                                </View>
+                                        <View style={styles.usernameRow}>
+                                            <Text style={styles.username} numberOfLines={1}>{post?.username ?? ""}</Text>
+                                            <UserBadges
+                                                official={post?.official}
+                                                seekerVerified={post?.seeker_verified}
+                                                isLooped={false}
+                                                isVisible={true}
+                                                haveModal={false}
+                                                isStatic={true}
+                                                size={15}
+                                            />
+                                        </View>
+                                    </View>
 
-                                <TouchableOpacity onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                                    <GlassPill
-                                        style={styles.closeBtn}
-                                        colorScheme="dark"
-                                        fallbackBackgroundColor="rgba(255,255,255,0.08)"
-                                        fallbackBorderColor="rgba(255,255,255,0.12)"
-                                        isInteractive
-                                    >
-                                        <X size={15} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
-                                    </GlassPill>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+                                    <View style={styles.headerActions}>
+                                        {collectState !== null && !post?.is_luma_event && (
+                                            <ButtonCollect
+                                                onPress={handleOpenMint}
+                                                state={collectState}
+                                                supplyLabel={supplyLabel}
+                                            />
+                                        )}
 
-                        {loading ? (
-                            <View style={styles.loadingContainer}>
-                                <View style={styles.shimmerImage} />
-                                <View style={styles.shimmerContent}>
-                                    <View style={[styles.shimmerLine, { width: "60%" }]} />
-                                    <View style={[styles.shimmerLine, { width: "90%", marginTop: 8 }]} />
-                                    <View style={[styles.shimmerLine, { width: "75%", marginTop: 6 }]} />
-                                </View>
-                            </View>
-                        ) : post ? (
-                            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                                {mediaUrl ? (
-                                    <Pressable 
-                                        style={[
-                                            styles.imageWrapper, 
-                                            post.is_luma_event ? { height: EVENT_IMAGE_HEIGHT, borderTopLeftRadius: 16, borderTopRightRadius: 16 } : {},
-                                        ]} 
-                                        onPress={handleDoubleTap}
-                                    >
-                                        <ExpoImage
-                                            source={{ uri: mediaUrl }}
-                                            style={styles.image}
-                                            contentFit={post.is_luma_event ? "cover" : "cover"}
-                                        />
-                                        {showHeart && (
-                                            <Animated.View
-                                                style={[styles.heartOverlay, {
-                                                    transform: [{ scale: heartOverlayAnim }],
-                                                    opacity: heartOverlayAnim,
-                                                }]}
-                                                pointerEvents="none"
+                                        <View style={{ position: "relative" }}>
+                                            <TouchableOpacity
+                                                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                                                onPress={() => setDropdownVisible(prev => !prev)}
                                             >
-                                                <Heart size={90} color="#A855F7" fill="#A855F7" />
-                                            </Animated.View>
-                                        )}
-                                        <View style={styles.imageBadges}>
-                                            {post.is_ai_generated && (
-                                                <GlassBadge variant="overlay">
-                                                    <Sparkles size={11} color="#05f0d8" />
-                                                    <Text style={styles.badgeText}>AI Generated</Text>
-                                                </GlassBadge>
-                                            )}
-                                            {post.is_luma_event && (
-                                                <GlassBadge variant="overlay-event">
-                                                    <Calendar size={11} color="#d8b4fe" />
-                                                    <Text style={[styles.badgeText, { color: "#d8b4fe" }]}>Event</Text>
-                                                </GlassBadge>
-                                            )}
-                                            {post.location && (
-                                                <GlassBadge variant="overlay">
-                                                    <MapPin size={11} color="#fff" />
-                                                    <Text style={styles.badgeText}>{post.location}</Text>
-                                                </GlassBadge>
-                                            )}
-                                            {post.is_nft && (
-                                                <GlassBadge variant="overlay-nft">
-                                                    <Text style={styles.nftBadgeText}>
-                                                        {post.minted_count}/{post.total_supply} minted
-                                                    </Text>
-                                                </GlassBadge>
+                                                <MoreVertical size={22} color="rgba(255,255,255,0.75)" />
+                                            </TouchableOpacity>
+                                            {post && (
+                                                <DropDown
+                                                    isVisible={dropdownVisible}
+                                                    isOwner={currentUserId === post.user_id}
+                                                    postId={post.post_id}
+                                                    onClose={() => setDropdownVisible(false)}
+                                                    onPostDeleted={() => { setDropdownVisible(false); handleClose(); }}
+                                                    onPostDeletedFail={() => setDropdownVisible(false)}
+                                                    onReportResult={() => setDropdownVisible(false)}
+                                                    ownerId={post.user_id}
+                                                    ownerUsername={post.username}
+                                                    onBlocked={handleClose}
+                                                    useModal={false}
+                                                />
                                             )}
                                         </View>
-                                    </Pressable>
-                                ) : (
-                                    <View style={styles.noMediaContainer}>
-                                        <ImageIcon size={44} color="#555" />
-                                        <Text style={styles.noMediaText}>No media</Text>
-                                    </View>
-                                )}
 
-                                <View style={styles.content}>
-                                    <View style={styles.metaRow}>
-                                        <View style={styles.metaChip}>
-                                            <Calendar size={12} color="#666" />
-                                            <Text style={styles.metaText}>{formatDate(post.create_at)}</Text>
+                                        <TouchableOpacity onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                                            <GlassPill
+                                                style={styles.closeBtn}
+                                                colorScheme="dark"
+                                                fallbackBackgroundColor="rgba(255,255,255,0.08)"
+                                                fallbackBorderColor="rgba(255,255,255,0.12)"
+                                                isInteractive
+                                            >
+                                                <X size={15} color="rgba(255,255,255,0.85)" strokeWidth={2.5} />
+                                            </GlassPill>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
+                                {loading ? (
+                                    <View style={styles.loadingContainer}>
+                                        <View style={styles.shimmerImage} />
+                                        <View style={styles.shimmerContent}>
+                                            <View style={[styles.shimmerLine, { width: "60%" }]} />
+                                            <View style={[styles.shimmerLine, { width: "90%", marginTop: 8 }]} />
+                                            <View style={[styles.shimmerLine, { width: "75%", marginTop: 6 }]} />
                                         </View>
-                                        {post.is_comments_enabled && (
-                                            <View style={styles.metaChip}>
-                                                <MessageCircle size={12} color="#666" />
-                                                <Text style={styles.metaText}>Comments on</Text>
-                                            </View>
-                                        )}
                                     </View>
-
-                                    {!!post.about && (
-                                        <Text style={styles.aboutText}>{post.about}</Text>
-                                    )}
-
-                                    {post.is_luma_event && post.luma_event_url && (
-                                        <View style={{ marginTop: 16, padding: 14, backgroundColor: "rgba(168,85,247,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(168,85,247,0.2)" }}>
-                                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                                                <View style={{ flex: 1, paddingRight: 10 }}>
-                                                    {post.luma_event_start_time && (
-                                                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                                                            <Calendar size={16} color="#d8b4fe" style={{ flexShrink: 0, marginTop: 2 }} />
-                                                            <Text style={{ color: "#d8b4fe", fontSize: 13, fontFamily: "Dank Mono Bold", flexShrink: 1, lineHeight: 20 }}>
-                                                                {formatEventDate(post.luma_event_start_time)}
-                                                                {post.luma_event_end_time ? ` → ${formatEventDate(post.luma_event_end_time)}` : ""}
+                                ) : post ? (
+                                    <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+                                        {mediaUrl ? (
+                                            <Pressable 
+                                                style={[
+                                                    styles.imageWrapper, 
+                                                    post.is_luma_event ? { height: EVENT_IMAGE_HEIGHT, borderTopLeftRadius: 16, borderTopRightRadius: 16 } : {},
+                                                ]} 
+                                                onPress={handleDoubleTap}
+                                            >
+                                                <ExpoImage
+                                                    source={{ uri: mediaUrl }}
+                                                    style={styles.image}
+                                                    contentFit={post.is_luma_event ? "cover" : "cover"}
+                                                />
+                                                {showHeart && (
+                                                    <Animated.View
+                                                        style={[styles.heartOverlay, {
+                                                            transform: [{ scale: heartOverlayAnim }],
+                                                            opacity: heartOverlayAnim,
+                                                        }]}
+                                                        pointerEvents="none"
+                                                    >
+                                                        <Heart size={90} color="#A855F7" fill="#A855F7" />
+                                                    </Animated.View>
+                                                )}
+                                                <View style={styles.imageBadges}>
+                                                    {post.is_ai_generated && (
+                                                        <GlassBadge variant="overlay">
+                                                            <Sparkles size={11} color="#05f0d8" />
+                                                            <Text style={styles.badgeText}>AI Generated</Text>
+                                                        </GlassBadge>
+                                                    )}
+                                                    {post.is_luma_event && (
+                                                        <GlassBadge variant="overlay-event">
+                                                            <Calendar size={11} color="#d8b4fe" />
+                                                            <Text style={[styles.badgeText, { color: "#d8b4fe" }]}>Event</Text>
+                                                        </GlassBadge>
+                                                    )}
+                                                    {post.location && (
+                                                        <GlassBadge variant="overlay">
+                                                            <MapPin size={11} color="#fff" />
+                                                            <Text style={styles.badgeText}>{post.location}</Text>
+                                                        </GlassBadge>
+                                                    )}
+                                                    {post.is_nft && (
+                                                        <GlassBadge variant="overlay-nft">
+                                                            <Text style={styles.nftBadgeText}>
+                                                                {post.minted_count}/{post.total_supply} minted
                                                             </Text>
-                                                        </View>
+                                                        </GlassBadge>
                                                     )}
                                                 </View>
-                                                {(() => {
-                                                    const dateToCheck = post.luma_event_end_time || post.luma_event_start_time;
-                                                    const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
-                                                    return (
-                                                        <View style={{ backgroundColor: isEnded ? "rgba(255,255,255,0.1)" : "rgba(5,240,216,0.15)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexShrink: 0 }}>
-                                                            <Text style={{ color: isEnded ? "#999" : "#05f0d8", fontSize: 11, fontFamily: "Dank Mono Bold" }}>
-                                                                {isEnded ? "Ended" : "Active"}
-                                                            </Text>
-                                                        </View>
-                                                    );
-                                                })()}
+                                            </Pressable>
+                                        ) : (
+                                            <View style={styles.noMediaContainer}>
+                                                <ImageIcon size={44} color="#555" />
+                                                <Text style={styles.noMediaText}>No media</Text>
                                             </View>
-                                            
-                                            {(() => {
-                                                const dateToCheck = post.luma_event_end_time || post.luma_event_start_time;
-                                                const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
-                                                const isApproved = post.event_request_status === "approved";
-                                                const isPending = post.event_request_status === "pending";
-                                                const isRejected = post.event_request_status === "rejected";
-                                                const canViewLuma = post.is_owner || isEnded || isApproved;
-
-                                                // "You are going" green badge (non-clickable info)
-                                                if (isApproved && !post.is_owner) {
-                                                    return (
-                                                        <View>
-                                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(34,197,94,0.12)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 4 }}>
-                                                                <Text style={{ color: "#4ade80", fontSize: 14, fontFamily: "Dank Mono Bold" }}>✓ You are going</Text>
-                                                            </View>
-                                                            <TouchableOpacity
-                                                                onPress={() => Linking.openURL(post.luma_event_url!)}
-                                                                style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(168,85,247,0.2)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 8 }}
-                                                            >
-                                                                <Link2 size={16} color="#d8b4fe" />
-                                                                <Text style={{ color: "#d8b4fe", fontSize: 14, fontFamily: "Dank Mono Bold" }}>View Event on Luma</Text>
-                                                            </TouchableOpacity>
-                                                        </View>
-                                                    );
-                                                }
-
-                                                const btnBg = isRejected ? "rgba(239,68,68,0.2)" : "rgba(168,85,247,0.2)";
-                                                const btnOpacity = (isPending || isRejected) ? 0.7 : 1;
-                                                const iconColor = isRejected ? "#ef4444" : "#d8b4fe";
-                                                const btnDisabled = isPending || isRejected;
-                                                const btnLabel = canViewLuma
-                                                    ? "View Event on Luma"
-                                                    : isPending ? "Requested"
-                                                    : isRejected ? "Request Denied"
-                                                    : "Request to Attend";
-                                                const labelColor = isRejected ? "#ef4444" : "#d8b4fe";
-
-                                                return (
-                                                    <TouchableOpacity
-                                                        disabled={btnDisabled}
-                                                        onPress={() => {
-                                                            if (canViewLuma) Linking.openURL(post.luma_event_url!);
-                                                            else handleRequestToAttend(post.post_id);
-                                                        }}
-                                                        style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: btnBg, padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 4, opacity: btnOpacity }}
-                                                    >
-                                                        <Link2 size={16} color={iconColor} />
-                                                        <Text style={{ color: labelColor, fontSize: 14, fontFamily: "Dank Mono Bold" }}>{btnLabel}</Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })()}
-
-                                        </View>
-                                    )}
-
-                                    <View style={styles.divider} />
-
-                                    <View style={styles.actionsRow}>
-                                        <TouchableOpacity style={styles.actionButton} onPress={handleLike} activeOpacity={0.7}>
-                                            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                                                <Heart
-                                                    size={22}
-                                                    color={liked ? "#A855F7" : "#999"}
-                                                    fill={liked ? "#A855F7" : "transparent"}
-                                                />
-                                            </Animated.View>
-                                            <Text style={[styles.actionCount, liked && styles.actionCountActive]}>
-                                                {likeCount}
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {post.is_comments_enabled && (
-                                            <TouchableOpacity
-                                                style={styles.actionButton}
-                                                onPress={() => {
-                                                    setShowComments(true);
-                                                    if (postId !== null) onOpenComments?.(postId);
-                                                }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <MessageCircle size={22} color="#999" />
-                                                <Text style={styles.actionCount}>{post.comments_count ?? 0}</Text>
-                                            </TouchableOpacity>
                                         )}
 
-                                        <TouchableOpacity
-                                            style={styles.actionButton}
-                                            onPress={handleSharePost}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Share2 size={22} color="#999" />
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </ScrollView>
-                        ) : null}
-                    </GlassModalCard>
-                </View>
-            </Animated.View>
+                                        <View style={styles.content}>
+                                            <View style={styles.metaRow}>
+                                                <View style={styles.metaChip}>
+                                                    <Calendar size={12} color="#666" />
+                                                    <Text style={styles.metaText}>{formatDate(post.create_at)}</Text>
+                                                </View>
+                                                {post.is_comments_enabled && (
+                                                    <View style={styles.metaChip}>
+                                                        <MessageCircle size={12} color="#666" />
+                                                        <Text style={styles.metaText}>Comments on</Text>
+                                                    </View>
+                                                )}
+                                            </View>
 
-            {showComments && post && (
-                <PopupModal
-                    post_id={post.post_id}
-                    onClose={() => setShowComments(false)}
-                    isCommentsEnabled={post.is_comments_enabled}
-                    useModal={false}
-                    isFocused={isFocused}
-                />
-            )}
+                                            {!!post.about && (
+                                                <Text style={styles.aboutText}>{post.about}</Text>
+                                            )}
 
-            {post && (
-                <MintBottomSheet
-                    ref={mintSheetRef}
-                    postId={post.post_id}
-                    imageUrl={mediaUrl}
-                    creatorUsername={post.username}
-                    creatorAvatar={post.avatar}
-                    walletConnected={!!address}
-                    onCollected={handleCollected}
-                    isOwner={post.is_owner}
-                    collect={post.collect ?? null}
-                    page={`user-profile?id=${post.user_id}`}
-                    isFocused={isFocused}
-                    useModal={false}
-                />
-            )}
+                                            {post.is_luma_event && post.luma_event_url && (
+                                                <View style={{ marginTop: 16, padding: 14, backgroundColor: "rgba(168,85,247,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(168,85,247,0.2)" }}>
+                                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                                                        <View style={{ flex: 1, paddingRight: 10 }}>
+                                                            {post.luma_event_start_time && (
+                                                                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                                                                    <Calendar size={16} color="#d8b4fe" style={{ flexShrink: 0, marginTop: 2 }} />
+                                                                    <Text style={{ color: "#d8b4fe", fontSize: 13, fontFamily: "Dank Mono Bold", flexShrink: 1, lineHeight: 20 }}>
+                                                                        {formatEventDate(post.luma_event_start_time)}
+                                                                        {post.luma_event_end_time ? ` → ${formatEventDate(post.luma_event_end_time)}` : ""}
+                                                                    </Text>
+                                                                </View>
+                                                            )}
+                                                        </View>
+                                                        {(() => {
+                                                            const dateToCheck = post.luma_event_end_time || post.luma_event_start_time;
+                                                            const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
+                                                            return (
+                                                                <View style={{ backgroundColor: isEnded ? "rgba(255,255,255,0.1)" : "rgba(5,240,216,0.15)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexShrink: 0 }}>
+                                                                    <Text style={{ color: isEnded ? "#999" : "#05f0d8", fontSize: 11, fontFamily: "Dank Mono Bold" }}>
+                                                                        {isEnded ? "Ended" : "Active"}
+                                                                    </Text>
+                                                                </View>
+                                                            );
+                                                        })()}
+                                                    </View>
+                                            
+                                                    {(() => {
+                                                        const dateToCheck = post.luma_event_end_time || post.luma_event_start_time;
+                                                        const isEnded = dateToCheck ? new Date(dateToCheck) < new Date() : false;
+                                                        const isApproved = post.event_request_status === "approved";
+                                                        const isPending = post.event_request_status === "pending";
+                                                        const isRejected = post.event_request_status === "rejected";
+                                                        const canViewLuma = post.is_owner || isEnded || isApproved;
+
+                                                        // "You are going" green badge (non-clickable info)
+                                                        if (isApproved && !post.is_owner) {
+                                                            return (
+                                                                <View>
+                                                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(34,197,94,0.12)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 4 }}>
+                                                                        <Text style={{ color: "#4ade80", fontSize: 14, fontFamily: "Dank Mono Bold" }}>✓ You are going</Text>
+                                                                    </View>
+                                                                    <TouchableOpacity
+                                                                        onPress={() => Linking.openURL(post.luma_event_url!)}
+                                                                        style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(168,85,247,0.2)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 8 }}
+                                                                    >
+                                                                        <Link2 size={16} color="#d8b4fe" />
+                                                                        <Text style={{ color: "#d8b4fe", fontSize: 14, fontFamily: "Dank Mono Bold" }}>View Event on Luma</Text>
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                            );
+                                                        }
+
+                                                        const btnBg = isRejected ? "rgba(239,68,68,0.2)" : "rgba(168,85,247,0.2)";
+                                                        const btnOpacity = (isPending || isRejected) ? 0.7 : 1;
+                                                        const iconColor = isRejected ? "#ef4444" : "#d8b4fe";
+                                                        const btnDisabled = isPending || isRejected;
+                                                        const btnLabel = canViewLuma
+                                                            ? "View Event on Luma"
+                                                            : isPending ? "Requested"
+                                                            : isRejected ? "Request Denied"
+                                                            : "Request to Attend";
+                                                        const labelColor = isRejected ? "#ef4444" : "#d8b4fe";
+
+                                                        return (
+                                                            <TouchableOpacity
+                                                                disabled={btnDisabled}
+                                                                onPress={() => {
+                                                                    if (canViewLuma) Linking.openURL(post.luma_event_url!);
+                                                                    else handleRequestToAttend(post.post_id);
+                                                                }}
+                                                                style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: btnBg, padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 4, opacity: btnOpacity }}
+                                                            >
+                                                                <Link2 size={16} color={iconColor} />
+                                                                <Text style={{ color: labelColor, fontSize: 14, fontFamily: "Dank Mono Bold" }}>{btnLabel}</Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })()}
+
+                                                </View>
+                                            )}
+
+                                            <View style={styles.divider} />
+
+                                            <View style={styles.actionsRow}>
+                                                <TouchableOpacity style={styles.actionButton} onPress={handleLike} activeOpacity={0.7}>
+                                                    <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                                                        <Heart
+                                                            size={22}
+                                                            color={liked ? "#A855F7" : "#999"}
+                                                            fill={liked ? "#A855F7" : "transparent"}
+                                                        />
+                                                    </Animated.View>
+                                                    <Text style={[styles.actionCount, liked && styles.actionCountActive]}>
+                                                        {likeCount}
+                                                    </Text>
+                                                </TouchableOpacity>
+
+                                                {post.is_comments_enabled && (
+                                                    <TouchableOpacity
+                                                        style={styles.actionButton}
+                                                        onPress={() => {
+                                                            setShowComments(true);
+                                                            if (postId !== null) onOpenComments?.(postId);
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                    >
+                                                        <MessageCircle size={22} color="#999" />
+                                                        <Text style={styles.actionCount}>{post.comments_count ?? 0}</Text>
+                                                    </TouchableOpacity>
+                                                )}
+
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={handleSharePost}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Share2 size={22} color="#999" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    </ScrollView>
+                                ) : null}
+                            </GlassModalCard>
+                        </View>
+                    </Animated.View>
+
+                    {showComments && post && (
+                        <PopupModal
+                            post_id={post.post_id}
+                            onClose={() => setShowComments(false)}
+                            isCommentsEnabled={post.is_comments_enabled}
+                            useModal={false}
+                            isFocused={isFocused}
+                        />
+                    )}
+
+                    {post && (
+                        <MintBottomSheet
+                            ref={mintSheetRef}
+                            postId={post.post_id}
+                            imageUrl={mediaUrl}
+                            creatorUsername={post.username}
+                            creatorAvatar={post.avatar}
+                            walletConnected={!!address}
+                            onCollected={handleCollected}
+                            isOwner={post.is_owner}
+                            collect={post.collect ?? null}
+                            page={`user-profile?id=${post.user_id}`}
+                            isFocused={isFocused}
+                            useModal={false}
+                        />
+                    )}
+                </BottomSheetModalProvider>
+            </GestureHandlerRootView>
         </Modal>
     );
 };

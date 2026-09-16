@@ -222,6 +222,13 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             return;
         }
 
+        if (error.kind === 'blocked' && source === 'ble') {
+            // Passing a blocked person shouldn't pop anything up; a deliberate
+            // NFC or link tap still gets the neutral answer below.
+            quietly(TOKEN_LIFETIME_MS);
+            return;
+        }
+
         if (error.kind === 'alreadyMet') {
             if (stage === 'confirm') {
                 // Both people pressed Confirm at the same moment — the other
@@ -397,6 +404,9 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             if (payload.kind === 'profile') {
                 const user: any = await getUserDetail(payload.userId);
                 if (myRun !== runId) return;
+                if (user?.is_blocked || user?.is_blocked_by) {
+                    throw new ProximityClientError('blocked');
+                }
                 clearLoadingTimer();
                 const repeatKey = `profile:${payload.userId}`;
                 if (get().source === 'ble' && dismissedTooOften(repeatKey)) {

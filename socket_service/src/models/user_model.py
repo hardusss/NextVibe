@@ -37,6 +37,16 @@ class User(Base):
     is_online = Column(Boolean, default=False)
     expo_push_token = Column(String(100), nullable=True)
 
+
+class Block(Base):
+    # Mirrors backend/NextVibeAPI/user/models.py Block — keep schemas in sync!
+    __tablename__ = "user_block"
+
+    id = Column(Integer, primary_key=True, index=True)
+    blocker_id = Column(Integer, ForeignKey("user_user.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    blocked_id = Column(Integer, ForeignKey("user_user.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
     
 class UserOnlineSession(Base):
     __tablename__ = "user_useronlinesession"

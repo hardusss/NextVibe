@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest
 from user.models import Notification
+from user.src.blocking import is_blocked_between
 from django.db import IntegrityError
 
 class EventRequestCreateView(APIView):
@@ -15,6 +16,9 @@ class EventRequestCreateView(APIView):
         
         if post.owner == request.user:
             return Response({"error": "Cannot request your own event"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if is_blocked_between(request.user.user_id, post.owner_id):
+            return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
             
         try:
             event_request, created = EventRequest.objects.get_or_create(
@@ -74,13 +78,15 @@ class EventRequestActionView(APIView):
             
         event_request.save(update_fields=['status'])
         
-        Notification.objects.create(
-            sender=request.user,
-            recipient=event_request.user,
-            notification_type='event_request_status',
-            post=event_request.post,
-            text_preview=text_preview
-        )
+        # The organizer can still act on a request from someone they blocked, silently
+        if not is_blocked_between(request.user.user_id, event_request.user_id):
+            Notification.objects.create(
+                sender=request.user,
+                recipient=event_request.user,
+                notification_type='event_request_status',
+                post=event_request.post,
+                text_preview=text_preview
+            )
         
         return Response({"status": event_request.status}, status=status.HTTP_200_OK)
 

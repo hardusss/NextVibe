@@ -34,6 +34,7 @@ import {
     Sparkles,
     Play,
     Palette,
+    MessageSquareOff,
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -75,6 +76,11 @@ import Web3Toast from '../Shared/Toasts/Web3Toast';
 import { LiquidGlassView } from '../Shared/LiquidGlassView';
 import UserBadges from '../Shared/UserBadges';
 import { chatColors, chatRadius, chatSpacing } from '@/src/theme/chatTheme';
+import UserMenuButton from '../Shared/Block/UserMenuButton';
+import { unblockUser } from '@/src/api/block';
+import { useBlockStore } from '@/src/stores/blockStore';
+import { safeBack } from '@/src/utils/safeBack';
+import haptics from '@/src/utils/haptics';
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 const EMOJI_LIST = ['❤️', '👍', '🔥', '😂', '😮', '🙏', '👏'];
@@ -179,7 +185,16 @@ export default function CustomChatScreen() {
         is_online: boolean;
         official?: boolean;
         seeker_verified?: boolean;
+        is_blocked?: boolean;
+        is_blocked_by?: boolean;
     } | null>(null);
+    // Set when the server refuses a message because of a block (either side)
+    const [chatUnavailable, setChatUnavailable] = useState(false);
+    const [unblocking, setUnblocking] = useState(false);
+    const blockOverride = useBlockStore((state) => (otherUser ? state.overrides[otherUser.user_id] : undefined));
+    const setBlocked = useBlockStore((state) => state.setBlocked);
+    const partnerBlocked = blockOverride ?? otherUser?.is_blocked === true;
+    const chatBlocked = partnerBlocked || otherUser?.is_blocked_by === true || chatUnavailable;
 
     const [replyToMessage, setReplyToMessage] = useState<MessageItem | null>(null);
     const [editingMessage, setEditingMessage] = useState<MessageItem | null>(null);
@@ -255,6 +270,8 @@ export default function CustomChatScreen() {
                             is_online: data.is_online === true,
                             official: data.official === true,
                             seeker_verified: data.seeker_verified === true,
+                            is_blocked: data.is_blocked === true,
+                            is_blocked_by: data.is_blocked_by === true,
                         });
                         return;
                     }
@@ -436,6 +453,16 @@ export default function CustomChatScreen() {
 
         const unsubscribeWS = WebSocketService.addListener(async (event: any) => {
             if (!event || String(event.chat_id) !== String(chatId)) return;
+
+            if (event.type === 'error' && event.code === 'blocked') {
+                // Nothing was delivered — drop the optimistic bubble
+                if (event.client_msg_id) {
+                    setMessages(prev => prev.filter(m => m.id !== event.client_msg_id && m.client_msg_id !== event.client_msg_id));
+                }
+                haptics.notification('error');
+                setChatUnavailable(true);
+                return;
+            }
 
             if (event.type === 'message') {
                 if (event.sender_id && event.sender_id !== currentUserId) {
@@ -922,6 +949,24 @@ export default function CustomChatScreen() {
         }
     }, [selectedActionMessage, chatId]);
 
+    const handleUnblock = async () => {
+        if (!otherUser || unblocking) return;
+        setUnblocking(true);
+        try {
+            await unblockUser(otherUser.user_id);
+        } catch {
+            haptics.notification('error');
+            return;
+        } finally {
+            setUnblocking(false);
+        }
+        haptics.notification('success');
+        setBlocked(otherUser.user_id, false);
+        setOtherUser(prev => (prev ? { ...prev, is_blocked: false } : prev));
+        setChatUnavailable(false);
+        loadInitialMessages();
+    };
+
     const partnerName = otherUser?.username || 'User';
     const partnerAvatar = otherUser?.avatar || DEFAULT_AVATAR;
 
@@ -1133,10 +1178,41 @@ export default function CustomChatScreen() {
                     >
                         <ShieldCheck size={22} color={colors.accent} />
                     </TouchableOpacity>
+
+                    {otherUser && !chatBlocked && (
+                        <UserMenuButton
+                            userId={otherUser.user_id}
+                            username={otherUser.username}
+                            orientation="vertical"
+                            size={22}
+                            color={colors.accent}
+                            style={styles.headerActionButton}
+                            onBlocked={() => safeBack(router, '/chats')}
+                        />
+                    )}
                 </View>
             </View>
 
-            {loading ? (
+            {chatBlocked ? (
+                <View style={styles.centerContainer}>
+                    <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.12)' : 'rgba(124, 58, 237, 0.08)' }]}>
+                        <MessageSquareOff size={32} color={colors.accent} />
+                    </View>
+                    {/* Blocked by them reads like any unavailable chat — never say why */}
+                    <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                        {partnerBlocked ? 'You blocked this user' : "This conversation isn't available"}
+                    </Text>
+                    {partnerBlocked && (
+                        <TouchableOpacity
+                            style={[styles.retryButton, { backgroundColor: colors.accent, marginTop: 12 }, unblocking && { opacity: 0.6 }]}
+                            onPress={handleUnblock}
+                            disabled={unblocking}
+                        >
+                            <Text style={styles.retryButtonText}>Unblock</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            ) : loading ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={colors.accent} />
                     <Text style={[styles.infoText, { color: colors.subtext }]}>Loading chat history...</Text>

@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework.throttling import ScopedRateThrottle
 from user.models import InviteUser
+from user.src.blocking import blocked_user_ids
 
 User = get_user_model()
 
@@ -28,6 +29,7 @@ class SearchUsersView(APIView):
         users = list(
             User.objects
             .filter(username__icontains=search_name)
+            .exclude(user_id__in=blocked_user_ids(request.user))
             .select_related("og_avatar")
             .only("user_id", "username", "avatar", "official", "seeker_verified", "readers_count")
             [:50]

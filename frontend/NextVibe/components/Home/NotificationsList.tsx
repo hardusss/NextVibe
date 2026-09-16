@@ -31,6 +31,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import FrostedView from '@/components/Shared/FrostedView';
 import readNotifications from '@/src/api/read.notifications';
+import { useBlockStore, isBlockedInSession } from '@/src/stores/blockStore';
 
 const icons = {
   like: {
@@ -315,6 +316,7 @@ export default function NotificationsListPage() {
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
+  const blockOverrides = useBlockStore((state) => state.overrides);
   const isDarkTheme = useColorScheme() === 'dark';
   const router = useRouter();
 
@@ -640,7 +642,7 @@ export default function NotificationsListPage() {
       </View>
 
       <FlatList
-        data={notifications}
+        data={notifications.filter((item) => !isBlockedInSession(blockOverrides, item.sender__user_id))}
         renderItem={renderNotification}
         keyExtractor={(item) => item.id.toString()}
         style={styles.container}

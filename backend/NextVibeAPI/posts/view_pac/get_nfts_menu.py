@@ -6,6 +6,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 from ..models import PostsMedia, UserCollection
+from user.src.blocking import blocked_user_ids
 
 User = get_user_model()
 OG_AVATAR_BASE_URL = "https://media.nextvibe.io/og-avatar-{edition}.jpg"
@@ -20,17 +21,20 @@ class UserCollectionView(APIView):
         index = int(request.query_params.get("index", 0))
         limit = int(request.query_params.get("limit", 9))
 
+        hidden = blocked_user_ids(request.user)
+
         collections_qs = (
             UserCollection.objects
             .filter(user__user_id=id, post__is_ai_generated=False)
+            .exclude(post__owner_id__in=hidden)
             .select_related("user", "post__owner") 
             .prefetch_related(Prefetch("post__media", queryset=PostsMedia.objects.all()))
             .order_by("-minted_at")[index:index + limit]
         )
 
-        total = UserCollection.objects.filter(user__user_id=id).count()
+        total = UserCollection.objects.filter(user__user_id=id).exclude(post__owner_id__in=hidden).count()
 
-        if not collections_qs:
+        if id in hidden or not collections_qs:
             return Response({
                 "user": None,
                 "data": [],

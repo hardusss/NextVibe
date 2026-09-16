@@ -9,6 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { storage } from "@/src/utils/storage";
+import { useBlockStore, isBlockedInSession } from "@/src/stores/blockStore";
 import UserBadges from "../Shared/UserBadges";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
 const { width } = Dimensions.get("window");
@@ -76,6 +77,10 @@ export default function SearchPage() {
     const [notExist, setNotExist] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(false);
     const [searchHistoryUser, setSearchHistoryUser] = useState<User[]>([]);
+    // Someone blocked this session drops out before the next search
+    const blockOverrides = useBlockStore((state) => state.overrides);
+    const visibleHistory = searchHistoryUser.filter((u) => !isBlockedInSession(blockOverrides, u.user_id));
+    const visibleUsers = users.filter((u) => !isBlockedInSession(blockOverrides, u.user_id));
 
     const fetchHistory = async () => {
         const response = await getSearchHistory();
@@ -192,9 +197,9 @@ export default function SearchPage() {
         <View style={[styles.container, { backgroundColor: colors.background }]}>
 
             {/* History */}
-            {!searchName.length && searchHistoryUser.length > 0 && (
+            {!searchName.length && visibleHistory.length > 0 && (
                 <FlatList
-                    data={searchHistoryUser}
+                    data={visibleHistory}
                     keyExtractor={(item) => item.user_id.toString()}
                     showsVerticalScrollIndicator={false}
                     contentInsetAdjustmentBehavior="automatic"
@@ -212,7 +217,7 @@ export default function SearchPage() {
             {/* Search Results */}
             {!loading && !notExist ? (
                 <FlatList
-                    data={users}
+                    data={visibleUsers}
                     keyExtractor={(item) => item.user_id.toString()}
                     showsVerticalScrollIndicator={false}
                     onEndReachedThreshold={0.5}

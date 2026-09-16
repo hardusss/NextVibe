@@ -1,10 +1,11 @@
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
-import { Flag, Trash2 } from 'lucide-react-native';
+import { Ban, Flag, Trash2 } from 'lucide-react-native';
 import { useState, useEffect, useRef } from "react";
 import deletePost from "@/src/api/delete.post";
 import ConfirmDialog from "../Toasts/ConfirmDialog";
 import ReportPostModal from "@/components/Shared/Posts/ReportPostModal";
+import BlockUserSheet, { BlockTarget } from "@/components/Shared/Block/BlockUserSheet";
 
 export default function DropDown({
     isVisible,
@@ -14,6 +15,9 @@ export default function DropDown({
     onPostDeleted,
     onPostDeletedFail,
     onReportResult,
+    ownerId,
+    ownerUsername,
+    onBlocked,
     useModal = true,
 }: {
     isVisible: boolean,
@@ -23,10 +27,15 @@ export default function DropDown({
     onPostDeleted?: () => void,
     onPostDeletedFail?: () => void,
     onReportResult?: (reported: boolean, message?: string) => void,
+    /** Post author; the Block item shows only when it's given. */
+    ownerId?: number,
+    ownerUsername?: string,
+    onBlocked?: (userId: number) => void,
     useModal?: boolean,
 }) {
     const [showConfirm, setShowConfirm] = useState(false);
     const [reportModalVisible, setReportModalVisible] = useState(false);
+    const [blockTarget, setBlockTarget] = useState<BlockTarget | null>(null);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -82,6 +91,16 @@ export default function DropDown({
             show: !isOwner,
         },
         {
+            label: "Block",
+            icon: <Ban size={17} color="#FCA5A5" strokeWidth={1.8} />,
+            color: "#EF4444",
+            onClick: () => {
+                onClose();
+                if (ownerId) setTimeout(() => setBlockTarget({ userId: ownerId, username: ownerUsername ?? "" }), 200);
+            },
+            show: !isOwner && !!ownerId,
+        },
+        {
             label: "Delete",
             icon: <Trash2 size={17} color="#FCA5A5" strokeWidth={1.8} />,
             color: "#EF4444",
@@ -107,6 +126,11 @@ export default function DropDown({
                     onReportResult?.(!!reported, message);
                 }}
                 useModal={useModal}
+            />
+            <BlockUserSheet
+                target={blockTarget}
+                onClose={() => setBlockTarget(null)}
+                onBlocked={onBlocked}
             />
         </>
     );

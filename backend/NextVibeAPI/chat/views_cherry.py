@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
+from user.src.blocking import blocked_user_ids
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -97,8 +98,10 @@ class CherryMembersView(APIView):
 
             # Filter active community members (active in last 7 days or online)
             active_cutoff = now - timedelta(days=7)
+            hidden = blocked_user_ids(current_user)
 
             query = User.objects.filter(is_active=True, is_baned=False)\
+                        .exclude(user_id__in=hidden)\
                         .filter(last_activity__gte=active_cutoff)\
                         .exclude(username__in=['_', 'test', 'admin'])\
                         .exclude(username__icontains='test_wallet')
@@ -109,6 +112,7 @@ class CherryMembersView(APIView):
             if len(users) < target_limit:
                 active_cutoff_30 = now - timedelta(days=30)
                 query = User.objects.filter(is_active=True, is_baned=False)\
+                            .exclude(user_id__in=hidden)\
                             .filter(last_activity__gte=active_cutoff_30)\
                             .exclude(username__in=['_', 'test', 'admin'])\
                             .exclude(username__icontains='test_wallet')
@@ -247,6 +251,13 @@ class CherryWebhookView(APIView):
 
                 if sender_wallet and isinstance(sender_wallet, str):
                     query = query.exclude(wallet_address=sender_wallet).exclude(username=sender_wallet)
+
+                # No push from someone the recipient blocked (or who blocked them)
+                sender_user = request.user if (request.user and request.user.is_authenticated) else None
+                if sender_user is None and sender_wallet and isinstance(sender_wallet, str):
+                    sender_user = User.objects.filter(wallet_address=sender_wallet).first()
+                if sender_user is not None:
+                    query = query.exclude(user_id__in=blocked_user_ids(sender_user))
 
                 raw_tokens = list(query.values_list("expo_push_token", flat=True))
 

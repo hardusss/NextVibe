@@ -7,6 +7,7 @@ from user.models import Notification
 from django.core.cache import cache
 from typing import Self, NewType
 from rest_framework.throttling import ScopedRateThrottle
+from user.src.blocking import blocked_user_ids
 
 CacheKey = NewType("CacheKey", str)
 
@@ -36,7 +37,7 @@ class GetCountUnreadNotificationsView(APIView):
         # Calculate unread notifications count
         count_unread_notifications: int = Notification.objects.filter(
             recipient=user, is_read=False
-        ).count()
+        ).exclude(sender_id__in=blocked_user_ids(user)).count()
 
         # Set cache (30 seconds)
         cache.set(cache_key, count_unread_notifications, timeout=30)
