@@ -1,5 +1,6 @@
 # CLOCK IN Hackathon Changelog (Sep 8 – Oct 8, 2026)
 
+# Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
 ## 2026-09-16
