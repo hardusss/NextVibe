@@ -10,6 +10,10 @@ if ENV == "prod":
 else:
     from .setting.dev import *
 
+# Absolute base for public image URLs (Seeker Verified card). Crawlers need
+# an absolute og:image, so it doesn't come from the request.
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.nextvibe.io")
+
 # Console logging for mint/collect diagnostics — the "posts" logger emits
 # INFO-level flow logs (prepare/submit/mint outcomes) in both environments.
 LOGGING = {

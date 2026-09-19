@@ -14,7 +14,8 @@ from .views_pac import (
                             GetInviteInfoView, OgNftMintView,
                             WalletSignInView, LinkEmailView,
                             SeekerVerifyView, DeleteAccountView,
-                            BlockUserView, UnblockUserView, BlockedUsersView
+                            BlockUserView, UnblockUserView, BlockedUsersView,
+                            UserLookupView, SeekerShareView, seeker_card_image,
                         )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -55,4 +56,8 @@ urlpatterns = [
     path("block/", BlockUserView.as_view(), name="block_user"),
     path("block/<int:user_id>/", UnblockUserView.as_view(), name="unblock_user"),
     path("blocked/", BlockedUsersView.as_view(), name="blocked_users"),
+    path("lookup/", UserLookupView.as_view(), name="user_lookup"),
+    # Public, no auth. `path:` so a username with a slash still resolves.
+    path("<path:username>/seeker-card.png", seeker_card_image, name="seeker_card_image"),
+    path("<path:username>/seeker-share/", SeekerShareView.as_view(), name="seeker_share"),
 ]
