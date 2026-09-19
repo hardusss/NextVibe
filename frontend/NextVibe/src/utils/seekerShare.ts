@@ -6,6 +6,12 @@ import GetApiUrl from './url_api';
 import { toAppPath } from '../proximity/payload';
 
 export const SEEKER_SHARE_ORIGIN = 'https://nextvibe.io';
+/**
+ * Share page path. Under /u because Android already opens nextvibe.io/u/* in
+ * the app (intent filter in app.config.js); a new prefix would need a native
+ * rebuild and a reinstall.
+ */
+export const SEEKER_SHARE_PATH = '/u/verified/';
 export const X_POST_LIMIT = 280;
 /** X shortens every link to a 23-character t.co URL, whatever its length. */
 const X_LINK_LENGTH = 23;
@@ -19,7 +25,7 @@ function encodeSegment(value: string): string {
 }
 
 export function seekerSharePageUrl(username: string): string {
-    return `${SEEKER_SHARE_ORIGIN}/v/${encodeSegment(username)}`;
+    return `${SEEKER_SHARE_ORIGIN}${SEEKER_SHARE_PATH}${encodeSegment(username)}`;
 }
 
 /** Always the latest card: the backend only lets CDNs keep versioned (?v=) URLs. */
@@ -49,15 +55,16 @@ export function xPostLength(text: string): number {
 }
 
 /**
- * In-app route for a username link, or null. nextvibe://profile/<username>
- * (the share page's "Open in NextVibe") and nextvibe.io/v/<username> (the
- * share page itself, opened as a universal link) both go to /v/<username>,
- * which looks the username up and opens that profile.
+ * In-app route for a username link, or null. The share page itself
+ * (nextvibe.io/u/verified/<username>, opened in the app), its "Open in
+ * NextVibe" (nextvibe://profile/<username>) and the first test links
+ * (nextvibe.io/v/<username>) all go to /u/verified/<username>, which looks
+ * the username up and opens that profile.
  */
 export function seekerLinkPath(raw: string): string | null {
     const path = toAppPath(raw);
     if (!path) return null;
     const pathname = path.split('?')[0].replace(/\/+$/, '');
-    const match = pathname.match(/^\/(?:profile|v)\/([^/]+)$/);
-    return match ? `/v/${match[1]}` : null;
+    const match = pathname.match(/^\/(?:profile|v|u\/verified)\/([^/]+)$/);
+    return match ? `${SEEKER_SHARE_PATH}${match[1]}` : null;
 }

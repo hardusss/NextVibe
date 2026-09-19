@@ -45,8 +45,8 @@ class SeekerShareView(APIView):
     """
     GET /api/v1/users/<username>/seeker-share/ — public, no auth.
 
-    What nextvibe.io/v/<username> needs to render the share page and its card
-    tags (the landing site's Pages Function calls this). Unknown and
+    What nextvibe.io/u/verified/<username> needs to render the share page and
+    its card tags (the landing site's _worker.js calls this). Unknown and
     unverified usernames get the same 404, so nothing can be probed.
     """
     permission_classes = [AllowAny]
@@ -74,9 +74,10 @@ class UserLookupView(APIView):
     """
     GET /api/v1/users/lookup/?username=<username> → { user_id }
 
-    Lets the app open nextvibe://profile/<username> and nextvibe.io/v/<username>
-    links, which carry a username rather than an id. A blocked pair still
-    resolves: the profile screen shows its own blocked state.
+    Lets the app open nextvibe://profile/<username> and
+    nextvibe.io/u/verified/<username> links, which carry a username rather
+    than an id. A blocked pair still resolves: the profile screen shows its
+    own blocked state.
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]

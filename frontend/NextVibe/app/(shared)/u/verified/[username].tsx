@@ -10,9 +10,10 @@ import { safeBack } from "@/src/utils/safeBack";
 import { HIT_TARGET, radius, space } from "@/src/theme/tokens";
 
 /**
- * Opens a profile from a username link: nextvibe.io/v/<username> (the Seeker
- * share page, opened as a universal link) and nextvibe://profile/<username>
- * (that page's "Open in NextVibe"). Replaces itself with the profile.
+ * Opens a profile from a username link: nextvibe.io/u/verified/<username> (the
+ * Seeker share page, which Android and iOS open in the app) and
+ * nextvibe://profile/<username> (that page's "Open in NextVibe"). Replaces
+ * itself with the profile.
  */
 export default function UsernameLinkScreen() {
     const { username } = useLocalSearchParams<{ username: string }>();

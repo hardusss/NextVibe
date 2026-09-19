@@ -18,9 +18,9 @@ import { seekerLinkPath } from '@/src/utils/seekerShare';
  * screen. On a cold start the app boots normally (splash → home) with the
  * prompt on top, so there is never a dead-end screen without a back stack.
  *
- * Username links (nextvibe://profile/<username> from the Seeker share page's
- * "Open in NextVibe", or the page itself at nextvibe.io/v/<username>) go to
- * /v/<username>, which looks the username up and opens that profile.
+ * Username links (the Seeker share page nextvibe.io/u/verified/<username>, or
+ * its "Open in NextVibe" at nextvibe://profile/<username>) go to
+ * /u/verified/<username>, which looks the username up and opens that profile.
  */
 export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): string | null {
     try {

@@ -157,7 +157,7 @@ class SeekerShareTest(TestCase):
         self.assertEqual(seeker_card.card_subline(None), "Genesis Token confirmed on-chain")
         self.assertEqual(seeker_card.card_subline("skr"), "Seeker ID (.skr) confirmed")
 
-    # ── Share data for nextvibe.io/v/<username> ────────────────────────
+    # ── Share data for nextvibe.io/u/verified/<username> ────────────────────────
 
     def test_share_data_for_verified_user(self):
         res = self.share("alice")
