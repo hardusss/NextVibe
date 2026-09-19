@@ -3,6 +3,7 @@ import GetApiUrl from "../utils/url_api";
 import Toast from "react-native-toast-message";
 import { storage } from "../utils/storage";
 import { Router } from "expo-router";
+import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
 
 export default async function GoogleSignIn(
     username: string,
@@ -28,7 +29,7 @@ export default async function GoogleSignIn(
             text2: 'Signed in successfully',
         });
 
-        setTimeout(() => router.replace("/profile"), 2000);
+        setTimeout(() => navigateAfterSignIn(router, "/profile"), 2000);
 
     } catch (error: any) {
         const serverError = error?.response?.data?.error;

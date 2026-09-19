@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import VerifyBadge from '../VerifyBadge';
@@ -21,9 +21,12 @@ interface UserBadgesProps {
     seekerSource?: string | null;
     /** Own profile only: adds "Share on X" / "Share image" to the sheet for this username */
     seekerShareUsername?: string | null;
-    /** Opens the sheet by itself, with a "New" pill (first time after the badge was granted) */
-    seekerIntro?: boolean;
-    onSeekerIntroShown?: () => void;
+    /**
+     * A SeekerBadgeSheet the screen renders itself (own profile). The badge tap
+     * presents that one and no sheet is mounted here, so the screen can open it
+     * from a push tap / deep link without waiting for this component.
+     */
+    seekerSheetRef?: React.RefObject<SeekerBadgeSheetRef | null>;
 }
 
 /**
@@ -42,23 +45,11 @@ export default function UserBadges({
     seekerInfoOnTap = false,
     seekerSource = null,
     seekerShareUsername = null,
-    seekerIntro = false,
-    onSeekerIntroShown,
+    seekerSheetRef,
 }: UserBadgesProps) {
-    const sheetRef = useRef<SeekerBadgeSheetRef>(null);
-    const [introOpen, setIntroOpen] = useState(false);
-    const hasSheet = seekerVerified && seekerInfoOnTap;
-
-    useEffect(() => {
-        if (!seekerIntro || !hasSheet) return;
-        // Let the screen finish arriving (push tap → profile) before sliding up
-        const timer = setTimeout(() => {
-            setIntroOpen(true);
-            sheetRef.current?.present();
-            onSeekerIntroShown?.();
-        }, 450);
-        return () => clearTimeout(timer);
-    }, [seekerIntro, hasSheet, onSeekerIntroShown]);
+    const ownSheetRef = useRef<SeekerBadgeSheetRef>(null);
+    const sheetRef = seekerSheetRef ?? ownSheetRef;
+    const hasSheet = seekerVerified && seekerInfoOnTap && !seekerSheetRef;
 
     if (!official && !seekerVerified) return null;
 
@@ -101,8 +92,6 @@ export default function UserBadges({
                     ref={sheetRef}
                     source={seekerSource}
                     shareUsername={seekerShareUsername}
-                    isNew={introOpen}
-                    onDismiss={() => setIntroOpen(false)}
                 />
             )}
         </View>

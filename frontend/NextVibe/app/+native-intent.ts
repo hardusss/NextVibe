@@ -1,6 +1,8 @@
 import { extractProximityToken } from '@/src/proximity/payload';
 import { enqueueProximityLink } from '@/src/proximity/linkQueue';
 import { seekerLinkPath } from '@/src/utils/seekerShare';
+import { intentFromUrl } from '@/src/navigation/intents';
+import { enqueueIntentLink } from '@/src/navigation/intentQueue';
 
 /**
  * Intercepts incoming system deep links before expo-router navigates.
@@ -21,6 +23,13 @@ import { seekerLinkPath } from '@/src/utils/seekerShare';
  * Username links (the Seeker share page nextvibe.io/u/verified/<username>, or
  * its "Open in NextVibe" at nextvibe://profile/<username>) go to
  * /u/verified/<username>, which looks the username up and opens that profile.
+ *
+ * Own-profile links (nextvibe://profile, nextvibe://profile?open=seeker) are
+ * handed to the pending-intent gate (src/navigation) instead of being opened
+ * here: on a cold start the app boots normally (splash → OTA check → auth) and
+ * the root layout opens the profile, with the Seeker sheet, once it's ready.
+ * Opening /profile directly skipped the start flow, and Splash's redirect to
+ * /home then took the screen back.
  */
 export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): string | null {
     try {
@@ -29,6 +38,10 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
         }
         if (extractProximityToken(path)) {
             enqueueProximityLink(path);
+            return initial ? '/' : null;
+        }
+        if (intentFromUrl(path, initial, 0)) {
+            enqueueIntentLink(path, initial);
             return initial ? '/' : null;
         }
         const usernamePath = seekerLinkPath(path);

@@ -1,4 +1,4 @@
-import { RelativePathString, Stack, useRouter, useSegments } from "expo-router";
+import { Stack, usePathname, useSegments } from "expo-router";
 import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text, AppState, AppStateStatus, Platform } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
@@ -35,6 +35,12 @@ import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import { completeColdStartHandshake } from "@/src/services/walletDeepLink";
 import { markSeekerIntroPending } from "@/src/stores/seekerIntroStore";
+import { intentFromNotification, intentFromUrl, isBootstrapPath } from "@/src/navigation/intents";
+import { hydratePendingIntent, setPendingIntent } from "@/src/navigation/pendingIntent";
+import { subscribeIntentLinks } from "@/src/navigation/intentQueue";
+import { useAppReadyStore } from "@/src/navigation/appReadyStore";
+import { useIntentConsumer, useRouterMountedSignal } from "@/src/navigation/useIntentConsumer";
+import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
 setupAxiosInterceptor();
 
@@ -81,30 +87,11 @@ if (StyleSheet.setStyleAttributePreprocessor) {
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
 const PUSH_TOKEN_KEY = 'expo_push_token';
 
-function resolveNotificationUrl(data: Record<string, any>): { internal?: string; external?: string } {
-    if (data?.external_url) return { external: data.external_url };
-    if (data?.url) return { internal: data.url };
+/** Notification ids already handled in this JS context (cold start delivers one tap twice). */
+const handledNotificationIds = new Set<string>();
 
-    if (data?.type === 'new_follower' && data?.user_id) {
-        return { internal: `/user-profile?id=${data.user_id}` };
-    }
-    if (data?.type === 'new_like' && data?.post_id) {
-        return { internal: `/post-details?id=${data.post_id}` };
-    }
-    if (data?.type === 'new_comment' && data?.post_id) {
-        return { internal: `/post-details?id=${data.post_id}` };
-    }
-    if ((data?.type === 'new_message' || data?.type === 'chat_message') && data?.chat_id) {
-        return { internal: `/(shared)/chat-room?id=${data.chat_id}` };
-    }
-    if (data?.type === 'cherry_chat') {
-        return { internal: '/(shared)/cherry-chat' };
-    }
-    if (data?.type === 'seeker_verified') {
-        return { internal: '/(tabs)/profile' };
-    }
-    return {};
-}
+// Read the intent persisted before an OTA reload / crash as early as possible.
+hydratePendingIntent();
 
 const MODAL_SCREENS = new Set([
     "swap", "deposit", "transaction-detail",
@@ -142,8 +129,10 @@ export default function RootLayout() {
     const theme = useColorScheme();
     const isSettingsHydrated = useSettingsStore((state) => state.isHydrated);
     const loadSettings = useSettingsStore((state) => state.loadSettings);
-    const router = useRouter();
     const segments = useSegments();
+    const pathname = usePathname();
+    const authVersion = useAppReadyStore((state) => state.authVersion);
+    const shellRendered = !((!fontsLoaded && !fontError) || !isSettingsHydrated);
     const pushRegisteredRef = useRef(false);
     const cachedAvatarRef = useRef<{ userId: number; url: string } | null>(null);
     const [imageProfile, setImageProfile] = useState<string | null>(null);
@@ -228,41 +217,49 @@ export default function RootLayout() {
         }
     }
 
-    const handleNotificationNavigation = (data: Record<string, any>) => {
+    // Push taps and deep links never navigate here: they only record an intent.
+    // useIntentConsumer (below) navigates once the router, the start flow (OTA
+    // check + auth) and the profile are ready.
+    const handleNotificationResponse = (response: Notifications.NotificationResponse | null, via: string) => {
+        if (!response) return;
+        const request = response.notification.request;
+        const data = (request.content.data ?? {}) as Record<string, any>;
+        const notificationId = request.identifier;
+        if (handledNotificationIds.has(notificationId)) return;
+        handledNotificationIds.add(notificationId);
+
+        const { intent, external } = intentFromNotification(data, notificationId, Date.now());
+        walletLogger.info(WalletTag.NAV_INTENT, `Notification tap (${via})`, { notificationId, type: data?.type, hasIntent: !!intent, external: !!external });
+
+        if (external) {
+            Linking.openURL(external).catch(() => { });
+        }
+        const accepted = intent ? setPendingIntent(intent) : false;
+
         // Pushes sent from `manage.py nv` carry the campaign they belong to;
         // a tap is the only "open" signal we have, so report it to Vexo.
-        if (typeof data?.campaign === 'string' && data.campaign) {
+        if ((accepted || external) && typeof data?.campaign === 'string' && data.campaign) {
             track('campaign_open', {
                 campaign: data.campaign,
                 variant: typeof data.variant === 'string' ? data.variant : 'A',
                 wave: Number(data.wave) || 1,
             });
         }
-        if (data?.type === 'seeker_verified') {
-            clearProfileCache();
-            markSeekerIntroPending();
-        }
-
-        const { internal, external } = resolveNotificationUrl(data);
-
-        if (external) {
-            Linking.openURL(external).catch(() => { });
-            return;
-        }
-
-        if (internal) {
-            setTimeout(() => {
-                router.push(internal as RelativePathString);
-            }, 300);
-        }
     };
 
+    const handleIncomingUrl = (url: string | null, initial: boolean, via: string) => {
+        if (!url) return;
+        const intent = intentFromUrl(url, initial, Date.now());
+        if (!intent) return;
+        walletLogger.info(WalletTag.NAV_INTENT, `Deep link (${via})`, { url, initial });
+        setPendingIntent(intent);
+    };
+
+    // Background / foreground tap.
     useEffect(() => {
         const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-            const data = response.notification.request.content.data ?? {};
-            handleNotificationNavigation(data);
+            handleNotificationResponse(response, 'listener');
         });
-
         return () => subscription.remove();
     }, []);
 
@@ -279,13 +276,50 @@ export default function RootLayout() {
         return () => subscription.remove();
     }, []);
 
+    // Cold start: the tap that launched the app.
     useEffect(() => {
-        Notifications.getLastNotificationResponseAsync().then((response) => {
-            if (!response) return;
-            const data = response.notification.request.content.data ?? {};
-            handleNotificationNavigation(data);
-        });
+        Notifications.getLastNotificationResponseAsync()
+            .then((response) => handleNotificationResponse(response, 'last-response'))
+            .catch(() => { });
     }, []);
+
+    // Deep links: +native-intent.ts queues own-profile links; Linking covers
+    // the launch URL and warm links too (the store drops duplicates).
+    useEffect(() => subscribeIntentLinks((link) => {
+        handleIncomingUrl(link.url, link.initial, 'native-intent');
+    }), []);
+
+    useEffect(() => {
+        Linking.getInitialURL()
+            .then((url) => handleIncomingUrl(url, true, 'initial-url'))
+            .catch(() => { });
+        const subscription = Linking.addEventListener('url', ({ url }) => handleIncomingUrl(url, false, 'url-event'));
+        return () => subscription.remove();
+    }, []);
+
+    // Boot signals for useAppReady().
+    useRouterMountedSignal(shellRendered);
+
+    useEffect(() => {
+        // A deep link that opened a real screen directly (username link, post
+        // link…) skipped Splash, so there's no start flow to wait for.
+        if (pathname && pathname !== '/' && !isBootstrapPath(pathname)) {
+            useAppReadyStore.getState().markBootstrapDone();
+        }
+    }, [pathname]);
+
+    useIntentConsumer({
+        beforeNavigate: (intent) => {
+            // The profile must refetch seeker_verified before it can open the sheet.
+            if (intent.kind === 'seeker_verified') clearProfileCache();
+        },
+        afterNavigate: (intent) => {
+            if (intent.source === 'push') {
+                // Don't hand the same tap back after a JS reload.
+                try { Notifications.clearLastNotificationResponse(); } catch { }
+            }
+        },
+    });
 
     useEffect(() => {
         registerForPushNotifications();
@@ -391,13 +425,15 @@ export default function RootLayout() {
                 const id = await storage.getItem('id');
                 if (id) setUserID(Number(id));
                 else setUserID(null);
+                useAppReadyStore.getState().setAuthStatus(id ? 'in' : 'out');
             } catch (e) { }
         };
         loadUser();
-    }, [segments]);
+    }, [segments, authVersion]);
 
     useEffect(() => {
         if (!userID) {
+            useAppReadyStore.getState().setProfileLoaded(false);
             setImageProfile(null);
             cachedAvatarRef.current = null;
             pushRegisteredRef.current = false;
@@ -418,6 +454,8 @@ export default function RootLayout() {
                 }
 
                 const userData = await getUserDetail();
+                // First profile load: a pending push/link intent may navigate now.
+                useAppReadyStore.getState().setProfileLoaded(true);
 
                 if (!__DEV__ && isMounted) {
                     identifyDevice(userData.username || String(userID));
@@ -442,7 +480,7 @@ export default function RootLayout() {
         return () => { isMounted = false; };
     }, [userID]);
 
-    if ((!fontsLoaded && !fontError) || !isSettingsHydrated) return null;
+    if (!shellRendered) return null;
 
     return (
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme === "dark" ? "#0A0410" : "#ffffff" }}>

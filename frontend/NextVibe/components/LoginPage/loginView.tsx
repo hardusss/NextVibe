@@ -25,6 +25,7 @@ import { Image } from 'expo-image';
 import { BackHandler } from 'react-native';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 import ButtonLazorKitSignIn from '../SignInViaWallet/ButtonLazorKitSignIn';
+import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
 
 export default function LoginView() {
     const router = useRouter();
@@ -64,7 +65,7 @@ export default function LoginView() {
             text1: 'Connected Successfully',
             text2: 'Welcome to NextVibe!',
         });
-        router.replace('/home');
+        navigateAfterSignIn(router, '/home');
     };
 
     const handleWalletError = (error: any) => {

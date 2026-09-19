@@ -7,6 +7,7 @@ import { storage } from "@/src/utils/storage";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { configureGoogleSignin } from "@/src/config/googleSignin";
 import { useEffect } from "react";
+import { resetNavigationSession } from '@/src/navigation/afterSignIn';
 export default function UserBannedPage() {
     const isDark = useColorScheme() === "dark";
     const router = useRouter(); 
@@ -27,6 +28,7 @@ export default function UserBannedPage() {
         AsyncStorage.clear()
         storage.clearAll()
         GoogleSignin.signOut()
+        resetNavigationSession()
         router.replace("/register")
     };
 

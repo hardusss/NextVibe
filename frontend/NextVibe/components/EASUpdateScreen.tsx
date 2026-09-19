@@ -7,6 +7,19 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as Updates from "expo-updates";
+import { flushPendingIntent } from "@/src/navigation/pendingIntent";
+import { useAppReadyStore } from "@/src/navigation/appReadyStore";
+
+/** checkForUpdateAsync / fetchUpdateAsync must never hold this screen forever. */
+const CHECK_TIMEOUT_MS = 5000;
+const FETCH_TIMEOUT_MS = 60_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), ms)),
+    ]);
+}
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -84,12 +97,14 @@ export default function EASUpdateScreen() {
     // ── Update logic ─────────────────────────────────────────────
     useEffect(() => {
         let cancelled = false;
+        // Splash checks for updates once per launch; this screen already did.
+        useAppReadyStore.getState().markOtaSettled();
 
         const run = async () => {
             try {
                 await new Promise((resolve) => setTimeout(resolve, 1500));
 
-                const result = await Updates.checkForUpdateAsync();
+                const result = await withTimeout(Updates.checkForUpdateAsync(), CHECK_TIMEOUT_MS, "checkForUpdateAsync");
                 if (cancelled) return;
 
                 if (result.isAvailable) {
@@ -100,13 +115,15 @@ export default function EASUpdateScreen() {
                         easing: Easing.out(Easing.quad),
                     });
 
-                    await Updates.fetchUpdateAsync();
+                    await withTimeout(Updates.fetchUpdateAsync(), FETCH_TIMEOUT_MS, "fetchUpdateAsync");
                     if (cancelled) return;
 
                     setPhase("ready");
                     // Automatically reload the app
                     setTimeout(async () => {
                         try {
+                            // A tap that arrived meanwhile must survive the restart.
+                            await flushPendingIntent();
                             await Updates.reloadAsync();
                         } catch {
                             router.replace("/splash");

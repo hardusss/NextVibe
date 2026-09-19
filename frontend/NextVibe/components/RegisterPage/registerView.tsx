@@ -28,6 +28,7 @@ import { Image } from 'expo-image';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 import ButtonLazorKitSignIn from '../SignInViaWallet/ButtonLazorKitSignIn';
 import * as NavigationBar from 'expo-navigation-bar';
+import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
 
 type FieldErrors = {
     username?: string;
@@ -149,7 +150,7 @@ export default function RegisterView() {
             text1: 'Connected Successfully',
             text2: 'Welcome to NextVibe!',
         });
-        router.replace('/home');
+        navigateAfterSignIn(router, '/home');
     };
 
     const handleWalletError = (error: any) => {

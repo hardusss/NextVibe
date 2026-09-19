@@ -17,6 +17,7 @@ export const WalletTag = {
     BLE: 'Ble:Scan',
     PROXIMITY: 'Proximity:Token',
     CHECKIN: 'Checkin:Flow',
+    NAV_INTENT: 'Nav:Intent',
 } as const;
 
 export type WalletTagType = typeof WalletTag[keyof typeof WalletTag] | string;

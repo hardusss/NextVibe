@@ -4,6 +4,7 @@ import validationInput from '../validation/register-validator';
 import { storage } from '../utils/storage';
 import GetApiUrl from '../utils/url_api';
 import { Router } from 'expo-router';
+import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
 
 export default async function Register(
     username: string,
@@ -51,7 +52,7 @@ export default async function Register(
             text2: 'Your account has been created.',
         });
 
-        setTimeout(() => router.push('/profile'), 2000);
+        setTimeout(() => navigateAfterSignIn(router, '/profile', 'push'), 2000);
 
     } catch (error: any) {
         const status = error?.response?.status;

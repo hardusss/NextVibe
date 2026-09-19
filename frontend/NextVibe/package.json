@@ -16,7 +16,8 @@
     "roots": [
       "<rootDir>/src/utils",
       "<rootDir>/src/proximity",
-      "<rootDir>/src/stores"
+      "<rootDir>/src/stores",
+      "<rootDir>/src/navigation"
     ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1"

@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FrostedView from "@/components/Shared/FrostedView";
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AvatarWithFrame } from "./AvatarWithFrame";
@@ -37,6 +37,9 @@ import PostGallery, { clearPostsCache } from "./PostsMenu";
 import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import UserBadges from "../Shared/UserBadges";
+import SeekerBadgeSheet, { SeekerBadgeSheetRef } from "../Shared/SeekerBadgeSheet";
+import { SEEKER_OPEN_PARAM } from "@/src/navigation/intents";
+import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 import { useSeekerIntro } from "@/src/stores/seekerIntroStore";
 
 import haptics from "@/src/utils/haptics";
@@ -54,6 +57,11 @@ import profileLightStyles from "@/styles/light-theme/profileStyles";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const HEADER_HEIGHT = 200;
+
+/** Push taps / links already shown (`intent` param), so a remount can't reopen the sheet. */
+const handledSeekerIntents = new Set<string>();
+/** Let the screen finish arriving (tab switch / splash replace) before sliding up. */
+const SEEKER_SHEET_DELAY_MS = 350;
 
 // ── Module-level cache to survive tab-switch remounts ──
 let cachedUserData: UserData | null = null;
@@ -171,6 +179,7 @@ const ProfileView = () => {
     const modalRef = useRef<ShareModalRef>(null);
     const inviteSheetRef = useRef<InviteSheetRef>(null);
     const eventConnectionsSheetRef = useRef<EventConnectionsSheetRef>(null);
+    const seekerSheetRef = useRef<SeekerBadgeSheetRef>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [interactionsFinished, setInteractionsFinished] = useState(false);
@@ -323,10 +332,74 @@ const ProfileView = () => {
         if (id) useSeekerIntro.getState().restore(String(id));
     }, [id]);
 
-    // The push can land while this tab is already showing the profile without the badge
+    // Seeker Verified sheet, opened by a push tap / deep link (?open=seeker,
+    // set by the root layout's intent consumer) or by the first-grant intro
+    // (badge granted while the app was open). Waits until the profile is
+    // focused, laid out and loaded with seeker_verified, then presents once and
+    // clears the param so re-renders and back navigation can't reopen it.
+    const { open: openParam, intent: intentParam } = useLocalSearchParams<{ open?: string; intent?: string }>();
+    const [seekerSheetNew, setSeekerSheetNew] = useState(false);
+    const [seekerRecheck, setSeekerRecheck] = useState(0);
+    const seekerRefetchedRef = useRef(false);
+    const openRequested = openParam === SEEKER_OPEN_PARAM && !(intentParam && handledSeekerIntents.has(intentParam));
+    const wantsSeekerSheet = openRequested || introPending;
+
     useEffect(() => {
-        if (introPending && isFocused && !userData.seeker_verified) fetchUserData();
-    }, [introPending, isFocused]);
+        // A stale ?open=seeker for a tap that was already shown: just drop it.
+        if (openParam === SEEKER_OPEN_PARAM && !openRequested && isFocused) router.setParams({ open: undefined, intent: undefined });
+    }, [openParam, openRequested, isFocused]);
+
+    useEffect(() => {
+        if (!wantsSeekerSheet) {
+            seekerRefetchedRef.current = false;
+            return;
+        }
+        if (!isFocused || !interactionsFinished || loading) return;
+
+        if (!userData.seeker_verified) {
+            // Cached data can predate the badge: fetch once before deciding.
+            if (!seekerRefetchedRef.current) {
+                seekerRefetchedRef.current = true;
+                profileHasFetched = false;
+                fetchUserData().finally(() => setSeekerRecheck((n) => n + 1));
+                return;
+            }
+            // Not Seeker Verified after all: ignore the request silently.
+            if (openRequested) {
+                walletLogger.info(WalletTag.NAV_INTENT, 'Profile: open=seeker ignored (not Seeker Verified)');
+                if (intentParam) handledSeekerIntents.add(intentParam);
+                router.setParams({ open: undefined, intent: undefined });
+            }
+            return;
+        }
+
+        let cancelled = false;
+        let frame = 0;
+        let attempts = 0;
+        const attempt = () => {
+            if (cancelled) return;
+            const sheet = seekerSheetRef.current;
+            if (!sheet) {
+                // The sheet is always rendered, but give its ref a few frames.
+                if (attempts++ < 30) frame = requestAnimationFrame(attempt);
+                return;
+            }
+            setSeekerSheetNew(true);
+            sheet.present();
+            walletLogger.info(WalletTag.NAV_INTENT, 'Profile: Seeker sheet presented', { via: openRequested ? 'open-param' : 'intro', intent: intentParam });
+            if (introPending) markIntroShown();
+            if (openRequested) {
+                if (intentParam) handledSeekerIntents.add(intentParam);
+                router.setParams({ open: undefined, intent: undefined });
+            }
+        };
+        const timer = setTimeout(attempt, SEEKER_SHEET_DELAY_MS);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+            cancelAnimationFrame(frame);
+        };
+    }, [wantsSeekerSheet, isFocused, interactionsFinished, loading, userData.seeker_verified, seekerRecheck]);
 
     useFocusEffect(
         useCallback(() => {
@@ -402,8 +475,7 @@ const ProfileView = () => {
                         seekerInfoOnTap={true}
                         seekerSource={userData.seeker_verified_source}
                         seekerShareUsername={userData.username}
-                        seekerIntro={isFocused && introPending}
-                        onSeekerIntroShown={markIntroShown}
+                        seekerSheetRef={seekerSheetRef}
                     />
                     <TouchableOpacity
                         onPress={handleOpenModal}
@@ -649,6 +721,14 @@ const ProfileView = () => {
             <ShareModal ref={modalRef} avatarUrl={userData.avatar_url} profileUrl={`https://nextvibe.io/u/${id}`} />
             <InviteBottomSheet ref={inviteSheetRef} />
             <EventConnectionsSheet ref={eventConnectionsSheetRef} />
+            {/* Always mounted, so a push tap / deep link can present it as soon as data is in */}
+            <SeekerBadgeSheet
+                ref={seekerSheetRef}
+                source={userData.seeker_verified_source}
+                shareUsername={userData.username || null}
+                isNew={seekerSheetNew}
+                onDismiss={() => setSeekerSheetNew(false)}
+            />
         </View>
     );
 };

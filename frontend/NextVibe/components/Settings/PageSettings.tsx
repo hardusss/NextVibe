@@ -41,6 +41,7 @@ import { markSeekerIntroPending } from "@/src/stores/seekerIntroStore";
 import useWalletAddress from "@/hooks/useWalletAddress";
 import GaslessIndicator from "@/components/Shared/GaslessIndicator";
 import { useSettingsStore, type ThemePreference } from "@/src/stores/settingsStore";
+import { resetNavigationSession } from '@/src/navigation/afterSignIn';
 
 interface User {
     username: string;
@@ -223,6 +224,7 @@ function PageSettingsContent() {
         if (address) {
             await disconnect();
         }
+        resetNavigationSession();
         router.replace("/register");
     }
 
@@ -250,6 +252,7 @@ function PageSettingsContent() {
         if (address) {
             await disconnect();
         }
+        resetNavigationSession();
         router.replace("/register");
     }
 

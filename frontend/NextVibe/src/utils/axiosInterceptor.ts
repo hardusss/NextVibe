@@ -2,6 +2,7 @@ import axios from "axios";
 import { storage } from "./storage";
 import GetApiUrl from "./url_api";
 import { router } from "expo-router";
+import { useAppReadyStore } from "@/src/navigation/appReadyStore";
 
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
@@ -22,6 +23,9 @@ async function handleAuthError(error: any) {
         } catch (e) {
             console.error("Failed to clear storage on auth error:", e);
         }
+        // Session expired: the pending intent (if any) is kept for the next
+        // sign-in; only the auth state changes.
+        useAppReadyStore.getState().setAuthStatus("out");
         router.replace("/register");
     }
 }

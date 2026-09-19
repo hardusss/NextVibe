@@ -3,6 +3,7 @@ import GetApiUrl from "../utils/url_api";
 import Toast from "react-native-toast-message";
 import { storage } from "../utils/storage";
 import { Router } from "expo-router";
+import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
 
 export default function GoogleLogin(email: string, router: Router) {
 
@@ -20,7 +21,7 @@ export default function GoogleLogin(email: string, router: Router) {
             text2: 'Welcome to NextVibe'
         });
         setTimeout(() => {
-            router.replace("/profile");
+            navigateAfterSignIn(router, "/profile");
         }, 2000);
 
     })

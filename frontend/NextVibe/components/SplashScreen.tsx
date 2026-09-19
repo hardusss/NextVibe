@@ -10,6 +10,21 @@ import { useRouter } from "expo-router";
 import { storage } from "@/src/utils/storage";
 import getStatusProfile from "@/src/api/check.status";
 import * as Updates from "expo-updates";
+import { clearPendingIntent, intentOwnsNavigation, whenIntentHydrated } from "@/src/navigation/pendingIntent";
+import { OTA_CHECK_TIMEOUT_MS, useAppReadyStore } from "@/src/navigation/appReadyStore";
+import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
+
+/** Splash stays up at least this long (the logo animation). */
+const MIN_SPLASH_MS = 2400;
+/** If a pending intent hasn't taken the screen by then, go home anyway. */
+const INTENT_WATCHDOG_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+    return Promise.race([
+        promise,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+    ]);
+}
 
 
 const C = {
@@ -35,17 +50,40 @@ export default function SplashScreen() {
     const nameY = useRef(new Animated.Value(8)).current;
     const sloganOp = useRef(new Animated.Value(0)).current;
 
-    const redirectTo = async () => {
+    const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const redirectTo = async (isCancelled: () => boolean) => {
+        const boot = useAppReadyStore.getState();
         try {
             const token = await storage.getItem("access");
+            if (isCancelled()) return;
             if (token) {
                 const status = await getStatusProfile();
-                if (status?.ban) { router.replace("/user-banned"); return; }
+                if (isCancelled()) return;
+                boot.setAuthStatus("in");
+                boot.markBootstrapDone();
+                if (status?.ban) { clearPendingIntent(); router.replace("/user-banned"); return; }
+                if (intentOwnsNavigation()) {
+                    // A push tap / deep link is waiting: the root layout opens it
+                    // as soon as the profile is loaded. Going home here is what
+                    // bounced people off the profile a few seconds after a tap.
+                    walletLogger.info(WalletTag.NAV_INTENT, "Splash: pending intent owns navigation; not going home");
+                    watchdogRef.current = setTimeout(() => {
+                        if (isCancelled() || intentOwnsNavigation()) return;
+                        walletLogger.warn(WalletTag.NAV_INTENT, "Splash: intent never navigated; going home");
+                        router.replace("/home");
+                    }, INTENT_WATCHDOG_MS);
+                    return;
+                }
                 router.replace("/home");
             } else {
+                boot.setAuthStatus("out");
+                boot.markBootstrapDone();
                 router.replace("/register");
             }
         } catch (e) {
+            if (isCancelled()) return;
+            boot.markBootstrapDone();
             router.replace("/register");
         }
     };
@@ -70,27 +108,46 @@ export default function SplashScreen() {
         ]).start();
 
         let cancelled = false;
-        let updateAvailable = false;
+        const isCancelled = () => cancelled;
+        const startedAt = Date.now();
 
         const checkUpdateAndRedirect = async () => {
-            try {
-                if (!__DEV__) {
-                    const check = await Updates.checkForUpdateAsync();
-                    if (check.isAvailable) {
+            // A tap from before an OTA reload is read back from storage here.
+            await whenIntentHydrated(500);
+
+            let updateAvailable = false;
+            const boot = useAppReadyStore.getState();
+            // Only once per launch: coming back from /eas-update must not loop.
+            if (!__DEV__ && !boot.otaSettled) {
+                try {
+                    const check = await withTimeout(Updates.checkForUpdateAsync(), OTA_CHECK_TIMEOUT_MS);
+                    if (check === null) {
+                        console.log("[Splash] Update check timed out; continuing");
+                    } else if (check.isAvailable) {
                         updateAvailable = true;
                     }
+                } catch (err) {
+                    console.log("[Splash] Update check failed/skipped:", err);
                 }
-            } catch (err) {
-                console.log("[Splash] Update check failed/skipped:", err);
             }
+            boot.markOtaSettled();
 
-            await new Promise(resolve => setTimeout(resolve, 2400));
+            const rest = MIN_SPLASH_MS - (Date.now() - startedAt);
+            if (rest > 0) await new Promise(resolve => setTimeout(resolve, rest));
             if (cancelled) return;
+
+            if (updateAvailable && intentOwnsNavigation()) {
+                // Don't restart the app under a push tap / deep link. With
+                // checkOnLaunch=ALWAYS expo-updates downloads the update in the
+                // background already; it applies on the next launch.
+                walletLogger.info(WalletTag.NAV_INTENT, "Splash: update available but an intent is pending; applying on next launch");
+                updateAvailable = false;
+            }
 
             if (updateAvailable) {
                 router.replace("/eas-update");
             } else {
-                await redirectTo();
+                await redirectTo(isCancelled);
             }
         };
 
@@ -98,6 +155,7 @@ export default function SplashScreen() {
 
         return () => {
             cancelled = true;
+            if (watchdogRef.current) clearTimeout(watchdogRef.current);
         };
     }, []);
 

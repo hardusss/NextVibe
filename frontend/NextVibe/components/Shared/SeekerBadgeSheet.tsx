@@ -1,9 +1,11 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import Svg, { Path } from 'react-native-svg';
 import { Share as ShareIcon } from 'lucide-react-native';
+import { FullWindowOverlay } from 'react-native-screens';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import haptics from '@/src/utils/haptics';
 import { track } from '@/src/utils/analytics';
@@ -50,6 +52,19 @@ function infoLine(isOwn: boolean, source?: string | null): string {
         : 'This person owns a Solana Seeker. Their Seeker Genesis Token was detected on-chain.';
 }
 
+/**
+ * iOS: present above everything, including native-stack modals. Same fix as
+ * the tap prompt (2026-09-15): UIKit won't show a sheet from the root view
+ * while a modal screen is up. The overlay is a separate native window, so it
+ * needs its own gesture root for pan-to-close.
+ */
+const IosOverlayContainer = ({ children }: React.PropsWithChildren) => (
+    <FullWindowOverlay>
+        <GestureHandlerRootView style={StyleSheet.absoluteFill}>{children}</GestureHandlerRootView>
+    </FullWindowOverlay>
+);
+const containerComponent = Platform.OS === 'ios' ? IosOverlayContainer : undefined;
+
 /** The sheet behind the Seeker Verified badge (profile header, tap card). */
 const SeekerBadgeSheet = forwardRef<SeekerBadgeSheetRef, Props>(
     ({ source = null, shareUsername = null, isNew = false, onDismiss }, ref) => {
@@ -63,10 +78,26 @@ const SeekerBadgeSheet = forwardRef<SeekerBadgeSheetRef, Props>(
         const isOwn = !!shareUsername;
         const showImageShare = isOwn && canShareSeekerImage();
 
+        // present() before the modal's own ref exists is remembered, not dropped.
+        const presentPending = useRef(false);
+
         useImperativeHandle(ref, () => ({
-            present: () => sheetRef.current?.present(),
-            dismiss: () => sheetRef.current?.dismiss(),
+            present: () => {
+                if (sheetRef.current) sheetRef.current.present();
+                else presentPending.current = true;
+            },
+            dismiss: () => {
+                presentPending.current = false;
+                sheetRef.current?.dismiss();
+            },
         }), []);
+
+        useEffect(() => {
+            if (presentPending.current && sheetRef.current) {
+                presentPending.current = false;
+                sheetRef.current.present();
+            }
+        });
 
         useEffect(() => () => {
             if (busyTimer.current) clearTimeout(busyTimer.current);
@@ -146,6 +177,7 @@ const SeekerBadgeSheet = forwardRef<SeekerBadgeSheetRef, Props>(
         return (
             <BottomSheetModal
                 ref={sheetRef}
+                containerComponent={containerComponent}
                 enableDynamicSizing
                 enablePanDownToClose={!busy}
                 backdropComponent={renderBackdrop}

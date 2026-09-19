@@ -4,6 +4,7 @@ import GetApiUrl from "../utils/url_api";
 import Toast from "react-native-toast-message";
 import { storage } from "../utils/storage";
 import { Router } from "expo-router";
+import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
 
 export default async function Login(email: string, password: string, router: Router){
 
@@ -27,7 +28,7 @@ export default async function Login(email: string, password: string, router: Rou
             text2: 'Welcome to NextVibe'
         });
         setTimeout(() => {
-            router.push("/profile");
+            navigateAfterSignIn(router, "/profile", "push");
         }, 2000)
 
     })
