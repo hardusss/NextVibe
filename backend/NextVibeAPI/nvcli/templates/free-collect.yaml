@@ -1,0 +1,6 @@
+name: free-collect
+channel: push
+title: "Collect a post for free"
+body: "Any post you like can be collected as a cNFT in one swipe — no fee, straight to your wallet."
+deeplink: "nextvibe://home"
+data: { type: free_collect }

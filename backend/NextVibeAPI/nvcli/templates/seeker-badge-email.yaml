@@ -1,0 +1,11 @@
+name: seeker-badge-email
+channel: email
+title: "You're Seeker Verified on NextVibe"
+body: |
+  Hi {first_name},
+
+  Your Seeker Genesis Token was confirmed on-chain, and the Seeker Verified badge now shows next to your name everywhere on NextVibe — your profile, your posts, your comments.
+
+  Open the app to see it, and share your verified card with one tap from the badge.
+deeplink: "https://nextvibe.io/u/verified/{username}"
+cta_label: "See your badge"

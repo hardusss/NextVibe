@@ -1,0 +1,6 @@
+name: seeker-badge
+channel: push
+title: "You're Seeker Verified"
+body: "Your Genesis Token is confirmed on-chain. Your badge is live — take a look, {first_name}."
+deeplink: "nextvibe://profile?open=seeker"
+data: { type: seeker_verified }

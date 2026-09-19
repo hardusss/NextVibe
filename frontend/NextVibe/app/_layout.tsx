@@ -25,6 +25,7 @@ import savePushToken from "@/src/api/save.push.token";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
+import { track } from '@/src/utils/analytics';
 import { StatusBar } from "expo-status-bar";
 import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
 import { useBleScanner } from "@/hooks/useBleScanner";
@@ -228,6 +229,15 @@ export default function RootLayout() {
     }
 
     const handleNotificationNavigation = (data: Record<string, any>) => {
+        // Pushes sent from `manage.py nv` carry the campaign they belong to;
+        // a tap is the only "open" signal we have, so report it to Vexo.
+        if (typeof data?.campaign === 'string' && data.campaign) {
+            track('campaign_open', {
+                campaign: data.campaign,
+                variant: typeof data.variant === 'string' ? data.variant : 'A',
+                wave: Number(data.wave) || 1,
+            });
+        }
         if (data?.type === 'seeker_verified') {
             clearProfileCache();
             markSeekerIntroPending();

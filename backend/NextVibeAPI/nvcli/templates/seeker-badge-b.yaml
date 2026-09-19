@@ -1,0 +1,6 @@
+name: seeker-badge-b
+channel: push
+title: "You're Seeker Verified"
+body: "{seeker_total} Seeker owners are verified on NextVibe. You're one of them."
+deeplink: "nextvibe://profile?open=seeker"
+data: { type: seeker_verified }

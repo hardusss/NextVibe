@@ -51,3 +51,5 @@ trx-addresses-generator.log
 Thumbs.db
 # throwaway one-off scripts (never committed)
 NextVibeAPI/scripts_tmp/
+# nv console state (campaign logs, opt-outs, operator) — local to the server
+NextVibeAPI/nvcli/logs/

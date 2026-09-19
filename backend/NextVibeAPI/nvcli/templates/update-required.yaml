@@ -1,0 +1,6 @@
+name: update-required
+channel: push
+title: "Update NextVibe"
+body: "A new version is out. Update from the Solana dApp Store to keep everything working."
+deeplink: "solanadappstore://details?id=com.nextvibe.app"
+data: { type: update_required }

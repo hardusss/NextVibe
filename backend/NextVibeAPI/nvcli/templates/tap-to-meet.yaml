@@ -1,0 +1,6 @@
+name: tap-to-meet
+channel: push
+title: "Meet someone in person"
+body: "Tap phones with another NextVibe user and both of you get proof you met, on Solana."
+deeplink: "nextvibe://profile"
+data: { type: tap_to_meet }

@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from chat.views_cherry import CherryEmbedTokenView, CherryMembersView, CherryMuteView, CherryWebhookView
+from user.views_pac.optout import email_optout, push_optout
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -11,6 +12,9 @@ urlpatterns = [
     path('api/v1/wallets/', include('wallet.urls')),
     path('api/v1/chat/', include('chat.urls')),
     path('api/chat/', include('chat.urls')),
+    # nv campaign unsubscribe links (signed user id; see user/views_pac/optout.py)
+    path('u/e/<str:token>', email_optout, name='nv_email_optout'),
+    path('u/p/<str:token>', push_optout, name='nv_push_optout'),
     path('api/cherry-embed-token', CherryEmbedTokenView.as_view(), name='cherry-embed-token-root'),
     path('api/cherry-embed-token/', CherryEmbedTokenView.as_view(), name='cherry-embed-token-root-slash'),
     path('api/v1/cherry-embed-token', CherryEmbedTokenView.as_view(), name='cherry-embed-token-v1-root'),

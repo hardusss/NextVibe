@@ -1,0 +1,6 @@
+name: event-invite
+channel: push
+title: "{event}"
+body: "{event} is on {date}. Check in with a tap when you arrive and collect the event POAP."
+deeplink: "nextvibe://event/{id}"
+data: { type: event_invite, post_id: "{id}" }
