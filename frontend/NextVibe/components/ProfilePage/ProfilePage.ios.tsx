@@ -343,6 +343,9 @@ const ProfileView = () => {
     const seekerRefetchedRef = useRef(false);
     const openRequested = openParam === SEEKER_OPEN_PARAM && !(intentParam && handledSeekerIntents.has(intentParam));
     const wantsSeekerSheet = openRequested || introPending;
+    // The delayed present() below reads these, not the values from when it was scheduled.
+    const seekerLatestRef = useRef({ openParam, intentParam });
+    seekerLatestRef.current = { openParam, intentParam };
 
     useEffect(() => {
         // A stale ?open=seeker for a tap that was already shown: just drop it.
@@ -384,12 +387,15 @@ const ProfileView = () => {
                 if (attempts++ < 30) frame = requestAnimationFrame(attempt);
                 return;
             }
+            const latest = seekerLatestRef.current;
             setSeekerSheetNew(true);
             sheet.present();
-            walletLogger.info(WalletTag.NAV_INTENT, 'Profile: Seeker sheet presented', { via: openRequested ? 'open-param' : 'intro', intent: intentParam });
-            if (introPending) markIntroShown();
-            if (openRequested) {
-                if (intentParam) handledSeekerIntents.add(intentParam);
+            walletLogger.info(WalletTag.NAV_INTENT, 'Profile: Seeker sheet presented', { open: latest.openParam, intent: latest.intentParam });
+            // One sheet covers both the intro and the tap: settle both, so
+            // neither can reopen it on the next focus.
+            markIntroShown(); // no-op when no intro is pending
+            if (latest.openParam === SEEKER_OPEN_PARAM) {
+                if (latest.intentParam) handledSeekerIntents.add(latest.intentParam);
                 router.setParams({ open: undefined, intent: undefined });
             }
         };

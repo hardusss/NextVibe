@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 import { storage } from "@/src/utils/storage";
 import getStatusProfile from "@/src/api/check.status";
 import * as Updates from "expo-updates";
-import { clearPendingIntent, intentOwnsNavigation, whenIntentHydrated } from "@/src/navigation/pendingIntent";
+import { clearPendingIntent, hasPendingIntent, intentOwnsNavigation, recentlyConsumedIntent, whenIntentHydrated } from "@/src/navigation/pendingIntent";
 import { OTA_CHECK_TIMEOUT_MS, useAppReadyStore } from "@/src/navigation/appReadyStore";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
@@ -69,8 +69,10 @@ export default function SplashScreen() {
                     // bounced people off the profile a few seconds after a tap.
                     walletLogger.info(WalletTag.NAV_INTENT, "Splash: pending intent owns navigation; not going home");
                     watchdogRef.current = setTimeout(() => {
-                        if (isCancelled() || intentOwnsNavigation()) return;
+                        // Still here: the intent is stuck (or its navigation failed).
+                        if (isCancelled() || recentlyConsumedIntent()) return;
                         walletLogger.warn(WalletTag.NAV_INTENT, "Splash: intent never navigated; going home");
+                        if (hasPendingIntent()) clearPendingIntent();
                         router.replace("/home");
                     }, INTENT_WATCHDOG_MS);
                     return;

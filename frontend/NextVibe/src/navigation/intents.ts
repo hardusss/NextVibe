@@ -141,11 +141,13 @@ export function isBootstrapPath(pathname: string | null | undefined): boolean {
     return !pathname || BOOTSTRAP_PATHS.has(pathname);
 }
 
-export type NavigationMethod = 'replace' | 'navigate' | 'dismissTo' | 'push';
+export type NavigationMethod = 'replace' | 'homeThenPush' | 'navigate' | 'dismissTo' | 'push';
 
 /**
- * - From the start flow (splash, eas-update, login/register): replace, so
- *   there's no splash left under the destination.
+ * - From the start flow (splash, eas-update, login/register): replace for tab
+ *   routes, so there's no splash left under the destination. Other screens
+ *   (post, chat, another profile) get home underneath first, so their back
+ *   button has somewhere to go.
  * - Tab routes (the own profile): navigate when the tabs are on top (switches
  *   tab in place); dismissTo when a shared screen or modal covers them, which
  *   pops back to the existing (tabs) instead of stacking a second one.
@@ -154,7 +156,7 @@ export type NavigationMethod = 'replace' | 'navigate' | 'dismissTo' | 'push';
  * - Everything else (post, chat, another profile): push, as before.
  */
 export function pickNavigationMethod(pathname: string, firstSegment: string | undefined, intent: Pick<PendingIntent, 'path'>): NavigationMethod {
-    if (isBootstrapPath(pathname)) return 'replace';
+    if (isBootstrapPath(pathname)) return intent.path.startsWith('/(tabs)/') ? 'replace' : 'homeThenPush';
     if (intent.path.startsWith('/(tabs)/')) return firstSegment === '(tabs)' ? 'navigate' : 'dismissTo';
     return 'push';
 }

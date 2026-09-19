@@ -69,8 +69,8 @@ export const usePendingIntent = create<PendingIntentState>((set, get) => ({
     lastLink: null,
 
     hydrate: () => {
-        if (get().hydrated) return Promise.resolve();
         if (hydrating) return hydrating;
+        if (get().hydrated) return Promise.resolve();
         hydrating = (async () => {
             let stored: PendingIntent | null = null;
             let lastConsumedId: string | null = null;
@@ -144,7 +144,16 @@ export const usePendingIntent = create<PendingIntentState>((set, get) => ({
     consume: () => {
         const intent = get().intent;
         if (!intent) return null;
-        set({ intent: null, lastConsumedId: intent.id, consumedAt: Date.now() });
+        const now = Date.now();
+        if (now - intent.createdAt > INTENT_TTL_MS) {
+            // e.g. tapped while signed out, signed in much later (maybe as someone else)
+            walletLogger.info(TAG, 'Pending intent expired before it could open; dropping', { id: intent.id, ageMs: now - intent.createdAt });
+            set({ intent: null, lastConsumedId: intent.id });
+            persist(null);
+            persistConsumed(intent.id);
+            return null;
+        }
+        set({ intent: null, lastConsumedId: intent.id, consumedAt: now });
         persist(null);
         persistConsumed(intent.id);
         return intent;
@@ -183,7 +192,15 @@ export function whenIntentHydrated(timeoutMs: number = 500): Promise<void> {
     const state = usePendingIntent.getState();
     if (state.hydrated) return Promise.resolve();
     const hydrate = state.hydrate();
-    const timeout = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
+    const timeout = new Promise<void>((resolve) => setTimeout(() => {
+        // A hung AsyncStorage read must not hold the app on Splash: carry on
+        // with whatever is in memory (a late read still lands via hydrate()).
+        if (!usePendingIntent.getState().hydrated) {
+            walletLogger.warn(TAG, 'Intent hydration timed out; continuing');
+            usePendingIntent.setState({ hydrated: true });
+        }
+        resolve();
+    }, timeoutMs));
     return Promise.race([hydrate, timeout]);
 }
 

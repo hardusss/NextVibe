@@ -92,6 +92,10 @@ export function useIntentConsumer(options: { beforeNavigate?: (intent: PendingIn
                 ageMs: Date.now() - taken.createdAt,
             });
             if (method === 'replace') router.replace(href);
+            else if (method === 'homeThenPush') {
+                router.replace('/home');
+                router.push(href);
+            }
             else if (method === 'navigate') router.navigate(href);
             else if (method === 'dismissTo') router.dismissTo(href);
             else router.push(href);

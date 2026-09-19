@@ -113,6 +113,13 @@ describe('pendingIntent store', () => {
         expect(setPendingIntent(link(1000 + 60_000))).toBe(true);
     });
 
+    it('an intent that waited past the TTL (signed out for long) is dropped, not opened', () => {
+        setPendingIntent(seeker('push:old', Date.now() - INTENT_TTL_MS - 1));
+        expect(state().consume()).toBeNull();
+        expect(hasPendingIntent()).toBe(false);
+        expect(recentlyConsumedIntent()).toBe(false);
+    });
+
     it('recentlyConsumed is bounded', () => {
         setPendingIntent(seeker());
         state().consume();

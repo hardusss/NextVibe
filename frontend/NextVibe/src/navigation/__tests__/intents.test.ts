@@ -92,7 +92,8 @@ describe('pickNavigationMethod', () => {
     const post = { path: '/post-details' };
     it('replaces the start flow so no splash is left underneath', () => {
         expect(pickNavigationMethod('/splash', '(shared)', profile)).toBe('replace');
-        expect(pickNavigationMethod('/eas-update', '(shared)', post)).toBe('replace');
+        expect(pickNavigationMethod('/eas-update', '(shared)', post)).toBe('homeThenPush');
+        expect(pickNavigationMethod('/splash', '(shared)', post)).toBe('homeThenPush');
         expect(pickNavigationMethod('/login', '(shared)', profile)).toBe('replace');
         expect(pickNavigationMethod('/', undefined, profile)).toBe('replace');
     });
