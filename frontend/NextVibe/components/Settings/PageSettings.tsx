@@ -36,6 +36,7 @@ import { clearProfileCache } from "../ProfilePage/ProfilePage";
 import { requestScanStart, requestScanStop } from "@/src/utils/bleScanController";
 import haptics from "@/src/utils/haptics";
 import { useBlockStore } from "@/src/stores/blockStore";
+import { markSeekerIntroPending } from "@/src/stores/seekerIntroStore";
 
 import useWalletAddress from "@/hooks/useWalletAddress";
 import GaslessIndicator from "@/components/Shared/GaslessIndicator";
@@ -148,6 +149,9 @@ function PageSettingsContent() {
             if (result.seekerVerified) {
                 setUser((prev) => (prev ? { ...prev, seeker_verified: true } : prev));
                 showToast("You're Seeker Verified", true);
+                // No push for a manual check: the profile shows the badge and opens its sheet once
+                clearProfileCache();
+                markSeekerIntroPending();
             } else if (result.error === "SGT_ALREADY_USED") {
                 showToast("This Genesis Token is already linked to another NextVibe account.", false);
             } else if (result.error === "SGT_NOT_FOUND") {

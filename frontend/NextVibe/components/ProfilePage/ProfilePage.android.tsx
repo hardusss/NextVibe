@@ -17,6 +17,7 @@ import {
     Platform,
 } from "react-native";
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from 'expo-status-bar';
 import { AvatarWithFrame } from "./AvatarWithFrame";
@@ -35,6 +36,7 @@ import PostGallery, { clearPostsCache } from "./PostsMenu";
 import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import UserBadges from "../Shared/UserBadges";
+import { useSeekerIntro } from "@/src/stores/seekerIntroStore";
 
 import haptics from "@/src/utils/haptics";
 import { space } from "@/src/theme/tokens";
@@ -309,6 +311,20 @@ const ProfileView = () => {
 
     useEffect(() => { getId(); }, []);
 
+    // First-grant moment: after the seeker_verified push, the badge sheet opens once by itself
+    const isFocused = useIsFocused();
+    const introPending = useSeekerIntro((state) => id !== undefined && state.pendingFor === String(id));
+    const markIntroShown = useSeekerIntro((state) => state.markShown);
+
+    useEffect(() => {
+        if (id) useSeekerIntro.getState().restore(String(id));
+    }, [id]);
+
+    // The push can land while this tab is already showing the profile without the badge
+    useEffect(() => {
+        if (introPending && isFocused && !userData.seeker_verified) fetchUserData();
+    }, [introPending, isFocused]);
+
     useFocusEffect(
         useCallback(() => {
             if (!profileHasFetched) {
@@ -405,6 +421,9 @@ const ProfileView = () => {
                         size={20}
                         seekerInfoOnTap={true}
                         seekerSource={userData.seeker_verified_source}
+                        seekerShareUsername={userData.username}
+                        seekerIntro={isFocused && introPending}
+                        onSeekerIntroShown={markIntroShown}
                     />
                     <TouchableOpacity
                         onPress={handleOpenModal}

@@ -15,7 +15,8 @@
     "testEnvironment": "node",
     "roots": [
       "<rootDir>/src/utils",
-      "<rootDir>/src/proximity"
+      "<rootDir>/src/proximity",
+      "<rootDir>/src/stores"
     ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1"
@@ -87,6 +88,7 @@
     "expo-notifications": "~55.0.24",
     "expo-router": "^55",
     "expo-secure-store": "~55.0.15",
+    "expo-sharing": "~55.0.24",
     "expo-splash-screen": "~55.0.22",
     "expo-status-bar": "~55.0.6",
     "expo-symbols": "~55.0.9",

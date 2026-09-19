@@ -1,5 +1,6 @@
 import { extractProximityToken } from '@/src/proximity/payload';
 import { enqueueProximityLink } from '@/src/proximity/linkQueue';
+import { seekerLinkPath } from '@/src/utils/seekerShare';
 
 /**
  * Intercepts incoming system deep links before expo-router navigates.
@@ -16,6 +17,10 @@ import { enqueueProximityLink } from '@/src/proximity/linkQueue';
  * all: they go to the shared tap prompt, which slides up over whatever is on
  * screen. On a cold start the app boots normally (splash → home) with the
  * prompt on top, so there is never a dead-end screen without a back stack.
+ *
+ * Username links (nextvibe://profile/<username> from the Seeker share page's
+ * "Open in NextVibe", or the page itself at nextvibe.io/v/<username>) go to
+ * /v/<username>, which looks the username up and opens that profile.
  */
 export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): string | null {
     try {
@@ -25,6 +30,10 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
         if (extractProximityToken(path)) {
             enqueueProximityLink(path);
             return initial ? '/' : null;
+        }
+        const usernamePath = seekerLinkPath(path);
+        if (usernamePath) {
+            return usernamePath;
         }
         return path;
     } catch {

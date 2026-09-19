@@ -33,6 +33,7 @@ import { clearProfileCache } from "@/components/ProfilePage/ProfilePage";
 import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import { completeColdStartHandshake } from "@/src/services/walletDeepLink";
+import { markSeekerIntroPending } from "@/src/stores/seekerIntroStore";
 
 setupAxiosInterceptor();
 
@@ -128,7 +129,7 @@ const SHARED_SCREENS = [
     "chats", "follows-screen", "notifications", "user-banned", "wallet-init",
     "wallet-dash", "wallet-select", "swap", "event-checkin", "post-details",
     "all-tokens", "eas-update", "events", "event-nfc-share", "event-nfc-receive",
-    "camera", "u/e", "u/[id]", "u/post/[id]", "blocked-accounts"
+    "camera", "u/e", "u/[id]", "u/post/[id]", "blocked-accounts", "v/[username]"
 ];
 
 export default function RootLayout() {
@@ -229,6 +230,7 @@ export default function RootLayout() {
     const handleNotificationNavigation = (data: Record<string, any>) => {
         if (data?.type === 'seeker_verified') {
             clearProfileCache();
+            markSeekerIntroPending();
         }
 
         const { internal, external } = resolveNotificationUrl(data);
@@ -249,6 +251,19 @@ export default function RootLayout() {
         const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
             const data = response.notification.request.content.data ?? {};
             handleNotificationNavigation(data);
+        });
+
+        return () => subscription.remove();
+    }, []);
+
+    useEffect(() => {
+        // Badge granted while the app is open: the profile refetches and opens
+        // the Seeker sheet once, even if the banner itself is never tapped
+        const subscription = Notifications.addNotificationReceivedListener((notification) => {
+            if (notification.request.content.data?.type === 'seeker_verified') {
+                clearProfileCache();
+                markSeekerIntroPending();
+            }
         });
 
         return () => subscription.remove();

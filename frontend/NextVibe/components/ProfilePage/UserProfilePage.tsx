@@ -507,6 +507,7 @@ const UserProfileView = () => {
                         size={20}
                         seekerInfoOnTap={true}
                         seekerSource={userData.seeker_verified_source}
+                        seekerShareUsername={myId !== null && userData.user_id === myId ? userData.username : null}
                     />
                 </View>
 

@@ -1,8 +1,8 @@
-import React, { useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, TouchableOpacity, useColorScheme } from 'react-native';
-import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import VerifyBadge from '../VerifyBadge';
+import SeekerBadgeSheet, { SeekerBadgeSheetRef } from './SeekerBadgeSheet';
 
 const SEEKER_ART = require('@/assets/badges/seeker-genesis.png');
 
@@ -19,6 +19,11 @@ interface UserBadgesProps {
     seekerInfoOnTap?: boolean;
     /** Verification source from the API — 'skr' changes the sheet's source line */
     seekerSource?: string | null;
+    /** Own profile only: adds "Share on X" / "Share image" to the sheet for this username */
+    seekerShareUsername?: string | null;
+    /** Opens the sheet by itself, with a "New" pill (first time after the badge was granted) */
+    seekerIntro?: boolean;
+    onSeekerIntroShown?: () => void;
 }
 
 /**
@@ -36,28 +41,26 @@ export default function UserBadges({
     isStatic = true,
     seekerInfoOnTap = false,
     seekerSource = null,
+    seekerShareUsername = null,
+    seekerIntro = false,
+    onSeekerIntroShown,
 }: UserBadgesProps) {
-    const sheetRef = useRef<BottomSheetModal>(null);
-    const isDark = useColorScheme() === 'dark';
+    const sheetRef = useRef<SeekerBadgeSheetRef>(null);
+    const [introOpen, setIntroOpen] = useState(false);
+    const hasSheet = seekerVerified && seekerInfoOnTap;
 
-    const renderBackdrop = useCallback(
-        (props: any) => (
-            <BottomSheetBackdrop
-                {...props}
-                disappearsOnIndex={-1}
-                appearsOnIndex={0}
-                opacity={0.6}
-                pressBehavior="close"
-            />
-        ),
-        []
-    );
+    useEffect(() => {
+        if (!seekerIntro || !hasSheet) return;
+        // Let the screen finish arriving (push tap → profile) before sliding up
+        const timer = setTimeout(() => {
+            setIntroOpen(true);
+            sheetRef.current?.present();
+            onSeekerIntroShown?.();
+        }, 450);
+        return () => clearTimeout(timer);
+    }, [seekerIntro, hasSheet, onSeekerIntroShown]);
 
     if (!official && !seekerVerified) return null;
-
-    const bg = isDark ? '#0A0410' : '#F5F3FF';
-    const main = isDark ? '#FFFFFF' : '#111827';
-    const muted = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(17,24,39,0.55)';
 
     const seekerBadge = (
         <Image
@@ -93,31 +96,14 @@ export default function UserBadges({
                     seekerBadge
                 )
             )}
-            {seekerVerified && seekerInfoOnTap && (
-                <BottomSheetModal
+            {hasSheet && (
+                <SeekerBadgeSheet
                     ref={sheetRef}
-                    enableDynamicSizing
-                    backdropComponent={renderBackdrop}
-                    backgroundStyle={{ backgroundColor: bg }}
-                    handleIndicatorStyle={{ backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)' }}
-                >
-                    <BottomSheetView style={styles.sheetContent}>
-                        <Image source={SEEKER_ART} style={styles.sheetArt} contentFit="cover" />
-                        <Text style={[styles.sheetTitle, { color: main }]}>Seeker Verified</Text>
-                        <Text style={[styles.sheetLine, { color: muted }]}>
-                            {seekerSource === 'skr'
-                                ? 'This person owns a Solana Seeker. Verified via Seeker ID (.skr).'
-                                : 'This person owns a Solana Seeker. Their Seeker Genesis Token was detected on-chain.'}
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.sheetCloseBtn}
-                            activeOpacity={0.8}
-                            onPress={() => sheetRef.current?.dismiss()}
-                        >
-                            <Text style={styles.sheetCloseTxt}>Close</Text>
-                        </TouchableOpacity>
-                    </BottomSheetView>
-                </BottomSheetModal>
+                    source={seekerSource}
+                    shareUsername={seekerShareUsername}
+                    isNew={introOpen}
+                    onDismiss={() => setIntroOpen(false)}
+                />
             )}
         </View>
     );
@@ -130,45 +116,5 @@ const styles = StyleSheet.create({
         gap: 4,
         flexShrink: 0,
         marginLeft: 4,
-    },
-    sheetContent: {
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingTop: 8,
-        paddingBottom: 40,
-    },
-    sheetArt: {
-        width: 48,
-        height: 48,
-        borderRadius: 48 * 0.28,
-        overflow: 'hidden',
-    },
-    sheetTitle: {
-        fontFamily: 'Dank Mono Bold',
-        fontSize: 18,
-        marginTop: 12,
-        includeFontPadding: false,
-    },
-    sheetLine: {
-        fontFamily: 'Dank Mono',
-        fontSize: 13,
-        lineHeight: 19,
-        textAlign: 'center',
-        marginTop: 6,
-        includeFontPadding: false,
-    },
-    sheetCloseBtn: {
-        alignSelf: 'stretch',
-        alignItems: 'center',
-        marginTop: 18,
-        paddingVertical: 12,
-        borderRadius: 12,
-        backgroundColor: '#A855F7',
-    },
-    sheetCloseTxt: {
-        fontFamily: 'Dank Mono Bold',
-        fontSize: 14,
-        color: '#ffffff',
-        includeFontPadding: false,
     },
 });
