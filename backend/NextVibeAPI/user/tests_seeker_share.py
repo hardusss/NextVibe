@@ -13,7 +13,7 @@ from django.test import TestCase, override_settings
 from PIL import Image
 from rest_framework.test import APIClient
 
-from user.src import seeker_card
+from user.src import og_image, seeker_card
 
 User = get_user_model()
 
@@ -124,10 +124,10 @@ class SeekerShareTest(TestCase):
             ("https://googleusercontent.com.evil.example/a.png", False),
             ("https://localhost/admin/", False),
         ):
-            self.assertEqual(seeker_card._is_avatar_host(url), allowed, url)
+            self.assertEqual(og_image.is_allowed_image_url(url), allowed, url)
 
         self.alice.avatar = "https://169.254.169.254/latest/meta-data/"
-        with mock.patch.object(seeker_card.requests, "get") as get:
+        with mock.patch.object(og_image.requests, "get") as get:
             self.assertIsNone(seeker_card.load_avatar(self.alice))
         get.assert_not_called()
 

@@ -17,6 +17,7 @@ from .view_pac import (
     EventAnalyticsView, EventTopUsersView, EventUpdateView, EventTapsView, EventSocialGraphView, EventBroadcastView,
     EventPostsView,
     GenerateProximityTokenView, VerifyProximityTokenView,
+    PostShareView, post_card_image,
     )
 from rest_framework.routers import DefaultRouter
 
@@ -70,5 +71,8 @@ urlpatterns = [
     path("event-posts/<int:post_id>/", EventPostsView.as_view(), name="event_posts"),
     path("proximity/generate-token/", GenerateProximityTokenView.as_view(), name="proximity_generate_token"),
     path("proximity/verify-token/", VerifyProximityTokenView.as_view(), name="proximity_verify_token"),
+    # Public link previews for nextvibe.io/u/post/<id> (landing _worker.js)
+    path("<int:post_id>/share/", PostShareView.as_view(), name="post_share"),
+    path("<int:post_id>/card.png", post_card_image, name="post_card_image"),
 ]
 

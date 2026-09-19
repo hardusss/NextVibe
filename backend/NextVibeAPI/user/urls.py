@@ -16,6 +16,7 @@ from .views_pac import (
                             SeekerVerifyView, DeleteAccountView,
                             BlockUserView, UnblockUserView, BlockedUsersView,
                             UserLookupView, SeekerShareView, seeker_card_image,
+                            ProfileShareView, profile_card_image,
                         )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -57,6 +58,9 @@ urlpatterns = [
     path("block/<int:user_id>/", UnblockUserView.as_view(), name="unblock_user"),
     path("blocked/", BlockedUsersView.as_view(), name="blocked_users"),
     path("lookup/", UserLookupView.as_view(), name="user_lookup"),
+    # Public link previews for nextvibe.io/u/<id> (landing _worker.js)
+    path("<int:user_id>/share/", ProfileShareView.as_view(), name="profile_share"),
+    path("<int:user_id>/card.png", profile_card_image, name="profile_card_image"),
     # Public, no auth. `path:` so a username with a slash still resolves.
     path("<path:username>/seeker-card.png", seeker_card_image, name="seeker_card_image"),
     path("<path:username>/seeker-share/", SeekerShareView.as_view(), name="seeker_share"),

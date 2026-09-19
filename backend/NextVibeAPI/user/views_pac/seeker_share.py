@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.http import HttpResponse
 from django.views.decorators.http import require_safe
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from user.src import og_image as og
 from user.src.seeker_card import (
     card_image_url,
     card_subline,
@@ -28,17 +28,9 @@ def seeker_card_image(request, username):
     """
     user = verified_user(username)
     if user is None:
-        response = HttpResponse("Not found", status=404, content_type="text/plain")
-        response["Cache-Control"] = "no-store"  # they may get verified later
-        return response
-
+        return og.not_found_response()
     png, version = get_card_png(user)
-    response = HttpResponse(png, content_type="image/png")
-    if request.GET.get("v") == version:
-        response["Cache-Control"] = "public, max-age=86400, immutable"
-    else:
-        response["Cache-Control"] = "no-cache"
-    return response
+    return og.card_response(request, png, version)
 
 
 class SeekerShareView(APIView):

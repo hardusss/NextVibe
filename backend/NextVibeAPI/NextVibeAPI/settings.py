@@ -13,6 +13,8 @@ else:
 # Absolute base for public image URLs (Seeker Verified card). Crawlers need
 # an absolute og:image, so it doesn't come from the request.
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.nextvibe.io")
+# Where stored files are public; empty means https://<AWS_S3_CUSTOM_DOMAIN> (R2)
+PUBLIC_MEDIA_URL = os.getenv("PUBLIC_MEDIA_URL", "")
 
 # Console logging for mint/collect diagnostics — the "posts" logger emits
 # INFO-level flow logs (prepare/submit/mint outcomes) in both environments.

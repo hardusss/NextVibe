@@ -6,14 +6,20 @@ User = get_user_model()
 
 class PublicUserDetailSerializer(serializers.ModelSerializer):
     """
-    Serializer for public user profiles.
+    Serializer for public user profiles (no auth).
     Includes an auto-syncing post counter.
     """
     posts_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        exclude = ('password',)
+        # Allowlist: this is served to anyone. It used to be "everything but
+        # the password", which exposed push tokens, wallets and follow lists.
+        fields = (
+            "user_id", "username", "avatar", "about", "official",
+            "seeker_verified", "seeker_verified_source",
+            "post_count", "posts_count", "readers_count", "follows_count",
+        )
 
     def get_posts_count(self, obj):
         """

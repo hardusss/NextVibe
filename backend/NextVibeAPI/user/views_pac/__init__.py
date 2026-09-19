@@ -29,3 +29,4 @@ from .seeker_verify import SeekerVerifyView
 from .delete_account import DeleteAccountView
 from .block import BlockUserView, UnblockUserView, BlockedUsersView
 from .seeker_share import SeekerShareView, UserLookupView, seeker_card_image
+from .profile_share import ProfileShareView, profile_card_image
