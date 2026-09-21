@@ -110,19 +110,72 @@ class RenderTest(NvTestCase):
         self.assertEqual(render.app_path("https://nextvibe.io/u/verified/a"), (None, "https://nextvibe.io/u/verified/a"))
         self.assertEqual(render.app_path(None), (None, None))
 
-    def test_email_html_and_text(self):
+    def test_full_email_template(self):
+        """seeker-badge-email carries its own dark html + text; both are sent as rendered."""
         t = render.get_template("seeker-badge-email")
-        r = render.render(t, {"first_name": "gusyk", "username": "gusyk"})
-        html = render.email_html(r, "https://api.nextvibe.io/u/e/TOKEN", cta_label=t.cta_label)
+        self.assertEqual((t.channel, t.sender, t.reply_to), ("email", "Danylo from NextVibe <danylo@nextvibe.io>", "danylo@nextvibe.io"))
+        self.assertEqual(t.extra_placeholders(), set())
+        ctx = {"first_name": "gusyk", "username": "gusyk", "unsubscribe": "https://api.nextvibe.io/u/e/TOKEN"}
+        r = render.render(t, ctx)
+        html, text = r.email_parts()
+        self.assertEqual(r.title, "You're Seeker Verified on NextVibe")
+        self.assertEqual(r.deeplink, "https://nextvibe.io/u/verified/gusyk")
         self.assertIn("<!doctype html>", html.lower())
-        self.assertIn("https://api.nextvibe.io/u/e/TOKEN", html)
-        self.assertIn("https://nextvibe.io/u/verified/gusyk", html)
-        self.assertIn("See your badge", html)
-        self.assertEqual(html.count("font-size:16px;line-height:24px"), 3)  # three body paragraphs
-        self.assertNotIn("{{", html)
-        text = render.email_text(r, "https://api.nextvibe.io/u/e/TOKEN")
-        self.assertTrue(text.startswith(r.title))
+        self.assertIn('name="color-scheme" content="light dark"', html)
+        self.assertIn('bgcolor="#0A0714"', html)  # the dark background is an attribute too, not only CSS
+        self.assertIn(r.preheader, html)
+        self.assertIn('href="https://nextvibe.io/u/verified/gusyk"', html)
+        self.assertIn('href="https://api.nextvibe.io/u/e/TOKEN"', html)
+        self.assertEqual(render.find_placeholders(html), set())
+        self.assertTrue(text.startswith("Hi gusyk,"))
+        self.assertIn("See your badge: https://nextvibe.io/u/verified/gusyk", text)
         self.assertIn("Unsubscribe: https://api.nextvibe.io/u/e/TOKEN", text)
+        self.assertEqual(r.body, text)  # the plain part is what gets logged
+        b = render.render(t.with_subject_b(), ctx)
+        self.assertEqual(b.title, "gusyk, your Seeker badge is live")
+        self.assertEqual(b.email_parts()[0], html)  # subject B changes only the subject
+
+    def test_full_template_escapes_values_in_html_only(self):
+        t = render.get_template("seeker-badge-email")
+        r = render.render(t, {"first_name": "<b>&", "username": "u", "unsubscribe": "https://x/u/e/T?a=1&b=2"})
+        html, text = r.email_parts()
+        self.assertIn("Hi &lt;b&gt;&amp;,", html)
+        self.assertIn('href="https://x/u/e/T?a=1&amp;b=2"', html)
+        self.assertNotIn("<b>&", html)
+        self.assertTrue(text.startswith("Hi <b>&,"))
+
+    def test_short_email_is_wrapped_in_base_html(self):
+        t = Template(name="x", channel="email", title="Hi {first_name}", body="One\n\nTwo",
+                     deeplink="https://nextvibe.io", cta_label="Open")
+        r = render.render(t, {"first_name": "a", "unsubscribe": "https://api.nextvibe.io/u/e/TOKEN"})
+        html, text = r.email_parts()
+        self.assertIn('bgcolor="#0A0714"', html)
+        self.assertEqual(html.count("font-size:16px;line-height:25px"), 2)  # two body paragraphs
+        self.assertIn('href="https://nextvibe.io"', html)
+        self.assertIn('href="https://api.nextvibe.io/u/e/TOKEN"', html)
+        self.assertNotIn("{{", html)
+        self.assertTrue(text.startswith("Hi a"))
+        self.assertIn("Unsubscribe: https://api.nextvibe.io/u/e/TOKEN", text)
+
+    def test_html_template_needs_an_unsubscribe_link(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(render, "TEMPLATES_DIR", Path(tmp)):
+            (Path(tmp) / "x.yaml").write_text("name: x\nchannel: email\nsubject: s\ntext: 't {unsubscribe}'\nhtml: '<p>no link</p>'\n")
+            with self.assertRaises(render.TemplateError) as cm:
+                render.load_templates()
+            self.assertIn("{unsubscribe}", str(cm.exception))
+            (Path(tmp) / "x.yaml").write_text("name: x\nchannel: push\nsubject: s\ntext: '{unsubscribe}'\nhtml: '{unsubscribe}'\n")
+            with self.assertRaises(render.TemplateError):
+                render.load_templates()
+
+    def test_unsubscribe_link_is_on_the_api_host(self):
+        """nextvibe.io paths open the app (iOS "*", Android /u/*), so the link can't live there."""
+        user = self.user("alice")
+        with self.settings(PUBLIC_API_URL="https://api.nextvibe.io"):
+            url = render.user_context(user)["unsubscribe"]
+        self.assertRegex(url, r"^https://api\.nextvibe\.io/u/e/[^/]+$")
+        res = self.client.get(url.replace("https://api.nextvibe.io", ""))
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b"You're unsubscribed", res.content)
 
     def test_email_html_escapes_user_text(self):
         t = Template(name="x", channel="email", title="<b>{first_name}</b>", body="a & b")

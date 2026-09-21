@@ -1,11 +1,67 @@
 name: seeker-badge-email
 channel: email
-title: "You're Seeker Verified on NextVibe"
-body: |
+from: "Danylo from NextVibe <danylo@nextvibe.io>"
+reply_to: "danylo@nextvibe.io"
+subject: "You're Seeker Verified on NextVibe"
+subject_b: "{first_name}, your Seeker badge is live"
+preheader: "Your Genesis Token is confirmed on-chain — the badge now shows next to your name."
+link: "https://nextvibe.io/u/verified/{username}"
+text: |
   Hi {first_name},
 
   Your Seeker Genesis Token was confirmed on-chain, and the Seeker Verified badge now shows next to your name everywhere on NextVibe — your profile, your posts, your comments.
 
   Open the app to see it, and share your verified card with one tap from the badge.
-deeplink: "https://nextvibe.io/u/verified/{username}"
-cta_label: "See your badge"
+
+  See your badge: {link}
+
+  Danylo from NextVibe
+
+  —
+  You get this because you have a NextVibe account. Unsubscribe: {unsubscribe}
+html: |
+  <!doctype html>
+  <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>NextVibe</title>
+  <style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+  @media (max-width: 600px) { .nv-card { padding: 28px 22px 26px 22px !important; } }
+  </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#0A0714;" bgcolor="#0A0714">
+  <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#0A0714;">{preheader}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#0A0714" style="background-color:#0A0714;">
+  <tr><td align="center" style="padding:40px 12px 48px 12px;">
+  <!--[if mso]><table role="presentation" width="560" align="center" cellspacing="0" cellpadding="0" border="0"><tr><td><![endif]-->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;">
+  <tr><td style="padding:0 6px 18px 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:18px;line-height:24px;font-weight:700;letter-spacing:0.2px;color:#F5F3FF;">NextVibe</td></tr>
+  <tr><td class="nv-card" bgcolor="#180F2C" style="background-color:#180F2C;border:1px solid #2C2248;border-radius:20px;padding:36px 32px 32px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+  <td bgcolor="#1E1147" style="background-color:#1E1147;border:1px solid #4C1D95;border-radius:999px;padding:6px 12px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.8px;color:#C4B5FD;">&#10003;&nbsp; SEEKER VERIFIED</td>
+  </tr></table>
+  <h1 style="margin:22px 0 18px 0;font-size:26px;line-height:32px;font-weight:700;color:#F5F3FF;">You're Seeker Verified</h1>
+  <p style="margin:0 0 16px 0;font-size:16px;line-height:25px;color:#CDCAD9;">Hi {first_name},</p>
+  <p style="margin:0 0 16px 0;font-size:16px;line-height:25px;color:#CDCAD9;">Your Seeker Genesis Token was confirmed on-chain, and the Seeker Verified badge now shows next to your name everywhere on NextVibe — your profile, your posts, your comments.</p>
+  <p style="margin:0 0 28px 0;font-size:16px;line-height:25px;color:#CDCAD9;">Open the app to see it, and share your verified card with one tap from the badge.</p>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+  <td bgcolor="#7C3AED" style="background-color:#7C3AED;border-radius:12px;"><a href="{link}" style="display:inline-block;padding:14px 26px;font-size:15px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:12px;">See your badge</a></td>
+  </tr></table>
+  <p style="margin:28px 0 0 0;font-size:14px;line-height:21px;color:#9893A6;">Danylo from NextVibe</p>
+  </td></tr>
+  <tr><td style="padding:22px 6px 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8F89A3;">
+  You get this because you have a NextVibe account. <a href="{unsubscribe}" style="color:#A78BFA;text-decoration:underline;">Unsubscribe</a><br>
+  <a href="https://nextvibe.io" style="color:#8F89A3;text-decoration:none;">nextvibe.io</a>
+  </td></tr>
+  </table>
+  <!--[if mso]></td></tr></table><![endif]-->
+  </td></tr>
+  </table>
+  </body>
+  </html>

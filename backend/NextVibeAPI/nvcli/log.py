@@ -1,13 +1,16 @@
 """
 Campaign state without models: one JSONL file per campaign under
 ``nvcli/logs/``, one line per delivery, plus ``_index.json`` (campaign list
-for the menu) and ``optout.json`` (users who unsubscribed via /u/e and /u/p).
+for the menu), ``optout.json`` (users who unsubscribed via /u/e and /u/p, or
+whose address bounced) and ``_events.jsonl`` (Resend webhook events).
 """
 import datetime
+import fcntl
 import json
 import os
 import re
 from collections import Counter, defaultdict
+from contextlib import contextmanager
 from pathlib import Path
 
 from nvcli import DEFAULT_LOGS_DIR
@@ -17,7 +20,9 @@ LOGS_DIR: Path = DEFAULT_LOGS_DIR
 
 # Statuses that count as "already reached" for idempotency.
 DELIVERED = frozenset({"sent", "delivered"})
-STATUSES = ("sent", "delivered", "failed", "unregistered", "test")
+STATUSES = ("sent", "delivered", "failed", "unregistered", "test", "dry")
+# Lines that aren't a real send: they never open a new wave.
+NOT_A_WAVE = frozenset({"test", "dry"})
 FIELDS = (
     "ts", "campaign", "wave", "user_id", "username", "channel", "variant",
     "status", "ticket", "error", "title", "body",
@@ -55,7 +60,10 @@ def entry(**kw) -> dict:
 
 
 def read(name: str) -> list[dict]:
-    path = campaign_path(name)
+    return _read_jsonl(campaign_path(name))
+
+
+def _read_jsonl(path: Path) -> list[dict]:
     if not path.exists():
         return []
     rows = []
@@ -103,7 +111,7 @@ def sent_user_ids(name: str) -> set[int]:
 
 
 def next_wave(name: str) -> int:
-    waves = [int(r.get("wave") or 0) for r in read(name) if r.get("status") != "test"]
+    waves = [int(r.get("wave") or 0) for r in read(name) if r.get("status") not in NOT_A_WAVE]
     return (max(waves) + 1) if waves else 1
 
 
@@ -161,7 +169,7 @@ def update_index(name: str, **meta) -> dict:
     info.update({k: v for k, v in meta.items() if v is not None})
     rows = read(name)
     info["counts"] = counts(rows)
-    info["waves"] = max([int(r.get("wave") or 0) for r in rows if r.get("status") != "test"] or [0])
+    info["waves"] = max([int(r.get("wave") or 0) for r in rows if r.get("status") not in NOT_A_WAVE] or [0])
     info["updated"] = now_iso()
     index[name] = info
     tmp = index_path().with_suffix(".json.tmp")
@@ -198,20 +206,95 @@ def optout_ids(channel: str) -> set[int]:
     return read_optout().get(channel, set())
 
 
+@contextmanager
+def _optout_lock():
+    """Web workers (unsubscribe links, bounce webhooks) write concurrently."""
+    _ensure()
+    with (LOGS_DIR / "optout.lock").open("a") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+
+
 def add_optout(channel: str, user_id: int) -> bool:
     """Record an unsubscribe. Returns True when it was not there before."""
     if channel not in OPTOUT_CHANNELS:
         raise ValueError(channel)
-    _ensure()
-    data = read_optout()
-    if user_id in data[channel]:
-        return False
-    data[channel].add(int(user_id))
-    payload = {ch: sorted(ids) for ch, ids in data.items()}
-    tmp = optout_path().with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    os.replace(tmp, optout_path())
+    with _optout_lock():
+        data = read_optout()
+        if user_id in data[channel]:
+            return False
+        data[channel].add(int(user_id))
+        payload = {ch: sorted(ids) for ch, ids in data.items()}
+        tmp = optout_path().with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        os.replace(tmp, optout_path())
     return True
+
+
+# ── Resend webhook events ──────────────────────────────────────────────
+
+EMAIL_EVENTS = ("delivered", "opened", "clicked", "bounced", "complained")
+
+
+def events_path() -> Path:
+    return LOGS_DIR / "_events.jsonl"
+
+
+def append_event(row: dict) -> None:
+    """One line per webhook. O_APPEND + a single write keeps lines from
+    concurrent web workers whole."""
+    _ensure()
+    data = (json.dumps(row, ensure_ascii=False) + "\n").encode("utf-8")
+    fd = os.open(events_path(), os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+
+
+def read_events() -> list[dict]:
+    return _read_jsonl(events_path())
+
+
+def find_delivery(ticket: str, campaign: str | None = None) -> dict | None:
+    """The email line that got this Resend email id, looking in `campaign` first."""
+    names = [campaign] if campaign and slug(campaign) == campaign and exists(campaign) else []
+    names += [n for n in list_campaigns() if n not in names]
+    for name in names:
+        for row in read(name):
+            if row.get("ticket") == ticket and row.get("channel") == "email":
+                return row
+    return None
+
+
+def engagement(rows: list[dict], events: list[dict]) -> dict[str, Counter]:
+    """
+    {variant: Counter} for a campaign's emails: `sent` (real sends with a
+    Resend id — tests and dry runs excluded) plus how many of those were
+    delivered / opened / clicked / bounced / complained. Each email counts
+    once per event, however often Resend reports it.
+    """
+    variant_of = {
+        r["ticket"]: r.get("variant") or "A"
+        for r in rows
+        if r.get("channel") == "email" and r.get("ticket") and r.get("status") in DELIVERED
+    }
+    out: dict[str, Counter] = defaultdict(Counter)
+    for variant in variant_of.values():
+        out[variant]["sent"] += 1
+    seen = set()
+    for e in events:
+        email_id = e.get("email_id")
+        kind = (e.get("event") or "").removeprefix("email.")
+        variant = variant_of.get(email_id)
+        if variant is None or kind not in EMAIL_EVENTS or (email_id, kind) in seen:
+            continue
+        seen.add((email_id, kind))
+        out[variant][kind] += 1
+    return dict(out)
 
 
 def operator_path() -> Path:

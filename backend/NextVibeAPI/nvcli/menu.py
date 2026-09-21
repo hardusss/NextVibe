@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 import questionary
 from django.conf import settings
 from questionary import Choice
+from rich import box
+from rich.markup import escape
 from rich.panel import Panel
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.syntax import Syntax
@@ -27,7 +29,6 @@ from nvcli.console import (
     clear, console, env_badge, err, fmt_dt, fmt_month, log_exception, ok, panel, short_wallet, warn, yes_no,
 )
 from nvcli.render import Template, UnresolvedPlaceholder
-from user.views_pac.optout import make_token
 
 DIRECT_CAMPAIGN = "direct"
 CONFIRM_TYPED_ABOVE = 50
@@ -171,7 +172,7 @@ def deliveries_table(user):
         t.add_column(col)
     for r in rows[:20]:
         status = r.get("status") or "?"
-        style = {"sent": "ok", "delivered": "ok", "failed": "err", "unregistered": "muted", "test": "warn"}.get(status, "white")
+        style = {"sent": "ok", "delivered": "ok", "failed": "err", "unregistered": "muted", "test": "warn", "dry": "muted"}.get(status, "white")
         t.add_row((r.get("ts") or "")[:16].replace("T", " "), r.get("campaign") or "", str(r.get("wave") or ""),
                   r.get("channel") or "", r.get("variant") or "", f"[{style}]{status}[/]", (r.get("title") or "")[:40])
     console.print(t)
@@ -197,7 +198,7 @@ def templates_for(channel):
 
 
 def write_message(channel) -> Template:
-    title = text("Title", validate=lambda v: bool(v.strip()) or "a title is needed").strip()
+    title = text("Subject" if channel == "email" else "Title", validate=lambda v: bool(v.strip()) or "needed").strip()
     body = questionary.text(
         "Body", multiline=True, qmark="", instruction="(Esc then Enter to finish)",
         validate=lambda v: bool(v.strip()) or "a body is needed",
@@ -241,29 +242,65 @@ def collect_extra(templates, prefill=None) -> dict:
 
 def preview_panel(rendered, user, channel, variant=None):
     title = f"Sample — @{user.username}" + (f" · variant {variant}" if variant else "")
-    lines = [f"[title]{rendered.title}[/]", rendered.body]
+    lines = [f"[title]{rendered.title}[/]"]
+    if channel == "email":
+        lines.append(f"[muted]from[/] {send_email.from_address(rendered)}"
+                     + (f"  [muted]reply-to[/] {rendered.reply_to}" if rendered.reply_to else ""))
+        if rendered.preheader:
+            lines.append(f"[muted]preheader[/] {rendered.preheader}")
+    lines.append(rendered.body)
     if rendered.deeplink:
         internal, external = render.app_path(rendered.deeplink)
         lines.append(f"[muted]→ {rendered.deeplink}[/]" + (f"  [muted]({'app' if internal else 'external'})[/]"))
     if channel != "email" and rendered.data:
         lines.append("[muted]data " + " ".join(f"{k}={v}" for k, v in rendered.data.items()) + "[/]")
     if channel == "email":
-        lines.append("[muted]HTML + plain text, unsubscribe link in the footer[/]")
+        html, _ = rendered.email_parts()
+        kind = "template HTML" if rendered.html is not None else "base.html"
+        lines.append(f"[muted]{kind} {len(html) / 1024:.1f} KB + plain text · one-click unsubscribe header[/]")
     return panel("\n".join(lines), title=title, style="muted")
-
-
-def unsubscribe_url(user) -> str:
-    return f"{settings.PUBLIC_API_URL.rstrip('/')}/u/e/{make_token(user.user_id)}"
 
 
 def deliver_push(user, rendered, campaign, variant, wave):
     return send_push.send_one(user.expo_push_token, rendered, campaign=campaign, variant=variant, wave=wave)
 
 
-def deliver_email(user, rendered):
-    url = unsubscribe_url(user)
-    html = render.email_html(rendered, url)
-    return send_email.send_email(user.email, rendered.title, render.email_text(rendered, url), html, unsubscribe_url=url)
+def deliver_email(user, rendered, campaign, variant, wave, label=""):
+    """One email now; a unique ref, so a deliberate second send isn't swallowed by Resend's idempotency."""
+    ref = send_email.unique_ref(campaign, user.user_id, label)
+    return send_email.send_one(user, rendered, campaign, variant, wave, ref=ref)
+
+
+def email_ready(senders=()):
+    """Run the Resend preflight before a real send; print it when it fails or warns."""
+    with console.status("checking Resend…"):
+        check = send_email.preflight(senders)
+    if not check.ok or check.warnings:
+        console.print(preflight_panel(check))
+    return check.ok
+
+
+def preflight_panel(check):
+    key = settings.RESEND_API_KEY or ""
+    masked = f"{key[:6]}…{key[-4:]}" if len(key) > 12 else ("set" if key else "not set")
+    if check.ok:
+        lines = [f"[ok]✓[/] {check.line}", f"[muted]key[/] {masked}   [muted]from[/] {send_email.from_address()}",
+                 f"[muted]webhook[/] {send_email.webhook_url()}"]
+        lines += [f"[warn]![/] {w}" for w in check.warnings]
+        return panel("\n".join(lines), title="Resend", style="accent")
+    body = Table.grid(padding=(0, 0))
+    body.add_row(Text(f"✗ {check.line}", style="err"))
+    if check.records:
+        t = Table(header_style="accent", box=None, padding=(0, 2, 0, 0))
+        for col in ("record", "type", "name", "value", "status"):
+            t.add_column(col, overflow="fold")
+        for r in check.records:
+            t.add_row(str(r.get("record") or ""), str(r.get("type") or ""), str(r.get("name") or ""),
+                      str(r.get("value") or "") + (f"  (priority {r['priority']})" if r.get("priority") is not None else ""),
+                      str(r.get("status") or ""))
+        body.add_row(Text(""))
+        body.add_row(t)
+    return Panel(body, title="Resend — not ready to send", border_style="err", title_align="left")
 
 
 def log_result(campaign, wave, user, channel, variant, rendered, status, ticket=None, error=None):
@@ -291,18 +328,30 @@ def send_to_one_user(user=None, channel=None):
         pause()
         return
     console.print(preview_panel(rendered, user, channel))
-    if not confirm(f"Send to @{user.username} via {channel}?"):
+    channels = audience.channels_for(user, channel)
+    if "email" in channels:
+        reason = send_email.skip_reason(user)
+        if reason:
+            err(f"no email to @{user.username}: {reason}")
+            channels.remove("email")
+        elif not email_ready([send_email.from_address(rendered)]):
+            channels.remove("email")
+    if not channels:
         console.print("[muted]not sent[/]")
         pause()
         return
-    for ch in audience.channels_for(user, channel):
+    if not confirm(f"Send to @{user.username} via {' + '.join(channels)}?"):
+        console.print("[muted]not sent[/]")
+        pause()
+        return
+    for ch in channels:
         if ch == "push":
             r = deliver_push(user, rendered, DIRECT_CAMPAIGN, "A", 1)
             status, ticket, error = r.status, r.ticket, r.error
             if status == "unregistered":
                 receipts.clear_tokens([user.user_id])
         else:
-            r = deliver_email(user, rendered)
+            r = deliver_email(user, rendered, DIRECT_CAMPAIGN, "A", 1)
             status, ticket, error = r.status, r.message_id, r.error
         log_result(DIRECT_CAMPAIGN, 1, user, ch, "A", rendered, status, ticket, error)
         if status == "sent":
@@ -334,7 +383,8 @@ class Plan:
     split_a: float
     share_label: str
     deliveries: list = field(default_factory=list)
-    per_minute: float = send_email.DEFAULT_PER_MINUTE
+    extra: dict = field(default_factory=dict)         # values for non-user placeholders
+    skipped: Counter = field(default_factory=Counter)  # email skip reason → users
 
     def describe_segments(self):
         s = " AND ".join(self.include)
@@ -434,10 +484,19 @@ def ask_share(total):
 
 def build_deliveries(plan, users, already_sent):
     seeker_total = audience.seeker_total()
+    email_optouts = log.optout_ids("email")
     deliveries = []
     for user in users:
         variant = audience.variant_for(plan.name, user.user_id, plan.split_a) if "B" in plan.variants else "A"
-        channels = [ch for ch in audience.channels_for(user, plan.channel) if (user.user_id, ch) not in already_sent]
+        channels = []
+        for ch in audience.channels_for(user, plan.channel):
+            if (user.user_id, ch) in already_sent:
+                continue
+            reason = send_email.skip_reason(user, email_optouts) if ch == "email" else None
+            if reason:
+                plan.skipped[reason] += 1
+                continue
+            channels.append(ch)
         if not channels:
             continue
         ctx = {**render.user_context(user, seeker_total), **plan.extra}
@@ -481,25 +540,11 @@ def sample_panels(deliveries):
     return panels
 
 
-def email_backend_ok(email_count):
-    info = send_email.backend_info()
-    console.print(f"  [muted]email via[/] {info.label}   [muted]from[/] {send_email.from_address()}")
-    if info.bulk_ok or email_count <= send_email.CONSUMER_LIMIT:
-        return True
-    console.print(Panel(
-        f"[err]{email_count} emails through {info.label} is refused.[/]\n\n"
-        f"Consumer and unconfigured mailboxes throttle bulk mail and get the domain flagged as spam; "
-        f"the wizard caps them at {send_email.CONSUMER_LIMIT} recipients.\n\n[title]Fix:[/] {info.fix}",
-        title="email backend", border_style="err", title_align="left",
-    ))
-    return False
-
-
-def test_send(plan):
+def test_send(plan, email_ok=True):
     operator = ask_operator()
-    channels = audience.channels_for(operator, plan.channel)
+    channels = [ch for ch in audience.channels_for(operator, plan.channel) if ch != "email" or email_ok]
     if not channels:
-        err(f"@{operator.username} has no {plan.channel} channel; skipping the test send")
+        err(f"@{operator.username} has no {plan.channel} channel to test with; skipping the test send")
         return
     ctx = {**render.user_context(operator), **plan.extra}
     for variant, template in sorted(plan.variants.items()):
@@ -509,14 +554,29 @@ def test_send(plan):
                 r = deliver_push(operator, rendered, plan.name, variant, plan.wave)
                 status, ticket, error = r.status, r.ticket, r.error
             else:
-                r = deliver_email(operator, rendered)
+                r = deliver_email(operator, rendered, plan.name, variant, plan.wave, label=f"test-{variant}-")
                 status, ticket, error = r.status, r.message_id, r.error
+            if status == "skipped":
+                err(f"test email (variant {variant}) not sent: @{operator.username} is {error}")
+                continue
             log_result(plan.name, plan.wave, operator, ch, variant, rendered, "test" if status == "sent" else status, ticket, error)
             if status == "sent":
                 ok(f"test {ch} (variant {variant}) sent to @{operator.username} · {ticket or 'no id'}")
             else:
-                err(f"test {ch} (variant {variant}) {status}: {error}")
+                err(escape(f"test {ch} (variant {variant}) {status}: {error}"))
     pause("Check your phone/inbox, then press Enter")
+
+
+def choose_variant_b(channel, template_a) -> Template:
+    """An email with `subject_b` can A/B its subject line alone."""
+    if template_a.subject_b:
+        pick = select("Message (variant B)", [
+            Choice(f"Same email, subject B: {template_a.subject_b[:60]}", "subject_b"),
+            Choice("Another message", "other"),
+        ])
+        if pick == "subject_b":
+            return template_a.with_subject_b()
+    return choose_message(channel, "Message (variant B)")
 
 
 def send_to_segment():
@@ -533,7 +593,7 @@ def send_to_segment():
     only_new = True
     if wave > 1:
         only_new = confirm("Only users not yet delivered in this campaign?", default=True)
-        echo("only new", "yes" if only_new else "no")
+        echo("only new", "yes" if only_new else "no (pushes only: an email never goes twice in one campaign)")
 
     qs = audience.with_channel(audience.without_optouts(audience.apply(include, exclude), channel), channel)
     users = list(qs)
@@ -547,27 +607,29 @@ def send_to_segment():
     variants = {"A": template_a}
     split_a = 1.0
     if confirm("Add a variant B?"):
-        variants["B"] = choose_message(channel, "Message (variant B)")
+        variants["B"] = choose_variant_b(channel, template_a)
         pct = text("Share for A (%)", default="50", validate=lambda v: (v.strip().isdigit() and 0 < int(v) < 100) or "1–99")
         split_a = int(pct) / 100
         echo("split", f"A {int(split_a * 100)}% / B {100 - int(split_a * 100)}%")
     extra = collect_extra(variants.values(), prefill=event_prefill(include))
 
     plan = Plan(name=name, wave=wave, channel=channel, include=include, exclude=exclude,
-                variants=variants, split_a=split_a, share_label="all")
-    plan.extra = extra
+                variants=variants, split_a=split_a, share_label="all", extra=extra)
 
     mode, value, plan.share_label = ask_share(len(users))
     picked = audience.sample_n(users, name, value) if mode == "n" else audience.sample(users, name, value)
     echo("sample", f"{plan.share_label} → {len(picked)} users")
 
-    already = log.sent_keys(name) if only_new else set()
+    reached = log.sent_keys(name)
+    already = reached if only_new else {key for key in reached if key[1] == "email"}
     try:
         plan.deliveries = build_deliveries(plan, picked, already)
     except UnresolvedPlaceholder as e:
         err(str(e), "every placeholder must resolve for every recipient; fix the template or its values")
         pause()
         return
+    if plan.skipped:
+        echo("no email", ", ".join(f"{n} {reason}" for reason, n in plan.skipped.most_common()))
     if not plan.deliveries:
         err("nothing left to send", "everyone in this sample was already reached in this campaign")
         pause()
@@ -575,11 +637,6 @@ def send_to_segment():
 
     emails = sum(1 for d in plan.deliveries if d.channel == "email")
     pushes = len(plan.deliveries) - emails
-    if emails and not email_backend_ok(emails):
-        pause()
-        return
-    if emails > 100 and confirm("Cold domain? use 100/hour instead of 60/min", default=False):
-        plan.per_minute = send_email.COLD_PER_HOUR / 60
 
     console.print()
     console.print(audience_table(plan.deliveries))
@@ -587,28 +644,45 @@ def send_to_segment():
         console.print(p)
     console.print(f"  [muted]planned[/] push {pushes} · email {emails} · variants {', '.join(sorted(variants))}")
 
-    if confirm("Send this to yourself before the real run?", default=True):
+    ready = True
+    if emails:
+        ready = email_ready({send_email.from_address(d.rendered) for d in plan.deliveries if d.channel == "email"})
+        if ready:
+            ok(f"Resend ready · emails go in batches of {send_email.BATCH_SIZE}")
+
+    if ready and confirm("Send this to yourself before the real run?", default=True):
         test_send(plan)
 
-    if len(plan.deliveries) <= CONFIRM_TYPED_ABOVE:
-        go = confirm(f"Send {len(plan.deliveries)} deliveries to {len(picked)} users via {channel}?")
-    else:
+    recipients = len({d.user.user_id for d in plan.deliveries})
+    action = select("Send?", [
+        Choice(f"Send {len(plan.deliveries)} deliveries to {recipients} users via {channel}", "send",
+               disabled=None if ready else "fix the Resend check above first"),
+        Choice("Dry run: render and log everything, send nothing", "dry"),
+        Choice("Cancel", None),
+    ])
+    if action == "send" and len(plan.deliveries) > CONFIRM_TYPED_ABOVE:
         typed = text(f"Type the campaign name to send {len(plan.deliveries)} deliveries:")
-        go = typed.strip() == name
-    if not go:
+        if typed.strip() != name:
+            action = None
+    if not action:
         console.print("[muted]not sent[/]")
         pause()
         return
 
-    stats = run_campaign(plan)
+    dry = action == "dry"
+    stats, email_run = run_campaign(plan, dry=dry)
     log.update_index(name, channel=channel, segments=plan.describe_segments(), share=plan.share_label,
                      variants=sorted(variants), templates={v: t.name for v, t in variants.items()})
-    summary_panel(plan, stats)
+    summary_panel(plan, stats, email_run, dry=dry)
     pause()
 
 
-def run_campaign(plan) -> dict:
-    """Send everything in the plan with a live progress bar; Ctrl-C finishes the current batch."""
+def run_campaign(plan, dry=False):
+    """
+    Send everything in the plan with a live progress bar; Ctrl-C finishes
+    the current batch. `dry` logs every delivery as "dry" and calls nothing.
+    Returns (stats by (channel, variant), the email CampaignRun or None).
+    """
     stop = {"flag": False}
 
     def on_sigint(signum, frame):
@@ -624,24 +698,29 @@ def run_campaign(plan) -> dict:
     emails = [d for d in plan.deliveries if d.channel == "email"]
     random.shuffle(pushes)
     random.shuffle(emails)
+    suffix = " (dry)" if dry else ""
 
     columns = (
         SpinnerColumn(), TextColumn("{task.description}"), BarColumn(), MofNCompleteColumn(),
         TextColumn("[green]sent ✓ {task.fields[sent]}[/]  [red]failed ✗ {task.fields[failed]}[/]  [grey50]unregistered ⊘ {task.fields[unreg]}[/]"),
         TimeElapsedColumn(),
     )
+    email_run = None
     previous = signal.signal(signal.SIGINT, on_sigint)
     try:
         with Progress(*columns, console=console) as progress:
             if pushes:
-                task = progress.add_task("push ", total=len(pushes), sent=0, failed=0, unreg=0)
+                task = progress.add_task("push " + suffix, total=len(pushes), sent=0, failed=0, unreg=0)
                 c = Counter()
                 batches = list(send_push.chunks(pushes))
                 for i, batch in enumerate(batches):
                     if stop["flag"]:
                         break
-                    messages = [send_push.build_message(d.user.expo_push_token, d.rendered, plan.name, d.variant, plan.wave) for d in batch]
-                    results = send_push.send_batch(messages)
+                    if dry:
+                        results = [send_push.PushResult("dry", None, None)] * len(batch)
+                    else:
+                        messages = [send_push.build_message(d.user.expo_push_token, d.rendered, plan.name, d.variant, plan.wave) for d in batch]
+                        results = send_push.send_batch(messages)
                     dead = []
                     for d, r in zip(batch, results):
                         log_result(plan.name, plan.wave, d.user, "push", d.variant, d.rendered, r.status, r.ticket, r.error)
@@ -651,42 +730,61 @@ def run_campaign(plan) -> dict:
                             dead.append(d.user.user_id)
                     if dead:
                         receipts.clear_tokens(dead)
-                    progress.update(task, advance=len(batch), sent=c["sent"], failed=c["failed"], unreg=c["unregistered"])
-                    if i < len(batches) - 1 and not stop["flag"]:
+                    progress.update(task, advance=len(batch), sent=c["sent"] + c["dry"], failed=c["failed"], unreg=c["unregistered"])
+                    if not dry and i < len(batches) - 1 and not stop["flag"]:
                         time.sleep(send_push.BATCH_PAUSE)
             if emails and not stop["flag"]:
-                task = progress.add_task("email", total=len(emails), sent=0, failed=0, unreg=0)
+                task = progress.add_task("email" + suffix, total=len(emails), sent=0, failed=0, unreg=0)
                 c = Counter()
-                limiter = send_email.RateLimiter(plan.per_minute)
-                for d in emails:
-                    if stop["flag"]:
-                        break
-                    limiter.wait()
-                    r = deliver_email(d.user, d.rendered)
-                    log_result(plan.name, plan.wave, d.user, "email", d.variant, d.rendered, r.status, r.message_id, r.error)
-                    stats[("email", d.variant)][r.status] += 1
-                    c[r.status] += 1
-                    progress.update(task, advance=1, sent=c["sent"], failed=c["failed"], unreg=0)
+
+                def on_batch(pairs):
+                    for d, r in pairs:
+                        stats[("email", d.variant)][r.status] += 1
+                        c[r.status] += 1
+                    progress.update(task, advance=len(pairs), sent=c["sent"] + c["dry"], failed=c["failed"], unreg=0)
+
+                email_run = send_email.send_campaign(plan.name, plan.wave, emails, dry=dry, on_batch=on_batch,
+                                                     should_stop=lambda: stop["flag"])
+                if not email_run.fatal and not stop["flag"]:
+                    progress.update(task, total=len(email_run.results))  # minus anyone skipped at send time
     finally:
         signal.signal(signal.SIGINT, previous)
     if stop["flag"]:
         warn("stopped early — re-run the campaign (continue, same name) to reach the rest")
-    return stats
+    return stats, email_run
 
 
-def summary_panel(plan, stats):
+def summary_panel(plan, stats, email_run=None, dry=False):
     t = Table(header_style="accent", box=None)
-    for col, just in (("channel", "left"), ("variant", "center"), ("planned", "right"), ("sent", "right"),
-                      ("failed", "right"), ("unregistered", "right")):
+    columns = [("channel", "left"), ("variant", "center"), ("planned", "right")]
+    columns += [("dry", "right")] if dry else [("sent", "right"), ("failed", "right"), ("unregistered", "right")]
+    for col, just in columns:
         t.add_column(col, justify=just)
     for (channel, variant), c in sorted(stats.items()):
-        t.add_row(channel, variant, str(c["planned"]), f"[ok]{c['sent']}[/]", f"[err]{c['failed']}[/]", f"[muted]{c['unregistered']}[/]")
+        if dry:
+            t.add_row(channel, variant, str(c["planned"]), f"[warn]{c['dry']}[/]")
+        else:
+            t.add_row(channel, variant, str(c["planned"]), f"[ok]{c['sent']}[/]", f"[err]{c['failed']}[/]", f"[muted]{c['unregistered']}[/]")
     body = Table.grid()
     body.add_row(t)
     body.add_row(Text(f"\nlog  {log.campaign_path(plan.name)}", style="muted"))
-    if any(ch == "push" for ch, _ in stats):
+    if email_run is not None and email_run.already:
+        body.add_row(Text(f"     {email_run.already} already emailed in this campaign, not sent again", style="muted"))
+    if email_run is not None and email_run.skipped:
+        body.add_row(Text("     no email: " + ", ".join(f"{n} {r}" for r, n in email_run.skipped.most_common()), style="muted"))
+    if not dry and any(ch == "push" for ch, _ in stats):
         body.add_row(Text("run  Fetch push receipts in ~15 min to see deliveries and dead tokens", style="muted"))
-    console.print(panel(body, title=f"{plan.name} · wave {plan.wave} · done"))
+    if not dry and any(ch == "email" for ch, _ in stats):
+        body.add_row(Text("run  Campaign status shows email deliveries and opens as Resend's webhooks arrive", style="muted"))
+    console.print(panel(body, title=f"{plan.name} · wave {plan.wave} · " + ("dry run, nothing sent" if dry else "done")))
+    if email_run is None:
+        return
+    if email_run.fatal:
+        err(escape(f"email stopped: {email_run.fatal.line}"))
+    failures = Counter(r.error for _, r in email_run.results if r.status == "failed")
+    for error, n in failures.most_common(3):
+        if not email_run.fatal or error != email_run.fatal.line:
+            err(escape(f"{n} × {error}"))
 
 
 # ── campaign status / receipts ─────────────────────────────────────────
@@ -717,17 +815,43 @@ def campaign_status():
         console.print(f"  [muted]channel[/] {meta.get('channel')}   [muted]segments[/] {meta.get('segments')}   [muted]share[/] {meta.get('share', '')}")
         if meta.get("templates"):
             console.print("  [muted]templates[/] " + "  ".join(f"{v}: {t}" for v, t in meta["templates"].items()))
+    dry = any(r.get("status") == "dry" for r in rows)
     t = Table(title=name, header_style="accent", title_justify="left")
-    for col, just in (("variant", "center"), ("channel", "left"), ("wave", "center"), ("sent", "right"),
-                      ("delivered", "right"), ("failed", "right"), ("unregistered", "right"), ("test", "right")):
+    columns = [("variant", "center"), ("channel", "left"), ("wave", "center"), ("sent", "right"),
+               ("delivered", "right"), ("failed", "right"), ("unregistered", "right"), ("test", "right")]
+    for col, just in columns + ([("dry", "right")] if dry else []):
         t.add_column(col, justify=just)
     for (variant, channel, wave), c in sorted(log.summarize(rows).items()):
-        t.add_row(variant, channel, str(wave), str(c["sent"]), f"[ok]{c['delivered']}[/]", f"[err]{c['failed']}[/]",
-                  f"[muted]{c['unregistered']}[/]", f"[warn]{c['test']}[/]")
+        # email deliveries come from Resend's webhooks, in the table below
+        delivered = "[muted]↓[/]" if channel == "email" else f"[ok]{c['delivered']}[/]"
+        t.add_row(variant, channel, str(wave), str(c["sent"]), delivered, f"[err]{c['failed']}[/]",
+                  f"[muted]{c['unregistered']}[/]", f"[warn]{c['test']}[/]", *([f"[muted]{c['dry']}[/]"] if dry else []))
     console.print(t)
-    console.print(f"  [muted]opens: check Vexo → campaign_open (campaign={name})[/]")
+    email_engagement(rows)
+    if any(r.get("channel") == "push" for r in rows):
+        console.print(f"  [muted]push opens: Vexo → campaign_open (campaign={name})[/]")
     console.print(f"  [muted]log: {log.campaign_path(name)}[/]")
     pause()
+
+
+def email_engagement(rows):
+    """Resend webhook events joined to this campaign's emails on the email id: the A/B readout."""
+    by_variant = log.engagement(rows, log.read_events())
+    if not by_variant:
+        return
+    if not any(c[k] for c in by_variant.values() for k in log.EMAIL_EVENTS):
+        hint = "" if settings.RESEND_WEBHOOK_SECRET else (
+            f" (register {send_email.webhook_url()} in Resend → Webhooks and set RESEND_WEBHOOK_SECRET)")
+        console.print(f"  [muted]email: no events yet{hint}[/]")
+        return
+    t = Table(title="Email · Resend webhooks", header_style="accent", title_justify="left", box=box.SIMPLE)
+    for col in ("variant", "sent", "delivered", "opened", "clicked", "bounced", "complained", "open %"):
+        t.add_column(col, justify="center" if col == "variant" else "right")
+    for variant, c in sorted(by_variant.items()):
+        rate = f"{c['opened'] / c['delivered'] * 100:.0f}%" if c["delivered"] else "—"
+        t.add_row(variant, str(c["sent"]), f"[ok]{c['delivered']}[/]", str(c["opened"]), str(c["clicked"]),
+                  f"[err]{c['bounced']}[/]", f"[err]{c['complained']}[/]", rate)
+    console.print(t)
 
 
 def fetch_receipts_screen():
@@ -785,6 +909,18 @@ def validate_tokens_screen():
     pause()
 
 
+def email_setup_screen():
+    """The preflight on its own: key, sender domains verified, tracking, webhook secret."""
+    try:
+        senders = {t.sender for t in render.load_templates().values() if t.sender}
+    except render.TemplateError:
+        senders = set()
+    with console.status("checking Resend…"):
+        check = send_email.preflight(senders | {send_email.from_address()})
+    console.print(preflight_panel(check))
+    pause()
+
+
 # ── templates ──────────────────────────────────────────────────────────
 
 def templates_screen():
@@ -796,10 +932,11 @@ def templates_screen():
             pause()
             return
         t = Table(title="Templates", header_style="accent", title_justify="left")
-        for col in ("name", "channel", "title", "placeholders"):
+        for col in ("name", "channel", "title / subject", "placeholders"):
             t.add_column(col)
         for tpl in templates.values():
-            t.add_row(tpl.name, tpl.channel, tpl.title[:50], " ".join("{%s}" % p for p in sorted(tpl.placeholders())))
+            title = tpl.title[:50] + (" [muted]· subject B[/]" if tpl.subject_b else "")
+            t.add_row(tpl.name, tpl.channel, title, " ".join("{%s}" % p for p in sorted(tpl.placeholders())))
         console.print(t)
         choice = select("", [Choice(n, value=n) for n in templates] + [Choice("Create a template", "create"), Choice("Back", None)])
         if choice is None:
@@ -826,7 +963,12 @@ def template_actions(tpl):
             return
         console.print(preview_panel(rendered, user, tpl.channel))
         if tpl.channel == "email":
-            console.print(Syntax(render.email_text(rendered, unsubscribe_url(user)), "text", theme="ansi_dark"))
+            html, plain = rendered.email_parts()
+            console.print(Syntax(plain, "text", theme="ansi_dark"))
+            path = log.LOGS_DIR / f"preview-{log.slug(tpl.name)}.html"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(html, encoding="utf-8")
+            console.print(f"  [muted]HTML exactly as sent: {path} (open it in a browser)[/]")
         pause()
 
 
@@ -851,6 +993,7 @@ MENU = (
     ("Campaign status", campaign_status),
     ("Fetch push receipts", fetch_receipts_screen),
     ("Validate push tokens", validate_tokens_screen),
+    ("Check email setup (Resend)", email_setup_screen),
     ("Templates", templates_screen),
 )
 

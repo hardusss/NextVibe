@@ -126,3 +126,4 @@ xlsxwriter
 matplotlib
 questionary
 PyYAML
+resend==2.47.0

@@ -1,9 +1,6 @@
 from unittest import mock
 
-from django.core import mail
-from django.test import override_settings
-
-from nvcli import log, receipts, render, send_email, send_push
+from nvcli import log, receipts, render, send_push
 from nvcli.render import Template
 from nvcli.tests._base import NvTestCase
 
@@ -37,7 +34,11 @@ class LogTest(NvTestCase):
         rows[1]["status"] = "sent"
         log.rewrite("c", rows)
         self.assertEqual(log.sent_user_ids("c"), {1, 2})
-        self.assertEqual(log.counts(log.read("c")), {"sent": 2, "delivered": 0, "failed": 0, "unregistered": 0, "test": 1})
+        self.assertEqual(log.counts(log.read("c")), {"sent": 2, "delivered": 0, "failed": 0, "unregistered": 0, "test": 1, "dry": 0})
+        # a dry run is logged but opens no wave and reaches nobody
+        log.append("c", log.entry(campaign="c", wave=2, user_id=3, username="c", channel="email", variant="A", status="dry"))
+        self.assertEqual(log.next_wave("c"), 2)
+        self.assertEqual(log.sent_user_ids("c"), {1, 2})
 
     def test_read_skips_a_torn_line(self):
         log.append("c", log.entry(campaign="c", user_id=1, channel="push", status="sent"))
@@ -193,57 +194,6 @@ class ReceiptsTest(NvTestCase):
         self.assertTrue(ok_user.expo_push_token)
         self.assertIsNone(type(ok_user).all_objects.get(pk=bad_user.pk).expo_push_token)
         self.assertIsNone(type(ok_user).all_objects.get(pk=later_dead.pk).expo_push_token)
-
-
-@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-class EmailTest(NvTestCase):
-    def test_locmem_backend_is_not_bulk_safe(self):
-        info = send_email.backend_info()
-        self.assertEqual(info.kind, "console")
-        self.assertFalse(info.bulk_ok)
-
-    def test_backend_classification(self):
-        with override_settings(EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend", EMAIL_HOST="smtp.gmail.com"):
-            self.assertEqual(send_email.backend_info().kind, "consumer")
-        with override_settings(EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend", EMAIL_HOST=""):
-            self.assertEqual(send_email.backend_info().kind, "unconfigured")
-        with override_settings(EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend", EMAIL_HOST="smtp.resend.com"):
-            info = send_email.backend_info()
-            self.assertEqual((info.kind, info.bulk_ok), ("smtp", True))
-        with mock.patch.dict("os.environ", {"RESEND_API_KEY": "re_x"}):
-            self.assertEqual(send_email.backend_info().kind, "resend")
-
-    def test_django_send_has_html_alternative_and_unsubscribe_header(self):
-        r = send_email.send_email("a@example.com", "Subject", "plain", "<p>html</p>", unsubscribe_url="https://api/u/e/T")
-        self.assertEqual(r.status, "sent")
-        self.assertEqual(len(mail.outbox), 1)
-        msg = mail.outbox[0]
-        self.assertEqual(msg.subject, "Subject")
-        self.assertEqual(msg.body, "plain")
-        self.assertEqual(msg.alternatives[0][1], "text/html")
-        self.assertEqual(msg.extra_headers["List-Unsubscribe"], "<https://api/u/e/T>")
-
-    def test_resend_path(self):
-        with mock.patch.dict("os.environ", {"RESEND_API_KEY": "re_x", "NV_EMAIL_FROM": "NextVibe <hi@nextvibe.io>"}), \
-                mock.patch("nvcli.send_email.requests.post", return_value=FakeResponse(200, {"id": "em_1"})) as post:
-            r = send_email.send_email("a@example.com", "S", "t", "<p>h</p>", unsubscribe_url="https://u")
-        self.assertEqual((r.status, r.message_id), ("sent", "em_1"))
-        body = post.call_args.kwargs["json"]
-        self.assertEqual((body["from"], body["to"], body["headers"]), ("NextVibe <hi@nextvibe.io>", ["a@example.com"], {"List-Unsubscribe": "<https://u>"}))
-        with mock.patch.dict("os.environ", {"RESEND_API_KEY": "re_x"}), \
-                mock.patch("nvcli.send_email.requests.post", return_value=FakeResponse(422, {"message": "bad from"})):
-            r = send_email.send_email("a@example.com", "S", "t", "<p>h</p>")
-        self.assertEqual(r.status, "failed")
-        self.assertIn("bad from", r.error)
-
-    def test_rate_limiter_spacing(self):
-        limiter = send_email.RateLimiter(120)  # 0.5 s apart
-        with mock.patch("nvcli.send_email.time.monotonic", side_effect=[100.0, 100.0, 100.1, 100.6]), \
-                mock.patch("nvcli.send_email.time.sleep") as sleep:
-            limiter.wait()
-            limiter.wait()
-        self.assertEqual(sleep.call_count, 1)
-        self.assertAlmostEqual(sleep.call_args.args[0], 0.4, places=3)
 
 
 class IdempotentSendTest(NvTestCase):

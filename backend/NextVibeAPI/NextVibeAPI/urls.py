@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from chat.views_cherry import CherryEmbedTokenView, CherryMembersView, CherryMuteView, CherryWebhookView
 from user.views_pac.optout import email_optout, push_optout
+from nvcli.webhook import resend_webhook
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -15,6 +16,9 @@ urlpatterns = [
     # nv campaign unsubscribe links (signed user id; see user/views_pac/optout.py)
     path('u/e/<str:token>', email_optout, name='nv_email_optout'),
     path('u/p/<str:token>', push_optout, name='nv_push_optout'),
+    # Resend email events for nv campaigns (Svix-signed; see nvcli/webhook.py)
+    path('api/v1/nv/resend-webhook/', resend_webhook, name='nv_resend_webhook'),
+    path('api/v1/nv/resend-webhook', resend_webhook, name='nv_resend_webhook_no_slash'),
     path('api/cherry-embed-token', CherryEmbedTokenView.as_view(), name='cherry-embed-token-root'),
     path('api/cherry-embed-token/', CherryEmbedTokenView.as_view(), name='cherry-embed-token-root-slash'),
     path('api/v1/cherry-embed-token', CherryEmbedTokenView.as_view(), name='cherry-embed-token-v1-root'),

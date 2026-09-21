@@ -1,12 +1,17 @@
 """
-Unsubscribe links for nv campaigns: GET /u/e/<token> (email) and
-GET /u/p/<token> (push). Public, no auth — the token is a signed user id
+Unsubscribe links for nv campaigns: /u/e/<token> (email) and GET
+/u/p/<token> (push). Public, no auth — the token is a signed user id
 (django.core.signing) so it can't be guessed. State goes to
 nvcli/logs/optout.json; the campaign wizard always excludes those users.
+
+The email link is GET (the footer link) and POST: RFC 8058 one-click
+unsubscribe, which Gmail and Apple Mail send to the List-Unsubscribe URL
+without cookies or a CSRF token.
 """
 from django.core import signing
 from django.http import HttpResponse
-from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_http_methods
 
 from nvcli import log
 
@@ -30,10 +35,11 @@ def _optout(request, token: str, channel: str, done: str):
     except signing.BadSignature:
         return HttpResponse(_HTML % ("This link isn't valid", "It may have been cut off when copied."), status=400)
     log.add_optout(channel, int(user_id))
-    return HttpResponse(_HTML % ("Done", done))
+    return HttpResponse(_HTML % ("You're unsubscribed", done))
 
 
-@require_GET
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def email_optout(request, token: str):
     return _optout(request, token, "email", "You won't get emails like this from NextVibe anymore.")
 
