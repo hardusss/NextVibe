@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "metro",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "frontend/NextVibe", "expo", "start", "--dev-client", "--port", "8081"],
+      "cwd": "frontend/NextVibe",
+      "port": 8081
+    }
+  ]
+}
