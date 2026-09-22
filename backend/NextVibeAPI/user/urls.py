@@ -46,6 +46,7 @@ urlpatterns = [
     path("check-status/", CheckStatusView.as_view(), name="check_status"),
     path("public/user/<int:id>/", PublicUserDetailView.as_view(), name="public_user"),
     path("save-push-token/", SavePushTokenView.as_view(), name="token_push_save"),
+    path("me/push-token/", SavePushTokenView.as_view(), name="my_push_token"),
     path("save-wallet/", SaveWalletAddressView.as_view()),
     path("invite-info/", GetInviteInfoView.as_view(), name="invite_info"),
     path("mint-og/", OgNftMintView.as_view(), name="mint_og"),

@@ -8,6 +8,7 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { configureGoogleSignin } from "@/src/config/googleSignin";
 import { useEffect } from "react";
 import { resetNavigationSession } from '@/src/navigation/afterSignIn';
+import { releasePushToken } from '@/src/notifications/pushToken';
 export default function UserBannedPage() {
     const isDark = useColorScheme() === "dark";
     const router = useRouter(); 
@@ -24,7 +25,9 @@ export default function UserBannedPage() {
         configureGoogleSignin();
     }, []);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        // Needs the session, so before it's cleared.
+        await releasePushToken()
         AsyncStorage.clear()
         storage.clearAll()
         GoogleSignin.signOut()

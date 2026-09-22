@@ -1,5 +1,5 @@
 import { Stack, usePathname, useSegments } from "expo-router";
-import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text, AppState, AppStateStatus, Platform } from "react-native";
+import { useColorScheme, View, TouchableOpacity, StyleSheet, Linking, Text, Platform } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import getUserDetail from "@/src/api/user.detail";
 import { Image } from 'expo-image';
@@ -20,9 +20,8 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
-import Constants from 'expo-constants';
-import savePushToken from "@/src/api/save.push.token";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncPushToken } from "@/src/notifications/pushToken";
+import { usePushTokenSync } from "@/hooks/usePushTokenSync";
 import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
 import { track } from '@/src/utils/analytics';
@@ -85,7 +84,6 @@ if (StyleSheet.setStyleAttributePreprocessor) {
 }
 
 const DEFAULT_AVATAR = 'https://media.nextvibe.io/images/default.png';
-const PUSH_TOKEN_KEY = 'expo_push_token';
 
 /** Notification ids already handled in this JS context (cold start delivers one tap twice). */
 const handledNotificationIds = new Set<string>();
@@ -133,7 +131,6 @@ export default function RootLayout() {
     const pathname = usePathname();
     const authVersion = useAppReadyStore((state) => state.authVersion);
     const shellRendered = !((!fontsLoaded && !fontError) || !isSettingsHydrated);
-    const pushRegisteredRef = useRef(false);
     const cachedAvatarRef = useRef<{ userId: number; url: string } | null>(null);
     const [imageProfile, setImageProfile] = useState<string | null>(null);
     const [userID, setUserID] = useState<number | null>(null);
@@ -142,6 +139,8 @@ export default function RootLayout() {
 
     // App-wide nearby detection for taps, only while signed in.
     useBleScanner(userID !== null);
+    // Push token: every launch and every sign-in, including wallet-only accounts.
+    usePushTokenSync(userID);
 
     useEffect(() => {
         loadSettings();
@@ -168,9 +167,9 @@ export default function RootLayout() {
         setVisible(true);
     }
 
-    async function registerForPushNotifications() {
-        if (pushRegisteredRef.current) return;
-
+    // The app's only notification prompt, on launch. The token itself is
+    // registered by usePushTokenSync once someone is signed in.
+    async function requestPushPermission() {
         if (!Device.isDevice) {
             handleRegistrationError('Must use physical device for push notifications');
             return;
@@ -186,35 +185,11 @@ export default function RootLayout() {
         }
 
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
+        if (existingStatus === 'granted') return;
 
-        if (existingStatus !== 'granted') {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-        }
-
-        if (finalStatus !== 'granted') return;
-
-        const projectId =
-            Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-
-        if (!projectId) {
-            handleRegistrationError('Project ID not found');
-            return;
-        }
-
-        try {
-            const pushTokenString = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-            const savedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
-
-            await savePushToken(pushTokenString);
-            await AsyncStorage.setItem(PUSH_TOKEN_KEY, pushTokenString);
-
-            pushRegisteredRef.current = true;
-            return pushTokenString;
-        } catch (e: unknown) {
-            handleRegistrationError(`${e}`);
-        }
+        const { status } = await Notifications.requestPermissionsAsync();
+        // Allowed just now while signed in: don't wait for the next launch.
+        if (status === 'granted') syncPushToken('permission');
     }
 
     // Push taps and deep links never navigate here: they only record an intent.
@@ -322,7 +297,7 @@ export default function RootLayout() {
     });
 
     useEffect(() => {
-        registerForPushNotifications();
+        requestPushPermission();
     }, []);
 
     useEffect(() => {
@@ -359,52 +334,6 @@ export default function RootLayout() {
     }, []);
 
     useEffect(() => {
-        let pushTokenSubscription: any = null;
-
-        const handleAppStateChange = (nextAppState: AppStateStatus) => {
-            if (nextAppState === 'active') {
-                if (!pushTokenSubscription) {
-                    try {
-                        pushTokenSubscription = Notifications.addPushTokenListener((token) => {
-                            if (token && token.data) {
-                                savePushToken(token.data).catch(() => { });
-                            }
-                        });
-                    } catch (e) {
-                        console.warn("Failed to register push token listener:", e);
-                    }
-                }
-            } else {
-                if (pushTokenSubscription) {
-                    pushTokenSubscription.remove();
-                    pushTokenSubscription = null;
-                }
-            }
-        };
-
-        const appStateSub = AppState.addEventListener('change', handleAppStateChange);
-
-        if (AppState.currentState === 'active') {
-            try {
-                pushTokenSubscription = Notifications.addPushTokenListener((token) => {
-                    if (token && token.data) {
-                        savePushToken(token.data).catch(() => { });
-                    }
-                });
-            } catch (e) {
-                console.warn("Failed to register push token listener on mount:", e);
-            }
-        }
-
-        return () => {
-            if (pushTokenSubscription) {
-                pushTokenSubscription.remove();
-            }
-            appStateSub.remove();
-        };
-    }, []);
-
-    useEffect(() => {
         const interceptor = axios.interceptors.response.use(
             (res) => res,
             (error) => {
@@ -436,9 +365,7 @@ export default function RootLayout() {
             useAppReadyStore.getState().setProfileLoaded(false);
             setImageProfile(null);
             cachedAvatarRef.current = null;
-            pushRegisteredRef.current = false;
             Image.clearMemoryCache();
-            AsyncStorage.removeItem(PUSH_TOKEN_KEY);
         }
     }, [userID]);
 

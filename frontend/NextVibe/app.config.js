@@ -1,5 +1,14 @@
 import 'dotenv/config';
 
+// iOS purpose strings (App Review 5.1.1(ii)): each names the feature that asks.
+// Plugins below get the same text because their options override infoPlist.
+const CAMERA_USAGE = "NextVibe uses the camera to take photos for your posts and profile picture, and photos or videos to send in chats.";
+const MICROPHONE_USAGE = "NextVibe uses the microphone to record sound when you shoot a video to send in a chat.";
+const PHOTOS_USAGE = "NextVibe accesses your photo library so you can choose a profile picture, a chat wallpaper, or photos and videos to send in chats.";
+const PHOTOS_ADD_USAGE = "NextVibe saves an image to your photo library only when you choose Save Image, for example when you share your Seeker Verified card.";
+const LOCATION_USAGE = "NextVibe uses your location to show where you are on the map, to add a place to a post when you choose to, and to confirm you're at the venue when you check in or meet someone at an event.";
+const BLUETOOTH_USAGE = "NextVibe uses Bluetooth to detect a phone held right next to yours when you Tap to Meet someone in person or check in at an event.";
+
 export default {
     expo: {
         name: "NextVibe",
@@ -13,19 +22,23 @@ export default {
         jsEngine: "hermes",
         ios: {
             jsEngine: "hermes",
-            supportsTablet: true,
+            supportsTablet: false,
             bundleIdentifier: "com.nextvibe.app",
             googleServicesFile: "./GoogleService-Info.plist",
             usesAppleSignIn: true,
             infoPlist: {
-                NSCameraUsageDescription: "NextVibe needs access to your Camera.",
-                NSMicrophoneUsageDescription: "NextVibe needs access to your Microphone.",
                 ITSAppUsesNonExemptEncryption: false,
-                NSLocationWhenInUseUsageDescription: "NextVibe needs your location to show you on the VibeMap and find nearby drops.",
-                NSLocationAlwaysAndWhenInUseUsageDescription: "NextVibe needs your location to notify you about Vibe Zones nearby.",
-                NSBluetoothAlwaysUsageDescription: "NextVibe uses Bluetooth to share profiles and connect with nearby vibers.",
-                NSBluetoothPeripheralUsageDescription: "NextVibe uses Bluetooth to broadcast your profile to nearby phones.",
-                UIBackgroundModes: ["bluetooth-peripheral", "bluetooth-central"]
+                NSCameraUsageDescription: CAMERA_USAGE,
+                // Chat videos from the camera record sound (expo-image-picker).
+                NSMicrophoneUsageDescription: MICROPHONE_USAGE,
+                NSPhotoLibraryUsageDescription: PHOTOS_USAGE,
+                // "Save Image" in the share sheet (Seeker card) needs it.
+                NSPhotoLibraryAddUsageDescription: PHOTOS_ADD_USAGE,
+                NSLocationWhenInUseUsageDescription: LOCATION_USAGE,
+                NSBluetoothAlwaysUsageDescription: BLUETOOTH_USAGE,
+                NSBluetoothPeripheralUsageDescription: BLUETOOTH_USAGE,
+                // Enforced by ./withStripIosKeys.js; expo-video would add "audio".
+                UIBackgroundModes: ["remote-notification"]
             },
             associatedDomains: ["applinks:nextvibe.io"]
         },
@@ -95,6 +108,8 @@ export default {
             favicon: "./assets/images/favicon.png"
         },
         plugins: [
+            // First on purpose: Info.plist mods run in reverse order, so this one runs last.
+            "./withStripIosKeys.js",
             "@react-native-firebase/app",
             "expo-router",
             "expo-image",
@@ -142,12 +157,19 @@ export default {
             [
                 "react-native-vision-camera",
                 {
-                    cameraPermissionText: "NextVibe needs access to your Camera.",
+                    cameraPermissionText: CAMERA_USAGE,
                     enableMicrophonePermission: true,
-                    microphonePermissionText: "NextVibe needs access to your Microphone."
+                    microphonePermissionText: MICROPHONE_USAGE
                 }
             ],
-            "expo-image-picker",
+            [
+                "expo-image-picker",
+                {
+                    photosPermission: PHOTOS_USAGE,
+                    cameraPermission: CAMERA_USAGE,
+                    microphonePermission: MICROPHONE_USAGE
+                }
+            ],
             [
                 "expo-video",
                 {
@@ -156,15 +178,17 @@ export default {
                 }
             ],
             "expo-font",
-            "expo-secure-store",
+            // Never used with requireAuthentication, so no Face ID string.
+            ["expo-secure-store", { faceIDPermission: false }],
             "react-native-compressor",
             "expo-notifications",
             [
                 "expo-location",
                 {
-                    locationAlwaysAndWhenInUsePermission: "NextVibe needs your location to show you on the VibeMap and find nearby drops.",
-                    locationAlwaysPermission: "NextVibe needs your location to notify you about Vibe Zones nearby.",
-                    locationWhenInUsePermission: "NextVibe needs your location to show you on the VibeMap."
+                    // Foreground only: false removes the "Always" strings.
+                    locationAlwaysAndWhenInUsePermission: false,
+                    locationAlwaysPermission: false,
+                    locationWhenInUsePermission: LOCATION_USAGE
                 }
             ],
             [

@@ -42,6 +42,7 @@ import useWalletAddress from "@/hooks/useWalletAddress";
 import GaslessIndicator from "@/components/Shared/GaslessIndicator";
 import { useSettingsStore, type ThemePreference } from "@/src/stores/settingsStore";
 import { resetNavigationSession } from '@/src/navigation/afterSignIn';
+import { releasePushToken } from '@/src/notifications/pushToken';
 
 interface User {
     username: string;
@@ -214,6 +215,8 @@ function PageSettingsContent() {
     }, []);
 
     const handleLogoutConfirm = async () => {
+        // Needs the session, so before it's cleared.
+        await releasePushToken();
         storage.clearAll();
         AsyncStorage.clear();
         GoogleSignin.signOut();
