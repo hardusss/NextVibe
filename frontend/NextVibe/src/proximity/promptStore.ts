@@ -47,6 +47,8 @@ interface PromptState {
     mode: 'irl' | 'networking' | null;
     peer: PromptPeer | null;
     points: number;
+    /** The Proof of Meet a confirmed meet made (success phase). */
+    meetSlug: string | null;
     error: ProximityErrorInfo | null;
     errorStage: 'preview' | 'confirm' | null;
     /** Navigation the host performs once the router is ready (not on splash). */
@@ -171,6 +173,7 @@ const INITIAL = {
     mode: null,
     peer: null,
     points: 0,
+    meetSlug: null,
     error: null,
     errorStage: null,
     checkin: null,
@@ -232,10 +235,12 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
         if (error.kind === 'alreadyMet') {
             if (stage === 'confirm') {
                 // Both people pressed Confirm at the same moment — the other
-                // phone's request won. For this person that's a success.
+                // phone's request won. For this person that's a success; the
+                // answer names the meet the other request wrote.
                 if (peer?.user_id) recentlyMet.set(peer.user_id, Date.now());
                 block(currentKey, AFTER_SUCCESS_MS);
-                finishSuccess(peer, points, mode);
+                const slug = (err as any)?.response?.data?.meet_slug;
+                finishSuccess(peer, points, mode, typeof slug === 'string' ? slug : null);
                 return;
             }
             // The preview is rejected before it says who it is, so this can't
@@ -260,7 +265,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
         haptics.notification(error.tone === 'info' ? 'warning' : 'error');
     };
 
-    const finishSuccess = (peer: PromptPeer | null, points: number, mode: 'irl' | 'networking' | null) => {
+    const finishSuccess = (peer: PromptPeer | null, points: number, mode: 'irl' | 'networking' | null, meetSlug: string | null = null) => {
         const at = Date.now();
         haptics.notification('success');
         if (shareScreens > 0) {
@@ -277,6 +282,7 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
             peer,
             points,
             mode,
+            meetSlug,
             error: null,
             errorStage: null,
             lastMet: { userId: peer?.user_id ?? null, at },
@@ -563,7 +569,8 @@ export const useProximityPrompt = create<PromptState>((rawSet, get) => {
                 finishSuccess(
                     peer,
                     result.earned_points ?? get().points,
-                    result.source === 'irl' || result.interaction_type === 'irl' ? 'irl' : get().mode
+                    result.source === 'irl' || result.interaction_type === 'irl' ? 'irl' : get().mode,
+                    result.meet_slug ?? null,
                 );
             } catch (err) {
                 showError(err, 'confirm', myRun);

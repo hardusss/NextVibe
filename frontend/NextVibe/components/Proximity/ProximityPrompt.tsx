@@ -12,6 +12,7 @@ import {
     Text,
     View,
     useColorScheme,
+    useWindowDimensions,
 } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +22,9 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AlertTriangle, CalendarCheck, Info, Newspaper, Radio, ShieldX, Sparkles, Users, Wallet } from 'lucide-react-native';
 import EventCta from '@/components/Events/EventCta';
+import MeetCardPreview, { MEET_CARD_ASPECT } from '@/components/Meet/MeetCardPreview';
+import MeetShareActions from '@/components/Meet/MeetShareActions';
+import { useMeet } from '@/components/Meet/useMeet';
 import UserBadges from '@/components/Shared/UserBadges';
 import SuccessBurst from '@/components/NftClaim/MintBottomSheet/SuccessBurst';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
@@ -30,7 +34,7 @@ import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
 
 type Snapshot = Pick<
     ReturnType<typeof useProximityPrompt.getState>,
-    'phase' | 'kind' | 'mode' | 'peer' | 'points' | 'error' | 'payload' | 'checkin' | 'notNowCount'
+    'phase' | 'kind' | 'mode' | 'peer' | 'points' | 'meetSlug' | 'error' | 'payload' | 'checkin' | 'notNowCount'
 >;
 
 const SHEET_OFFSET = 420;
@@ -57,6 +61,7 @@ export default function ProximityPrompt() {
     const mode = useProximityPrompt((s) => s.mode);
     const peer = useProximityPrompt((s) => s.peer);
     const points = useProximityPrompt((s) => s.points);
+    const meetSlug = useProximityPrompt((s) => s.meetSlug);
     const error = useProximityPrompt((s) => s.error);
     const payload = useProximityPrompt((s) => s.payload);
     const checkin = useProximityPrompt((s) => s.checkin);
@@ -64,14 +69,19 @@ export default function ProximityPrompt() {
     const navigation = useProximityPrompt((s) => s.navigation);
 
     // Keep showing the last content while the sheet animates out.
-    const [snapshot, setSnapshot] = useState<Snapshot>({ phase, kind, mode, peer, points, error, payload, checkin, notNowCount });
+    const [snapshot, setSnapshot] = useState<Snapshot>({ phase, kind, mode, peer, points, meetSlug, error, payload, checkin, notNowCount });
     const [mounted, setMounted] = useState(false);
     const translateY = useRef(new Animated.Value(SHEET_OFFSET)).current;
     const backdrop = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        if (visible) setSnapshot({ phase, kind, mode, peer, points, error, payload, checkin, notNowCount });
-    }, [visible, phase, kind, mode, peer, points, error, payload, checkin, notNowCount]);
+        if (visible) setSnapshot({ phase, kind, mode, peer, points, meetSlug, error, payload, checkin, notNowCount });
+    }, [visible, phase, kind, mode, peer, points, meetSlug, error, payload, checkin, notNowCount]);
+
+    // The Proof of Meet this tap made: card preview and sharing on the success card
+    const successSlug = snapshot.phase === 'success' ? snapshot.meetSlug : null;
+    const [meetState] = useMeet(successSlug);
+    const { height: windowHeight } = useWindowDimensions();
 
     // OS-delivered tap links (NFC tag read, universal/app link).
     useEffect(() => subscribeProximityLinks((url) => {
@@ -221,9 +231,22 @@ export default function ProximityPrompt() {
         }
 
         if (s.phase === 'success') {
+            const meet = meetState.status === 'ready' ? meetState.meet : null;
+            const showCard = !!s.meetSlug && meetState.status !== 'missing' && meetState.status !== 'error';
+            const cardWidth = Math.round(Math.max(130, Math.min(190, (windowHeight - 540) / MEET_CARD_ASPECT)));
             return (
                 <>
-                    {renderAvatar(true)}
+                    {showCard ? (
+                        <View style={styles.avatarWrap}>
+                            <MeetCardPreview
+                                uri={meet?.story_url ?? null}
+                                width={cardWidth}
+                                placeholderAvatar={s.peer?.avatar ?? null}
+                                accessibilityLabel={meet ? `${meet.title}. ${meet.when_line}.` : undefined}
+                            />
+                            {!reduceMotion && <SuccessBurst trigger color={colors.accent} />}
+                        </View>
+                    ) : renderAvatar(true)}
                     <View style={styles.nameRow}>
                         <Text style={[styles.title, styles.titleInRow, { color: main }]} numberOfLines={1}>
                             You met @{s.peer?.username ?? 'them'}
@@ -243,7 +266,18 @@ export default function ProximityPrompt() {
                     )}
                     <Text style={[styles.message, { color: muted }]}>Reputation added for both of you.</Text>
                     <View style={styles.actions}>
-                        <EventCta label="Done" onPress={close} />
+                        {s.meetSlug && (
+                            <MeetShareActions
+                                slug={s.meetSlug}
+                                meet={meet}
+                                fallback={s.peer?.username
+                                    ? { slug: s.meetSlug, other: s.peer.username, atEvent: s.mode !== 'irl', eventName: null, minted: false }
+                                    : undefined}
+                                viewerId={meet?.users.find((u) => (s.peer?.user_id != null ? u.user_id !== s.peer.user_id : u.username !== s.peer?.username))?.user_id ?? null}
+                                place="tap"
+                            />
+                        )}
+                        <EventCta label="Done" variant={s.meetSlug ? 'ghost' : 'primary'} onPress={close} />
                     </View>
                 </>
             );

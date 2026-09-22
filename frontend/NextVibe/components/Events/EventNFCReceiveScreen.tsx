@@ -66,6 +66,7 @@ export default function EventNFCReceiveScreen() {
     const [earnedPoints, setEarnedPoints] = useState(0);
     const [scannedUser, setScannedUser] = useState<any>(null);
     const [isIrlTap, setIsIrlTap] = useState(irlRequested);
+    const [meetSlug, setMeetSlug] = useState<string | null>(null);
 
     // Single in-flight grant: a double-tapped CTA or a re-run of the routing
     // effect must never fire a second verify while one is running.
@@ -190,6 +191,7 @@ export default function EventNFCReceiveScreen() {
                 if (response.data.source === 'irl') setIsIrlTap(true);
                 setEarnedPoints(response.data.earned_points || 0);
                 setScannedUser(response.data.scanned_user);
+                setMeetSlug(response.data.meet_slug ?? null);
                 setState("success");
                 haptics.notification('success');
             } else {
@@ -304,9 +306,12 @@ export default function EventNFCReceiveScreen() {
                     <MeetSuccess
                         user={scannedUser}
                         points={earnedPoints}
+                        meetSlug={meetSlug}
+                        atEvent={!isIrlTap}
                         actions={
                             <EventCta
                                 label="Awesome"
+                                variant={meetSlug ? 'ghost' : 'primary'}
                                 onPress={() => safeBack(router)}
                             />
                         }

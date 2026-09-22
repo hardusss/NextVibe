@@ -28,6 +28,8 @@ USER_PLACEHOLDERS = ("username", "first_name", "rep", "joined", "events", "met",
 TEMPLATE_PLACEHOLDERS = ("link", "preheader")
 CHANNELS = ("push", "email", "both")
 APP_SCHEME = "nextvibe://"
+# The app claims these links (Android intent filter /u, iOS AASA "*")
+SITE_APP_PREFIXES = ("https://nextvibe.io/u/", "https://www.nextvibe.io/u/")
 
 # Words that never appear in user-facing copy (hackathon rule); the guard
 # test fails on any template containing them, the wizard warns on ad-hoc text.
@@ -158,9 +160,11 @@ class Rendered:
     def push_data(self, campaign: str | None = None, variant: str | None = None, wave: int | None = None) -> dict:
         data = dict(self.data)
         internal, external = app_path(self.deeplink)
+        # The app opens external_url in the browser first, so it goes only
+        # when the app has no screen for the link
         if internal:
             data["url"] = internal
-        if external:
+        elif external:
             data["external_url"] = external
         if self.deeplink:
             data["deeplink"] = self.deeplink
@@ -294,10 +298,18 @@ _ALIASES = (
 
 
 def app_path(deeplink: str | None) -> tuple[str | None, str | None]:
-    """(internal router path, external url) for push `data`."""
+    """
+    (internal router path, external url). Push `data` uses the internal
+    path when there is one; an email links to the external url. Links under
+    nextvibe.io/u/ have both: the app opens them in place, a mail client on
+    the web page.
+    """
     if not deeplink:
         return None, None
     link = deeplink.strip()
+    for prefix in SITE_APP_PREFIXES:
+        if link.lower().startswith(prefix):
+            return "/u/" + link[len(prefix):], link
     if link.startswith(APP_SCHEME):
         rest = link[len(APP_SCHEME):]
         for pattern, repl in _ALIASES:

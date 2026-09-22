@@ -37,7 +37,7 @@ import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import UserBadges from "../Shared/UserBadges";
 import SeekerBadgeSheet, { SeekerBadgeSheetRef } from "../Shared/SeekerBadgeSheet";
-import { SEEKER_OPEN_PARAM } from "@/src/navigation/intents";
+import { MEETS_OPEN_PARAM, SEEKER_OPEN_PARAM } from "@/src/navigation/intents";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 import { useSeekerIntro } from "@/src/stores/seekerIntroStore";
 
@@ -59,6 +59,8 @@ const HEADER_HEIGHT = 200;
 
 /** Push taps / links already shown (`intent` param), so a remount can't reopen the sheet. */
 const handledSeekerIntents = new Set<string>();
+/** Same for nextvibe.io/u/meets (`open=meets` opens POAPs & History). */
+const handledMeetsIntents = new Set<string>();
 /** Let the screen finish arriving (tab switch / splash replace) before sliding up. */
 const SEEKER_SHEET_DELAY_MS = 350;
 
@@ -403,6 +405,26 @@ const ProfileView = () => {
             cancelAnimationFrame(frame);
         };
     }, [wantsSeekerSheet, isFocused, interactionsFinished, loading, userData.seeker_verified, seekerRecheck]);
+
+    // nextvibe.io/u/meets (the "Your Proof of Meet cards are ready" push, or a
+    // link): open POAPs & History on its first tab, once per tap.
+    const meetsRequested = openParam === MEETS_OPEN_PARAM;
+    useEffect(() => {
+        if (!meetsRequested || !isFocused || !interactionsFinished || loading) return;
+        if (intentParam && handledMeetsIntents.has(intentParam)) {
+            router.setParams({ open: undefined, intent: undefined });
+            return;
+        }
+        const timer = setTimeout(() => {
+            const latest = seekerLatestRef.current;
+            if (latest.openParam !== MEETS_OPEN_PARAM) return;
+            if (latest.intentParam) handledMeetsIntents.add(latest.intentParam);
+            eventConnectionsSheetRef.current?.present(userData.reputation, undefined, 'history');
+            walletLogger.info(WalletTag.NAV_INTENT, 'Profile: History opened for open=meets', { intent: latest.intentParam });
+            router.setParams({ open: undefined, intent: undefined });
+        }, SEEKER_SHEET_DELAY_MS);
+        return () => clearTimeout(timer);
+    }, [meetsRequested, intentParam, isFocused, interactionsFinished, loading]);
 
     useFocusEffect(
         useCallback(() => {

@@ -37,7 +37,14 @@ type Phase = 'starting' | 'live' | 'failed' | 'success';
 
 // Keyed across every mode: a meet can land as an IRL tap or under any event,
 // whatever this screen was opened for (the other person's code decides).
-type ConnectionEntry = { key: string; user: MeetUser & { user_id?: number }; points: number };
+type ConnectionEntry = {
+    key: string;
+    user: MeetUser & { user_id?: number };
+    points: number;
+    /** Its Proof of Meet (missing only for meets from before slugs). */
+    meetSlug: string | null;
+    atEvent: boolean;
+};
 
 const POLL_MS = 2500;
 const FAST_POLL_MS = 1000;
@@ -66,6 +73,7 @@ export default function EventNFCShareScreen() {
     const [phase, setPhase] = useState<Phase>('starting');
     const [successUser, setSuccessUser] = useState<MeetUser | null>(null);
     const [successPoints, setSuccessPoints] = useState(0);
+    const [successMeet, setSuccessMeet] = useState<{ slug: string | null; atEvent: boolean }>({ slug: null, atEvent: false });
     const [pickedUp, setPickedUp] = useState(false);
 
     const mountedRef = useRef(true);
@@ -110,6 +118,8 @@ export default function EventNFCShareScreen() {
                 is_seeker_verified: t.is_seeker_verified,
             },
             points: t.points || 1,
+            meetSlug: t.meet_slug ?? null,
+            atEvent: false,
         }));
         const events: ConnectionEntry[] = (data?.events || []).flatMap((e: any) =>
             (e?.connections || []).map((c: any) => ({
@@ -122,6 +132,8 @@ export default function EventNFCShareScreen() {
                     is_seeker_verified: c.is_seeker_verified,
                 },
                 points: c.rep_received || 2,
+                meetSlug: c.meet_slug ?? null,
+                atEvent: true,
             }))
         );
         return [...irl, ...events];
@@ -148,6 +160,7 @@ export default function EventNFCShareScreen() {
         setPickedUp(false);
         setSuccessUser(entry.user);
         setSuccessPoints(entry.points);
+        setSuccessMeet({ slug: entry.meetSlug, atEvent: entry.atEvent });
         setPhase('success');
         walletLogger.info(WalletTag.PROXIMITY, 'Meet confirmed', { kind: entry.key.split(':')[0] });
     }, [stopPolling, stopAutoRenewal]);
@@ -317,6 +330,7 @@ export default function EventNFCShareScreen() {
     const handleContinue = () => {
         setSuccessUser(null);
         setSuccessPoints(0);
+        setSuccessMeet({ slug: null, atEvent: false });
         startSession();
     };
 
@@ -352,6 +366,8 @@ export default function EventNFCShareScreen() {
                 <MeetSuccess
                     user={successUser}
                     points={successPoints}
+                    meetSlug={successMeet.slug}
+                    atEvent={successMeet.atEvent}
                     actions={
                         <>
                             {FEATURE_PROOF_OF_MEET && (
@@ -362,7 +378,11 @@ export default function EventNFCShareScreen() {
                                     onPress={() => {}}
                                 />
                             )}
-                            <EventCta label={effectiveIrl ? 'Keep tapping' : 'Continue networking'} onPress={handleContinue} />
+                            <EventCta
+                                label={effectiveIrl ? 'Keep tapping' : 'Continue networking'}
+                                variant={successMeet.slug ? 'secondary' : 'primary'}
+                                onPress={handleContinue}
+                            />
                             <EventCta label="Done" variant="ghost" onPress={() => safeBack(router)} />
                         </>
                     }

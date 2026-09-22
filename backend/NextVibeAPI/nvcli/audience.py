@@ -43,6 +43,13 @@ def _tapped_ids():
     return set(rep.values_list("user_id", flat=True)) | set(rep.values_list("given_by_id", flat=True))
 
 
+def _meet_card_ids():
+    from posts.models import Reputation
+
+    rep = Reputation.objects.filter(source__in=TAP_SOURCES, meet_slug__isnull=False)
+    return set(rep.values_list("user_id", flat=True))
+
+
 # name → (description, filter)
 SEGMENTS = {
     "push": ("has an Expo push token", lambda qs: qs.filter(HAS_PUSH)),
@@ -55,6 +62,7 @@ SEGMENTS = {
     "active-30d": ("logged in within 30 days", lambda qs: qs.filter(last_login__gte=_active_since(30))),
     "inactive-90d": ("no login for 90 days", lambda qs: qs.filter(Q(last_login__lt=_active_since(90)) | Q(last_login__isnull=True))),
     "tapped": ("has tapped with someone (event or IRL)", lambda qs: qs.filter(user_id__in=_tapped_ids())),
+    "meet-card": ("has a Proof of Meet card (run backfill_meet_slugs first)", lambda qs: qs.filter(user_id__in=_meet_card_ids())),
 }
 
 # Segments that take a parameter: spec is "<prefix>:<value>".

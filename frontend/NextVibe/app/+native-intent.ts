@@ -1,7 +1,7 @@
 import { extractProximityToken } from '@/src/proximity/payload';
 import { enqueueProximityLink } from '@/src/proximity/linkQueue';
 import { seekerLinkPath } from '@/src/utils/seekerShare';
-import { intentFromUrl } from '@/src/navigation/intents';
+import { intentFromUrl, isUnknownUPath } from '@/src/navigation/intents';
 import { enqueueIntentLink } from '@/src/navigation/intentQueue';
 
 /**
@@ -24,12 +24,16 @@ import { enqueueIntentLink } from '@/src/navigation/intentQueue';
  * its "Open in NextVibe" at nextvibe://profile/<username>) go to
  * /u/verified/<username>, which looks the username up and opens that profile.
  *
- * Own-profile links (nextvibe://profile, nextvibe://profile?open=seeker) are
+ * Own-profile links (nextvibe://profile, nextvibe://profile?open=seeker) and
+ * Proof of Meet links (nextvibe.io/u/meet/<slug>, nextvibe.io/u/meets) are
  * handed to the pending-intent gate (src/navigation) instead of being opened
  * here: on a cold start the app boots normally (splash → OTA check → auth) and
- * the root layout opens the profile, with the Seeker sheet, once it's ready.
- * Opening /profile directly skipped the start flow, and Splash's redirect to
- * /home then took the screen back.
+ * the root layout opens the profile (with the Seeker sheet or POAPs & History)
+ * or the meet sheet once it's ready. Opening /profile directly skipped the
+ * start flow, and Splash's redirect to /home then took the screen back.
+ *
+ * Any other nextvibe.io/u/… link no screen knows opens home (cold start) or
+ * leaves the app where it was, never "Unmatched Route".
  */
 export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): string | null {
     try {
@@ -47,6 +51,9 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
         const usernamePath = seekerLinkPath(path);
         if (usernamePath) {
             return usernamePath;
+        }
+        if (isUnknownUPath(path)) {
+            return initial ? '/' : null;
         }
         return path;
     } catch {

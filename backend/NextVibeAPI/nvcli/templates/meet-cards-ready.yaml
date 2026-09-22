@@ -1,0 +1,8 @@
+name: meet-cards-ready
+channel: push
+# Once, by hand, to segment "meet-card", after backfill_meet_slugs and the
+# app update that knows /u/meets are live.
+title: "Your Proof of Meet cards are ready"
+body: "Every tap now has its own card: who you met, where and when. Open one and share it on X."
+deeplink: "https://nextvibe.io/u/meets"
+data: { type: meet_cards_ready }

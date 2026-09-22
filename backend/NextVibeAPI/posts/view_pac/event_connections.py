@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import EventCheckin, Reputation, Post
 from ..constants import IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
+from ..src.meets import meet_url, slug_for_pair_event, slug_for_pair_today, tap_slug
 from user.models import User
 from user.src.send_push_message import send
 from user.src.blocking import blocked_user_ids, is_blocked_between
@@ -53,6 +54,11 @@ def _blocked_response():
     }, status=status.HTTP_400_BAD_REQUEST)
 
 
+def _meet_fields(slug):
+    """The Proof of Meet a tap response points at (nothing for rows from before slugs)."""
+    return {"meet_slug": slug, "meet_url": meet_url(slug)} if slug else {}
+
+
 def _avatar_url(user):
     if not user:
         return None
@@ -87,6 +93,13 @@ class UserEventConnectionsView(APIView):
         my_checkins = EventCheckin.objects.filter(
             user=target_user, is_registered=True
         ).select_related('post')
+
+        # Proof of Meet links only on your own history: anyone can share
+        # their own meets, nobody else's
+        own = target_user.user_id == request.user.user_id
+
+        def meet_slug(rep):
+            return rep.meet_slug if own else None
 
         events_data = []
         now = timezone.now()
@@ -133,6 +146,8 @@ class UserEventConnectionsView(APIView):
                     peer_map[uid]["rep_received"] += rep.points
                 else:
                     peer_map[uid]["rep_given"] += rep.points
+                if meet_slug(rep) and not peer_map[uid].get("meet_slug"):
+                    peer_map[uid]["meet_slug"] = meet_slug(rep)
 
             # Totals still count everyone; only the people shown are filtered
             connections = [c for c in peer_map.values() if c["user_id"] not in hidden]
@@ -175,6 +190,7 @@ class UserEventConnectionsView(APIView):
                     "icon": "🤝",
                     "badge_color": "#A855F7",
                     "source": rep.source,
+                    "meet_slug": meet_slug(rep),
                 })
             # Case A: Cherry invite code activation
             elif rep.post_type == "cherry_invite_code":
@@ -267,6 +283,7 @@ class UserEventConnectionsView(APIView):
                     "icon": "🤝",
                     "badge_color": "#EAB308",
                     "source": rep.source,
+                    "meet_slug": meet_slug(rep),
                 })
             else:
                 reputation_items.append({
@@ -379,6 +396,7 @@ class UserEventConnectionsView(APIView):
                 "date": rep.created_at,
                 "lat": lat,
                 "lng": lng,
+                "meet_slug": meet_slug(rep),
             })
 
         return Response({
@@ -455,7 +473,10 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
     ).exists()
 
     if already_networked:
-        return Response({"error": "You have already connected with this user at this event."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "error": "You have already connected with this user at this event.",
+            **_meet_fields(slug_for_pair_event(requesting_user.user_id, scanned_user.user_id, post.id)),
+        }, status=status.HTTP_400_BAD_REQUEST)
 
     # Calculate total rep for both
     rep_scanner = Reputation.objects.filter(user=requesting_user).aggregate(total=Sum('points'))['total'] or 0
@@ -490,7 +511,8 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
             "scanned_user": scanned_user_payload,
         }, status=status.HTTP_200_OK)
 
-    # Create Reputation records
+    # Create Reputation records: one Proof of Meet, one slug on both rows
+    meet_slug = tap_slug(requesting_user.user_id, scanned_user.user_id, 'event', event_id=post.id)
     with transaction.atomic():
         Reputation.objects.create(
             user=requesting_user,
@@ -500,6 +522,7 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
             event=post,
             h3_geo=h3_geo_val,
             source='event',
+            meet_slug=meet_slug,
         )
 
         Reputation.objects.create(
@@ -510,6 +533,7 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
             event=post,
             h3_geo=h3_geo_val,
             source='event',
+            meet_slug=meet_slug,
         )
 
     return Response({
@@ -517,6 +541,7 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
         "message": f"Connected with {scanned_user.username}!",
         "earned_points": scanner_gains,
         "scanned_user": scanned_user_payload,
+        **_meet_fields(meet_slug),
     }, status=status.HTTP_200_OK)
 
 
@@ -602,6 +627,8 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
         return Response({
             "error": f"You already tapped with {scanned_user.username} today. See you tomorrow!",
             "code": "ALREADY_TAPPED_TODAY",
+            # Both pressed Confirm at once: the other request wrote the meet
+            **_meet_fields(slug_for_pair_today(requesting_user.user_id, scanned_user.user_id, day_start)),
         }, status=status.HTTP_400_BAD_REQUEST)
 
     my_taps_today = Reputation.objects.filter(
@@ -645,6 +672,8 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
             }
         }, status=status.HTTP_200_OK)
 
+    # One Proof of Meet per pair per UTC day: same key as the check above
+    meet_slug = tap_slug(requesting_user.user_id, scanned_user.user_id, 'irl', when=now)
     with transaction.atomic():
         Reputation.objects.create(
             user=requesting_user,
@@ -654,6 +683,7 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
             event=None,
             h3_geo=h3_geo_val,
             source='irl',
+            meet_slug=meet_slug,
         )
         Reputation.objects.create(
             user=scanned_user,
@@ -663,6 +693,7 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
             event=None,
             h3_geo=h3_geo_val,
             source='irl',
+            meet_slug=meet_slug,
         )
         transaction.on_commit(
             lambda: _send_tap_push_in_background(scanned_user, requesting_user.username)
@@ -679,7 +710,8 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
             "avatar": avatar_url,
             "is_official": scanned_user.official,
             "is_seeker_verified": scanned_user.seeker_verified,
-        }
+        },
+        **_meet_fields(meet_slug),
     }, status=status.HTTP_200_OK)
 
 

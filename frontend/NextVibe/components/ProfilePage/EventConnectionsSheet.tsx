@@ -5,15 +5,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import UserBadges from "../Shared/UserBadges";
-import { Star, Layers, Users, ChevronDown, ShieldCheck, Radio, Award, MessageSquare, Mail, UserPlus, Sparkles } from 'lucide-react-native';
+import { Star, Layers, Users, ChevronDown, ChevronRight, ShieldCheck, Radio, Award, MessageSquare, Mail, UserPlus, Sparkles } from 'lucide-react-native';
 import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
 import { useRouter } from 'expo-router';
 import haptics from '@/src/utils/haptics';
+import { openMeetSheet } from '@/src/stores/meetSheetStore';
+
+export type EventConnectionsTab = 'history' | 'poaps' | 'irl';
 
 export interface EventConnectionsSheetRef {
-    present: (totalRep?: number, userId?: number) => void;
+    present: (totalRep?: number, userId?: number, tab?: EventConnectionsTab) => void;
     dismiss: () => void;
 }
 
@@ -25,6 +28,8 @@ type Connection = {
     rep_given: number;
     is_official: boolean;
     is_seeker_verified: boolean;
+    /** Proof of Meet; only on your own history */
+    meet_slug?: string | null;
 };
 
 type EventData = {
@@ -52,6 +57,8 @@ export type ReputationItem = {
     icon?: string;
     badge_color?: string;
     source?: string;
+    /** Proof of Meet (irl_tap / networking rows on your own history) */
+    meet_slug?: string | null;
 };
 
 type IrlTap = {
@@ -65,6 +72,7 @@ type IrlTap = {
     date: string;
     lat: number | null;
     lng: number | null;
+    meet_slug?: string | null;
 };
 
 const formatDate = (dateStr: string) => {
@@ -90,7 +98,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     const insets = useSafeAreaInsets();
     const snapPoints = useMemo(() => ['88%', '95%'], []);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'poaps' | 'irl'>('history');
+    const [activeTab, setActiveTab] = useState<EventConnectionsTab>('history');
     const [data, setData] = useState<EventData[]>([]);
     const [repItems, setRepItems] = useState<ReputationItem[]>([]);
     const [irlTaps, setIrlTaps] = useState<IrlTap[]>([]);
@@ -142,8 +150,9 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     };
 
     useImperativeHandle(ref, () => ({
-        present: (rep?: number, userId?: number) => {
+        present: (rep?: number, userId?: number, tab?: EventConnectionsTab) => {
             if (rep !== undefined) setTotalRep(rep);
+            if (tab) setActiveTab(tab);
             sheetRef.current?.present();
             fetchData(userId, rep);
         },
@@ -261,16 +270,21 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                     ) : (
                         repItems.map((item) => {
                             const badgeColor = item.badge_color || '#A855F7';
+                            const meetSlug = item.meet_slug;
                             return (
                                 <TouchableOpacity
                                     key={item.id}
-                                    activeOpacity={item.post_id ? 0.7 : 1}
+                                    activeOpacity={item.post_id || meetSlug ? 0.7 : 1}
                                     onPress={() => {
-                                        if (item.post_id) {
+                                        if (meetSlug) {
+                                            openMeetSheet(meetSlug, 'history');
+                                        } else if (item.post_id) {
                                             sheetRef.current?.dismiss();
                                             router.push(`/post-details?id=${item.post_id}` as any);
                                         }
                                     }}
+                                    accessibilityRole={meetSlug || item.post_id ? 'button' : undefined}
+                                    accessibilityHint={meetSlug ? 'Opens your Proof of Meet card' : undefined}
                                     style={[styles.repCard, { backgroundColor: card, borderColor: divider }]}
                                 >
                                     <View style={styles.repCardHeader}>
@@ -292,9 +306,12 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                             <Text style={[styles.repDesc, { color: muted }]}>
                                                 {item.description}
                                             </Text>
-                                            <Text style={[styles.repDate, { color: muted }]}>
-                                                {formatDate(item.date)}
-                                            </Text>
+                                            <View style={styles.dateRow}>
+                                                <Text style={[styles.repDate, { color: muted }]}>
+                                                    {formatDate(item.date)}
+                                                </Text>
+                                                {meetSlug && <MeetCardLink />}
+                                            </View>
                                         </View>
                                     </View>
 
@@ -320,7 +337,15 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                     ) : (
                         <View style={{ gap: 12 }}>
                             {irlTaps.map((tap) => (
-                                <View key={tap.id} style={[styles.repCard, { backgroundColor: card, borderColor: divider, marginBottom: 0 }]}>
+                                <TouchableOpacity
+                                    key={tap.id}
+                                    activeOpacity={tap.meet_slug ? 0.7 : 1}
+                                    disabled={!tap.meet_slug}
+                                    onPress={() => tap.meet_slug && openMeetSheet(tap.meet_slug, 'history')}
+                                    accessibilityRole={tap.meet_slug ? 'button' : undefined}
+                                    accessibilityHint={tap.meet_slug ? 'Opens your Proof of Meet card' : undefined}
+                                    style={[styles.repCard, { backgroundColor: card, borderColor: divider, marginBottom: 0 }]}
+                                >
                                     <View style={styles.connRow}>
                                         {tap.avatar ? (
                                             <Image source={{ uri: tap.avatar }} style={styles.connAvatar} />
@@ -351,9 +376,12 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                     size={15}
                                                 />
                                             </View>
-                                            <Text style={[styles.repDate, { color: muted }]}>
-                                                IRL tap · {formatDate(tap.date)}
-                                            </Text>
+                                            <View style={styles.dateRow}>
+                                                <Text style={[styles.repDate, { color: muted }]}>
+                                                    IRL tap · {formatDate(tap.date)}
+                                                </Text>
+                                                {tap.meet_slug && <MeetCardLink />}
+                                            </View>
                                         </View>
 
                                         <View style={[styles.pointsBadge, { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.3)' }]}>
@@ -361,7 +389,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                             <Text style={styles.pointsTxt}>+{tap.points} REP</Text>
                                         </View>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             ))}
                         </View>
                     )
@@ -463,7 +491,15 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
 
                                                 <View style={{ gap: 10, marginTop: 4 }}>
                                                     {visible.map((c) => (
-                                                        <View key={c.user_id} style={styles.connRow}>
+                                                        <TouchableOpacity
+                                                            key={c.user_id}
+                                                            style={styles.connRow}
+                                                            activeOpacity={c.meet_slug ? 0.7 : 1}
+                                                            disabled={!c.meet_slug}
+                                                            onPress={() => c.meet_slug && openMeetSheet(c.meet_slug, 'history')}
+                                                            accessibilityRole={c.meet_slug ? 'button' : undefined}
+                                                            accessibilityHint={c.meet_slug ? 'Opens your Proof of Meet card' : undefined}
+                                                        >
                                                             {c.avatar ? (
                                                                 <Image source={{ uri: c.avatar }} style={styles.connAvatar} />
                                                             ) : (
@@ -504,8 +540,9 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                                         <Text style={styles.repGivenTxt}>↑{c.rep_given}</Text>
                                                                     </View>
                                                                 )}
+                                                                {c.meet_slug && <ChevronRight size={14} color={accent} />}
                                                             </View>
-                                                        </View>
+                                                        </TouchableOpacity>
                                                     ))}
                                                 </View>
 
@@ -539,6 +576,14 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     );
 });
 
+/** "Card ›" on rows that open a Proof of Meet card. */
+const MeetCardLink = () => (
+    <View style={styles.cardLink}>
+        <Text style={styles.cardLinkTxt}>Card</Text>
+        <ChevronRight size={12} color="#A855F7" />
+    </View>
+);
+
 const styles = StyleSheet.create({
     sheetHeader: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -570,6 +615,9 @@ const styles = StyleSheet.create({
     repTitle: { fontFamily: 'Dank Mono Bold', fontSize: 15, flex: 1, marginRight: 8, includeFontPadding: false },
     repDesc: { fontFamily: 'Dank Mono', fontSize: 13, marginTop: 3, includeFontPadding: false },
     repDate: { fontFamily: 'Dank Mono', fontSize: 11, marginTop: 4, includeFontPadding: false },
+    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    cardLink: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
+    cardLinkTxt: { fontFamily: 'Dank Mono Bold', fontSize: 11, color: '#A855F7', includeFontPadding: false },
     pointsBadge: {
         flexDirection: 'row', alignItems: 'center', gap: 4,
         paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1,

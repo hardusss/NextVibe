@@ -152,6 +152,38 @@ describe('promptStore', () => {
         expect(state().points).toBe(4);
     });
 
+    it('keeps the Proof of Meet the confirm made, for the success card', async () => {
+        mockPreview.mockResolvedValue({ preview: true, interaction_type: 'irl', source: 'irl', earned_points: 1, scanned_user: alice });
+        mockVerify.mockResolvedValue({
+            success: true, interaction_type: 'irl', source: 'irl', earned_points: 1, scanned_user: alice,
+            meet_slug: 'ef91kGQl0v0k', meet_url: 'https://nextvibe.io/u/meet/ef91kGQl0v0k',
+        });
+        state().handle(link('tokenPOM1'), 'nfc');
+        await flush();
+        expect(state().meetSlug).toBeNull();
+        await state().confirm();
+        expect(state().phase).toBe('success');
+        expect(state().meetSlug).toBe('ef91kGQl0v0k');
+    });
+
+    it('a simultaneous confirm still gets the meet the other phone wrote', async () => {
+        mockPreview.mockResolvedValue({ preview: true, interaction_type: 'irl', source: 'irl', earned_points: 1, scanned_user: alice });
+        mockVerify.mockRejectedValue(axios400({ code: 'ALREADY_TAPPED_TODAY', error: 'already', meet_slug: 'ef91kGQl0v0k' }));
+        state().handle(link('tokenPOM2'), 'nfc');
+        await flush();
+        await state().confirm();
+        expect(state().phase).toBe('success');
+        expect(state().meetSlug).toBe('ef91kGQl0v0k');
+
+        // …and a new tap starts clean
+        state().close();
+        advance(11 * 60_000);
+        mockPreview.mockResolvedValue({ preview: true, interaction_type: 'irl', scanned_user: { ...alice, user_id: 8, username: 'bob' } });
+        state().handle(link('tokenPOM3'), 'nfc');
+        await flush();
+        expect(state().meetSlug).toBeNull();
+    });
+
     it('stays silent for "already met" right after a meet', async () => {
         state().reportMet(99);
         mockPreview.mockRejectedValue(axios400({ error: 'You already tapped with bob today.', code: 'ALREADY_TAPPED_TODAY' }));

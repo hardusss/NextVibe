@@ -29,6 +29,7 @@ import { StatusBar } from "expo-status-bar";
 import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
 import { useBleScanner } from "@/hooks/useBleScanner";
 import ProximityPrompt from "@/components/Proximity/ProximityPrompt";
+import MeetSheet from "@/components/Meet/MeetSheet";
 import { clearProfileCache } from "@/components/ProfilePage/ProfilePage";
 import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
@@ -115,7 +116,8 @@ const SHARED_SCREENS = [
     "chats", "follows-screen", "notifications", "user-banned", "wallet-init",
     "wallet-dash", "wallet-select", "swap", "event-checkin", "post-details",
     "all-tokens", "eas-update", "events", "event-nfc-share", "event-nfc-receive",
-    "camera", "u/e", "u/[id]", "u/post/[id]", "blocked-accounts", "u/verified/[username]"
+    "camera", "u/e", "u/[id]", "u/post/[id]", "blocked-accounts", "u/verified/[username]",
+    "u/meet/[slug]", "u/meets",
 ];
 
 export default function RootLayout() {
@@ -441,6 +443,7 @@ export default function RootLayout() {
                                 </Stack>
                                 <PromoBanner />
                                 <ProximityPrompt />
+                                <MeetSheet />
                             </WebSocketProvider>
                         </ErrorBoundary>
                     </LazorKitProvider>

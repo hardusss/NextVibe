@@ -12,9 +12,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigationContainerRef, usePathname, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
+import { openMeetSheet } from '@/src/stores/meetSheetStore';
 import { useAppReady, useAppReadyStore } from './appReadyStore';
 import { usePendingIntent } from './pendingIntent';
-import { isBootstrapPath, pickNavigationMethod, PROFILE_PATH, type PendingIntent } from './intents';
+import { isBootstrapPath, MEET_KIND, MEETS_KIND, pickNavigationMethod, PROFILE_PATH, type PendingIntent } from './intents';
 
 const TAG = WalletTag.NAV_INTENT;
 /** Never wait longer than this for the Stack to register its state. */
@@ -77,10 +78,25 @@ export function useIntentConsumer(options: { beforeNavigate?: (intent: PendingIn
         const taken = usePendingIntent.getState().consume();
         if (!taken) return;
 
+        if (taken.kind === MEET_KIND && taken.params?.slug) {
+            // A meet link opens the meet sheet over whatever is on screen;
+            // from the start flow, over home.
+            try {
+                optionsRef.current.beforeNavigate?.(taken);
+                walletLogger.info(TAG, 'Consuming intent: meet sheet', { id: taken.id, from: pathname, source: taken.source });
+                if (isBootstrapPath(pathname)) router.replace('/home');
+                openMeetSheet(taken.params.slug, taken.source);
+                optionsRef.current.afterNavigate?.(taken);
+            } catch (e) {
+                walletLogger.error(TAG, 'Opening the meet sheet failed', e, { id: taken.id });
+            }
+            return;
+        }
+
         const firstSegment = segments[0] as string | undefined;
         const method = pickNavigationMethod(pathname, firstSegment, taken);
-        // The profile uses `intent` to open the sheet once per tap, even if it remounts.
-        const params = taken.path === PROFILE_PATH && taken.kind === 'seeker_verified'
+        // The profile uses `intent` to open its sheet once per tap, even if it remounts.
+        const params = taken.path === PROFILE_PATH && (taken.kind === 'seeker_verified' || taken.kind === MEETS_KIND)
             ? { ...(taken.params ?? {}), intent: taken.id }
             : taken.params;
         const href: any = params && Object.keys(params).length ? { pathname: taken.path, params } : taken.path;

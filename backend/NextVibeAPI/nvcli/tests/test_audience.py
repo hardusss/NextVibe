@@ -47,6 +47,15 @@ class SegmentTest(NvTestCase):
         self.assertEqual(self.names(audience.segment_queryset("tapped")), ["alice", "carol"])
         self.assertEqual(self.names(audience.segment_queryset(f"event:{event.id}")), ["bob"])
 
+    def test_meet_card_segment(self):
+        from posts.models import Reputation
+
+        Reputation.objects.create(user=self.alice, given_by=self.carol, points=1, source="irl", meet_slug="abcdefghijkl")
+        Reputation.objects.create(user=self.carol, given_by=self.alice, points=1, source="irl", meet_slug="abcdefghijkl")
+        # tapped before slugs existed and not backfilled yet: no card to show
+        Reputation.objects.create(user=self.bob, given_by=self.dave, points=1, source="irl")
+        self.assertEqual(self.names(audience.segment_queryset("meet-card")), ["alice", "carol"])
+
     def test_file_and_sent_in_segments(self):
         path = self.logs / "names.txt"
         path.write_text("@alice\n# comment\nbob\n\nnobody\n")

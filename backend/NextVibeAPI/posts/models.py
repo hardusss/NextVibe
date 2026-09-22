@@ -285,6 +285,17 @@ class Reputation(models.Model):
         db_index=True,
         help_text="Where the reputation came from: 'event' (tap at an event), 'irl' (tap outside events), 'checkin', 'post'",
     )
+    # Both rows of one tap share it: the Proof of Meet id behind
+    # nextvibe.io/u/meet/<slug>. Written with the rows, backfilled by
+    # `manage.py backfill_meet_slugs` (posts/src/meets.py).
+    meet_slug = models.CharField(
+        max_length=16,
+        default=None,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Proof of Meet id shared by both rows of one tap (source 'irl' or 'event')",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

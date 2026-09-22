@@ -2,7 +2,6 @@ import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef,
 import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
-import Svg, { Path } from 'react-native-svg';
 import { Share as ShareIcon } from 'lucide-react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,6 +11,7 @@ import { track } from '@/src/utils/analytics';
 import { seekerShareIntentUrl } from '@/src/utils/seekerShare';
 import { canShareSeekerImage, shareSeekerCard, warmSeekerCard } from '@/src/utils/seekerCardShare';
 import { useSheetBackHandler } from '@/hooks/useSheetBackHandler';
+import XLogo from '@/components/Shared/XLogo';
 import { space, radius } from '@/src/theme/tokens';
 
 const SEEKER_ART = require('@/assets/badges/seeker-genesis.png');
@@ -31,15 +31,6 @@ interface Props {
     isNew?: boolean;
     onDismiss?: () => void;
 }
-
-const XLogo = ({ size, color }: { size: number; color: string }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-        <Path
-            fill={color}
-            d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
-        />
-    </Svg>
-);
 
 function infoLine(isOwn: boolean, source?: string | null): string {
     if (source === 'skr') {

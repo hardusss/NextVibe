@@ -10,6 +10,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/users/', include('user.urls')),
     path('api/v1/posts/', include('posts.urls')),
+    path('api/v1/meet/', include('posts.urls_meet')),
     path('api/v1/wallets/', include('wallet.urls')),
     path('api/v1/chat/', include('chat.urls')),
     path('api/chat/', include('chat.urls')),

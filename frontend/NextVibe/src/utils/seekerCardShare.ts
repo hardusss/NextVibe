@@ -11,7 +11,7 @@ type SharingModule = typeof import('expo-sharing');
  * throw at startup, so it's required lazily, once the native module is known
  * to exist.
  */
-function nativeSharing(): SharingModule | null {
+export function nativeSharing(): SharingModule | null {
     if (!requireOptionalNativeModule('ExpoSharing')) return null;
     return require('expo-sharing') as SharingModule;
 }

@@ -1,0 +1,160 @@
+from django.http import HttpResponse
+from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.negotiation import BaseContentNegotiation
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.throttling import SimpleRateThrottle
+from rest_framework.views import APIView
+
+from posts.src import meet_card
+from posts.src.meets import load_meet
+from user.auth import CustomJWTAuthentication
+from user.src import og_image as og
+
+
+class OptionalJWTAuthentication(CustomJWTAuthentication):
+    """A valid token names the viewer; a missing, stale or bad one is just anonymous."""
+
+    def authenticate(self, request):
+        try:
+            return super().authenticate(request)
+        except AuthenticationFailed:
+            return None
+
+
+class MeetCardThrottle(SimpleRateThrottle):
+    """Per client IP: X's crawler, link previews and the app each come from their own."""
+    scope = "meet_card"
+    rate = "120/min"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+
+class IgnoreAccept(BaseContentNegotiation):
+    """
+    Image fetches send `Accept: image/*`, which no DRF renderer offers: without
+    this they'd get a 406 before the view runs. Only errors (429) are rendered.
+    """
+
+    def select_parser(self, request, parsers):
+        return parsers[0] if parsers else None
+
+    def select_renderer(self, request, renderers, format_suffix=None):
+        return renderers[0], renderers[0].media_type
+
+
+def _not_found():
+    response = Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+    response["Cache-Control"] = "no-store"  # a block can be lifted
+    return response
+
+
+def meet_payload(meet, version):
+    a, b = meet.people
+    text = meet_card.card_text(meet)
+    return {
+        "slug": meet.slug,
+        "url": meet.url,
+        "source": meet.source,
+        "tier": meet.tier,
+        "tier_label": meet.tier_label,
+        "met_at": meet.met_at.isoformat(),
+        "timezone": meet.tz.key if meet.tz else None,
+        "place": meet.city,
+        "when_line": text.when_line,
+        "event": {"id": meet.event_id, "name": meet.event_name} if meet.event_name else None,
+        "users": [
+            {
+                "user_id": p.user_id,
+                "username": p.username,
+                "avatar": og.public_file_url(p.avatar_name) if p.avatar_name else None,
+                "seeker_verified": p.seeker,
+                "official": p.official,
+                "deleted": p.deleted,
+                "points": p.points,
+                "meet_number": p.number,
+            }
+            for p in meet.people
+        ],
+        "pair": {"count": meet.pair_count, "first_met_at": meet.pair_first_at.isoformat()},
+        "history_line": " · ".join(part for part in (text.lead, text.detail) if part),
+        "proof_line": f"Proof of Meet · {text.proof}",
+        "asset_id": meet.asset_id,
+        "title": f"@{a.username} met @{b.username} · NextVibe",
+        "description": _description(meet),
+        "card_url": meet_card.card_url(meet.slug, "og", version),
+        "story_url": meet_card.card_url(meet.slug, "story", version),
+        "version": version,
+    }
+
+
+def _description(meet) -> str:
+    """One line for og:description."""
+    local = meet_card.local_time(meet)
+    day = f"{local:%a}, {local:%b} {local.day}"
+    where = f" in {meet.city}" if meet.city else ""
+    how = f"at {meet.event_name}{where}" if meet.event_name else f"in person{where}"
+    count = f" Their {meet_card.ordinal(meet.pair_count)} meeting." if meet.pair_count > 1 else ""
+    return f"Met {how} on {day}.{count} Proof of Meet on NextVibe: tap phones, prove you met."
+
+
+class MeetView(APIView):
+    """
+    GET /api/v1/meet/<slug> — public; a token is optional.
+
+    One tap as data: both people, event, place, local time, tier, REP, meet
+    numbers and the card URLs. nextvibe.io/u/meet/<slug> (landing _worker.js)
+    and the app's meet sheet read it. Unknown slugs, meets with a banned
+    account, blocked pairs and, for a signed-in viewer, people they blocked
+    or were blocked by, all get the same 404.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = [OptionalJWTAuthentication]
+    # No throttle: the share page's requests all come from Cloudflare's egress IPs
+
+    def get(self, request, slug) -> Response:
+        viewer = request.user if request.user.is_authenticated else None
+        meet = load_meet(slug, viewer=viewer)
+        if meet is None:
+            return _not_found()
+        response = Response(meet_payload(meet, meet_card.card_version(meet)))
+        # A signed-in answer depends on the viewer's blocks
+        response["Cache-Control"] = "private, no-store" if viewer else "public, max-age=60"
+        response["Vary"] = "Authorization"
+        return response
+
+
+class MeetCardView(APIView):
+    """
+    GET /api/v1/meet/<slug>/card.png?v=og|story — public PNG.
+
+    og = 1200×630 (link previews), story = 1080×1350. Cached an hour, with
+    an ETag of the card's version (a hash of everything drawn); the JSON
+    hands out URLs with &rev=<version>, so new content gets a new URL.
+    Unknown or unavailable meets get a neutral "not found" card with a 404.
+    Rate limited per IP.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [MeetCardThrottle]
+    content_negotiation_class = IgnoreAccept
+
+    def get(self, request, slug):
+        variant = "story" if request.GET.get("v") == "story" else "og"
+        meet = load_meet(slug)
+        if meet is None:
+            response = HttpResponse(meet_card.not_found_png(variant), status=404, content_type="image/png")
+            response["Cache-Control"] = "no-store"
+            return response
+
+        etag = f'"{variant}-{meet_card.card_version(meet)}"'
+        if etag in [tag.strip() for tag in request.headers.get("If-None-Match", "").split(",")]:
+            response = HttpResponse(status=304)
+        else:
+            png, _ = meet_card.get_card_png(meet, variant)
+            response = HttpResponse(png, content_type="image/png")
+        response["ETag"] = etag
+        response["Cache-Control"] = "public, max-age=3600"
+        return response

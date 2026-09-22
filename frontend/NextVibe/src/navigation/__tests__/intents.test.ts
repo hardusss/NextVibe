@@ -1,4 +1,15 @@
-import { intentFromNotification, intentFromUrl, intentSignature, isBootstrapPath, pickNavigationMethod, splitHref, PROFILE_PATH } from '../intents';
+import {
+    intentFromNotification,
+    intentFromUrl,
+    intentSignature,
+    isBootstrapPath,
+    isUnknownUPath,
+    pickNavigationMethod,
+    splitHref,
+    MEET_KIND,
+    MEETS_KIND,
+    PROFILE_PATH,
+} from '../intents';
 
 const NOW = 1_700_000_000_000;
 
@@ -69,6 +80,71 @@ describe('intentFromUrl', () => {
         expect(a.id).not.toBe(b.id);
         expect(intentSignature(a)).toBe(intentSignature(b));
         expect(intentSignature({ path: '/x', params: { b: '2', a: '1' } })).toBe('/x?a=1&b=2');
+    });
+});
+
+describe('Proof of Meet links', () => {
+    it('a meet link on any origin becomes a meet-sheet intent', () => {
+        for (const url of [
+            'https://nextvibe.io/u/meet/ef91kGQl0v0k',
+            'https://www.nextvibe.io/u/meet/ef91kGQl0v0k/?ref=x',
+            'nextvibe://u/meet/ef91kGQl0v0k',
+            'https://nextvibe.io/u/meet/ef91kGQl0v0k/card.png',
+        ]) {
+            expect(intentFromUrl(url, true, NOW)).toMatchObject({
+                path: '/u/meet/ef91kGQl0v0k', params: { slug: 'ef91kGQl0v0k' }, source: 'link', kind: MEET_KIND, createdAt: NOW,
+            });
+        }
+    });
+
+    it('/u/meets opens the own profile with POAPs & History', () => {
+        expect(intentFromUrl('https://nextvibe.io/u/meets', false, NOW)).toMatchObject({
+            path: PROFILE_PATH, params: { open: 'meets' }, source: 'link', kind: MEETS_KIND,
+        });
+    });
+
+    it('the "cards are ready" push and meet pushes use the same intents', () => {
+        // nv sends nextvibe.io/u/... links as the in-app path
+        expect(intentFromNotification({ type: 'meet_cards_ready', url: '/u/meets', deeplink: 'https://nextvibe.io/u/meets' }, 'n9', NOW).intent)
+            .toEqual({ id: 'push:n9', path: PROFILE_PATH, params: { open: 'meets' }, source: 'push', kind: MEETS_KIND, createdAt: NOW });
+        expect(intentFromNotification({ url: '/u/meet/ef91kGQl0v0k' }, 'n10', NOW).intent)
+            .toMatchObject({ path: '/u/meet/ef91kGQl0v0k', params: { slug: 'ef91kGQl0v0k' }, kind: MEET_KIND, source: 'push' });
+    });
+
+    it('two deliveries of one meet link are one intent', () => {
+        const a = intentFromUrl('https://nextvibe.io/u/meet/ef91kGQl0v0k', true, NOW)!;
+        const b = intentFromUrl('nextvibe.io/u/meet/ef91kGQl0v0k', false, NOW + 5)!;
+        expect(intentSignature(a)).toBe(intentSignature(b));
+    });
+
+    it('a broken meet link is no intent', () => {
+        expect(intentFromUrl('https://nextvibe.io/u/meet/', true, NOW)).toBeNull();
+        expect(intentFromUrl('https://nextvibe.io/u/meet/a/b', true, NOW)).toBeNull();
+    });
+});
+
+describe('isUnknownUPath', () => {
+    it('knows every /u screen', () => {
+        for (const url of [
+            'https://nextvibe.io/u/12',
+            'https://nextvibe.io/u/e?t=abcd1234',
+            'https://nextvibe.io/u/post/7',
+            'https://nextvibe.io/u/verified/alice',
+            'https://nextvibe.io/u/meet/ef91kGQl0v0k',
+            'https://nextvibe.io/u/meets',
+            'https://nextvibe.io/u/send?amount=1&token=SOL',
+            'nextvibe://profile',
+            'https://nextvibe.io/transaction?id=1',
+            'https://example.com/u/whatever',
+        ]) {
+            expect(isUnknownUPath(url)).toBe(false);
+        }
+    });
+
+    it('sends anything else under /u home', () => {
+        for (const url of ['https://nextvibe.io/u', 'https://nextvibe.io/u/badges/x', 'https://nextvibe.io/u/alice', 'nextvibe://u/new-thing']) {
+            expect(isUnknownUPath(url)).toBe(true);
+        }
     });
 });
 

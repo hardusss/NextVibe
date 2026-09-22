@@ -10,6 +10,7 @@
  * can be unit-tested in node and imported from +native-intent.ts.
  */
 import { parseQuery, toAppPath } from '@/src/proximity/payload';
+import { isMeetsLink, meetLinkSlug } from '@/src/utils/meetShare';
 
 export type IntentSource = 'push' | 'link';
 
@@ -28,6 +29,15 @@ export interface PendingIntent {
 /** The own-profile screen; `open=seeker` asks it to present the Seeker Verified sheet. */
 export const PROFILE_PATH = '/(tabs)/profile';
 export const SEEKER_OPEN_PARAM = 'seeker';
+/** `open=meets`: the profile opens POAPs & History, where every meet has its card. */
+export const MEETS_OPEN_PARAM = 'meets';
+/**
+ * nextvibe.io/u/meet/<slug> doesn't navigate: the consumer opens the meet
+ * sheet over the current screen (home on a cold start). The path is the
+ * fallback route, so a plain navigation still ends up in the same sheet.
+ */
+export const MEET_KIND = 'meet';
+export const MEETS_KIND = 'meets';
 
 
 /** Splits "/a/b?x=1&y=2" into a pathname and decoded params. */
@@ -54,6 +64,21 @@ function seekerIntent(id: string, source: IntentSource, createdAt: number, extra
         kind: 'seeker_verified',
         createdAt,
     };
+}
+
+/**
+ * Proof of Meet links (/u/meet/<slug>, /u/meets) as intents, or null for
+ * any other path. Shared by links and push `url`s.
+ */
+function meetIntent(appPath: string, id: string, source: IntentSource, now: number): PendingIntent | null {
+    const slug = meetLinkSlug(appPath);
+    if (slug) {
+        return { id, path: `/u/meet/${slug}`, params: { slug }, source, kind: MEET_KIND, createdAt: now };
+    }
+    if (isMeetsLink(appPath)) {
+        return { id, path: PROFILE_PATH, params: { open: MEETS_OPEN_PARAM }, source, kind: MEETS_KIND, createdAt: now };
+    }
+    return null;
 }
 
 export interface NotificationIntent {
@@ -83,6 +108,8 @@ export function intentFromNotification(
         return { external: data.external_url };
     }
     if (typeof data.url === 'string' && data.url) {
+        const meet = meetIntent(data.url, id, 'push', now);
+        if (meet) return { intent: meet };
         const { path, params } = splitHref(data.url);
         return { intent: { id, path: normalizePath(path), params, source: 'push', kind: type ?? 'url', createdAt: now } };
     }
@@ -111,20 +138,49 @@ export function intentFromNotification(
 }
 
 /**
- * Own-profile links only: nextvibe://profile, nextvibe://profile?open=seeker,
- * https://nextvibe.io/profile?open=seeker. Username links (/profile/<name>),
- * wallet redirects and tap links are somebody else's and return null.
+ * Links that wait for the app to be ready: own-profile links
+ * (nextvibe://profile, nextvibe://profile?open=seeker,
+ * https://nextvibe.io/profile?open=seeker) and Proof of Meet links
+ * (nextvibe.io/u/meet/<slug>, nextvibe.io/u/meets). Username links
+ * (/profile/<name>), wallet redirects and tap links are somebody else's and
+ * return null.
  */
 export function intentFromUrl(url: string, initial: boolean, now: number): PendingIntent | null {
     const appPath = toAppPath(url);
     if (!appPath) return null;
-    const { path, params } = splitHref(appPath);
-    if (path !== '/profile') return null;
     // One link usually arrives twice (+native-intent and Linking); the store
     // drops the second copy by signature (see LINK_DEDUP_MS in pendingIntent.ts).
     const id = `link:${initial ? 'initial:' : ''}${url.trim()}@${now}`;
+    const meet = meetIntent(appPath, id, 'link', now);
+    if (meet) return meet;
+    const { path, params } = splitHref(appPath);
+    if (path !== '/profile') return null;
     if (params.open === SEEKER_OPEN_PARAM) return seekerIntent(id, 'link', now, params);
     return { id, path: PROFILE_PATH, params, source: 'link', kind: 'profile-link', createdAt: now };
+}
+
+/** Every nextvibe.io/u/… path the app has a screen or flow for. */
+const KNOWN_U_PATHS = [
+    /^\/u\/\d+$/, // profile
+    /^\/u\/e$/, // tap link (?t=…)
+    /^\/u\/post\/\d+$/,
+    /^\/u\/verified\/[^/]+$/,
+    /^\/u\/meet\/[^/]+(?:\/card\.png)?$/,
+    /^\/u\/meets$/,
+    /^\/u\/send(?:\/.*)?$/, // payment requests
+];
+
+/**
+ * A NextVibe link under /u/ that no screen handles (a new share page the
+ * installed version doesn't know yet, a mangled link): the app opens home
+ * instead of "Unmatched Route".
+ */
+export function isUnknownUPath(url: string): boolean {
+    const appPath = toAppPath(url);
+    if (!appPath) return false;
+    const { path } = splitHref(appPath);
+    if (path !== '/u' && !path.startsWith('/u/')) return false;
+    return !KNOWN_U_PATHS.some((re) => re.test(path));
 }
 
 /** Dedup key for links: same destination = same intent. */

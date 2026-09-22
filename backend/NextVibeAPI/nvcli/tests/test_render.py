@@ -107,8 +107,25 @@ class RenderTest(NvTestCase):
         self.assertEqual(render.app_path("/(tabs)/profile"), ("/(tabs)/profile", None))
         self.assertEqual(render.app_path("solanadappstore://details?id=com.nextvibe.app"),
                          (None, "solanadappstore://details?id=com.nextvibe.app"))
-        self.assertEqual(render.app_path("https://nextvibe.io/u/verified/a"), (None, "https://nextvibe.io/u/verified/a"))
+        # The app claims nextvibe.io/u/*: pushes open it in place, emails link to the page
+        self.assertEqual(render.app_path("https://nextvibe.io/u/verified/a"), ("/u/verified/a", "https://nextvibe.io/u/verified/a"))
+        self.assertEqual(render.app_path("https://nextvibe.io/u/meets"), ("/u/meets", "https://nextvibe.io/u/meets"))
+        self.assertEqual(render.app_path("https://nextvibe.io/privacy"), (None, "https://nextvibe.io/privacy"))
         self.assertEqual(render.app_path(None), (None, None))
+
+    def test_meet_cards_ready_push_opens_in_the_app(self):
+        t = render.get_template("meet-cards-ready")
+        self.assertEqual(t.channel, "push")
+        self.assertEqual(render.wording_violations(f"{t.title} {t.body}"), [])
+        data = render.render(t, {}).push_data("sep23-meet-cards")
+        self.assertEqual(data["url"], "/u/meets")
+        self.assertNotIn("external_url", data)  # the app would open the browser first
+        self.assertEqual(data["type"], "meet_cards_ready")
+
+    def test_site_link_stays_a_web_link_in_email(self):
+        t = render.Template(name="adhoc", channel="email", title="Hi", body="Your cards", deeplink="https://nextvibe.io/u/meets")
+        html, _ = render.render(t, {}).email_parts()
+        self.assertIn('href="https://nextvibe.io/u/meets"', html)
 
     def test_full_email_template(self):
         """seeker-badge-email carries its own dark html + text; both are sent as rendered."""

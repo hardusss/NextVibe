@@ -30,6 +30,9 @@ export interface VerifyTokenResponse {
         is_official: boolean;
         is_seeker_verified?: boolean;
     };
+    // The Proof of Meet a confirmed meet wrote (nextvibe.io/u/meet/<slug>)
+    meet_slug?: string;
+    meet_url?: string;
     // Checkin response fields
     verified?: boolean;
     post_id?: number;
