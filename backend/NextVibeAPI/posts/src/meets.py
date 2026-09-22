@@ -12,16 +12,20 @@ one, even rows written by two requests that raced:
     IRL tap     pair + UTC day   Tap to Meet allows one per pair per day
     event tap   pair + event     one per pair per event
 
-Taps store it when the rows are written; `manage.py backfill_meet_slugs`
-fills older rows. Once stored, a slug never changes. Counts ("#14 for @a",
-"3rd time meeting") group rows by those same keys, so they don't depend on
-the backfill. A repeat tap the same day is rejected before anything is
+Taps store it when the rows are written. Older rows get theirs by
+themselves: after every `migrate` (each deploy runs one), when their owner
+opens History, or by hand with `manage.py backfill_meet_slugs`. All three
+use fill_meet_slugs. Once stored, a slug never changes. Counts ("#14 for
+@a", "3rd time meeting") group rows by the same keys, so they don't depend
+on the backfill. A repeat tap the same day is rejected before anything is
 written; rows with 0 points would be left out of meets and counts.
 """
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone as dt_timezone
 
+from django.db import connections, transaction
 from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
@@ -29,6 +33,8 @@ from django.utils.crypto import salted_hmac
 from posts.models import EventCheckin, EventRequest, Reputation
 from posts.src import geocode
 from user.src.blocking import blocked_user_ids, is_blocked_between
+
+logger = logging.getLogger("posts.meets")
 
 MEET_SOURCES = ("irl", "event")
 SLUG_LENGTH = 12
@@ -123,6 +129,71 @@ def group_rows(rows):
             groups[key].append(row)
             last_at = row["created_at"]
     return groups
+
+
+def fill_meet_slugs(rows=None, dry_run=False, using="default"):
+    """
+    Give every tap row without a slug its meeting's slug. `rows` narrows the
+    tap rows looked at (one person's taps); it must hold every row of the
+    meetings it touches. A meeting that already has a slug keeps it (a row
+    written later that raced an old one); otherwise the slug is derived from
+    the meeting's key, so every run gives the same result.
+    Returns (rows set, meetings touched, meetings looked at).
+    """
+    rows = tap_rows().using(using) if rows is None else rows
+    groups = group_rows(rows.values(*ROW_FIELDS))
+    rows_set = touched = 0
+    with transaction.atomic(using=using):
+        for key, group in groups.items():
+            empty = [r["id"] for r in group if not r["meet_slug"]]
+            if not empty:
+                continue
+            stored = sorted({r["meet_slug"] for r in group if r["meet_slug"]})
+            slug = stored[0] if stored else slug_for_key(key)
+            if not dry_run:
+                Reputation.objects.using(using).filter(id__in=empty, meet_slug__isnull=True).update(meet_slug=slug)
+            rows_set += len(empty)
+            touched += 1
+    return rows_set, touched, len(groups)
+
+
+def ensure_user_meet_slugs(user_id) -> int:
+    """
+    A person's past taps get their slugs when they open their history, even
+    if nothing else filled them yet. One indexed query when none is missing.
+    Returns how many rows were set.
+    """
+    rows = tap_rows().filter(Q(user_id=user_id) | Q(given_by_id=user_id))
+    if not rows.filter(meet_slug__isnull=True).exists():
+        return 0
+    return fill_meet_slugs(rows)[0]
+
+
+def fill_meet_slugs_after_migrate(sender=None, using="default", verbosity=1, **kwargs):
+    """
+    post_migrate (posts/apps.py): every `migrate`, which each deploy runs,
+    gives past taps their slugs, so old meets can be shared without a manual
+    step. Skipped while the column doesn't exist yet, and never breaks
+    `migrate`.
+    """
+    try:
+        if not _has_meet_slug_column(using):
+            return
+        rows_set, touched, total = fill_meet_slugs(using=using)
+    except Exception:
+        logger.warning("meets.fill_after_migrate_failed", exc_info=True)
+        return
+    if rows_set and verbosity:
+        logger.info("meets.filled_after_migrate rows=%s meets=%s of=%s", rows_set, touched, total)
+
+
+def _has_meet_slug_column(using) -> bool:
+    connection = connections[using]
+    table = Reputation._meta.db_table
+    with connection.cursor() as cursor:
+        if table not in connection.introspection.table_names(cursor):
+            return False
+        return any(col.name == "meet_slug" for col in connection.introspection.get_table_description(cursor, table))
 
 
 # ── One meeting ──────────────────────────────────────────────────────────

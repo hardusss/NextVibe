@@ -1,10 +1,12 @@
 """Give every past tap its Proof of Meet slug (nextvibe.io/u/meet/<slug>).
 
-Taps store the slug when they're written; rows from before that get it here.
-Rows are grouped into meetings the same way the app counts them (event taps:
-pair + event, IRL taps: pair + UTC day), and each meeting's slug is derived
-from that key, so it's the same on every run. Only empty slugs are filled:
-a stored one never changes. Safe to re-run; prints how many rows it set.
+Taps store the slug when they're written, and past taps get theirs after
+every `migrate` and when their owner opens History (posts/src/meets.py), so
+this is for checking or forcing it by hand. Rows are grouped into meetings
+the same way the app counts them (event taps: pair + event, IRL taps: pair +
+UTC day), and each meeting's slug is derived from that key, so it's the same
+on every run. Only empty slugs are filled: a stored one never changes. Safe
+to re-run; prints how many rows it set.
 
     python manage.py backfill_meet_slugs
     python manage.py backfill_meet_slugs --dry-run
@@ -12,11 +14,9 @@ a stored one never changes. Safe to re-run; prints how many rows it set.
 """
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
 from django.db.models import Q
 
-from posts.models import Reputation
-from posts.src.meets import ROW_FIELDS, group_rows, meet_url, slug_for_key, tap_rows
+from posts.src.meets import fill_meet_slugs, meet_url, tap_rows
 
 
 class Command(BaseCommand):
@@ -31,28 +31,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
-        groups = group_rows(tap_rows().values(*ROW_FIELDS))
-
-        rows_set = meets_touched = 0
-        with transaction.atomic():
-            for key, rows in groups.items():
-                empty = [r["id"] for r in rows if not r["meet_slug"]]
-                if not empty:
-                    continue
-                # A meeting that already has a slug keeps it (e.g. a row written
-                # after the deploy that raced an old one); otherwise derive it
-                stored = sorted({r["meet_slug"] for r in rows if r["meet_slug"]})
-                slug = stored[0] if stored else slug_for_key(key)
-                if not dry_run:
-                    Reputation.objects.filter(id__in=empty, meet_slug__isnull=True).update(meet_slug=slug)
-                rows_set += len(empty)
-                meets_touched += 1
-
-        total = sum(len(rows) for rows in groups.values())
+        rows_set, meets_touched, meets_total = fill_meet_slugs(dry_run=dry_run)
         prefix = "[dry-run] would set" if dry_run else "Set"
         self.stdout.write(self.style.SUCCESS(
             f"{prefix} meet_slug on {rows_set} rows ({meets_touched} meets). "
-            f"{len(groups)} meets / {total} tap rows in total."
+            f"{meets_total} meets / {tap_rows().count()} tap rows in total."
         ))
 
         if options["pair"]:

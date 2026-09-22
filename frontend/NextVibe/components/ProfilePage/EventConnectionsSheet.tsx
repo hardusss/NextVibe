@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import UserBadges from "../Shared/UserBadges";
-import { Star, Layers, Users, ChevronDown, ChevronRight, ShieldCheck, Radio, Award, MessageSquare, Mail, UserPlus, Sparkles } from 'lucide-react-native';
+import { Star, Layers, Users, ChevronDown, ShieldCheck, Radio, Award, MessageSquare, Mail, UserPlus, Sparkles, Share } from 'lucide-react-native';
 import axios from 'axios';
 import { storage } from '@/src/utils/storage';
 import GetApiUrl from '@/src/utils/url_api';
@@ -284,7 +284,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                         }
                                     }}
                                     accessibilityRole={meetSlug || item.post_id ? 'button' : undefined}
-                                    accessibilityHint={meetSlug ? 'Opens your Proof of Meet card' : undefined}
+                                    accessibilityHint={meetSlug ? 'Opens your Proof of Meet card to share it' : undefined}
                                     style={[styles.repCard, { backgroundColor: card, borderColor: divider }]}
                                 >
                                     <View style={styles.repCardHeader}>
@@ -306,12 +306,18 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                             <Text style={[styles.repDesc, { color: muted }]}>
                                                 {item.description}
                                             </Text>
-                                            <View style={styles.dateRow}>
+                                            {meetSlug ? (
+                                                <View style={styles.dateRow}>
+                                                    <Text style={[styles.repDate, styles.dateInRow, { color: muted }]}>
+                                                        {formatDate(item.date)}
+                                                    </Text>
+                                                    <ShareMeetPill isDark={isDark} />
+                                                </View>
+                                            ) : (
                                                 <Text style={[styles.repDate, { color: muted }]}>
                                                     {formatDate(item.date)}
                                                 </Text>
-                                                {meetSlug && <MeetCardLink />}
-                                            </View>
+                                            )}
                                         </View>
                                     </View>
 
@@ -343,7 +349,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                     disabled={!tap.meet_slug}
                                     onPress={() => tap.meet_slug && openMeetSheet(tap.meet_slug, 'history')}
                                     accessibilityRole={tap.meet_slug ? 'button' : undefined}
-                                    accessibilityHint={tap.meet_slug ? 'Opens your Proof of Meet card' : undefined}
+                                    accessibilityHint={tap.meet_slug ? 'Opens your Proof of Meet card to share it' : undefined}
                                     style={[styles.repCard, { backgroundColor: card, borderColor: divider, marginBottom: 0 }]}
                                 >
                                     <View style={styles.connRow}>
@@ -376,17 +382,17 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                     size={15}
                                                 />
                                             </View>
-                                            <View style={styles.dateRow}>
-                                                <Text style={[styles.repDate, { color: muted }]}>
-                                                    IRL tap · {formatDate(tap.date)}
-                                                </Text>
-                                                {tap.meet_slug && <MeetCardLink />}
-                                            </View>
+                                            <Text style={[styles.repDate, { color: muted }]}>
+                                                IRL tap · {formatDate(tap.date)}
+                                            </Text>
                                         </View>
 
-                                        <View style={[styles.pointsBadge, { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.3)' }]}>
-                                            <Star size={10} color="#22c55e" fill="#22c55e" />
-                                            <Text style={styles.pointsTxt}>+{tap.points} REP</Text>
+                                        <View style={styles.rightCol}>
+                                            <View style={[styles.pointsBadge, { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.3)' }]}>
+                                                <Star size={10} color="#22c55e" fill="#22c55e" />
+                                                <Text style={styles.pointsTxt}>+{tap.points} REP</Text>
+                                            </View>
+                                            {tap.meet_slug && <ShareMeetPill isDark={isDark} />}
                                         </View>
                                     </View>
                                 </TouchableOpacity>
@@ -498,7 +504,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                             disabled={!c.meet_slug}
                                                             onPress={() => c.meet_slug && openMeetSheet(c.meet_slug, 'history')}
                                                             accessibilityRole={c.meet_slug ? 'button' : undefined}
-                                                            accessibilityHint={c.meet_slug ? 'Opens your Proof of Meet card' : undefined}
+                                                            accessibilityHint={c.meet_slug ? 'Opens your Proof of Meet card to share it' : undefined}
                                                         >
                                                             {c.avatar ? (
                                                                 <Image source={{ uri: c.avatar }} style={styles.connAvatar} />
@@ -540,7 +546,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                                         <Text style={styles.repGivenTxt}>↑{c.rep_given}</Text>
                                                                     </View>
                                                                 )}
-                                                                {c.meet_slug && <ChevronRight size={14} color={accent} />}
+                                                                {c.meet_slug && <ShareMeetPill isDark={isDark} />}
                                                             </View>
                                                         </TouchableOpacity>
                                                     ))}
@@ -576,13 +582,26 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
     );
 });
 
-/** "Card ›" on rows that open a Proof of Meet card. */
-const MeetCardLink = () => (
-    <View style={styles.cardLink}>
-        <Text style={styles.cardLinkTxt}>Card</Text>
-        <ChevronRight size={12} color="#A855F7" />
-    </View>
-);
+/**
+ * On rows that have a Proof of Meet: the whole row opens the meet sheet
+ * (card, Share on X, Save image, Copy link); this pill says so. Same shape
+ * as the REP and cNFT pills.
+ */
+const ShareMeetPill = ({ isDark }: { isDark: boolean }) => {
+    const color = isDark ? '#D8B4FE' : '#7C3AED';
+    return (
+        <View
+            style={[styles.sharePill, {
+                backgroundColor: isDark ? 'rgba(168,85,247,0.14)' : 'rgba(124,58,237,0.08)',
+                borderColor: isDark ? 'rgba(168,85,247,0.42)' : 'rgba(124,58,237,0.3)',
+            }]}
+            accessible={false}
+        >
+            <Share size={11} color={color} strokeWidth={2.4} />
+            <Text style={[styles.sharePillTxt, { color }]}>Share</Text>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     sheetHeader: {
@@ -615,9 +634,14 @@ const styles = StyleSheet.create({
     repTitle: { fontFamily: 'Dank Mono Bold', fontSize: 15, flex: 1, marginRight: 8, includeFontPadding: false },
     repDesc: { fontFamily: 'Dank Mono', fontSize: 13, marginTop: 3, includeFontPadding: false },
     repDate: { fontFamily: 'Dank Mono', fontSize: 11, marginTop: 4, includeFontPadding: false },
-    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-    cardLink: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
-    cardLinkTxt: { fontFamily: 'Dank Mono Bold', fontSize: 11, color: '#A855F7', includeFontPadding: false },
+    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6 },
+    dateInRow: { marginTop: 0 },
+    rightCol: { alignItems: 'flex-end', gap: 6 },
+    sharePill: {
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        paddingHorizontal: 9, paddingVertical: 4, borderRadius: 12, borderWidth: 1,
+    },
+    sharePillTxt: { fontFamily: 'Dank Mono Bold', fontSize: 11, includeFontPadding: false },
     pointsBadge: {
         flexDirection: 'row', alignItems: 'center', gap: 4,
         paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1,
@@ -670,7 +694,7 @@ const styles = StyleSheet.create({
     connHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
     connHeaderTxt: { fontFamily: 'Dank Mono Bold', fontSize: 12, includeFontPadding: false },
 
-    connRepRow: { flexDirection: 'row', gap: 6 },
+    connRepRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     repReceivedBadge: { backgroundColor: 'rgba(34,197,94,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
     repReceivedTxt: { fontFamily: 'Dank Mono Bold', fontSize: 10, color: '#22c55e' },
     repGivenBadge: { backgroundColor: 'rgba(168,85,247,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },

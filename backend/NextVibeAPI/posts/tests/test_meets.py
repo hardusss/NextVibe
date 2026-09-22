@@ -11,6 +11,7 @@ Covers:
 - PNG: both sizes for irl / organizer / peer taps, missing avatar, long names,
   no location, Seeker on both sides; cache headers, ETag, 404 card, rate limit
 - history lists carry the slug only on your own profile
+- old taps get slugs by themselves: after migrate, and when their owner opens History
 - geocoding is cached; time zones come from tzdata
 """
 import io
@@ -25,6 +26,7 @@ from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.management import call_command
+from django.core.management.sql import emit_post_migrate_signal
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from PIL import Image
@@ -227,6 +229,55 @@ class BackfillTests(MeetTestCase):
         out = self.backfill("--pair", "alice", "@bob")
         slug = self.slug_of(self.alice, self.bob)
         self.assertIn(f"2026-09-21 16:42 UTC  irl    https://nextvibe.io/u/meet/{slug}", out)
+
+
+class OldMeetsGetSlugsTests(MeetTestCase):
+    """Past taps get their slugs without anyone running the backfill."""
+
+    def test_migrate_fills_every_old_meet(self):
+        carol = make_user("carol")
+        self.add_tap(self.alice, self.bob, at(21))
+        self.add_tap(self.alice, carol, at(19))
+        self.assertTrue(Reputation.objects.filter(meet_slug__isnull=True).exists())
+        # The signal `migrate` (run by every deploy) sends when it's done
+        emit_post_migrate_signal(verbosity=0, interactive=False, db="default")
+        self.assertFalse(Reputation.objects.filter(meet_slug__isnull=True).exists())
+        self.assertEqual(self.slug_of(self.alice, self.bob), meets.tap_slug(self.alice.user_id, self.bob.user_id, "irl", when=at(21)))
+        self.assertEqual(self.slug_of(self.bob, self.alice), self.slug_of(self.alice, self.bob))
+        self.assertEqual(self.meet_json(self.slug_of(self.alice, carol)).status_code, 200)
+
+    def test_hook_waits_for_the_column_and_never_breaks_migrate(self):
+        from django.apps import apps
+
+        self.add_tap(self.alice, self.bob, at(21))
+        posts = apps.get_app_config("posts")
+        with mock.patch.object(meets, "_has_meet_slug_column", return_value=False):
+            meets.fill_meet_slugs_after_migrate(sender=posts, using="default", verbosity=0)
+        self.assertTrue(Reputation.objects.filter(meet_slug__isnull=True).exists())
+        with mock.patch.object(meets, "fill_meet_slugs", side_effect=RuntimeError("db hiccup")), \
+                self.assertLogs("posts.meets", "WARNING"):
+            meets.fill_meet_slugs_after_migrate(sender=posts, using="default", verbosity=0)  # no exception
+        self.assertTrue(meets._has_meet_slug_column("default"))
+
+    def test_history_gives_old_taps_their_slugs(self):
+        carol, dave = make_user("carol"), make_user("dave")
+        self.add_tap(self.alice, self.bob, at(21))
+        self.add_tap(carol, dave, at(21))  # someone else's meet stays as it is
+        data = client_for(self.alice).get(CONNECTIONS_URL).data
+        slug = meets.tap_slug(self.alice.user_id, self.bob.user_id, "irl", when=at(21))
+        self.assertEqual(data["irl_taps"][0]["meet_slug"], slug)
+        self.assertEqual({self.slug_of(self.alice, self.bob), self.slug_of(self.bob, self.alice)}, {slug})
+        self.assertIsNone(self.slug_of(carol, dave))
+        self.assertEqual(self.meet_json(slug).status_code, 200)
+        # Nothing left to fill: one cheap query, no writes
+        self.assertEqual(meets.ensure_user_meet_slugs(self.alice.user_id), 0)
+
+    def test_backfill_after_history_changes_nothing(self):
+        self.add_tap(self.alice, self.bob, at(21))
+        client_for(self.bob).get(CONNECTIONS_URL)
+        before = dict(Reputation.objects.values_list("id", "meet_slug"))
+        self.assertIn("Set meet_slug on 0 rows (0 meets)", self.backfill())
+        self.assertEqual(dict(Reputation.objects.values_list("id", "meet_slug")), before)
 
 
 class MeetJsonTests(MeetTestCase):

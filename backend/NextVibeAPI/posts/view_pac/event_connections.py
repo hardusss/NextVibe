@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import EventCheckin, Reputation, Post
 from ..constants import IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
-from ..src.meets import meet_url, slug_for_pair_event, slug_for_pair_today, tap_slug
+from ..src.meets import ensure_user_meet_slugs, meet_url, slug_for_pair_event, slug_for_pair_today, tap_slug
 from user.models import User
 from user.src.send_push_message import send
 from user.src.blocking import blocked_user_ids, is_blocked_between
@@ -95,8 +95,11 @@ class UserEventConnectionsView(APIView):
         ).select_related('post')
 
         # Proof of Meet links only on your own history: anyone can share
-        # their own meets, nobody else's
+        # their own meets, nobody else's. Past taps that don't have their
+        # slug yet get it now, so every old meet can be shared.
         own = target_user.user_id == request.user.user_id
+        if own:
+            ensure_user_meet_slugs(target_user.user_id)
 
         def meet_slug(rep):
             return rep.meet_slug if own else None
