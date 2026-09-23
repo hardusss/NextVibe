@@ -52,6 +52,8 @@ type MediaCheck =
 interface PostGalleryProps {
     id: number;
     previous: string;
+    /** A post was deleted from its popup (already gone from the grid): the profile updates its count */
+    onPostDeleted?: (postId: number) => void;
     ListHeaderComponent?: FlatListProps<Post>["ListHeaderComponent"];
     ListEmptyComponent?: FlatListProps<Post>["ListEmptyComponent"];
     refreshControl?: FlatListProps<Post>["refreshControl"];
@@ -274,6 +276,7 @@ PostGridCell.displayName = "PostGridCell";
 const PostGallery = ({
     id,
     previous,
+    onPostDeleted,
     ListHeaderComponent,
     ListEmptyComponent,
     refreshControl,
@@ -409,6 +412,14 @@ const PostGallery = ({
                 onClose={() => {
                     setPopupVisible(false);
                     setSelectedPostId(null);
+                }}
+                onPostDeleted={(postId) => {
+                    setPosts((prev) => {
+                        const next = prev.filter((p) => p.post_id !== postId);
+                        postsCache.set(id, next);
+                        return next;
+                    });
+                    onPostDeleted?.(postId);
                 }}
                 currentUserId={userID ?? undefined}
                 isFocused={isFocused}

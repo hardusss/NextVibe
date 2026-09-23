@@ -266,6 +266,15 @@ const ProfileView = () => {
         };
     }, [visible]);
 
+    /** A post was deleted from the grid's popup: count it off right away */
+    const handlePostDeleted = useCallback(() => {
+        setUserData((prev) => {
+            const next = { ...prev, post_count: Math.max(0, prev.post_count - 1) };
+            cachedUserData = next;
+            return next;
+        });
+    }, []);
+
     const fetchUserData = async () => {
         setFetchError(false);
         try {
@@ -682,6 +691,7 @@ const ProfileView = () => {
                                 key={`posts-${refreshKey}`}
                                 id={id as number}
                                 previous="profile"
+                                onPostDeleted={handlePostDeleted}
                                 ListHeaderComponent={profileHeader}
                                 ListEmptyComponent={
                                     <EmptyState Icon={Camera} title="No Posts Yet"

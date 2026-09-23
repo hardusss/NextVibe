@@ -8,7 +8,7 @@ import {
     findLeafAssetIdPda,
 } from '@metaplex-foundation/mpl-bubblegum'
 import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata'
-import { publicKey, keypairIdentity, createNoopSigner, PublicKey } from '@metaplex-foundation/umi'
+import { publicKey, isPublicKey, keypairIdentity, createNoopSigner, PublicKey } from '@metaplex-foundation/umi'
 import { createHash } from 'node:crypto'
 import { fromWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
 import { Keypair, Connection, PublicKey as Web3PublicKey } from '@solana/web3.js'
@@ -60,6 +60,8 @@ const MEET_COLLECTION_ADDRESS = process.env.MEET_COLLECTION_ADDRESS ?? '';
 /** Every Proof of Meet leaf points at its meet's JSON on the API */
 const MEET_METADATA_PREFIX = process.env.MEET_METADATA_PREFIX ?? 'https://api.nextvibe.io/meta/meet/';
 const MEET_SLUG_RE = /^[0-9A-Za-z]{12}$/;
+/** A meet has two people; both are creators of every one of its leaves */
+const MAX_MEET_CO_AUTHORS = 2;
 /** Bubblegum's on-chain limits (bytes) */
 const MAX_NAME_BYTES = 32;
 const MAX_URI_BYTES = 200;
@@ -175,6 +177,22 @@ async function nextLeaf(merkleTree: PublicKey) {
     const leafIndex = Number(cfg.numMinted)
     const [assetId] = findLeafAssetIdPda(umi, { merkleTree, leafIndex })
     return { leafIndex, assetId }
+}
+
+/**
+ * Creators of a Proof of Meet leaf: the NextVibe authority, verified, with
+ * the whole share (royalties are 0 anyway), then the wallets of the two
+ * people who met, unverified with share 0. They don't sign the mint, but
+ * the leaf names them on-chain for good, so every copy shows which two
+ * wallets met. Bubblegum refuses a creator listed twice.
+ */
+function meetCreators(coAuthors: string[]) {
+    const authority = umi.identity.publicKey
+    const people = [...new Set(coAuthors)].filter((address) => address !== authority)
+    return [
+        { address: authority, verified: true, share: 100 },
+        ...people.map((address) => ({ address: publicKey(address), verified: false, share: 0 })),
+    ]
 }
 
 /**
@@ -361,17 +379,21 @@ new Elysia()
      * Proof of Meet collection. Backend-signed and gasless like /mint/og. The
      * name and metadata URI come from the Django backend, which serves the
      * JSON (api.nextvibe.io/meta/meet/<slug>.json) and the image; nothing is
-     * fetched here. Creators: only the NextVibe authority, verified, 100 %;
-     * no royalties. Co-authorship lives in the JSON, not in `creators`
-     * (unverified creators get flagged by marketplaces).
+     * fetched here. Creators: the NextVibe authority (verified, 100 %) and
+     * both people's wallets as co-authors (unverified, 0 %), see
+     * meetCreators; no royalties.
      *
      * @body recipient - wallet of the person receiving this leaf
      * @body slug      - the meet's slug (12 characters)
      * @body name      - on-chain name, at most 32 bytes
      * @body uri       - `${MEET_METADATA_PREFIX}<slug>.json`
+     * @body coAuthors - the two people's wallets (one while the other has
+     *                   none yet), the recipient's among them
      */
     .post("/mint/meet", async ({ body, set }: { body: any, set: any }) => {
         const { recipient, slug, name, uri } = body || {};
+        // A backend from before co-authors sends none: the recipient alone
+        const coAuthors = body?.coAuthors ?? [recipient];
         if (!MEET_COLLECTION_ADDRESS) {
             logError("mint_meet.rejected", "MEET_COLLECTION_NOT_CONFIGURED", { slug })
             set.status = 503
@@ -381,12 +403,15 @@ new Elysia()
             && typeof slug === 'string' && MEET_SLUG_RE.test(slug)
             && typeof name === 'string' && name.length > 0 && Buffer.byteLength(name, 'utf8') <= MAX_NAME_BYTES
             && uri === `${MEET_METADATA_PREFIX}${slug}.json` && Buffer.byteLength(uri, 'utf8') <= MAX_URI_BYTES
+            && Array.isArray(coAuthors) && coAuthors.length >= 1 && coAuthors.length <= MAX_MEET_CO_AUTHORS
+            && coAuthors.every((address: unknown) => typeof address === 'string' && SOLANA_ADDRESS_RE.test(address) && isPublicKey(address))
+            && coAuthors.includes(recipient)
         if (!valid) {
-            logError("mint_meet.rejected", "INVALID_REQUEST", { slug, recipient })
+            logError("mint_meet.rejected", "INVALID_REQUEST", { slug, recipient, coAuthors })
             set.status = 400
             return { success: false, error: "INVALID_REQUEST" }
         }
-        log("mint_meet.request", { slug, recipient })
+        log("mint_meet.request", { slug, recipient, coAuthors })
 
         try {
             const startedAt = Date.now()
@@ -403,12 +428,16 @@ new Elysia()
                         uri,
                         sellerFeeBasisPoints: 0,
                         collection: { key: publicKey(MEET_COLLECTION_ADDRESS), verified: false },
-                        creators: [{ address: umi.identity.publicKey, verified: true, share: 100 }],
+                        creators: meetCreators(coAuthors),
                     },
                 }).sendAndConfirm(umi, {
                     send: { skipPreflight: true, maxRetries: 3 },
                     confirm: { commitment: "confirmed" },
                 })
+                // Without preflight a rejected mint still confirms: never report a leaf that isn't there
+                if (result.result.value.err) {
+                    throw new Error(`mint failed on-chain: ${JSON.stringify(result.result.value.err)}`)
+                }
                 return { signature: result.signature, assetId: leafInfo.assetId.toString() }
             })
 

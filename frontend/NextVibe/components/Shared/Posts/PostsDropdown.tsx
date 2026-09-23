@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ban, CameraOff, EyeOff, Eye, Flag, PencilLine, Trash2 } from 'lucide-react-native';
 import { useState, useEffect, useRef } from "react";
+import { Portal } from "@gorhom/portal";
 import deletePost from "@/src/api/delete.post";
 import ConfirmDialog from "../Toasts/ConfirmDialog";
 import ReportPostModal from "@/components/Shared/Posts/ReportPostModal";
@@ -29,7 +30,7 @@ export default function DropDown({
     ownerId,
     ownerUsername,
     onBlocked,
-    useModal = true,
+    dialogHost,
     meetSlug = null,
     isCoAuthor = false,
     about = "",
@@ -47,7 +48,14 @@ export default function DropDown({
     ownerId?: number,
     ownerUsername?: string,
     onBlocked?: (userId: number) => void,
-    useModal?: boolean,
+    /**
+     * Inside another Modal (the profile's post popup): the name of a PortalHost
+     * at that Modal's root. The confirm and report dialogs render there, over
+     * the whole popup. As Modals of their own, iOS won't show the report's
+     * confirm (one presented Modal per parent), and rendered in place they get
+     * squeezed into the ⋮ button's box: a thin line instead of a dialog.
+     */
+    dialogHost?: string,
     /** A Proof of Meet post: its two people get caption / hide / remove photo instead of Delete. */
     meetSlug?: string | null,
     isCoAuthor?: boolean,
@@ -62,6 +70,7 @@ export default function DropDown({
     const [captionOpen, setCaptionOpen] = useState(false);
     const [hidden, setHidden] = useState(hiddenOnMyProfile);
     const inMeet = !!meetSlug && (isOwner || isCoAuthor);
+    const useModal = !dialogHost;
 
     useEffect(() => setHidden(hiddenOnMyProfile), [hiddenOnMyProfile]);
 
@@ -183,8 +192,7 @@ export default function DropDown({
         },
     ].filter(item => item.show);
 
-    // Always render modals so they survive isVisible=false
-    const modals = (
+    const dialogs = (
         <>
             <ConfirmDialog
                 visible={showConfirm}
@@ -201,30 +209,37 @@ export default function DropDown({
                 }}
                 useModal={useModal}
             />
+            {meetSlug && (
+                <ConfirmDialog
+                    visible={showTakedown}
+                    title={TAKEDOWN_TITLE}
+                    message={TAKEDOWN_MESSAGE}
+                    confirmLabel="Remove photo"
+                    onConfirm={handleTakedown}
+                    onCancel={() => setShowTakedown(false)}
+                    useModal={useModal}
+                />
+            )}
+        </>
+    );
+
+    // Always render modals so they survive isVisible=false
+    const modals = (
+        <>
+            {dialogHost ? <Portal hostName={dialogHost}>{dialogs}</Portal> : dialogs}
             <BlockUserSheet
                 target={blockTarget}
                 onClose={() => setBlockTarget(null)}
                 onBlocked={onBlocked}
             />
             {meetSlug && (
-                <>
-                    <ConfirmDialog
-                        visible={showTakedown}
-                        title={TAKEDOWN_TITLE}
-                        message={TAKEDOWN_MESSAGE}
-                        confirmLabel="Remove photo"
-                        onConfirm={handleTakedown}
-                        onCancel={() => setShowTakedown(false)}
-                        useModal={useModal}
-                    />
-                    <CaptionEditor
-                        visible={captionOpen}
-                        slug={meetSlug}
-                        initial={about ?? ""}
-                        onClose={() => setCaptionOpen(false)}
-                        onSaved={(text) => onMeetChange?.({ kind: 'caption', about: text })}
-                    />
-                </>
+                <CaptionEditor
+                    visible={captionOpen}
+                    slug={meetSlug}
+                    initial={about ?? ""}
+                    onClose={() => setCaptionOpen(false)}
+                    onSaved={(text) => onMeetChange?.({ kind: 'caption', about: text })}
+                />
             )}
         </>
     );

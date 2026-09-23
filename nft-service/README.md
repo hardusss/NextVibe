@@ -40,12 +40,15 @@ Returns: `{ success, signature, assetId }`
 
 Backend-signed, gasless mint of one Proof of Meet cNFT: one leaf for each of
 the two people who met and took the selfie. Goes into the Proof of Meet
-collection with symbol `NVMEET`, no royalties, and the NextVibe authority as
-the only (verified) creator; the co-authors are listed in the metadata JSON.
+collection with symbol `NVMEET` and no royalties. Creators: the NextVibe
+authority (verified, 100 %), then both people's wallets (`coAuthors`,
+unverified, 0 %), so every leaf names the two wallets on-chain as proof of
+the meet. `coAuthors` must include the recipient; it holds one wallet only
+while the other person hasn't connected one (their own leaf lists both).
 Nothing is fetched here: the Django backend passes the name (at most 32
 bytes) and the metadata URI, which must be `MEET_METADATA_PREFIX<slug>.json`.
 
-Body: `{ recipient, slug, name, uri }`
+Body: `{ recipient, slug, name, uri, coAuthors }`
 Returns: `{ success, signature, assetId }`; `400 INVALID_REQUEST`,
 `503 MEET_COLLECTION_NOT_CONFIGURED`, `502 MINT_SEND_FAILED`
 

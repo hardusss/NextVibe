@@ -49,21 +49,26 @@ type NameProps = {
     isVisible?: boolean;
 };
 
-/** "@owner with @co_author": each name opens that profile. */
+/**
+ * "@owner" over "with @co_author", one name per line so neither gets cut to
+ * fit the other: each name opens that profile.
+ */
 export function CoAuthorNames({ owner, coAuthor, onPressUser, textStyle, mutedColor, isVisible = true }: NameProps) {
     return (
         <View style={styles.names}>
-            <TouchableOpacity style={styles.name} hitSlop={{ top: 12, bottom: 12 }} onPress={() => onPressUser(owner.user_id)}>
+            <TouchableOpacity style={styles.line} hitSlop={{ top: 10, bottom: 2, right: 8 }} onPress={() => onPressUser(owner.user_id)}>
                 <Text style={[textStyle, styles.shrink]} numberOfLines={1}>{owner.username}</Text>
                 <UserBadges official={owner.official} seekerVerified={owner.seeker_verified} isLooped isVisible={isVisible}
                     haveModal={false} isStatic={false} size={14} />
             </TouchableOpacity>
-            <Text style={[textStyle, styles.with, { color: mutedColor }]}>with</Text>
-            <TouchableOpacity style={styles.name} hitSlop={{ top: 12, bottom: 12 }} onPress={() => onPressUser(coAuthor.user_id)}>
-                <Text style={[textStyle, styles.shrink]} numberOfLines={1}>{coAuthor.username}</Text>
-                <UserBadges official={coAuthor.official} seekerVerified={coAuthor.seeker_verified} isLooped isVisible={isVisible}
-                    haveModal={false} isStatic={false} size={14} />
-            </TouchableOpacity>
+            <View style={[styles.line, styles.second]}>
+                <Text style={[textStyle, styles.with, { color: mutedColor }]}>with</Text>
+                <TouchableOpacity style={styles.name} hitSlop={{ top: 2, bottom: 10, right: 8 }} onPress={() => onPressUser(coAuthor.user_id)}>
+                    <Text style={[textStyle, styles.shrink]} numberOfLines={1}>{coAuthor.username}</Text>
+                    <UserBadges official={coAuthor.official} seekerVerified={coAuthor.seeker_verified} isLooped isVisible={isVisible}
+                        haveModal={false} isStatic={false} size={14} />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }
@@ -84,10 +89,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     names: {
+        alignItems: 'flex-start',
+        minWidth: 0,
+    },
+    line: {
         flexDirection: 'row',
         alignItems: 'center',
-        flexShrink: 1,
-        minWidth: 0,
+        maxWidth: '100%',
+    },
+    second: {
+        marginTop: 2,
     },
     name: {
         flexDirection: 'row',
@@ -100,7 +111,8 @@ const styles = StyleSheet.create({
     },
     with: {
         fontFamily: 'Dank Mono',
-        marginHorizontal: 5,
+        marginRight: 5,
+        flexShrink: 0,
     },
     label: {
         fontFamily: 'Dank Mono Bold',

@@ -15,6 +15,8 @@ Covers:
 - moderation: flagged uploads never reach the subject; outages aren't failures
 - rendering: long names, no city, events, Seeker on both sides, portrait and landscape
 - lazy mint for someone without a wallet
+- every leaf lists both people's wallets as co-authors (creators), and so
+  does the metadata JSON
 """
 import io
 import shutil
@@ -311,6 +313,9 @@ class HappyPathTests(MeetPhotoTestCase):
         self.assertEqual(traits["Type"], "Proof of Meet")
         self.assertEqual(traits["Tier"], "In person")
         self.assertEqual({traits["Participant A"], traits["Participant B"]}, {"alice", "bob"})
+        wallets = {"alice": self.alice.wallet_address, "bob": self.bob.wallet_address}
+        self.assertEqual((traits["Participant A wallet"], traits["Participant B wallet"]),
+                         (wallets[a.username], wallets[b.username]))
         self.assertEqual(traits["Photographer"], "alice")
         self.assertEqual(traits["City"], "Lviv")
         self.assertEqual(traits["Event"], "—")
@@ -603,6 +608,9 @@ class TakedownTests(MeetPhotoTestCase):
         data = APIClient().get(f"/meta/meet/{self.slug}.json").json()
         subject = data["properties"]["co_authors"][1]
         self.assertEqual(subject, {"username": f"deleted_user_{self.bob.user_id}", "wallet": None, "role": "subject"})
+        # The JSON stops naming his wallet (his and alice's leaves keep it on-chain)
+        wallet_traits = {t["trait_type"]: t["value"] for t in data["attributes"] if t["trait_type"].endswith("wallet")}
+        self.assertEqual(wallet_traits, {"Participant A wallet": self.alice.wallet_address})
 
     def test_legacy_delete_hides_from_the_owners_profile_only(self):
         photo = self.live_photo()
@@ -822,6 +830,72 @@ class ModerationTests(MeetPhotoTestCase):
 
 
 class MintTests(MeetPhotoTestCase):
+    def fake_nft_service(self):
+        """The real _mint_leaf against a stubbed nft-service; returns the bodies it gets."""
+        bodies = []
+        assets = iter([PHOTOGRAPHER_ASSET, SUBJECT_ASSET])
+
+        def post(url, json, timeout):
+            bodies.append(json)
+            response = mock.Mock(status_code=200)
+            response.json.return_value = {"success": True, "assetId": next(assets), "signature": "sig"}
+            return response
+
+        self.mint_leaf.side_effect = REAL_MINT_LEAF
+        patcher = mock.patch("posts.src.meet_photos.requests.post", side_effect=post)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return bodies
+
+    def test_every_leaf_lists_both_wallets(self):
+        bodies = self.fake_nft_service()
+        self.live_photo()
+        alice, bob = self.alice.wallet_address, self.bob.wallet_address
+        # alice is the meet's A (she confirmed the tap): the same order on both leaves
+        self.assertEqual([(body["recipient"], body["coAuthors"]) for body in bodies],
+                         [(alice, [alice, bob]), (bob, [alice, bob])])
+
+    def test_a_late_wallet_is_on_its_own_leaf_and_in_the_json(self):
+        bodies = self.fake_nft_service()
+        User.objects.filter(pk=self.bob.pk).update(wallet_address=None)
+        photo = self.approved_photo()
+        meet_photos.mint(photo.pk)
+        alice = self.alice.wallet_address
+        self.assertEqual([(body["recipient"], body["coAuthors"]) for body in bodies], [(alice, [alice])])
+
+        def wallets():
+            data = APIClient().get(f"/meta/meet/{self.slug}.json").json()
+            return {t["trait_type"]: t["value"] for t in data["attributes"] if t["trait_type"].endswith("wallet")}
+
+        self.assertEqual(wallets(), {"Participant A wallet": alice})
+        # He connects one: his leaf names both, alice's stays as minted
+        User.objects.filter(pk=self.bob.pk).update(wallet_address="B0bNew111111111111111111111111111111111111")
+        meet_photos.mint_for_user(self.bob.user_id)
+        bob = "B0bNew111111111111111111111111111111111111"
+        self.assertEqual(bodies[1]["recipient"], bob)
+        self.assertEqual(bodies[1]["coAuthors"], [alice, bob])
+        self.assertEqual(wallets(), {"Participant A wallet": alice, "Participant B wallet": bob})
+
+    def test_co_author_wallets(self):
+        photo = self.approved_photo()
+        meet = meets.load_meet(self.slug)
+        alice, bob = self.alice.wallet_address, self.bob.wallet_address
+        self.assertEqual(meet_photos.co_author_wallets(photo, meet), [alice, bob])
+        # The wallet a leaf went to wins over one connected later
+        photo.wallet_photographer = "A1iceOld11111111111111111111111111111111111"
+        self.assertEqual(meet_photos.co_author_wallets(photo, meet), ["A1iceOld11111111111111111111111111111111111", bob])
+        # A wallet is listed once, even if it moved between the two accounts
+        photo.wallet_photographer = bob
+        self.assertEqual(meet_photos.co_author_wallets(photo, meet), [bob])
+        photo.wallet_photographer = ""
+        # Nobody lists a banned person's wallet on a new leaf, or a deleted account's ever
+        photo.subject.is_baned = True
+        self.assertEqual(meet_photos.co_author_wallets(photo, meet), [alice])
+        photo.subject.is_baned = False
+        photo.wallet_subject = bob
+        photo.subject.auth_provider = "deleted"
+        self.assertEqual(meet_photos.co_author_wallets(photo, meet), [alice])
+
     def test_lazy_mint_for_someone_without_a_wallet(self):
         self.bob.wallet_address = None  # the test client holds this very object
         self.bob.save(update_fields=["wallet_address"])
@@ -888,6 +962,7 @@ class MintTests(MeetPhotoTestCase):
         self.assertEqual(post.call_args.kwargs["json"], {
             "recipient": "W", "slug": self.slug, "name": meet_photos.onchain_name(meet),
             "uri": f"https://api.nextvibe.io/meta/meet/{self.slug}.json",
+            "coAuthors": [self.alice.wallet_address, self.bob.wallet_address],
         })
         response.json.return_value = {"success": False, "error": "MEET_COLLECTION_NOT_CONFIGURED"}
         response.status_code = 503

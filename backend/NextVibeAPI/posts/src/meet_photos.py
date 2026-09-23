@@ -15,8 +15,10 @@ preview the photographer sends is that render. The subject has 24 hours.
 Their approval runs moderation again, publishes the card at
 meet/<slug>/story.jpg and og.jpg, then mints one cNFT per person with a
 wallet (the other one gets theirs when they connect a wallet) and creates
-the post both profiles show. Nothing is minted or posted for a photo that
-wasn't approved, and no extra REP is given for a selfie.
+the post both profiles show. Each cNFT lists both people's wallets as its
+creators, next to NextVibe's, so every copy carries both addresses on-chain
+as proof of the meet. Nothing is minted or posted for a photo that wasn't
+approved, and no extra REP is given for a selfie.
 
 Either person can take it down at any time: the post is deleted, the public
 images turn back into the v1 card at the same URLs, the metadata stops
@@ -433,8 +435,38 @@ def onchain_name(meet) -> str:
     return "Proof of Meet"
 
 
+def _listed_wallet(photo, role) -> str:
+    """
+    The wallet `role` is listed with as a co-author: the one their leaf went
+    to, else the one it would go to now. Never for a deleted account.
+    """
+    user = getattr(photo, role)
+    if is_deleted(user):
+        return ""
+    return getattr(photo, f"wallet_{role}") or ("" if user.is_baned else user.wallet_address or "")
+
+
+def co_author_wallets(photo, meet) -> list:
+    """
+    Both people's wallets in the meet's A, B order: each leaf lists them as
+    creators (on-chain proof that these two wallets met), and so does the
+    metadata JSON. Someone without a wallet yet is missing from the leaves
+    minted before they connect one; theirs lists both.
+    """
+    by_user = {getattr(photo, role).user_id: _listed_wallet(photo, role) for role in ROLES}
+    wallets = []
+    for person in meet.people:
+        wallet = by_user.get(person.user_id)
+        if wallet and wallet not in wallets:
+            wallets.append(wallet)
+    return wallets
+
+
 def _mint_leaf(photo, meet, wallet) -> str:
-    body = {"recipient": wallet, "slug": photo.meet_slug, "name": onchain_name(meet), "uri": metadata_url(photo.meet_slug)}
+    body = {
+        "recipient": wallet, "slug": photo.meet_slug, "name": onchain_name(meet), "uri": metadata_url(photo.meet_slug),
+        "coAuthors": co_author_wallets(photo, meet),
+    }
     try:
         response = requests.post(f"{NFT_SERVICE_URL}/mint/meet", json=body, timeout=90)
         data = response.json()
@@ -473,6 +505,8 @@ def mint(photo_id):
             MeetPhoto.objects.filter(pk=photo.pk).update(
                 **{f"asset_id_{role}": asset_id, f"wallet_{role}": user.wallet_address},
             )
+            # The next leaf lists this wallet as a co-author, even if it changes meanwhile
+            setattr(photo, f"wallet_{role}", user.wallet_address)
             logger.info("meet_photos.minted photo=%s role=%s asset=%s", photo.pk, role, asset_id)
         photo.refresh_from_db()
         if photo.status == Status.APPROVED and (photo.asset_id_photographer or photo.asset_id_subject):
@@ -904,11 +938,19 @@ def metadata(slug):
     how = f"at {meet.event_name}" if meet.event_name else "in person"
     where = f" in {meet.city}" if meet.city else ""
     image = public_url(slug, "story")
+    wallets = {getattr(photo, role).user_id: _listed_wallet(photo, role) for role in ROLES}
     attributes = [
         {"trait_type": "Type", "value": "Proof of Meet"},
         {"trait_type": "Tier", "value": TIER_NAMES.get(meet.tier, TIER_LABELS.get(meet.tier, meet.tier))},
         {"trait_type": "Participant A", "value": a.username},
         {"trait_type": "Participant B", "value": b.username},
+    ]
+    # The addresses the leaves list as creators, where wallets show traits
+    attributes += [
+        {"trait_type": f"Participant {letter} wallet", "value": wallets[person.user_id]}
+        for letter, person in (("A", a), ("B", b)) if wallets.get(person.user_id)
+    ]
+    attributes += [
         {"trait_type": "Photographer", "value": photo.photographer.username},
         {"trait_type": "City", "value": meet.city or "—"},
         {"trait_type": "Date", "value": local.date().isoformat()},
@@ -918,16 +960,14 @@ def metadata(slug):
     if selfie:
         attributes.append({"trait_type": "Selfie", "value": "Yes"})
 
-    def co_author(user, wallet, role):
-        return {"username": user.username, "wallet": (wallet or None) if not is_deleted(user) else None, "role": role}
+    def co_author(role):
+        user = getattr(photo, role)
+        return {"username": user.username, "wallet": wallets[user.user_id] or None, "role": role}
 
     properties = {
         "category": "image",
         "files": [{"uri": image, "type": "image/jpeg"}],
-        "co_authors": [
-            co_author(photo.photographer, photo.wallet_photographer, "photographer"),
-            co_author(photo.subject, photo.wallet_subject, "subject"),
-        ],
+        "co_authors": [co_author(role) for role in ROLES],
         "meet_slug": slug,
     }
     if selfie:

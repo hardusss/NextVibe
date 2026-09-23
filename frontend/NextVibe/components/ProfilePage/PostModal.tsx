@@ -16,6 +16,7 @@ import {
 import { Image as ExpoImage } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { PortalHost } from "@gorhom/portal";
 import GlassBadge from "@/components/Shared/GlassBadge";
 import GlassPill from "@/components/Shared/GlassPill";
 import GlassModalCard from "@/components/Shared/GlassModalCard";
@@ -51,6 +52,9 @@ const CARD_HORIZONTAL_MARGIN = 16;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2;
 const IMAGE_HEIGHT = CARD_WIDTH * 1.25;
 const EVENT_IMAGE_HEIGHT = CARD_WIDTH * 0.5625; // 16:9 aspect ratio
+
+/** PortalHost for the ⋮ menu's dialogs (see DropDown's dialogHost) */
+const MENU_DIALOG_HOST = "post-popup-menu";
 
 const OPEN_TRANSLATE_Y = 60;
 const CLOSE_TRANSLATE_Y = 40;
@@ -109,6 +113,8 @@ interface PostPopupProps {
     visible: boolean;
     postId: number | null;
     onClose: () => void;
+    /** The post was deleted (or its Proof of Meet photo removed): the grid drops it */
+    onPostDeleted?: (postId: number) => void;
     currentUserId?: number;
     onOpenComments?: (postId: number) => void;
     isFocused?: boolean;
@@ -129,6 +135,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     visible,
     postId,
     onClose,
+    onPostDeleted,
     currentUserId,
     onOpenComments,
     isFocused,
@@ -360,7 +367,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                 coAuthor={post.co_author!}
                                                 size={36}
                                             />
-                                            <View style={{ flex: 1, minWidth: 0, marginLeft: 8 }}>
+                                            <View style={{ flex: 1, minWidth: 0 }}>
                                                 <CoAuthorNames
                                                     owner={{ user_id: post.user_id, username: post.username, avatar: post.avatar, official: post.official, seeker_verified: post.seeker_verified }}
                                                     coAuthor={post.co_author!}
@@ -417,13 +424,23 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                     isOwner={currentUserId === post.user_id}
                                                     postId={post.post_id}
                                                     onClose={() => setDropdownVisible(false)}
-                                                    onPostDeleted={() => { setDropdownVisible(false); handleClose(); }}
-                                                    onPostDeletedFail={() => setDropdownVisible(false)}
-                                                    onReportResult={() => setDropdownVisible(false)}
+                                                    onPostDeleted={() => {
+                                                        setDropdownVisible(false);
+                                                        onPostDeleted?.(post.post_id);
+                                                        handleClose();
+                                                    }}
+                                                    onPostDeletedFail={() => {
+                                                        setDropdownVisible(false);
+                                                        setToastConfig({ visible: true, message: "Couldn't delete the post. Try again.", isSuccess: false });
+                                                    }}
+                                                    onReportResult={(reported, msg) => {
+                                                        setDropdownVisible(false);
+                                                        if (reported || msg) setToastConfig({ visible: true, message: msg || "Report submitted", isSuccess: reported });
+                                                    }}
                                                     ownerId={post.user_id}
                                                     ownerUsername={post.username}
                                                     onBlocked={handleClose}
-                                                    useModal={false}
+                                                    dialogHost={MENU_DIALOG_HOST}
                                                     meetSlug={post.meet_slug ?? null}
                                                     isCoAuthor={!!post.is_co_author}
                                                     about={post.about}
@@ -694,6 +711,9 @@ const PostPopup: React.FC<PostPopupProps> = ({
                             useModal={false}
                         />
                     )}
+
+                    {/* The ⋮ menu's confirm and report dialogs, over the whole popup */}
+                    <PortalHost name={MENU_DIALOG_HOST} />
                 </BottomSheetModalProvider>
             </GestureHandlerRootView>
         </Modal>
