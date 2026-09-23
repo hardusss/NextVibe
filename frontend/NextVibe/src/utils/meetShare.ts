@@ -92,6 +92,11 @@ export function isMeetsLink(raw: string): boolean {
     return pathnameOf(raw) === '/u/meets';
 }
 
+/** nextvibe.io/u/tap: straight into Tap to Meet (the first-tap email's button). */
+export function isTapLink(raw: string): boolean {
+    return pathnameOf(raw) === '/u/tap';
+}
+
 export function shareInfoFromMeet(meet: MeetData, viewerId?: number | null): MeetShareInfo {
     const [a, b] = meet.users;
     const other = viewerId === a.user_id ? b : viewerId === b.user_id ? a : null;
@@ -109,7 +114,8 @@ export function shareInfoFromMeet(meet: MeetData, viewerId?: number | null): Mee
  * The X post. Names are NextVibe usernames without "@": we don't know
  * anyone's X handle, and "@name" would tag whoever owns it on X. "Verified
  * on Solana" only once the meet is minted; until then it's recorded on
- * NextVibe (the card says so too).
+ * NextVibe (the card says so too). The meet-card email writes the same post
+ * in Python (backend posts/src/meets.py x_post_text): keep the two in step.
  */
 export function meetShareText(info: MeetShareInfo): string {
     const link = meetPageUrl(info.slug);

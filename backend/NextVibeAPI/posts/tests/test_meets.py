@@ -11,15 +11,18 @@ Covers:
 - PNG: both sizes for irl / organizer / peer taps, missing avatar, long names,
   no location, Seeker on both sides; cache headers, ETag, 404 card, rate limit
 - history lists carry the slug only on your own profile
+- the X post matches the app's; a user's latest meet that can be shared
 - old taps get slugs by themselves: after migrate, and when their owner opens History
 - geocoding is cached; time zones come from tzdata
 """
 import io
 import shutil
 import tempfile
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone as dt_timezone
 from io import StringIO
 from unittest import mock
+from urllib.parse import unquote
 
 import h3
 from django.core.cache import cache
@@ -591,6 +594,166 @@ class HistoryCarriesSlugTests(MeetTestCase):
         other = client_for(self.bob).get(CONNECTIONS_URL, {"user_id": self.alice.user_id}).data
         self.assertIsNone(other["irl_taps"][0]["meet_slug"])
         self.assertNotIn("meet_slug", other["events"][0]["connections"][0])
+
+
+class ShareOnXTests(MeetTestCase):
+    """x_post_text must say what the app's meetShareText says (frontend meetShare.test.ts)."""
+
+    def meet(self, a=None, b=None, **tap):
+        a, b = a or self.alice, b or self.bob
+        self.add_tap(a, b, tap.pop("when", at(21, 16, 42)), **tap)
+        self.backfill()
+        return meets.load_meet(self.slug_of(a, b))
+
+    def test_in_person_names_the_other_person_without_at(self):
+        meet = self.meet()
+        self.assertEqual(
+            meets.x_post_text(meet, self.alice.user_id),
+            "Met bob in person — Proof of Meet on @NextVibeWeb3. Tap phones. Prove you met.\n" + meet.url,
+        )
+        self.assertTrue(meets.x_post_text(meet, self.bob.user_id).startswith("Met alice in person"))
+        self.assertTrue(meets.x_post_text(meet).startswith("alice met bob in person"))  # someone else sharing it
+
+    def test_verified_on_solana_only_once_minted(self):
+        meet = self.meet()
+        self.assertNotIn("Solana", meets.x_post_text(meet, self.alice.user_id))
+        minted = replace(meet, asset_id="8xKpQ1v9z3fQ")
+        self.assertIn("Proof of Meet on @NextVibeWeb3, verified on Solana. Tap phones. Prove you met.",
+                      meets.x_post_text(minted, self.alice.user_id))
+
+    def test_event_meet_names_the_event(self):
+        event = self.event(make_user("host"))
+        meet = self.meet(source="event", event=event, points=(2, 2))
+        self.assertEqual(
+            meets.x_post_text(meet, self.bob.user_id),
+            "Met alice at Superteam Ukraine Vibeathon — checked in by tap, Proof of Meet on @NextVibeWeb3.\n" + meet.url,
+        )
+        hidden = replace(meet, event_name=None)
+        self.assertTrue(meets.x_post_text(hidden, self.bob.user_id).startswith("Met alice at an event — checked in by tap"))
+
+    def test_long_event_names_are_shortened_to_fit(self):
+        event = self.event(make_user("host"))
+        meet = self.meet(source="event", event=event, points=(2, 2))
+        a, b = meet.people
+        long = replace(meet, event_name=" ".join(["Very long event name"] * 20),
+                       people=(replace(a, username="x" * 150), replace(b, username="y" * 150)))
+        text = meets.x_post_text(long, a.user_id)
+        self.assertLessEqual(meets.x_post_length(text), meets.X_POST_LIMIT)
+        self.assertIn("…", text)
+        self.assertTrue(text.endswith(meet.url))
+
+    def test_x_counts_every_link_as_23(self):
+        self.assertEqual(meets.x_post_length("hi https://nextvibe.io/u/meet/ef91kGQl0v0k"), 3 + 23)
+        self.assertEqual(meets.x_post_length("é " * 3), 6)
+
+    def test_composer_link_is_escaped_like_the_app(self):
+        meet = self.meet()
+        url = meets.x_post_url(meet, self.alice.user_id)
+        self.assertEqual(
+            url,
+            "https://x.com/intent/post?text=Met%20bob%20in%20person%20%E2%80%94%20Proof%20of%20Meet%20on%20"
+            "%40NextVibeWeb3.%20Tap%20phones.%20Prove%20you%20met.%0Ahttps%3A%2F%2Fnextvibe.io%2Fu%2Fmeet%2F" + meet.slug,
+        )
+        self.assertEqual(unquote(url.split("?text=", 1)[1]), meets.x_post_text(meet, self.alice.user_id))
+
+
+class LatestMeetTests(MeetTestCase):
+    def setUp(self):
+        super().setUp()
+        self.carol = make_user("carol")
+
+    def latest_with(self, user):
+        meet = meets.latest_meet(user)
+        if meet is None:
+            return None
+        return next(p.username for p in meet.people if p.user_id != user.user_id)
+
+    def test_most_recent_meet_on_either_row(self):
+        self.assertIsNone(meets.latest_meet(self.alice))
+        self.add_tap(self.alice, self.bob, at(20))
+        self.add_tap(self.carol, self.alice, at(21))
+        self.backfill()
+        self.assertEqual(self.latest_with(self.alice), "carol")
+        self.assertEqual(self.latest_with(self.bob), "alice")
+
+    def test_taps_without_a_slug_are_left_out(self):
+        self.add_tap(self.alice, self.bob, at(20))
+        self.assertIsNone(meets.latest_meet(self.alice))
+
+    def test_skips_meets_that_cant_be_shared(self):
+        self.add_tap(self.alice, self.bob, at(20))
+        self.add_tap(self.alice, self.carol, at(21))
+        self.backfill()
+        for hide, undo in (
+            (lambda: Block.objects.create(blocker=self.carol, blocked=self.alice), lambda: Block.objects.all().delete()),
+            (lambda: User.all_objects.filter(user_id=self.carol.user_id).update(is_baned=True),
+             lambda: User.all_objects.filter(user_id=self.carol.user_id).update(is_baned=False)),
+            (lambda: User.all_objects.filter(user_id=self.carol.user_id).update(is_active=False, is_baned=True),
+             lambda: User.all_objects.filter(user_id=self.carol.user_id).update(is_active=True, is_baned=False)),
+        ):
+            self.assertEqual(self.latest_with(self.alice), "carol")
+            hide()
+            self.assertEqual(self.latest_with(self.alice), "bob")
+            undo()
+
+
+class FirstTapCardTests(MeetTestCase):
+    """The first-tap email's teaser: "@username met @???" at /api/v1/meet/first-tap/<user_id>/card.png."""
+
+    def teaser(self, user=None, **headers):
+        return self.api.get(f"/api/v1/meet/first-tap/{(user or self.alice).user_id}/card.png", **headers)
+
+    def test_png_and_cache_headers(self):
+        res = self.teaser()
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "image/png")
+        self.assertEqual(png_size(res.content), (1200, 630))
+        self.assertEqual(res["Cache-Control"], "public, max-age=3600")
+        self.assertEqual(res["ETag"], f'"first-tap-{meet_card.teaser_version(self.alice)}"')
+        again = self.teaser(HTTP_IF_NONE_MATCH=res["ETag"])
+        self.assertEqual((again.status_code, again.content), (304, b""))
+        self.assertEqual(self.teaser(HTTP_ACCEPT="image/png").status_code, 200)
+
+    def test_what_it_draws(self):
+        User.objects.filter(user_id=self.alice.user_id).update(seeker_verified=True)
+        with mock.patch.object(meet_card, "_render_og", wraps=meet_card._render_og) as render:
+            self.assertEqual(self.teaser().status_code, 200)
+        t, avatars = render.call_args.args
+        self.assertEqual((t.a, t.b, t.a_seeker, t.tier_label), ("alice", "???", True, "IN PERSON"))
+        self.assertEqual((t.lead, t.detail), ("+1 REP each", "#1 for @alice"))
+        self.assertEqual((t.proof, t.url_line, t.minted), ("waiting for your first tap", "nextvibe.io/u/tap", False))
+        self.assertEqual(avatars, [None, None])  # the default avatar draws the initial
+        self.assertEqual(render.call_args.kwargs, {"badge": "?"})
+
+    def test_renders_once_per_version(self):
+        with mock.patch.object(meet_card, "_render_og", wraps=meet_card._render_og) as render:
+            first, second = self.teaser(), self.teaser()
+        self.assertEqual(render.call_count, 1)
+        self.assertEqual(first.content, second.content)
+        old = meet_card.teaser_version(self.alice)
+        default_storage.save("images/alice.jpg", ContentFile(_jpeg()))
+        User.objects.filter(user_id=self.alice.user_id).update(avatar="images/alice.jpg")
+        alice = User.objects.get(user_id=self.alice.user_id)
+        self.assertNotEqual(meet_card.teaser_version(alice), old)  # a new avatar is a new image
+        self.assertTrue(meet_card.teaser_url(alice).endswith(f"/api/v1/meet/first-tap/{alice.user_id}/card.png"
+                                                             f"?rev={meet_card.teaser_version(alice)}"))
+
+    def test_unknown_banned_and_deleted_get_the_404_card(self):
+        banned, gone = make_user("banned"), make_user("gone")
+        User.all_objects.filter(user_id=banned.user_id).update(is_baned=True)
+        User.all_objects.filter(user_id=gone.user_id).update(is_active=False)
+        for res in (self.api.get("/api/v1/meet/first-tap/999999/card.png"), self.teaser(banned), self.teaser(gone)):
+            self.assertEqual(res.status_code, 404)
+            self.assertEqual(res["Cache-Control"], "no-store")
+            self.assertEqual(png_size(res.content), (1200, 630))
+
+    def test_meet_cards_keep_the_check(self):
+        """The "?" badge is only for the teaser; real meets draw the check as before."""
+        self.add_tap(self.alice, self.bob, at(21))
+        self.backfill()
+        with mock.patch.object(meet_card, "_avatar_pair", wraps=meet_card._avatar_pair) as pair:
+            self.card(self.slug_of(self.alice, self.bob))
+        self.assertEqual(pair.call_args.kwargs["badge"], "check")
 
 
 class GeocodeTests(TestCase):

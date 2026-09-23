@@ -9,6 +9,8 @@ import {
     MEET_KIND,
     MEETS_KIND,
     PROFILE_PATH,
+    TAP_KIND,
+    TAP_PATH,
 } from '../intents';
 
 const NOW = 1_700_000_000_000;
@@ -111,6 +113,20 @@ describe('Proof of Meet links', () => {
             .toMatchObject({ path: '/u/meet/ef91kGQl0v0k', params: { slug: 'ef91kGQl0v0k' }, kind: MEET_KIND, source: 'push' });
     });
 
+    it('/u/tap opens Tap to Meet (the first-tap email), with home underneath from a cold start', () => {
+        for (const url of ['https://nextvibe.io/u/tap', 'https://www.nextvibe.io/u/tap/?utm_source=email', 'nextvibe://u/tap']) {
+            expect(intentFromUrl(url, true, NOW)).toMatchObject({
+                path: TAP_PATH, params: { mode: 'irl' }, source: 'link', kind: TAP_KIND, createdAt: NOW,
+            });
+        }
+        expect(TAP_PATH).toBe('/event-nfc-share');
+        expect(intentFromNotification({ url: '/u/tap', deeplink: 'https://nextvibe.io/u/tap' }, 'n11', NOW).intent)
+            .toEqual({ id: 'push:n11', path: TAP_PATH, params: { mode: 'irl' }, source: 'push', kind: TAP_KIND, createdAt: NOW });
+        expect(pickNavigationMethod('/splash', undefined, { path: TAP_PATH })).toBe('homeThenPush');
+        expect(pickNavigationMethod('/home', '(tabs)', { path: TAP_PATH })).toBe('push');
+        expect(intentFromUrl('https://nextvibe.io/u/tap/more', true, NOW)).toBeNull();
+    });
+
     it('two deliveries of one meet link are one intent', () => {
         const a = intentFromUrl('https://nextvibe.io/u/meet/ef91kGQl0v0k', true, NOW)!;
         const b = intentFromUrl('nextvibe.io/u/meet/ef91kGQl0v0k', false, NOW + 5)!;
@@ -132,6 +148,7 @@ describe('isUnknownUPath', () => {
             'https://nextvibe.io/u/verified/alice',
             'https://nextvibe.io/u/meet/ef91kGQl0v0k',
             'https://nextvibe.io/u/meets',
+            'https://nextvibe.io/u/tap',
             'https://nextvibe.io/u/send?amount=1&token=SOL',
             'nextvibe://profile',
             'https://nextvibe.io/transaction?id=1',

@@ -7,7 +7,8 @@ from nvcli import TEMPLATES_DIR, render
 from nvcli.render import Template, UnresolvedPlaceholder
 from nvcli.tests._base import NvTestCase
 
-SHIPPED = {"seeker-badge", "seeker-badge-b", "seeker-badge-email", "tap-to-meet", "free-collect", "update-required", "event-invite"}
+SHIPPED = {"seeker-badge", "seeker-badge-b", "seeker-badge-email", "tap-to-meet", "free-collect", "update-required", "event-invite",
+           "meet-card-email", "first-tap-email"}
 
 
 class TemplateFilesTest(NvTestCase):
@@ -38,9 +39,10 @@ class TemplateFilesTest(NvTestCase):
 
     def test_every_template_renders_for_a_user(self):
         user = self.user("danklepar.skr", seeker=True, source="skr")
-        ctx = {**render.user_context(user), "event": "Solana Meetup", "date": "Fri Sep 25, 19:00", "id": "42"}
+        self.meet(user, self.user("toji"))
+        extra = {"event": "Solana Meetup", "date": "Fri Sep 25, 19:00", "id": "42"}
         for t in render.load_templates().values():
-            r = render.render(t, ctx)
+            r = render.render(t, {**render.user_context(user, needs=t.placeholders(), preview=True), **extra})
             self.assertNotIn("{", r.title + r.body, t.name)
             self.assertNotIn("{", r.deeplink or "", t.name)
 
@@ -200,3 +202,133 @@ class RenderTest(NvTestCase):
         self.assertIn("&lt;b&gt;&lt;script&gt;&lt;/b&gt;", html)
         self.assertIn("a &amp; b", html)
         self.assertNotIn("<script>", html)
+
+
+class MeetCardEmailTest(NvTestCase):
+    """meet-card-email: each recipient's own latest meet, its card, and X with the app's post written."""
+
+    def setUp(self):
+        super().setUp()
+        overrides = self.settings(PUBLIC_API_URL="https://api.nextvibe.io")
+        overrides.enable()
+        self.addCleanup(overrides.disable)
+        self.template = render.get_template("meet-card-email")
+
+    def test_template(self):
+        t = self.template
+        self.assertEqual((t.channel, t.sender, t.reply_to), ("email", "Danylo from NextVibe <danylo@nextvibe.io>", "danylo@nextvibe.io"))
+        self.assertEqual(t.extra_placeholders(), set())  # nothing to type in the wizard
+        self.assertTrue({"meet_with", "meet_where", "meet_card", "meet_link", "meet_x"} <= t.placeholders())
+
+    def test_renders_the_recipients_own_meet(self):
+        alice, toji = self.user("alice"), self.user("toji")
+        slug = self.meet(alice, toji)
+        ctx = render.user_context(alice, needs=self.template.placeholders())
+        r = render.render(self.template, ctx)
+        html, text = r.email_parts()
+        self.assertEqual(r.title, "There's proof you met @toji 👀")
+        self.assertEqual(render.render(self.template.with_subject_b(), ctx).title, "alice, post this before @toji does")
+
+        x = ("https://x.com/intent/post?text=Met%20toji%20in%20person%20%E2%80%94%20Proof%20of%20Meet%20on%20"
+             "%40NextVibeWeb3.%20Tap%20phones.%20Prove%20you%20met.%0Ahttps%3A%2F%2Fnextvibe.io%2Fu%2Fmeet%2F" + slug)
+        self.assertEqual(r.deeplink, x)
+        self.assertEqual(html.count(f'href="{x}"'), 3)  # the card, the button, the P.S.
+        self.assertIn(f'<img src="https://api.nextvibe.io/api/v1/meet/{slug}/card.png?v=og&amp;rev=', html)
+        self.assertIn('You tapped phones with <strong style="color:#F5F3FF;">@toji</strong> in person,', html)
+        self.assertIn('href="https://nextvibe.io/u/meets"', html)
+        self.assertIn("Your Proof of Meet card is ready. One tap and it&#x27;s on your X.", html)  # the preheader
+        self.assertIn(f'href="{ctx["unsubscribe"]}"', html)
+        self.assertEqual(render.find_placeholders(html), set())
+        self.assertEqual(render.wording_violations(html + text + r.title), [])
+
+        self.assertTrue(text.startswith("Pics or it didn't happen? Here's the proof."))
+        self.assertIn(f"has its own card:\nhttps://nextvibe.io/u/meet/{slug}", text)
+        self.assertIn(f"just hit Post):\n{x}", text)
+        self.assertIn(f"Unsubscribe: {ctx['unsubscribe']}", text)
+
+    def test_meet_values_are_looked_up_only_when_used(self):
+        alice = self.user("alice")
+        self.meet(alice, self.user("bob"))
+        with mock.patch("posts.src.meets.latest_meet") as latest:
+            ctx = render.user_context(alice)
+        latest.assert_not_called()
+        self.assertFalse(set(render.MEET_PLACEHOLDERS) & set(ctx))
+        self.assertIsNone(render.skip_reason(ctx))
+        self.assertEqual(render.skip_reason(render.user_context(self.user("loner"), needs={"meet_x"})), render.NO_MEET)
+
+    def test_campaign_skips_people_without_a_meet(self):
+        from nvcli import menu
+
+        alice, bob, loner = self.user("alice"), self.user("bob"), self.user("loner")
+        self.meet(alice, bob)
+        plan = menu.Plan(name="c", wave=1, channel="email", include=["meet-card"], exclude=[],
+                         variants={"A": self.template}, split_a=1.0, share_label="all")
+        deliveries = menu.build_deliveries(plan, [alice, bob, loner], set())
+        self.assertEqual([(d.user.username, d.rendered.title) for d in deliveries],
+                         [("alice", "There's proof you met @bob 👀"), ("bob", "There's proof you met @alice 👀")])
+        self.assertEqual(plan.skipped, {render.NO_MEET: 1})
+
+
+class FirstTapEmailTest(NvTestCase):
+    """first-tap-email: people who never tapped see their own "@you met @???" card and a button into Tap to Meet."""
+
+    def setUp(self):
+        super().setUp()
+        overrides = self.settings(PUBLIC_API_URL="https://api.nextvibe.io")
+        overrides.enable()
+        self.addCleanup(overrides.disable)
+        self.template = render.get_template("first-tap-email")
+
+    def test_template(self):
+        t = self.template
+        self.assertEqual((t.channel, t.sender, t.reply_to), ("email", "Danylo from NextVibe <danylo@nextvibe.io>", "danylo@nextvibe.io"))
+        self.assertEqual(t.extra_placeholders(), set())  # nothing to type in the wizard
+        self.assertIn("tap_card", t.placeholders())
+        self.assertEqual(t.deeplink, "https://nextvibe.io/u/tap")
+        self.assertEqual(render.app_path(t.deeplink), ("/u/tap", "https://nextvibe.io/u/tap"))
+
+    def test_renders_the_recipients_own_teaser(self):
+        from posts.src import meet_card
+
+        newbie = self.user("danklepar.skr", seeker=True, source="skr")
+        ctx = render.user_context(newbie, needs=self.template.placeholders())
+        self.assertIsNone(render.skip_reason(ctx))
+        r = render.render(self.template, ctx)
+        html, text = r.email_parts()
+        self.assertEqual(r.title, "danklepar, this card has your name on it 👀")
+        self.assertEqual(render.render(self.template.with_subject_b(), ctx).title, "Who's your first tap, danklepar?")
+
+        card = f"https://api.nextvibe.io/api/v1/meet/first-tap/{newbie.user_id}/card.png?rev={meet_card.teaser_version(newbie)}"
+        self.assertEqual(ctx["tap_card"], card)
+        self.assertIn(f'<img src="{card}"', html)
+        self.assertEqual(html.count('href="https://nextvibe.io/u/tap"'), 3)  # the card, the button, the P.S.
+        self.assertIn("Make my first tap &rarr;", html)
+        self.assertIn("&ldquo;#1 for @danklepar.skr&rdquo;", html)
+        self.assertIn(f'href="{ctx["unsubscribe"]}"', html)
+        self.assertEqual(render.find_placeholders(html), set())
+        self.assertEqual(render.wording_violations(html + text + r.title), [])
+
+        self.assertTrue(text.startswith("Your card is ready. It's missing one person."))
+        self.assertIn("This is the card waiting for you: @danklepar.skr met @???", text)
+        self.assertIn("(opens Tap to Meet in NextVibe):\nhttps://nextvibe.io/u/tap", text)
+        self.assertIn(f"Unsubscribe: {ctx['unsubscribe']}", text)
+
+    def test_never_goes_to_someone_who_has_tapped(self):
+        from nvcli import menu
+
+        alice, bob, newbie = self.user("alice"), self.user("bob"), self.user("newbie")
+        self.meet(alice, bob)
+        plan = menu.Plan(name="c", wave=1, channel="email", include=["email"], exclude=[],
+                         variants={"A": self.template}, split_a=1.0, share_label="all")
+        deliveries = menu.build_deliveries(plan, [alice, bob, newbie], set())
+        self.assertEqual([d.user.username for d in deliveries], ["newbie"])
+        self.assertEqual(plan.skipped, {render.TAPPED_ALREADY: 2})
+
+    def test_preview_renders_for_anyone(self):
+        """Test sends and Render for a user go to the operator, who has surely tapped."""
+        alice = self.user("alice")
+        self.meet(alice, self.user("bob"))
+        self.assertEqual(render.skip_reason(render.user_context(alice, needs={"tap_card"})), render.TAPPED_ALREADY)
+        ctx = render.user_context(alice, needs=self.template.placeholders(), preview=True)
+        self.assertIsNone(render.skip_reason(ctx))
+        self.assertIn(f"/first-tap/{alice.user_id}/card.png", render.render(self.template, ctx).html)

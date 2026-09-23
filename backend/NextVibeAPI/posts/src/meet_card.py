@@ -8,6 +8,9 @@ The version hashes everything drawn, so a new avatar, a username change or
 a minted asset id re-renders by itself. Bump MEET_DESIGN_VERSION when the
 layout changes.
 
+The first-tap email shows a teaser in the same layout: "@you met @???",
+waiting for the first tap (/api/v1/meet/first-tap/<user_id>/card.png).
+
 Colors: bg #0B0714, surface #160F26, accent #8B5CF6, teal #2DD4BF,
 text #F4F1FA, muted #6E6684. No gradients except the avatar rings (and the
 default avatar, a dark gradient with the initial). Shared drawing helpers
@@ -21,7 +24,7 @@ from functools import lru_cache
 from django.conf import settings
 from PIL import Image, ImageChops, ImageDraw
 
-from posts.src.meets import TIER_IN_PERSON
+from posts.src.meets import DEFAULT_AVATARS, TIER_IN_PERSON, TIER_LABELS
 from user.src import og_image as og
 
 MEET_DESIGN_VERSION = 1
@@ -152,6 +155,58 @@ def get_card_png(meet, variant: str):
     return og.stored_png(f"og/meets/{meet.slug}-{variant}-v{version}.png", render, context), version
 
 
+# ── First-tap teaser (nv template first-tap-email) ───────────────────────
+
+TEASER_DESIGN_VERSION = 1
+TEASER_OTHER = "???"
+
+
+def teaser_text(user) -> CardText:
+    """The card this user's first tap would give them, with the other person still unknown."""
+    return CardText(
+        tier=TIER_IN_PERSON,
+        tier_label=TIER_LABELS[TIER_IN_PERSON],
+        a=user.username,
+        b=TEASER_OTHER,
+        a_seeker=bool(user.seeker_verified),
+        b_seeker=False,
+        when_line="Anywhere IRL · Today",
+        event_name=None,
+        lead="+1 REP each",
+        detail=f"#1 for @{short_name(user.username)}",
+        proof="waiting for your first tap",
+        minted=False,
+        url_line="nextvibe.io/u/tap",
+    )
+
+
+def teaser_avatar_name(user) -> str:
+    name = (user.avatar.name if user.avatar else "") or ""
+    return "" if name in DEFAULT_AVATARS else name
+
+
+def teaser_version(user) -> str:
+    return og.version_hash(TEASER_DESIGN_VERSION, user.user_id, user.username, bool(user.seeker_verified),
+                           teaser_avatar_name(user))
+
+
+def teaser_url(user) -> str:
+    return f"{settings.PUBLIC_API_URL}/api/v1/meet/first-tap/{user.user_id}/card.png?rev={teaser_version(user)}"
+
+
+def get_teaser_png(user):
+    """(png_bytes, version); 1200×630, the first request for a version renders and stores it."""
+    version = teaser_version(user)
+    context = f"first-tap {user.user_id}"
+
+    def render():
+        name = teaser_avatar_name(user)
+        avatar = og.load_image(name, context, max_side=512) if name else None
+        return og.png_bytes(_render_og(teaser_text(user), [avatar, None], badge="?"))
+
+    return og.stored_png(f"og/first-tap/{user.user_id}-v{version}.png", render, context), version
+
+
 # ── Rendering ────────────────────────────────────────────────────────────
 
 def render_card(text: CardText, avatars, variant: str = "og") -> bytes:
@@ -160,7 +215,7 @@ def render_card(text: CardText, avatars, variant: str = "og") -> bytes:
     return og.png_bytes(_render_og(text, avatars))
 
 
-def _render_og(t: CardText, avatars):
+def _render_og(t: CardText, avatars, badge="check"):
     width, height = VARIANTS["og"]
     canvas = Image.new("RGB", (width, height), BG)
     margin = 64
@@ -178,7 +233,7 @@ def _render_og(t: CardText, avatars):
     rows.append((_history_runs(t.lead, t.detail, max_width, (25, 24, 22, 20)), 50))
     rows.append((_proof_runs(t, (21, 20, 19), max_width), 36))
 
-    pair = dict(size=132, ring=5, gap=4, check=46, cut=6)
+    pair = dict(size=132, ring=5, gap=4, check=46, cut=6, badge=badge)
     _compose(canvas, t, avatars, rows, pair, globe=(136, 2), area=(96, height - 66), gap=46)
     _footer_url(canvas, margin, height - 38, t.url_line, 20)
     return canvas
@@ -465,10 +520,11 @@ def initial_avatar(username, size):
     return face_img.convert("RGBA")
 
 
-def _avatar_pair(canvas, center, size, ring, gap, avatars, names, check, cut):
+def _avatar_pair(canvas, center, size, ring, gap, avatars, names, check, cut, badge="check"):
     """
     Two avatars overlapping by 30% of their width, each in an accent→teal
-    ring; A (left) sits on top, cut out from B. A teal check sits between.
+    ring; A (left) sits on top, cut out from B. A teal check sits between,
+    or a violet "?" on the first-tap teaser, where B is nobody yet.
     """
     outer = size + 2 * (ring + gap)
     offset = round(outer * 0.7 / 2)
@@ -487,6 +543,10 @@ def _avatar_pair(canvas, center, size, ring, gap, avatars, names, check, cut):
     bx, by = cx, cy + round(outer * 0.3)
     hole = check + 2 * cut
     canvas.paste(Image.new("RGB", (hole, hole), BG), (bx - hole // 2, by - hole // 2), og.circle_mask(hole))
+    if badge == "?":
+        canvas.paste(Image.new("RGB", (check, check), ACCENT), (bx - check // 2, by - check // 2), og.circle_mask(check))
+        ImageDraw.Draw(canvas).text((bx, by), "?", font=og.font(og.FONT_BOLD, round(check * 0.6)), fill=TEXT, anchor="mm")
+        return
     canvas.paste(Image.new("RGB", (check, check), TEAL), (bx - check // 2, by - check // 2), og.circle_mask(check))
     tick = og.supersampled(check, lambda d, s: d.line(
         [(check * 0.29 * s, check * 0.53 * s), (check * 0.44 * s, check * 0.68 * s), (check * 0.72 * s, check * 0.37 * s)],

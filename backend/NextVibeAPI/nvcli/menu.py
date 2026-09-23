@@ -320,7 +320,12 @@ def send_to_one_user(user=None, channel=None):
         channel = select("Channel", channel_choices(user))
     template = choose_message(channel)
     extra = collect_extra([template])
-    ctx = {**render.user_context(user), **extra}
+    ctx = {**render.user_context(user, needs=template.placeholders()), **extra}
+    reason = render.skip_reason(ctx)
+    if reason:
+        err(f"not for @{user.username}: {reason}", "pick someone else, or another message")
+        pause()
+        return
     try:
         rendered = render.render(template, ctx)
     except UnresolvedPlaceholder as e:
@@ -384,7 +389,7 @@ class Plan:
     share_label: str
     deliveries: list = field(default_factory=list)
     extra: dict = field(default_factory=dict)         # values for non-user placeholders
-    skipped: Counter = field(default_factory=Counter)  # email skip reason → users
+    skipped: Counter = field(default_factory=Counter)  # skip reason (email, template) → users
 
     def describe_segments(self):
         s = " AND ".join(self.include)
@@ -482,9 +487,14 @@ def ask_share(total):
     return ("share", choice, "all" if choice == 1.0 else f"{int(choice * 100)}%")
 
 
+def placeholders_in(templates) -> set:
+    return set().union(*(t.placeholders() for t in templates))
+
+
 def build_deliveries(plan, users, already_sent):
     seeker_total = audience.seeker_total()
     email_optouts = log.optout_ids("email")
+    needs = placeholders_in(plan.variants.values())
     deliveries = []
     for user in users:
         variant = audience.variant_for(plan.name, user.user_id, plan.split_a) if "B" in plan.variants else "A"
@@ -499,7 +509,11 @@ def build_deliveries(plan, users, already_sent):
             channels.append(ch)
         if not channels:
             continue
-        ctx = {**render.user_context(user, seeker_total), **plan.extra}
+        ctx = {**render.user_context(user, seeker_total, needs), **plan.extra}
+        reason = render.skip_reason(ctx)
+        if reason:
+            plan.skipped[reason] += 1
+            continue
         rendered = render.render(plan.variants[variant], ctx)
         for ch in channels:
             deliveries.append(Delivery(user, ch, variant, rendered))
@@ -546,7 +560,11 @@ def test_send(plan, email_ok=True):
     if not channels:
         err(f"@{operator.username} has no {plan.channel} channel to test with; skipping the test send")
         return
-    ctx = {**render.user_context(operator), **plan.extra}
+    ctx = {**render.user_context(operator, needs=placeholders_in(plan.variants.values()), preview=True), **plan.extra}
+    reason = render.skip_reason(ctx)
+    if reason:
+        err(f"@{operator.username}: {reason}; skipping the test send")
+        return
     for variant, template in sorted(plan.variants.items()):
         rendered = render.render(template, ctx)
         for ch in channels:
@@ -629,7 +647,7 @@ def send_to_segment():
         pause()
         return
     if plan.skipped:
-        echo("no email", ", ".join(f"{n} {reason}" for reason, n in plan.skipped.most_common()))
+        echo("skipped", ", ".join(f"{n} {reason}" for reason, n in plan.skipped.most_common()))
     if not plan.deliveries:
         err("nothing left to send", "everyone in this sample was already reached in this campaign")
         pause()
@@ -955,8 +973,14 @@ def template_actions(tpl):
     elif action == "render":
         user = ask_username()
         extra = collect_extra([tpl])
+        ctx = {**render.user_context(user, needs=tpl.placeholders(), preview=True), **extra}
+        reason = render.skip_reason(ctx)
+        if reason:
+            err(f"@{user.username}: {reason}")
+            pause()
+            return
         try:
-            rendered = render.render(tpl, {**render.user_context(user), **extra})
+            rendered = render.render(tpl, ctx)
         except UnresolvedPlaceholder as e:
             err(str(e))
             pause()

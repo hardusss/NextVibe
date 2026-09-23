@@ -40,3 +40,14 @@ class NvTestCase(TestCase):
             u.last_login = timezone.now() - timedelta(days=last_login)
             u.save(update_fields=["last_login"])
         return u
+
+    @staticmethod
+    def meet(a, b):
+        """An IRL Tap to Meet between two users, as the tap writes it (no location); returns its slug."""
+        from posts.models import Reputation
+        from posts.src import meets
+
+        slug = meets.tap_slug(a.user_id, b.user_id, "irl")
+        for user, other in ((a, b), (b, a)):
+            Reputation.objects.create(user=user, given_by=other, points=1, source="irl", meet_slug=slug)
+        return slug

@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from posts.src import meet_card
 from posts.src.meets import load_meet
 from user.auth import CustomJWTAuthentication
+from user.models import User
 from user.src import og_image as og
 
 
@@ -150,11 +151,39 @@ class MeetCardView(APIView):
             return response
 
         etag = f'"{variant}-{meet_card.card_version(meet)}"'
-        if etag in [tag.strip() for tag in request.headers.get("If-None-Match", "").split(",")]:
-            response = HttpResponse(status=304)
-        else:
-            png, _ = meet_card.get_card_png(meet, variant)
-            response = HttpResponse(png, content_type="image/png")
-        response["ETag"] = etag
-        response["Cache-Control"] = "public, max-age=3600"
-        return response
+        return _png_response(request, etag, lambda: meet_card.get_card_png(meet, variant)[0])
+
+
+class FirstTapCardView(APIView):
+    """
+    GET /api/v1/meet/first-tap/<user_id>/card.png — public 1200×630 PNG.
+
+    The first-tap email's teaser: "@username met @???", waiting for the
+    first tap. Shows only what the public profile card already does
+    (username, avatar, Seeker badge). Inactive or banned accounts get the
+    "not found" card with a 404. Cached like the meet card.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [MeetCardThrottle]
+    content_negotiation_class = IgnoreAccept
+
+    def get(self, request, user_id):
+        user = User.all_objects.filter(user_id=user_id, is_active=True, is_baned=False).first()
+        if user is None:
+            response = HttpResponse(meet_card.not_found_png("og"), status=404, content_type="image/png")
+            response["Cache-Control"] = "no-store"
+            return response
+        etag = f'"first-tap-{meet_card.teaser_version(user)}"'
+        return _png_response(request, etag, lambda: meet_card.get_teaser_png(user)[0])
+
+
+def _png_response(request, etag, png):
+    """200 with the PNG, or 304 when the client already has this version; cached an hour."""
+    if etag in [tag.strip() for tag in request.headers.get("If-None-Match", "").split(",")]:
+        response = HttpResponse(status=304)
+    else:
+        response = HttpResponse(png(), content_type="image/png")
+    response["ETag"] = etag
+    response["Cache-Control"] = "public, max-age=3600"
+    return response

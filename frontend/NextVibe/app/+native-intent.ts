@@ -25,11 +25,12 @@ import { enqueueIntentLink } from '@/src/navigation/intentQueue';
  * /u/verified/<username>, which looks the username up and opens that profile.
  *
  * Own-profile links (nextvibe://profile, nextvibe://profile?open=seeker) and
- * Proof of Meet links (nextvibe.io/u/meet/<slug>, nextvibe.io/u/meets) are
- * handed to the pending-intent gate (src/navigation) instead of being opened
- * here: on a cold start the app boots normally (splash → OTA check → auth) and
- * the root layout opens the profile (with the Seeker sheet or POAPs & History)
- * or the meet sheet once it's ready. Opening /profile directly skipped the
+ * Proof of Meet links (nextvibe.io/u/meet/<slug>, nextvibe.io/u/meets,
+ * nextvibe.io/u/tap) are handed to the pending-intent gate (src/navigation)
+ * instead of being opened here: on a cold start the app boots normally
+ * (splash → OTA check → auth) and the root layout opens the profile (with the
+ * Seeker sheet or POAPs & History), the meet sheet or Tap to Meet once it's
+ * ready. Opening /profile directly skipped the
  * start flow, and Splash's redirect to /home then took the screen back.
  *
  * Any other nextvibe.io/u/… link no screen knows opens home (cold start) or

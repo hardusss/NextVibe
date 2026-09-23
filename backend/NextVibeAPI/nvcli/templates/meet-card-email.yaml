@@ -1,0 +1,102 @@
+name: meet-card-email
+channel: email
+# Send to segment "meet-card". Every recipient sees their own latest meet: its
+# card, and a button that opens X with the post already written (the app's
+# own "Share on X" text). Anyone without a meet to share is skipped.
+from: "Danylo from NextVibe <danylo@nextvibe.io>"
+reply_to: "danylo@nextvibe.io"
+subject: "There's proof you met @{meet_with} 👀"
+subject_b: "{first_name}, post this before @{meet_with} does"
+preheader: "Your Proof of Meet card is ready. One tap and it's on your X."
+link: "{meet_x}"
+text: |
+  Pics or it didn't happen? Here's the proof.
+
+  You tapped phones with @{meet_with} {meet_where}, and that moment now has its own card:
+  {meet_link}
+
+  Anyone can post a selfie. This card only exists because you and @{meet_with} actually met in real life.
+
+  @{meet_with} has the same card. Post yours first.
+
+  Post it on X (the post is already written, just hit Post):
+  {link}
+
+  HOW TAP TO MEET WORKS
+  1. Open NextVibe → Profile → Tap to Meet.
+  2. Hold your phones back to back for a second.
+  3. You both get a card like this one. Post it.
+
+  Every meet you've had has its own card: https://nextvibe.io/u/meets
+
+  See you IRL,
+  Danylo from NextVibe
+
+  P.S. Your card with @{meet_with} won't post itself: {link}
+
+  —
+  You get this because you have a NextVibe account. Unsubscribe: {unsubscribe}
+html: |
+  <!doctype html>
+  <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>NextVibe</title>
+  <style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+  @media (max-width: 600px) {
+    .nv-card { padding: 28px 20px 26px 20px !important; }
+    .nv-h1 { font-size: 27px !important; line-height: 33px !important; }
+  }
+  </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#0A0714;" bgcolor="#0A0714">
+  <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#0A0714;">{preheader}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#0A0714" style="background-color:#0A0714;">
+  <tr><td align="center" style="padding:40px 12px 48px 12px;">
+  <!--[if mso]><table role="presentation" width="560" align="center" cellspacing="0" cellpadding="0" border="0"><tr><td><![endif]-->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;">
+  <tr><td style="padding:0 6px 18px 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:18px;line-height:24px;font-weight:700;letter-spacing:0.2px;color:#F5F3FF;">NextVibe</td></tr>
+  <tr><td class="nv-card" bgcolor="#180F2C" style="background-color:#180F2C;border:1px solid #2C2248;border-radius:20px;padding:36px 32px 32px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+  <td bgcolor="#0C2A2A" style="background-color:#0C2A2A;border:1px solid #115E59;border-radius:999px;padding:6px 12px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.8px;color:#5EEAD4;">&#9679;&nbsp; PROOF OF MEET</td>
+  </tr></table>
+  <h1 class="nv-h1" style="margin:22px 0 16px 0;font-size:30px;line-height:36px;font-weight:800;letter-spacing:-0.3px;color:#F5F3FF;">Pics or it didn't happen? Here's the proof.</h1>
+  <p style="margin:0 0 22px 0;font-size:16px;line-height:25px;color:#CDCAD9;">You tapped phones with <strong style="color:#F5F3FF;">@{meet_with}</strong> {meet_where}, and that moment now has its own card:</p>
+  <a href="{link}" style="text-decoration:none;"><img src="{meet_card}" width="494" alt="Your Proof of Meet card with @{meet_with}" style="display:block;width:100%;max-width:494px;height:auto;border:1px solid #2C2248;border-radius:14px;background-color:#0B0714;color:#CDCAD9;font-size:14px;"></a>
+  <p style="margin:10px 0 24px 0;font-size:13px;line-height:18px;color:#9893A6;text-align:center;">&uarr; Exactly what your followers will see on X</p>
+  <p style="margin:0 0 16px 0;font-size:16px;line-height:25px;color:#CDCAD9;">Anyone can post a selfie. This card only exists because you and @{meet_with} actually met in real life.</p>
+  <p style="margin:0 0 24px 0;font-size:17px;line-height:25px;font-weight:700;color:#F5F3FF;">@{meet_with} has the same card. Post yours first.</p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+  <td align="center" bgcolor="#7C3AED" style="background-color:#7C3AED;border-radius:14px;"><a href="{link}" style="display:block;padding:17px 24px;font-size:18px;line-height:22px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:14px;">Post it on X &rarr;</a></td>
+  </tr></table>
+  <p style="margin:12px 0 0 0;font-size:13px;line-height:19px;color:#9893A6;text-align:center;">Takes 5 seconds. The post is already written, just hit Post.</p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="padding:30px 0 26px 0;"><div style="height:1px;line-height:1px;font-size:1px;background-color:#2C2248;">&nbsp;</div></td></tr></table>
+  <p style="margin:0 0 16px 0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.8px;color:#9893A6;">HOW TAP TO MEET WORKS</p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+  <tr><td width="28" valign="top" style="padding:0 12px 12px 0;"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="26" height="26" align="center" bgcolor="#0C2A2A" style="width:26px;height:26px;background-color:#0C2A2A;border:1px solid #115E59;border-radius:999px;font-size:13px;line-height:26px;font-weight:700;color:#5EEAD4;">1</td></tr></table></td>
+  <td valign="top" style="padding:3px 0 12px 0;font-size:15px;line-height:22px;color:#CDCAD9;">Open NextVibe &rarr; Profile &rarr; <strong style="color:#F5F3FF;white-space:nowrap;">Tap to Meet</strong>.</td></tr>
+  <tr><td width="28" valign="top" style="padding:0 12px 12px 0;"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="26" height="26" align="center" bgcolor="#0C2A2A" style="width:26px;height:26px;background-color:#0C2A2A;border:1px solid #115E59;border-radius:999px;font-size:13px;line-height:26px;font-weight:700;color:#5EEAD4;">2</td></tr></table></td>
+  <td valign="top" style="padding:3px 0 12px 0;font-size:15px;line-height:22px;color:#CDCAD9;">Hold your phones back to back for a second.</td></tr>
+  <tr><td width="28" valign="top" style="padding:0 12px 0 0;"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="26" height="26" align="center" bgcolor="#0C2A2A" style="width:26px;height:26px;background-color:#0C2A2A;border:1px solid #115E59;border-radius:999px;font-size:13px;line-height:26px;font-weight:700;color:#5EEAD4;">3</td></tr></table></td>
+  <td valign="top" style="padding:3px 0 0 0;font-size:15px;line-height:22px;color:#CDCAD9;">You both get a card like this one. Post it.</td></tr>
+  </table>
+  <p style="margin:20px 0 0 0;font-size:15px;line-height:22px;color:#CDCAD9;">Every meet you've had has its own card. <a href="https://nextvibe.io/u/meets" style="color:#A78BFA;font-weight:600;text-decoration:none;white-space:nowrap;">See them all &rarr;</a></p>
+  <p style="margin:30px 0 0 0;font-size:14px;line-height:21px;color:#9893A6;">See you IRL,<br>Danylo from NextVibe</p>
+  <p style="margin:16px 0 0 0;font-size:14px;line-height:21px;color:#9893A6;"><strong style="color:#CDCAD9;">P.S.</strong> Your card with @{meet_with} won't post itself. <a href="{link}" style="color:#A78BFA;font-weight:600;text-decoration:none;white-space:nowrap;">Post it on X &rarr;</a></p>
+  </td></tr>
+  <tr><td style="padding:22px 6px 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8F89A3;">
+  You get this because you have a NextVibe account. <a href="{unsubscribe}" style="color:#A78BFA;text-decoration:underline;">Unsubscribe</a><br>
+  <a href="https://nextvibe.io" style="color:#8F89A3;text-decoration:none;">nextvibe.io</a>
+  </td></tr>
+  </table>
+  <!--[if mso]></td></tr></table><![endif]-->
+  </td></tr>
+  </table>
+  </body>
+  </html>

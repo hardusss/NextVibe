@@ -62,6 +62,7 @@ SEGMENTS = {
     "active-30d": ("logged in within 30 days", lambda qs: qs.filter(last_login__gte=_active_since(30))),
     "inactive-90d": ("no login for 90 days", lambda qs: qs.filter(Q(last_login__lt=_active_since(90)) | Q(last_login__isnull=True))),
     "tapped": ("has tapped with someone (event or IRL)", lambda qs: qs.filter(user_id__in=_tapped_ids())),
+    "never-tapped": ("never tapped with anyone yet (first-tap email)", lambda qs: qs.exclude(user_id__in=_tapped_ids())),
     "meet-card": ("has a Proof of Meet card (run backfill_meet_slugs first)", lambda qs: qs.filter(user_id__in=_meet_card_ids())),
 }
 
@@ -146,6 +147,13 @@ def with_channel(qs, channel: str):
 
 def has_push(user) -> bool:
     return bool(user.expo_push_token)
+
+
+def has_tapped(user) -> bool:
+    """Tapped with someone at least once (the same rows as segment "tapped")."""
+    from posts.models import Reputation
+
+    return Reputation.objects.filter(source__in=TAP_SOURCES).filter(Q(user=user) | Q(given_by=user)).exists()
 
 
 def has_email(user) -> bool:

@@ -23,7 +23,15 @@ import yaml
 from nvcli import EMAIL_TEMPLATES_DIR, TEMPLATES_DIR
 
 PLACEHOLDER_RE = re.compile(r"\{([a-z_][a-z0-9_]*)\}")
-USER_PLACEHOLDERS = ("username", "first_name", "rep", "joined", "events", "met", "seeker", "seeker_total", "unsubscribe")
+# Looked up only for templates that use them, and they decide who can get it
+# (skip_reason): the {meet_*} ones come from the user's latest Proof of Meet
+# (meet_context); {tap_card}, the first-tap teaser, is only for users who
+# never tapped with anyone.
+MEET_PLACEHOLDERS = ("meet_with", "meet_where", "meet_link", "meet_card", "meet_x")
+USER_PLACEHOLDERS = ("username", "first_name", "rep", "joined", "events", "met", "seeker", "seeker_total", "unsubscribe",
+                     "tap_card", *MEET_PLACEHOLDERS)
+NO_MEET = "no meet card to share"
+TAPPED_ALREADY = "already tapped with someone"
 # Filled from the template itself, never asked for.
 TEMPLATE_PLACEHOLDERS = ("link", "preheader")
 CHANNELS = ("push", "email", "both")
@@ -235,11 +243,16 @@ def unsubscribe_url(user_id: int) -> str:
     return f"{settings.PUBLIC_API_URL.rstrip('/')}/u/e/{make_token(user_id)}"
 
 
-def user_context(user, seeker_total: int | None = None) -> dict:
+def user_context(user, seeker_total: int | None = None, needs=(), preview: bool = False) -> dict:
+    """
+    Per-user values. `needs` is what the template uses: {tap_card} and the
+    {meet_*} values cost queries, so only on demand. `preview` (test sends,
+    Render for a user) fills {tap_card} even for someone who has tapped.
+    """
     from nvcli import audience
 
     stats = audience.user_stats(user)
-    return {
+    ctx = {
         "username": user.username,
         "first_name": first_name(user.username),
         "rep": stats["rep"],
@@ -250,6 +263,57 @@ def user_context(user, seeker_total: int | None = None) -> dict:
         "seeker_total": audience.seeker_total() if seeker_total is None else seeker_total,
         "unsubscribe": unsubscribe_url(user.user_id),
     }
+    if "tap_card" in needs:
+        ctx["tap_card"] = first_tap_card(user, preview)
+    if set(needs) & set(MEET_PLACEHOLDERS):
+        ctx.update(meet_context(user))
+    return ctx
+
+
+def first_tap_card(user, preview: bool = False) -> str | None:
+    """The first-tap teaser ("@you met @???"); None once the user has tapped with someone, unless previewing."""
+    from nvcli import audience
+    from posts.src import meet_card
+
+    if not preview and audience.has_tapped(user):
+        return None
+    return meet_card.teaser_url(user)
+
+
+def meet_context(user) -> dict:
+    """
+    From the user's latest meet that can be shared: {meet_with} who they met,
+    {meet_where} "in Kyiv" / "at <event>" / "in person", {meet_link} its page,
+    {meet_card} its 1200×630 card (the image X shows under the post) and
+    {meet_x} the X composer with the app's own post. All None without one.
+    """
+    from posts.src import meet_card, meets
+
+    meet = meets.latest_meet(user)
+    if meet is None:
+        return dict.fromkeys(MEET_PLACEHOLDERS)
+    a, b = meet.people
+    other = b if a.user_id == user.user_id else a
+    if meet.event_name:
+        where = f"at {meet.event_name}"
+    else:
+        where = f"in {meet.city}" if meet.city else "in person"
+    return {
+        "meet_with": other.username,
+        "meet_where": where,
+        "meet_link": meet.url,
+        "meet_card": meet_card.card_url(meet.slug, "og", meet_card.card_version(meet)),
+        "meet_x": meets.x_post_url(meet, user.user_id),
+    }
+
+
+def skip_reason(ctx: dict) -> str | None:
+    """Why this user can't get the template the context was built for, or None."""
+    if any(name in ctx and ctx[name] is None for name in MEET_PLACEHOLDERS):
+        return NO_MEET
+    if "tap_card" in ctx and ctx["tap_card"] is None:
+        return TAPPED_ALREADY
+    return None
 
 
 def render_text(text: str, ctx: dict, escape: bool = False) -> str:

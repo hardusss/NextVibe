@@ -10,7 +10,7 @@
  * can be unit-tested in node and imported from +native-intent.ts.
  */
 import { parseQuery, toAppPath } from '@/src/proximity/payload';
-import { isMeetsLink, meetLinkSlug } from '@/src/utils/meetShare';
+import { isMeetsLink, isTapLink, meetLinkSlug } from '@/src/utils/meetShare';
 
 export type IntentSource = 'push' | 'link';
 
@@ -38,6 +38,13 @@ export const MEETS_OPEN_PARAM = 'meets';
  */
 export const MEET_KIND = 'meet';
 export const MEETS_KIND = 'meets';
+/**
+ * nextvibe.io/u/tap opens Tap to Meet in IRL mode, like the profile button
+ * does when you're not at an event. The server switches the tap to an event
+ * you're checked in to, so the link needs nothing else.
+ */
+export const TAP_KIND = 'tap';
+export const TAP_PATH = '/event-nfc-share';
 
 
 /** Splits "/a/b?x=1&y=2" into a pathname and decoded params. */
@@ -67,8 +74,8 @@ function seekerIntent(id: string, source: IntentSource, createdAt: number, extra
 }
 
 /**
- * Proof of Meet links (/u/meet/<slug>, /u/meets) as intents, or null for
- * any other path. Shared by links and push `url`s.
+ * Proof of Meet links (/u/meet/<slug>, /u/meets, /u/tap) as intents, or
+ * null for any other path. Shared by links and push `url`s.
  */
 function meetIntent(appPath: string, id: string, source: IntentSource, now: number): PendingIntent | null {
     const slug = meetLinkSlug(appPath);
@@ -77,6 +84,9 @@ function meetIntent(appPath: string, id: string, source: IntentSource, now: numb
     }
     if (isMeetsLink(appPath)) {
         return { id, path: PROFILE_PATH, params: { open: MEETS_OPEN_PARAM }, source, kind: MEETS_KIND, createdAt: now };
+    }
+    if (isTapLink(appPath)) {
+        return { id, path: TAP_PATH, params: { mode: 'irl' }, source, kind: TAP_KIND, createdAt: now };
     }
     return null;
 }
@@ -141,7 +151,7 @@ export function intentFromNotification(
  * Links that wait for the app to be ready: own-profile links
  * (nextvibe://profile, nextvibe://profile?open=seeker,
  * https://nextvibe.io/profile?open=seeker) and Proof of Meet links
- * (nextvibe.io/u/meet/<slug>, nextvibe.io/u/meets). Username links
+ * (nextvibe.io/u/meet/<slug>, nextvibe.io/u/meets, nextvibe.io/u/tap). Username links
  * (/profile/<name>), wallet redirects and tap links are somebody else's and
  * return null.
  */
@@ -167,6 +177,7 @@ const KNOWN_U_PATHS = [
     /^\/u\/verified\/[^/]+$/,
     /^\/u\/meet\/[^/]+(?:\/card\.png)?$/,
     /^\/u\/meets$/,
+    /^\/u\/tap$/, // Tap to Meet
     /^\/u\/send(?:\/.*)?$/, // payment requests
 ];
 

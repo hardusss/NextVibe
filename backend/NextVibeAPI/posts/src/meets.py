@@ -21,9 +21,11 @@ on the backfill. A repeat tap the same day is rejected before anything is
 written; rows with 0 points would be left out of meets and counts.
 """
 import logging
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone as dt_timezone
+from urllib.parse import quote
 
 from django.db import connections, transaction
 from django.db.models import F, Q
@@ -55,6 +57,14 @@ TIER_LABELS = {
     TIER_PEER: "PEER VERIFIED",
     TIER_ORGANIZER: "ORGANIZER VERIFIED",
 }
+
+# The X post (x_post_text), the same one the app's "Share on X" writes
+X_ACCOUNT = "@NextVibeWeb3"
+X_POST_LIMIT = 280
+X_LINK_LENGTH = 23  # X shortens every link to a 23-character t.co URL
+X_LINK_RE = re.compile(r"https?://\S+")
+# latest_meet looks this far back for one that can be shared
+LATEST_MEET_SCAN = 20
 
 
 # ── Slugs ────────────────────────────────────────────────────────────────
@@ -298,6 +308,25 @@ def load_meet(slug, viewer=None):
     )
 
 
+def latest_meet(user):
+    """
+    The user's most recent meet worth sharing, or None: its page loads for
+    them (nobody banned or blocked) and nobody in it deleted their account.
+    Looks at their last LATEST_MEET_SCAN meets.
+    """
+    slugs = (
+        tap_rows()
+        .filter(Q(user_id=user.user_id) | Q(given_by_id=user.user_id), meet_slug__isnull=False)
+        .order_by("-created_at", "-id")
+        .values_list("meet_slug", flat=True)[:2 * LATEST_MEET_SCAN]  # two rows per meet
+    )
+    for slug in dict.fromkeys(slugs):
+        meet = load_meet(slug, viewer=user)
+        if meet is not None and not any(p.deleted for p in meet.people):
+            return meet
+    return None
+
+
 def _person(user, points, upto) -> MeetPerson:
     deleted = is_deleted(user)
     avatar = "" if deleted else (user.avatar.name if user.avatar else "") or ""
@@ -364,6 +393,47 @@ def public_event_name(event):
         return None
     name = " ".join((event.about or "").split())
     return name[:140] or None
+
+
+# ── Sharing on X ─────────────────────────────────────────────────────────
+
+def x_post_length(text: str) -> int:
+    """Post length the way X counts it: each link is 23 characters."""
+    links = X_LINK_RE.findall(text)
+    for link in links:
+        text = text.replace(link, "", 1)
+    return len(text) + len(links) * X_LINK_LENGTH
+
+
+def x_post_text(meet, viewer_id=None) -> str:
+    """
+    The X post for a meet, word for word what the app's "Share on X" writes
+    (meetShareText in frontend src/utils/meetShare.ts; keep the two in step).
+    Names go without "@": we don't know anyone's X handle, and "@name" would
+    tag whoever owns it on X. "Verified on Solana" only once the meet is
+    minted. A long event name is shortened until the post fits.
+    """
+    a, b = meet.people
+    other = b if viewer_id == a.user_id else a if viewer_id == b.user_id else None
+    who = f"Met {other.username}" if other else f"{a.username} met {b.username}"
+
+    def build(event_name):
+        if meet.source == "event":
+            return f"{who} at {event_name or 'an event'} — checked in by tap, Proof of Meet on {X_ACCOUNT}.\n{meet.url}"
+        proof = f"Proof of Meet on {X_ACCOUNT}, verified on Solana." if meet.asset_id else f"Proof of Meet on {X_ACCOUNT}."
+        return f"{who} in person — {proof} Tap phones. Prove you met.\n{meet.url}"
+
+    event_name = meet.event_name
+    text = build(event_name)
+    while event_name and x_post_length(text) > X_POST_LIMIT and len(event_name) > 8:
+        event_name = f"{event_name[:-2].rstrip()}…"
+        text = build(event_name)
+    return text
+
+
+def x_post_url(meet, viewer_id=None) -> str:
+    """The X composer with the post written (escaped like JS encodeURIComponent)."""
+    return "https://x.com/intent/post?text=" + quote(x_post_text(meet, viewer_id), safe="!'()*")
 
 
 # ── The rows' side (history lists, tap responses) ─────────────────────────

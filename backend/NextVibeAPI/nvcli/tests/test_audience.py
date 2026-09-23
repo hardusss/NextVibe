@@ -45,6 +45,10 @@ class SegmentTest(NvTestCase):
         Reputation.objects.create(user=self.alice, given_by=self.carol, points=1, source="irl")
         Reputation.objects.create(user=self.dave, given_by=self.alice, points=1, source="checkin")
         self.assertEqual(self.names(audience.segment_queryset("tapped")), ["alice", "carol"])
+        # a check-in isn't a tap: dave still gets the first-tap email
+        self.assertEqual(self.names(audience.segment_queryset("never-tapped")), ["bob", "dave"])
+        self.assertEqual([audience.has_tapped(u) for u in (self.alice, self.bob, self.carol, self.dave)],
+                         [True, False, True, False])
         self.assertEqual(self.names(audience.segment_queryset(f"event:{event.id}")), ["bob"])
 
     def test_meet_card_segment(self):
