@@ -9,22 +9,15 @@ import {
 import { useRouter } from "expo-router";
 import { storage } from "@/src/utils/storage";
 import getStatusProfile from "@/src/api/check.status";
-import * as Updates from "expo-updates";
 import { clearPendingIntent, hasPendingIntent, intentOwnsNavigation, recentlyConsumedIntent, whenIntentHydrated } from "@/src/navigation/pendingIntent";
 import { OTA_CHECK_TIMEOUT_MS, useAppReadyStore } from "@/src/navigation/appReadyStore";
+import { whenLaunchOtaKnown } from "@/src/navigation/launchOta";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 
 /** Splash stays up at least this long (the logo animation). */
 const MIN_SPLASH_MS = 2400;
 /** If a pending intent hasn't taken the screen by then, go home anyway. */
 const INTENT_WATCHDOG_MS = 10_000;
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
-    return Promise.race([
-        promise,
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
-    ]);
-}
 
 
 const C = {
@@ -121,13 +114,14 @@ export default function SplashScreen() {
             const boot = useAppReadyStore.getState();
             // Only once per launch: coming back from /eas-update must not loop.
             if (!__DEV__ && !boot.otaSettled) {
+                // expo-updates checks by itself at launch; checkForUpdateAsync()
+                // would wait for its whole download (see launchOta.ts).
                 try {
-                    const check = await withTimeout(Updates.checkForUpdateAsync(), OTA_CHECK_TIMEOUT_MS);
-                    if (check === null) {
-                        console.log("[Splash] Update check timed out; continuing");
-                    } else if (check.isAvailable) {
-                        updateAvailable = true;
+                    const launchOta = await whenLaunchOtaKnown(OTA_CHECK_TIMEOUT_MS);
+                    if (launchOta === "checking") {
+                        console.log("[Splash] Launch update check still running; continuing");
                     }
+                    updateAvailable = launchOta === "update";
                 } catch (err) {
                     console.log("[Splash] Update check failed/skipped:", err);
                 }

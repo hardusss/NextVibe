@@ -19,7 +19,7 @@ export type AuthStatus = 'unknown' | 'in' | 'out';
 
 /** Longest we wait for the first profile load before navigating anyway. */
 export const PROFILE_WAIT_MS = 4000;
-/** Longest Splash waits for Updates.checkForUpdateAsync(). */
+/** Longest Splash waits for the launch update check (see launchOta.ts). */
 export const OTA_CHECK_TIMEOUT_MS = 3000;
 
 interface AppReadyState {

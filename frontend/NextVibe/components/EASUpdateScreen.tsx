@@ -9,9 +9,9 @@ import { useRouter } from "expo-router";
 import * as Updates from "expo-updates";
 import { flushPendingIntent } from "@/src/navigation/pendingIntent";
 import { useAppReadyStore } from "@/src/navigation/appReadyStore";
+import { subscribeOtaDownloadProgress } from "@/src/navigation/launchOta";
 
-/** checkForUpdateAsync / fetchUpdateAsync must never hold this screen forever. */
-const CHECK_TIMEOUT_MS = 5000;
+/** fetchUpdateAsync must never hold this screen forever. */
 const FETCH_TIMEOUT_MS = 60_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -40,14 +40,12 @@ const COLORS = {
 };
 
 type UpdatePhase =
-    | "checking"
     | "downloading"
     | "ready"
     | "up-to-date"
     | "error";
 
 const phaseLabels: Record<UpdatePhase, string> = {
-    checking: "Checking for updates...",
     downloading: "Downloading update...",
     ready: "Finalizing update...",
     "up-to-date": "NextVibe is up to date!",
@@ -55,7 +53,6 @@ const phaseLabels: Record<UpdatePhase, string> = {
 };
 
 const phaseSubLabels: Record<UpdatePhase, string> = {
-    checking: "Preparing to fetch the latest version...",
     downloading: "The app might restart once the update is ready.",
     ready: "Restarting app in a moment...",
     "up-to-date": "Launching NextVibe...",
@@ -64,7 +61,9 @@ const phaseSubLabels: Record<UpdatePhase, string> = {
 
 export default function EASUpdateScreen() {
     const router = useRouter();
-    const [phase, setPhase] = useState<UpdatePhase>("checking");
+    // Splash only opens this screen when expo-updates found an update at launch.
+    const [phase, setPhase] = useState<UpdatePhase>("downloading");
+    const [hasProgress, setHasProgress] = useState(false);
 
     // ── Reanimated values ────────────────────────────────────────
     const scannerTranslateX = useSharedValue(-60);
@@ -73,7 +72,7 @@ export default function EASUpdateScreen() {
 
     // Continuous Laser / LED / Logo animations
     useEffect(() => {
-        // Scanner animation (checking phase)
+        // Scanner animation (until the download reports progress)
         scannerTranslateX.value = withRepeat(
             withSequence(
                 withTiming(240, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
@@ -94,6 +93,21 @@ export default function EASUpdateScreen() {
         );
     }, []);
 
+    // ── Download progress (native, as bytes arrive) ──────────────
+    useEffect(() => {
+        let shown = 0;
+        return subscribeOtaDownloadProgress((progress) => {
+            // Events come every few KB: move the bar per 1% (and to the end), never back.
+            if (progress <= shown || (progress < 1 && progress - shown < 0.01)) return;
+            shown = progress;
+            setHasProgress(true);
+            downloadProgress.value = withTiming(progress, {
+                duration: 250,
+                easing: Easing.out(Easing.quad),
+            });
+        });
+    }, []);
+
     // ── Update logic ─────────────────────────────────────────────
     useEffect(() => {
         let cancelled = false;
@@ -102,22 +116,12 @@ export default function EASUpdateScreen() {
 
         const run = async () => {
             try {
-                await new Promise((resolve) => setTimeout(resolve, 1500));
-
-                const result = await withTimeout(Updates.checkForUpdateAsync(), CHECK_TIMEOUT_MS, "checkForUpdateAsync");
+                // expo-updates runs one job at a time: this waits for the
+                // download it started at launch, then finds that update on disk.
+                const result = await withTimeout(Updates.fetchUpdateAsync(), FETCH_TIMEOUT_MS, "fetchUpdateAsync");
                 if (cancelled) return;
 
-                if (result.isAvailable) {
-                    setPhase("downloading");
-
-                    downloadProgress.value = withTiming(1, {
-                        duration: 3500,
-                        easing: Easing.out(Easing.quad),
-                    });
-
-                    await withTimeout(Updates.fetchUpdateAsync(), FETCH_TIMEOUT_MS, "fetchUpdateAsync");
-                    if (cancelled) return;
-
+                if (result.isNew || result.isRollBackToEmbedded) {
                     setPhase("ready");
                     // Automatically reload the app
                     setTimeout(async () => {
@@ -191,9 +195,9 @@ export default function EASUpdateScreen() {
                 {/* Progress bar container */}
                 <View style={styles.progressContainer}>
                     <View style={styles.progressBarBg}>
-                        {phase === "downloading" ? (
+                        {phase === "downloading" && hasProgress ? (
                             <Animated.View style={[styles.progressBarFill, rDownloadProgressStyle]} />
-                        ) : phase === "checking" ? (
+                        ) : phase === "downloading" ? (
                             <Animated.View style={[styles.progressBarScanner, rScannerStyle]} />
                         ) : (
                             <View style={[styles.progressBarFill, { width: "100%", backgroundColor: phase === "error" ? COLORS.error : COLORS.success }]} />
