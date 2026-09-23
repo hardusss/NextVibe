@@ -1,11 +1,22 @@
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ban, Flag, Trash2 } from 'lucide-react-native';
+import { Ban, CameraOff, EyeOff, Eye, Flag, PencilLine, Trash2 } from 'lucide-react-native';
 import { useState, useEffect, useRef } from "react";
 import deletePost from "@/src/api/delete.post";
 import ConfirmDialog from "../Toasts/ConfirmDialog";
 import ReportPostModal from "@/components/Shared/Posts/ReportPostModal";
 import BlockUserSheet, { BlockTarget } from "@/components/Shared/Block/BlockUserSheet";
+import CaptionEditor from "@/components/Meet/CaptionEditor";
+import { TAKEDOWN_MESSAGE, TAKEDOWN_TITLE } from "@/components/Meet/takedownCopy";
+import { setMeetPhotoHidden, takeDownMeetPhoto } from "@/src/api/meetPhoto";
+import { bumpMeetPhoto } from "@/src/stores/meetPhotoStore";
+
+/** What changed on a Proof of Meet post through this menu. */
+export type MeetPostChange =
+    | { kind: 'caption'; about: string }
+    | { kind: 'hidden'; hidden: boolean }
+    | { kind: 'removed' }
+    | { kind: 'error'; message: string };
 
 export default function DropDown({
     isVisible,
@@ -19,6 +30,11 @@ export default function DropDown({
     ownerUsername,
     onBlocked,
     useModal = true,
+    meetSlug = null,
+    isCoAuthor = false,
+    about = "",
+    hiddenOnMyProfile = false,
+    onMeetChange,
 }: {
     isVisible: boolean,
     isOwner: boolean,
@@ -32,10 +48,22 @@ export default function DropDown({
     ownerUsername?: string,
     onBlocked?: (userId: number) => void,
     useModal?: boolean,
+    /** A Proof of Meet post: its two people get caption / hide / remove photo instead of Delete. */
+    meetSlug?: string | null,
+    isCoAuthor?: boolean,
+    about?: string,
+    hiddenOnMyProfile?: boolean,
+    onMeetChange?: (change: MeetPostChange) => void,
 }) {
     const [showConfirm, setShowConfirm] = useState(false);
     const [reportModalVisible, setReportModalVisible] = useState(false);
     const [blockTarget, setBlockTarget] = useState<BlockTarget | null>(null);
+    const [showTakedown, setShowTakedown] = useState(false);
+    const [captionOpen, setCaptionOpen] = useState(false);
+    const [hidden, setHidden] = useState(hiddenOnMyProfile);
+    const inMeet = !!meetSlug && (isOwner || isCoAuthor);
+
+    useEffect(() => setHidden(hiddenOnMyProfile), [hiddenOnMyProfile]);
 
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -82,13 +110,59 @@ export default function DropDown({
         }
     };
 
+    const toggleHidden = async () => {
+        onClose();
+        if (!meetSlug) return;
+        try {
+            await setMeetPhotoHidden(meetSlug, !hidden);
+            setHidden(!hidden);
+            onMeetChange?.({ kind: 'hidden', hidden: !hidden });
+        } catch (error: any) {
+            onMeetChange?.({ kind: 'error', message: error?.message ?? "Couldn't update the post. Try again." });
+        }
+    };
+
+    const handleTakedown = async () => {
+        setShowTakedown(false);
+        if (!meetSlug) return;
+        try {
+            await takeDownMeetPhoto(meetSlug);
+            bumpMeetPhoto(meetSlug);
+            onMeetChange?.({ kind: 'removed' });
+            setTimeout(() => onPostDeleted?.(), 200);
+        } catch (error: any) {
+            onMeetChange?.({ kind: 'error', message: error?.message ?? "Couldn't remove the photo. Try again." });
+        }
+    };
+
     const items = [
+        {
+            label: "Edit caption",
+            icon: <PencilLine size={17} color="#C4B5FD" strokeWidth={1.8} />,
+            color: "#A855F7",
+            onClick: () => { onClose(); setTimeout(() => setCaptionOpen(true), 200); },
+            show: inMeet,
+        },
+        {
+            label: hidden ? "Show on profile" : "Hide from profile",
+            icon: hidden ? <Eye size={17} color="#C4B5FD" strokeWidth={1.8} /> : <EyeOff size={17} color="#C4B5FD" strokeWidth={1.8} />,
+            color: "#A855F7",
+            onClick: toggleHidden,
+            show: inMeet,
+        },
+        {
+            label: "Remove photo",
+            icon: <CameraOff size={17} color="#FCA5A5" strokeWidth={1.8} />,
+            color: "#EF4444",
+            onClick: () => { onClose(); setTimeout(() => setShowTakedown(true), 200); },
+            show: inMeet,
+        },
         {
             label: "Report",
             icon: <Flag size={17} color="#C4B5FD" strokeWidth={1.8} />,
             color: "#A855F7",
             onClick: () => { onClose(); setTimeout(() => setReportModalVisible(true), 200); },
-            show: !isOwner,
+            show: !isOwner && !inMeet,
         },
         {
             label: "Block",
@@ -98,14 +172,14 @@ export default function DropDown({
                 onClose();
                 if (ownerId) setTimeout(() => setBlockTarget({ userId: ownerId, username: ownerUsername ?? "" }), 200);
             },
-            show: !isOwner && !!ownerId,
+            show: !isOwner && !inMeet && !!ownerId,
         },
         {
             label: "Delete",
             icon: <Trash2 size={17} color="#FCA5A5" strokeWidth={1.8} />,
             color: "#EF4444",
             onClick: handleDeleteClick,
-            show: isOwner,
+            show: isOwner && !meetSlug,
         },
     ].filter(item => item.show);
 
@@ -132,6 +206,26 @@ export default function DropDown({
                 onClose={() => setBlockTarget(null)}
                 onBlocked={onBlocked}
             />
+            {meetSlug && (
+                <>
+                    <ConfirmDialog
+                        visible={showTakedown}
+                        title={TAKEDOWN_TITLE}
+                        message={TAKEDOWN_MESSAGE}
+                        confirmLabel="Remove photo"
+                        onConfirm={handleTakedown}
+                        onCancel={() => setShowTakedown(false)}
+                        useModal={useModal}
+                    />
+                    <CaptionEditor
+                        visible={captionOpen}
+                        slug={meetSlug}
+                        initial={about ?? ""}
+                        onClose={() => setCaptionOpen(false)}
+                        onSaved={(text) => onMeetChange?.({ kind: 'caption', about: text })}
+                    />
+                </>
+            )}
         </>
     );
 
@@ -141,6 +235,7 @@ export default function DropDown({
         <>
             <Animated.View style={[
                 styles.container,
+                inMeet && { width: 200 },
                 { opacity: opacityAnim, transform: [{ scale: scaleAnim }, { translateY: scaleAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }] }
             ]}>
                 {/* Top gradient line */}

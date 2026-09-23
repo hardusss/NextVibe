@@ -13,9 +13,10 @@ import { useEffect, useRef } from 'react';
 import { useNavigationContainerRef, usePathname, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 import { openMeetSheet } from '@/src/stores/meetSheetStore';
+import { openMeetPhotoSheet } from '@/src/stores/meetPhotoStore';
 import { useAppReady, useAppReadyStore } from './appReadyStore';
 import { usePendingIntent } from './pendingIntent';
-import { isBootstrapPath, MEET_KIND, MEETS_KIND, pickNavigationMethod, PROFILE_PATH, type PendingIntent } from './intents';
+import { isBootstrapPath, MEET_KIND, MEET_PHOTO_KIND, MEETS_KIND, pickNavigationMethod, PROFILE_PATH, type PendingIntent } from './intents';
 
 const TAG = WalletTag.NAV_INTENT;
 /** Never wait longer than this for the Stack to register its state. */
@@ -78,14 +79,15 @@ export function useIntentConsumer(options: { beforeNavigate?: (intent: PendingIn
         const taken = usePendingIntent.getState().consume();
         if (!taken) return;
 
-        if (taken.kind === MEET_KIND && taken.params?.slug) {
-            // A meet link opens the meet sheet over whatever is on screen;
-            // from the start flow, over home.
+        if ((taken.kind === MEET_KIND || taken.kind === MEET_PHOTO_KIND) && taken.params?.slug) {
+            // A meet link opens the meet sheet over whatever is on screen, a
+            // meet photo push the photo sheet; from the start flow, over home.
             try {
                 optionsRef.current.beforeNavigate?.(taken);
-                walletLogger.info(TAG, 'Consuming intent: meet sheet', { id: taken.id, from: pathname, source: taken.source });
+                walletLogger.info(TAG, 'Consuming intent: meet sheet', { id: taken.id, from: pathname, source: taken.source, kind: taken.kind });
                 if (isBootstrapPath(pathname)) router.replace('/home');
-                openMeetSheet(taken.params.slug, taken.source);
+                if (taken.kind === MEET_PHOTO_KIND) openMeetPhotoSheet(taken.params.slug, 'push');
+                else openMeetSheet(taken.params.slug, taken.source);
                 optionsRef.current.afterNavigate?.(taken);
             } catch (e) {
                 walletLogger.error(TAG, 'Opening the meet sheet failed', e, { id: taken.id });

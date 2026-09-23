@@ -38,6 +38,7 @@ import UserBadges from "../Shared/UserBadges";
 import Hyperlink from "react-native-hyperlink";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
+import { CoAuthorAvatars, CoAuthorNames, ProofOfMeetLabel, isProofOfMeetPost, type CoAuthorPerson } from "@/components/Meet/CoAuthorHeader";
 import useWalletAddress from "@/hooks/useWalletAddress";
 import { CollectInfo } from "@/src/api/collect";
 import { CollectResult } from "../NftClaim/MintBottomSheet/useCollectFlow";
@@ -312,6 +313,11 @@ interface Post {
     luma_event_start_time?: string;
     luma_event_end_time?: string;
     event_request_status?: "pending" | "approved" | "rejected" | null;
+    // Proof of Meet: "@owner with @co_author", never collectable
+    post_type?: "post" | "proof_of_meet";
+    co_author?: CoAuthorPerson | null;
+    meet_slug?: string | null;
+    collectable?: boolean;
 }
 
 const formatEventDate = (isoString: string): string => {
@@ -329,6 +335,7 @@ const getVideoUrls = (mediaItem: MediaItem) => ({
 });
 
 const resolveCollectState = (post: Post): CollectState | null => {
+    if (post.collectable === false || isProofOfMeetPost(post)) return null;
     if (!post.is_nft && !post.is_owner) return null;
     if (post.already_claimed) return "claimed";
     if (post.sold_out) return "soldout";
@@ -494,28 +501,59 @@ const PostItem = memo(({
 
             {/* ── Header: avatar | username | dots ── */}
             <View style={styles.postHeader}>
-                <TouchableOpacity
-                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                    onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
-                >
-                    <AvatarWithFrame
-                        avatarUrl={item.owner__avatar}
-                        size={40}
-                        isOg={item.owner__is_og}
-                        ogEdition={item.owner__edition}
-                        invitedCount={item.owner__invited_count}
-                    />
-                </TouchableOpacity>
-                <View style={styles.userInfo}>
+                {isProofOfMeetPost(item) ? (
+                    <>
+                        <TouchableOpacity
+                            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                            onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
+                        >
+                            <CoAuthorAvatars
+                                owner={{ user_id: item.owner__user_id, username: item.owner__username, avatar: item.owner__avatar }}
+                                coAuthor={item.co_author}
+                                size={40}
+                            />
+                        </TouchableOpacity>
+                        <View style={styles.userInfo}>
+                            <CoAuthorNames
+                                owner={{
+                                    user_id: item.owner__user_id, username: item.owner__username, avatar: item.owner__avatar,
+                                    official: item.owner__official, seeker_verified: item.owner__seeker_verified,
+                                }}
+                                coAuthor={item.co_author}
+                                onPressUser={(id) => router.push({ pathname: "/user-profile", params: { id, last_page: "home" } })}
+                                textStyle={styles.username}
+                                mutedColor={theme.textSecondary}
+                                isVisible={isVisible}
+                            />
+                            <ProofOfMeetLabel />
+                        </View>
+                    </>
+                ) : (
+                    <>
                     <TouchableOpacity
-                        style={[styles.usernameRow, { alignSelf: "flex-start" }]}
-                        hitSlop={{ top: 12, bottom: 12, right: 8 }}
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
                     >
-                        <Text style={styles.username} numberOfLines={1}>{item.owner__username}</Text>
-                        <UserBadges official={item.owner__official} seekerVerified={item.owner__seeker_verified} isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
+                        <AvatarWithFrame
+                            avatarUrl={item.owner__avatar}
+                            size={40}
+                            isOg={item.owner__is_og}
+                            ogEdition={item.owner__edition}
+                            invitedCount={item.owner__invited_count}
+                        />
                     </TouchableOpacity>
-                </View>
+                    <View style={styles.userInfo}>
+                        <TouchableOpacity
+                            style={[styles.usernameRow, { alignSelf: "flex-start" }]}
+                            hitSlop={{ top: 12, bottom: 12, right: 8 }}
+                            onPress={() => router.push({ pathname: "/user-profile", params: { id: item.owner__user_id, last_page: "home" } })}
+                        >
+                            <Text style={styles.username} numberOfLines={1}>{item.owner__username}</Text>
+                            <UserBadges official={item.owner__official} seekerVerified={item.owner__seeker_verified} isLooped={true} isVisible={isVisible} haveModal={false} isStatic={false} size={16} />
+                        </TouchableOpacity>
+                    </View>
+                    </>
+                )}
 
 
                 <View style={{ position: "relative", flexDirection: "row" }}>
@@ -546,6 +584,17 @@ const PostItem = memo(({
                         }}
                         ownerId={item.owner__user_id}
                         ownerUsername={item.owner__username}
+                        meetSlug={item.meet_slug ?? null}
+                        isCoAuthor={!!item.co_author && item.co_author.user_id === userID}
+                        about={item.about}
+                        onMeetChange={(change: any) => {
+                            if (change.kind === 'removed') onDelete(item.id);
+                            else if (change.kind === 'error') {
+                                setToastMessage(change.message);
+                                setToastSuccess(false);
+                                setIsToastVisible(true);
+                            }
+                        }}
                         onReportResult={(reported?: boolean, message?: string) => {
                             setDropdownVisible(null);
                             setTimeout(() => {

@@ -48,9 +48,23 @@ class Post(models.Model):
         blank=True,
         help_text="Reputation points earned for creating this post"
     )
+    # Proof of Meet selfie posts (posts/src/meet_photos.py): the owner took the
+    # photo, the co-author is the other person in it. Both profiles show it;
+    # meet_slug marks the post type "proof_of_meet". Never writable by clients.
+    co_author = models.ForeignKey(
+        "user.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="coauthored_posts",
+    )
+    meet_slug = models.CharField(max_length=16, null=True, blank=True, db_index=True)
     objects = PostsManager()
     all_objects = models.Manager()
 
+    @property
+    def is_proof_of_meet(self) -> bool:
+        return bool(self.meet_slug)
 
     def __str__(self):
         return f"Post by {self.owner.username} with id {self.id}"
@@ -304,3 +318,73 @@ class Reputation(models.Model):
     def __str__(self):
         src = "check-in" if self.is_checkin else "interaction"
         return f"{self.given_by.username} → {self.user.username}: +{self.points} rep ({src})"
+
+class MeetPhoto(models.Model):
+    """
+    Proof of Meet v2: the selfie two people take together right after a tap,
+    and the consent around it. One row per attempt; the flow lives in
+    posts/src/meet_photos.py.
+
+    Nothing about a photo is visible to anyone but the two people until the
+    subject approves it. Raw uploads and previews stay in the private bucket;
+    only the composited card is ever public (after approval).
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft"  # the photographer's preview, never shown to the subject
+        PENDING = "pending"  # sent; the subject has 24 h to answer
+        APPROVED = "approved"  # both agreed, moderation passed; minting
+        REJECTED = "rejected"
+        EXPIRED = "expired"
+        MODERATION_FAILED = "moderation_failed"
+        MINTED = "minted"
+        TAKEN_DOWN = "taken_down"
+
+    meet_slug = models.CharField(max_length=16, db_index=True)
+    # The slug while the row is active (not rejected, expired or failed
+    # moderation): one active photo per meet. MySQL can't enforce a unique
+    # constraint with a condition (Django skips creating it there), but it
+    # does enforce a unique column that allows many NULLs.
+    active_slug = models.CharField(max_length=16, null=True, blank=True, unique=True)
+    photographer = models.ForeignKey(
+        "user.User", related_name="meet_photos_taken", on_delete=models.CASCADE,
+    )
+    subject = models.ForeignKey(
+        "user.User", related_name="meet_photos_in", on_delete=models.CASCADE,
+    )
+    # Private bucket key of the EXIF-stripped JPEG; previews sit next to it
+    raw_key = models.CharField(max_length=255)
+    # Public key of the composited story card, once approved
+    final_key = models.CharField(max_length=255, blank=True, default="")
+    # sha256 of the stored raw JPEG (after EXIF stripping), published in the
+    # cNFT metadata so the photo can't be swapped unnoticed
+    raw_sha256 = models.CharField(max_length=64)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    retakes = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    taken_down_at = models.DateTimeField(null=True, blank=True)
+    # Private files are gone (raw + previews)
+    purged_at = models.DateTimeField(null=True, blank=True)
+    asset_id_photographer = models.CharField(max_length=64, blank=True, default="")
+    asset_id_subject = models.CharField(max_length=64, blank=True, default="")
+    # The wallet each leaf went to (co-authors in the metadata)
+    wallet_photographer = models.CharField(max_length=50, blank=True, default="")
+    wallet_subject = models.CharField(max_length=50, blank=True, default="")
+    post = models.ForeignKey(
+        "posts.Post", null=True, blank=True, on_delete=models.SET_NULL, related_name="meet_photos",
+    )
+    # Each co-author can hide the post from their own profile only
+    hidden_by_photographer = models.BooleanField(default=False)
+    hidden_by_subject = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["subject", "status"]),
+            models.Index(fields=["photographer", "status"]),
+        ]
+
+    def __str__(self):
+        return f"Meet photo {self.meet_slug} by {self.photographer_id} with {self.subject_id} ({self.status})"

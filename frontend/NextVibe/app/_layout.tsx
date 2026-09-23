@@ -22,6 +22,7 @@ import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
 import { syncPushToken } from "@/src/notifications/pushToken";
 import { usePushTokenSync } from "@/hooks/usePushTokenSync";
+import { useMeetPhotoInbox } from "@/hooks/useMeetPhotoInbox";
 import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
 import { track } from '@/src/utils/analytics';
@@ -30,11 +31,13 @@ import { setupAxiosInterceptor } from "@/src/utils/axiosInterceptor";
 import { useBleScanner } from "@/hooks/useBleScanner";
 import ProximityPrompt from "@/components/Proximity/ProximityPrompt";
 import MeetSheet from "@/components/Meet/MeetSheet";
+import MeetPhotoSheet from "@/components/Meet/MeetPhotoSheet";
 import { clearProfileCache } from "@/components/ProfilePage/ProfilePage";
 import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import { completeColdStartHandshake } from "@/src/services/walletDeepLink";
 import { markSeekerIntroPending } from "@/src/stores/seekerIntroStore";
+import { handleMeetPhotoSignal, isMeetPhotoEvent } from "@/src/stores/meetPhotoStore";
 import { intentFromNotification, intentFromUrl, isBootstrapPath } from "@/src/navigation/intents";
 import { hydratePendingIntent, setPendingIntent } from "@/src/navigation/pendingIntent";
 import { subscribeIntentLinks } from "@/src/navigation/intentQueue";
@@ -66,12 +69,19 @@ if (process.env.EXPO_PUBLIC_MAPBOX_TOKEN) {
 }
 
 Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
+    handleNotification: async (notification) => {
+        // A Proof of Meet photo push while the app is open: its sheet opens
+        // in the app instead (the received listener below), no banner on top
+        if (notification.request.content.data?.type === 'meet_photo') {
+            return { shouldPlaySound: false, shouldSetBadge: false, shouldShowBanner: false, shouldShowList: true };
+        }
+        return {
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        };
+    },
 });
 
 const defaultFontFamily = 'Dank Mono';
@@ -97,7 +107,7 @@ const MODAL_SCREENS = new Set([
     "result-transaction", "post-details", "event-checkin",
 ]);
 
-const FULLSCREEN_SCREENS = new Set(["camera", "create-post", "select-token", "transaction"]);
+const FULLSCREEN_SCREENS = new Set(["camera", "create-post", "select-token", "transaction", "meet-selfie"]);
 
 function screenOptionsFor(name: string) {
     if (FULLSCREEN_SCREENS.has(name)) {
@@ -117,7 +127,7 @@ const SHARED_SCREENS = [
     "wallet-dash", "wallet-select", "swap", "event-checkin", "post-details",
     "all-tokens", "eas-update", "events", "event-nfc-share", "event-nfc-receive",
     "camera", "u/e", "u/[id]", "u/post/[id]", "blocked-accounts", "u/verified/[username]",
-    "u/meet/[slug]", "u/meets",
+    "u/meet/[slug]", "u/meets", "meet-selfie", "meet-photos",
 ];
 
 export default function RootLayout() {
@@ -143,6 +153,7 @@ export default function RootLayout() {
     useBleScanner(userID !== null);
     // Push token: every launch and every sign-in, including wallet-only accounts.
     usePushTokenSync(userID);
+    useMeetPhotoInbox(userID);
 
     useEffect(() => {
         loadSettings();
@@ -244,9 +255,13 @@ export default function RootLayout() {
         // Badge granted while the app is open: the profile refetches and opens
         // the Seeker sheet once, even if the banner itself is never tapped
         const subscription = Notifications.addNotificationReceivedListener((notification) => {
-            if (notification.request.content.data?.type === 'seeker_verified') {
+            const data = notification.request.content.data;
+            if (data?.type === 'seeker_verified') {
                 clearProfileCache();
                 markSeekerIntroPending();
+            }
+            if (data?.type === 'meet_photo' && typeof data.slug === 'string') {
+                handleMeetPhotoSignal(data.slug, String(data.status ?? ''), 'push');
             }
         });
 
@@ -312,6 +327,12 @@ export default function RootLayout() {
     useEffect(() => {
         const unsubscribeWS = WebSocketService.addListener(async (event: any) => {
             if (!event) return;
+
+            // Proof of Meet photos: a request for you, their answer, "ready"
+            if (isMeetPhotoEvent(event)) {
+                handleMeetPhotoSignal(event.slug, event.status, 'socket');
+                return;
+            }
 
             if (event.type === 'reaction_update' && Array.isArray(event.reactions)) {
                 const otherReaction = event.reactions.find((r: any) => r.reacted_by_me === false);
@@ -444,6 +465,7 @@ export default function RootLayout() {
                                 <PromoBanner />
                                 <ProximityPrompt />
                                 <MeetSheet />
+                                <MeetPhotoSheet />
                             </WebSocketProvider>
                         </ErrorBoundary>
                     </LazorKitProvider>

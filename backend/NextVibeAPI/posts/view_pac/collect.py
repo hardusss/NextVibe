@@ -161,6 +161,11 @@ class CollectPrepareView(APIView):
             return _error("POST_NOT_FOUND", "Post not found.", status.HTTP_404_NOT_FOUND,
                           user=request.user, post_id=post_id)
 
+        if post.meet_slug:
+            # Proof of Meet: the cNFT is only for the two people who met
+            return _error("NOT_COLLECTABLE", "Proof of Meet posts can't be collected.", status.HTTP_400_BAD_REQUEST,
+                          user=request.user, post_id=post_id)
+
         if not request.user.wallet_address:
             return _error("WALLET_REQUIRED", "Connect a wallet to collect.", status.HTTP_400_BAD_REQUEST,
                           user=request.user, post_id=post_id)

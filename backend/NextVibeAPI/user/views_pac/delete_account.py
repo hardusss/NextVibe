@@ -54,5 +54,13 @@ class DeleteAccountView(APIView):
         # check_status caches ban state for 5 min — overwrite it immediately
         cache.set(f"user_ban_status_{user.user_id}", True, 300)
 
+        # Proof of Meet photos the person is in come down everywhere we control
+        # (after the scrub, so the v1 card that replaces them shows the deleted name)
+        try:
+            from posts.src.meet_photos import take_down_all_for
+            take_down_all_for(user)
+        except Exception:
+            logger.error("[Account] Proof of Meet takedown failed for user_id=%s", user.user_id, exc_info=True)
+
         logger.info("[Account] Soft-deleted user_id=%s", user.user_id)
         return Response({"success": True}, status=status.HTTP_200_OK)

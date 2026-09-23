@@ -64,6 +64,23 @@ describe('meetShare', () => {
         );
     });
 
+    it('with a live selfie: a "📸 with <name>" line above the link (same as the backend)', () => {
+        const live = meet({ asset_id: '8xKpQ1v9z3fQ', selfie: true });
+        expect(meetShareText(shareInfoFromMeet(live, 1))).toBe(
+            'Met cakeandroll.skr in person — Proof of Meet on @NextVibeWeb3, verified on Solana. Tap phones. Prove you met.\n' +
+            '📸 with cakeandroll.skr\n' +
+            'https://nextvibe.io/u/meet/ef91kGQl0v0k',
+        );
+        expect(meetShareText(shareInfoFromMeet(live, 99))).toContain('\n📸 javrpelayo with cakeandroll.skr\nhttps://');
+        const atEvent = meet({ selfie: true, source: 'event', event: { id: 7, name: 'Vibeathon' } });
+        expect(meetShareText(shareInfoFromMeet(atEvent, 2))).toBe(
+            'Met javrpelayo at Vibeathon — checked in by tap, Proof of Meet on @NextVibeWeb3.\n' +
+            '📸 with javrpelayo\n' +
+            'https://nextvibe.io/u/meet/ef91kGQl0v0k',
+        );
+        expect(meetShareText(shareInfoFromMeet(meet(), 1))).not.toContain('📸');
+    });
+
     it('someone else sharing it names both people', () => {
         expect(meetShareText(shareInfoFromMeet(meet(), 99))).toMatch(/^javrpelayo met cakeandroll\.skr in person/);
     });

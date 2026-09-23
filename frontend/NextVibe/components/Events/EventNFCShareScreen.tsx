@@ -3,11 +3,10 @@ import { AppState, Platform, ScrollView, StyleSheet, Text, View, useColorScheme 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useKeepAwake } from 'expo-keep-awake';
-import { Camera, CheckCircle2, Radio, ShieldX, WifiOff } from 'lucide-react-native';
+import { CheckCircle2, Radio, ShieldX, WifiOff } from 'lucide-react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import axios from 'axios';
-import { FEATURE_PROOF_OF_MEET } from '@/constants/FeatureFlags';
 import { storage } from '@/src/utils/storage';
 import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 import GetApiUrl from '@/src/utils/url_api';
@@ -370,14 +369,6 @@ export default function EventNFCShareScreen() {
                     atEvent={successMeet.atEvent}
                     actions={
                         <>
-                            {FEATURE_PROOF_OF_MEET && (
-                                <EventCta
-                                    label="Take a selfie together"
-                                    variant="secondary"
-                                    icon={<Camera size={16} color={isDark ? colors.text : '#111827'} />}
-                                    onPress={() => {}}
-                                />
-                            )}
                             <EventCta
                                 label={effectiveIrl ? 'Keep tapping' : 'Continue networking'}
                                 variant={successMeet.slug ? 'secondary' : 'primary'}

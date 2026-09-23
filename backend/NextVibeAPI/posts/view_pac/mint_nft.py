@@ -41,6 +41,12 @@ class MintNftView(APIView):
             logger.info("publish.rejected user=%s post=%s reason=not_approved", request.user.pk, post_id)
             return Response({"error": "Post is not approved."}, status=status.HTTP_400_BAD_REQUEST)
 
+        if post.meet_slug:
+            # Proof of Meet posts are already minted, one cNFT for each of the two people
+            logger.info("publish.rejected user=%s post=%s reason=proof_of_meet", request.user.pk, post_id)
+            return Response({"error": "Proof of Meet posts can't be collected.", "code": "NOT_COLLECTABLE"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         if post.owner != request.user:
             logger.info("publish.rejected user=%s post=%s reason=not_owner", request.user.pk, post_id)
             return Response(

@@ -24,6 +24,7 @@ import formatNumber from "@/src/utils/formatNumber";
 import PopupModal from "../Comments/CommentPopup";
 import { Image } from 'expo-image';
 import DropDown from "../Shared/Posts/PostsDropdown";
+import { CoAuthorAvatars, CoAuthorNames, ProofOfMeetLabel, isProofOfMeetPost, type CoAuthorPerson } from "@/components/Meet/CoAuthorHeader";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import UserBadges from "../Shared/UserBadges";
 import Hyperlink from "react-native-hyperlink";
@@ -285,6 +286,11 @@ interface PostItem {
   is_ai_generated: boolean;
   is_comments_enabled: boolean,
   moderation_status: string,
+  // Proof of Meet: on both people's profiles, "@owner with @co_author"
+  post_type?: "post" | "proof_of_meet";
+  co_author?: CoAuthorPerson | null;
+  owner?: CoAuthorPerson | null;
+  meet_slug?: string | null;
 }
 
 interface User {
@@ -627,6 +633,23 @@ const UserPosts = () => {
         <View style={styles.postHeader}>
           {userData && (
             <>
+              {isProofOfMeetPost(item) && item.owner ? (
+                <>
+                  <CoAuthorAvatars owner={item.owner} coAuthor={item.co_author!} size={40} />
+                  <View style={[styles.userInfo, { marginLeft: 8 }]}>
+                    <CoAuthorNames
+                      owner={item.owner}
+                      coAuthor={item.co_author!}
+                      onPressUser={(id) => router.push({ pathname: "/user-profile", params: { id } })}
+                      textStyle={styles.username}
+                      mutedColor={theme.textSecondary}
+                      isVisible={isVisible}
+                    />
+                    <ProofOfMeetLabel />
+                  </View>
+                </>
+              ) : (
+              <>
               <Image source={{ uri: `${userData.avatar}` }} style={styles.avatar} />
               <View style={styles.userInfo}>
                 <View style={styles.usernameContainer}>
@@ -655,6 +678,8 @@ const UserPosts = () => {
                   <Text style={styles.location}>{item.location}</Text>
                 )}
               </View>
+              </>
+              )}
               <View style={{ position: "relative" }}>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                   style={{ position: "absolute", right: -2, top: -10, zIndex: 10 }}
@@ -688,7 +713,21 @@ const UserPosts = () => {
                   }))}
                   onPostDeleted={() => handlePostDeleted(item.post_id)}
                   ownerId={item.user_id}
-                  ownerUsername={userData?.username}
+                  ownerUsername={item.owner?.username ?? userData?.username}
+                  meetSlug={item.meet_slug ?? null}
+                  isCoAuthor={!!item.co_author && item.co_author.user_id === userID}
+                  about={item.about}
+                  onMeetChange={(change) => {
+                    if (change.kind === 'caption') {
+                      setPosts(prev => prev.map(p => p.post_id === item.post_id ? { ...p, about: change.about } : p));
+                    } else if (change.kind === 'hidden' && change.hidden) {
+                      handlePostDeleted(item.post_id);
+                    } else if (change.kind === 'error') {
+                      setToastMessage(change.message);
+                      setToastSuccess(false);
+                      setIsToastVisible(true);
+                    }
+                  }}
                   // Every post here is theirs — leave the list
                   onBlocked={() => safeBack(router)}
                   onPostDeletedFail={() => {

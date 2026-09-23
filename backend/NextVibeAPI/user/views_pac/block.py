@@ -80,6 +80,11 @@ class BlockUserView(APIView):
             _clear_follow_list_cache(user_id)
             clear_notification_cache(user_id)
 
+        # Proof of Meet requests between the two expire; a live photo stays
+        # until one of them takes it down
+        from posts.src.meet_photos import expire_between
+        expire_between(my_id, target_id)
+
         return Response({"message": "Blocked"}, status=status.HTTP_201_CREATED)
 
 

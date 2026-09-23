@@ -9,9 +9,10 @@ export const FEATURE_CNFT_SEND = false;
 
 /**
  * FEATURE_PROOF_OF_MEET gates the "Take a selfie together" action on the
- * tap success screen. Ships disabled until the Proof of Meet flow lands.
+ * tap success screens (Proof of Meet v2). The server also has to take photos:
+ * the action stays hidden until its private storage is set up.
  */
-export const FEATURE_PROOF_OF_MEET = false;
+export const FEATURE_PROOF_OF_MEET = true;
 
 /**
  * FEATURE_IOS_SWAP gates the wallet Swap quick action on iOS. Ships disabled.

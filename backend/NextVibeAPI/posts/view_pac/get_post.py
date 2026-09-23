@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import Post, Comment, UserCollection
 from ..constants import COLLECT_MAX_EDITIONS
 from ..src.collect_eligibility import is_irl_connected, reserved_editions_active
+from ..src.meet_photos import post_for_meet, post_meet_fields
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
 from user.models import InviteUser
@@ -26,12 +27,13 @@ class GetPostView(APIView):
         post = (
             Post.objects
             .prefetch_related("media")
-            .select_related("owner", "owner__og_avatar")
+            .select_related("owner", "owner__og_avatar", "co_author")
             .filter(id=post_id)
             .first()
         )
         hidden = blocked_user_ids(request.user)
-        if not post or post.owner_id in hidden:
+        if not post or post.owner_id in hidden or (post.co_author_id and (
+                post.co_author_id in hidden or post.co_author.is_baned)):
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         owner = post.owner
@@ -67,6 +69,8 @@ class GetPostView(APIView):
         }
 
         og = getattr(owner, 'og_avatar', None)
+        # Proof of Meet: either of the two people can caption, hide or take it down
+        meet_photo = post_for_meet(post, request.user)
 
         try:
             invite_data = InviteUser.objects.get(owner=owner)
@@ -119,5 +123,10 @@ class GetPostView(APIView):
                 "luma_event_start_time": post.luma_event_start_time,
                 "luma_event_end_time": post.luma_event_end_time,
                 "event_request_status": (lambda req: req.status if req else None)(post.event_requests.filter(user=request.user).first()),
+                **post_meet_fields(post),
+                "is_co_author": post.co_author_id == request.user.user_id,
+                "hidden_on_my_profile": bool(meet_photo and getattr(
+                    meet_photo, "hidden_by_photographer" if meet_photo.photographer_id == request.user.user_id
+                    else "hidden_by_subject")),
             }
         })

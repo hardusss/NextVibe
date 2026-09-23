@@ -47,6 +47,11 @@ export interface MeetData {
     card_url: string;
     story_url: string;
     version: string;
+    /** Their selfie is live: card_url / story_url are the photo card (Proof of Meet v2). */
+    selfie?: boolean;
+    photo?: { photographer_id: number; post_id: number | null } | null;
+    /** The server takes selfies at all (its private storage is set up). */
+    photo_available?: boolean;
 }
 
 /** What the X post needs; built from the meet, or from the tap itself while that loads. */
@@ -59,6 +64,8 @@ export interface MeetShareInfo {
     atEvent: boolean;
     eventName: string | null;
     minted: boolean;
+    /** Their selfie is live: the post gets a "📸 with <name>" line. */
+    selfie?: boolean;
 }
 
 export function isMeetSlug(value: unknown): value is string {
@@ -107,6 +114,7 @@ export function shareInfoFromMeet(meet: MeetData, viewerId?: number | null): Mee
         atEvent: meet.source === 'event',
         eventName: meet.event?.name ?? null,
         minted: !!meet.asset_id,
+        selfie: !!meet.selfie,
     };
 }
 
@@ -114,20 +122,26 @@ export function shareInfoFromMeet(meet: MeetData, viewerId?: number | null): Mee
  * The X post. Names are NextVibe usernames without "@": we don't know
  * anyone's X handle, and "@name" would tag whoever owns it on X. "Verified
  * on Solana" only once the meet is minted; until then it's recorded on
- * NextVibe (the card says so too). The meet-card email writes the same post
- * in Python (backend posts/src/meets.py x_post_text): keep the two in step.
+ * NextVibe (the card says so too). With a live selfie, a "📸 with <name>"
+ * line goes above the link. The meet-card email writes the same post in
+ * Python (backend posts/src/meets.py x_post_text): keep the two in step.
  */
 export function meetShareText(info: MeetShareInfo): string {
     const link = meetPageUrl(info.slug);
+    let photo = '';
+    if (info.selfie) {
+        if (info.other) photo = `📸 with ${info.other}\n`;
+        else if (info.pair) photo = `📸 ${info.pair[0]} with ${info.pair[1]}\n`;
+    }
     const build = (eventName: string | null) => {
         const who = info.other
             ? `Met ${info.other}`
             : info.pair ? `${info.pair[0]} met ${info.pair[1]}` : 'Met someone';
         if (info.atEvent) {
-            return `${who} at ${eventName ?? 'an event'} — checked in by tap, Proof of Meet on ${X_ACCOUNT}.\n${link}`;
+            return `${who} at ${eventName ?? 'an event'} — checked in by tap, Proof of Meet on ${X_ACCOUNT}.\n${photo}${link}`;
         }
         const proof = info.minted ? `Proof of Meet on ${X_ACCOUNT}, verified on Solana.` : `Proof of Meet on ${X_ACCOUNT}.`;
-        return `${who} in person — ${proof} Tap phones. Prove you met.\n${link}`;
+        return `${who} in person — ${proof} Tap phones. Prove you met.\n${photo}${link}`;
     };
     let eventName = info.eventName;
     let text = build(eventName);

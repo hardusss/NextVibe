@@ -24,6 +24,7 @@ import { AlertTriangle, CalendarCheck, Info, Newspaper, Radio, ShieldX, Sparkles
 import EventCta from '@/components/Events/EventCta';
 import MeetCardPreview, { MEET_CARD_ASPECT } from '@/components/Meet/MeetCardPreview';
 import MeetShareActions from '@/components/Meet/MeetShareActions';
+import MeetSelfieCta from '@/components/Meet/MeetSelfieCta';
 import { useMeet } from '@/components/Meet/useMeet';
 import UserBadges from '@/components/Shared/UserBadges';
 import SuccessBurst from '@/components/NftClaim/MintBottomSheet/SuccessBurst';
@@ -266,6 +267,7 @@ export default function ProximityPrompt() {
                     )}
                     <Text style={[styles.message, { color: muted }]}>Reputation added for both of you.</Text>
                     <View style={styles.actions}>
+                        {s.meetSlug && <MeetSelfieCta slug={s.meetSlug} otherUsername={s.peer?.username} onOpenCamera={close} />}
                         {s.meetSlug && (
                             <MeetShareActions
                                 slug={s.meetSlug}

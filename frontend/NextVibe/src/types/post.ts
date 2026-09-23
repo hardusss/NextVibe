@@ -1,5 +1,6 @@
 import { PostMedia } from "@/components/PostDetails/PostMediaItem";
 import { CollectInfo } from "@/src/api/collect";
+import type { CoAuthorPerson } from "@/components/Meet/CoAuthorHeader";
 
 export interface PostData {
     user_id: number;
@@ -34,4 +35,11 @@ export interface PostData {
     luma_event_start_time?: string;
     luma_event_end_time?: string;
     event_request_status?: "pending" | "approved" | "rejected" | null;
+    // Proof of Meet: "@owner with @co_author"; either of the two can caption, hide or take it down
+    post_type?: "post" | "proof_of_meet";
+    co_author?: CoAuthorPerson | null;
+    meet_slug?: string | null;
+    collectable?: boolean;
+    is_co_author?: boolean;
+    hidden_on_my_profile?: boolean;
 }

@@ -15,21 +15,41 @@ function mediaLibrary(): MediaLibraryModule | null {
     return require('expo-media-library') as MediaLibraryModule;
 }
 
+/** The selfie card (Proof of Meet v2) is a JPEG; the v1 card a PNG. The file name has to say which. */
+function isJpeg(url: string, contentType?: string | null): boolean {
+    if (contentType) return /jpe?g/i.test(contentType);
+    return /\.jpe?g$/i.test(url.split('?')[0]);
+}
+
 async function download(url: string, slug: string): Promise<string> {
     if (!FileSystem.cacheDirectory) throw new Error('No cache directory');
-    const target = `${FileSystem.cacheDirectory}nextvibe-meet-${slug.replace(/[^A-Za-z0-9]/g, '')}.png`;
-    const { status, uri } = await FileSystem.downloadAsync(url, target);
+    const name = `${FileSystem.cacheDirectory}nextvibe-meet-${slug.replace(/[^A-Za-z0-9]/g, '')}`;
+    const target = `${name}.${isJpeg(url) ? 'jpg' : 'png'}`;
+    const { status, uri, headers } = await FileSystem.downloadAsync(url, target);
     if (status !== 200) {
         FileSystem.deleteAsync(target, { idempotent: true }).catch(() => {});
         throw new Error(`Meet card download failed (${status})`);
+    }
+    // card.png answers with the selfie JPEG once it's live
+    const type = headers?.['Content-Type'] ?? headers?.['content-type'] ?? null;
+    const jpeg = isJpeg(url, type);
+    if (jpeg !== target.endsWith('.jpg')) {
+        const renamed = `${name}.${jpeg ? 'jpg' : 'png'}`;
+        await FileSystem.moveAsync({ from: uri, to: renamed });
+        return renamed;
     }
     return uri;
 }
 
 async function shareFile(uri: string): Promise<void> {
     const Sharing = nativeSharing();
+    const jpeg = uri.endsWith('.jpg');
     if (Sharing && (await Sharing.isAvailableAsync())) {
-        await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: 'Save your Proof of Meet card' });
+        await Sharing.shareAsync(uri, {
+            mimeType: jpeg ? 'image/jpeg' : 'image/png',
+            UTI: jpeg ? 'public.jpeg' : 'public.png',
+            dialogTitle: 'Save your Proof of Meet card',
+        });
     } else if (Platform.OS === 'ios') {
         await Share.share({ url: uri }); // a local file URL shares the image itself
     } else {

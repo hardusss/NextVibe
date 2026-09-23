@@ -10,7 +10,7 @@
  * can be unit-tested in node and imported from +native-intent.ts.
  */
 import { parseQuery, toAppPath } from '@/src/proximity/payload';
-import { isMeetsLink, isTapLink, meetLinkSlug } from '@/src/utils/meetShare';
+import { isMeetSlug, isMeetsLink, isTapLink, meetLinkSlug } from '@/src/utils/meetShare';
 
 export type IntentSource = 'push' | 'link';
 
@@ -45,6 +45,11 @@ export const MEETS_KIND = 'meets';
  */
 export const TAP_KIND = 'tap';
 export const TAP_PATH = '/event-nfc-share';
+/**
+ * A Proof of Meet photo push (a selfie waiting for your answer, their answer,
+ * "ready"): the photo sheet opens over the current screen, like the meet sheet.
+ */
+export const MEET_PHOTO_KIND = 'meet_photo';
 
 
 /** Splits "/a/b?x=1&y=2" into a pathname and decoded params. */
@@ -113,6 +118,11 @@ export function intentFromNotification(
 
     if (type === 'seeker_verified') {
         return { intent: seekerIntent(id, 'push', now) };
+    }
+    if (type === MEET_PHOTO_KIND && isMeetSlug(data.slug)) {
+        return {
+            intent: { id, path: `/u/meet/${data.slug}`, params: { slug: data.slug }, source: 'push', kind: MEET_PHOTO_KIND, createdAt: now },
+        };
     }
     if (typeof data.external_url === 'string' && data.external_url) {
         return { external: data.external_url };

@@ -7,6 +7,7 @@ import {
     pickNavigationMethod,
     splitHref,
     MEET_KIND,
+    MEET_PHOTO_KIND,
     MEETS_KIND,
     PROFILE_PATH,
     TAP_KIND,
@@ -16,6 +17,16 @@ import {
 const NOW = 1_700_000_000_000;
 
 describe('intentFromNotification', () => {
+    it('a Proof of Meet photo push opens the photo sheet for its meet; older builds follow its url', () => {
+        const data = { type: 'meet_photo', slug: 'ef91kGQl0v0k', status: 'pending', url: 'https://nextvibe.io/u/meet/ef91kGQl0v0k' };
+        expect(intentFromNotification(data, 'n9', NOW).intent).toEqual({
+            id: 'push:n9', path: '/u/meet/ef91kGQl0v0k', params: { slug: 'ef91kGQl0v0k' }, source: 'push',
+            kind: MEET_PHOTO_KIND, createdAt: NOW,
+        });
+        // A bad slug falls back to the url (the plain meet sheet)
+        expect(intentFromNotification({ ...data, slug: '../x' }, 'n10', NOW).intent?.kind).toBe(MEET_KIND);
+    });
+
     it('seeker_verified opens the own profile with the sheet, whatever url the console attached', () => {
         const plain = intentFromNotification({ type: 'seeker_verified' }, 'n1', NOW);
         expect(plain.intent).toEqual({

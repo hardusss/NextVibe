@@ -52,6 +52,17 @@ const umiConfirmed = {
 /** Verified collection NFT address */
 const COLLECTION_ADDRESS = process.env.COLLECTION_ADDRESS!;
 const OG_COLLECTION_ADDRESS = process.env.OG_COLLECTION_ADDRESS!;
+/**
+ * Proof of Meet collection (create it once: `bun run src/create-meet-collection.ts`).
+ * Unset, /mint/meet answers 503 and the Django side keeps retrying.
+ */
+const MEET_COLLECTION_ADDRESS = process.env.MEET_COLLECTION_ADDRESS ?? '';
+/** Every Proof of Meet leaf points at its meet's JSON on the API */
+const MEET_METADATA_PREFIX = process.env.MEET_METADATA_PREFIX ?? 'https://api.nextvibe.io/meta/meet/';
+const MEET_SLUG_RE = /^[0-9A-Za-z]{12}$/;
+/** Bubblegum's on-chain limits (bytes) */
+const MAX_NAME_BYTES = 32;
+const MAX_URI_BYTES = 200;
 /** Merkle tree address for storing compressed NFT leaves */
 const MERKLE_TREE_ADDRESS = process.env.MERKLE_TREE_ADDRESS!;
 
@@ -338,6 +349,83 @@ new Elysia()
             }
         } catch (error) {
             logError("mint_og.send_failed", error, { userId, edition, recipient })
+            set.status = 502
+            return { success: false, error: "MINT_SEND_FAILED" }
+        }
+    })
+
+    /**
+     * POST /mint/meet
+     *
+     * Mints one Proof of Meet cNFT (one leaf per person who met) into the
+     * Proof of Meet collection. Backend-signed and gasless like /mint/og. The
+     * name and metadata URI come from the Django backend, which serves the
+     * JSON (api.nextvibe.io/meta/meet/<slug>.json) and the image; nothing is
+     * fetched here. Creators: only the NextVibe authority, verified, 100 %;
+     * no royalties. Co-authorship lives in the JSON, not in `creators`
+     * (unverified creators get flagged by marketplaces).
+     *
+     * @body recipient - wallet of the person receiving this leaf
+     * @body slug      - the meet's slug (12 characters)
+     * @body name      - on-chain name, at most 32 bytes
+     * @body uri       - `${MEET_METADATA_PREFIX}<slug>.json`
+     */
+    .post("/mint/meet", async ({ body, set }: { body: any, set: any }) => {
+        const { recipient, slug, name, uri } = body || {};
+        if (!MEET_COLLECTION_ADDRESS) {
+            logError("mint_meet.rejected", "MEET_COLLECTION_NOT_CONFIGURED", { slug })
+            set.status = 503
+            return { success: false, error: "MEET_COLLECTION_NOT_CONFIGURED" }
+        }
+        const valid = typeof recipient === 'string' && SOLANA_ADDRESS_RE.test(recipient)
+            && typeof slug === 'string' && MEET_SLUG_RE.test(slug)
+            && typeof name === 'string' && name.length > 0 && Buffer.byteLength(name, 'utf8') <= MAX_NAME_BYTES
+            && uri === `${MEET_METADATA_PREFIX}${slug}.json` && Buffer.byteLength(uri, 'utf8') <= MAX_URI_BYTES
+        if (!valid) {
+            logError("mint_meet.rejected", "INVALID_REQUEST", { slug, recipient })
+            set.status = 400
+            return { success: false, error: "INVALID_REQUEST" }
+        }
+        log("mint_meet.request", { slug, recipient })
+
+        try {
+            const startedAt = Date.now()
+            const { signature, assetId } = await withMintLock(async () => {
+                const leafInfo = await nextLeaf(publicKey(MERKLE_TREE_ADDRESS))
+                const result = await mintToCollectionV1(umi, {
+                    leafOwner: publicKey(recipient),
+                    merkleTree: publicKey(MERKLE_TREE_ADDRESS),
+                    collectionMint: publicKey(MEET_COLLECTION_ADDRESS),
+                    collectionAuthority: umi.identity,
+                    metadata: {
+                        name,
+                        symbol: 'NVMEET',
+                        uri,
+                        sellerFeeBasisPoints: 0,
+                        collection: { key: publicKey(MEET_COLLECTION_ADDRESS), verified: false },
+                        creators: [{ address: umi.identity.publicKey, verified: true, share: 100 }],
+                    },
+                }).sendAndConfirm(umi, {
+                    send: { skipPreflight: true, maxRetries: 3 },
+                    confirm: { commitment: "confirmed" },
+                })
+                return { signature: result.signature, assetId: leafInfo.assetId.toString() }
+            })
+
+            log("mint_meet.confirmed", {
+                slug,
+                signature: bs58.encode(signature),
+                assetId,
+                ms: Date.now() - startedAt,
+            })
+
+            return {
+                success: true,
+                signature: Buffer.from(signature).toString('base64'),
+                assetId,
+            }
+        } catch (error) {
+            logError("mint_meet.send_failed", error, { slug, recipient })
             set.status = 502
             return { success: false, error: "MINT_SEND_FAILED" }
         }

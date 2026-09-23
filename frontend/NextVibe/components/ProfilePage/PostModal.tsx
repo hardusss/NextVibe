@@ -35,6 +35,7 @@ import getPost from "@/src/api/get.post";
 import likePost from "@/src/api/like.post";
 import { requestToAttend } from "@/src/api/event.requests";
 import DropDown from "../Shared/Posts/PostsDropdown";
+import { CoAuthorAvatars, CoAuthorNames, ProofOfMeetLabel, isProofOfMeetPost, type CoAuthorPerson } from "@/components/Meet/CoAuthorHeader";
 import UserBadges from "../Shared/UserBadges";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
@@ -95,6 +96,13 @@ interface PostData {
     luma_event_start_time?: string;
     luma_event_end_time?: string;
     event_request_status?: "pending" | "approved" | "rejected" | null;
+    // Proof of Meet
+    post_type?: "post" | "proof_of_meet";
+    co_author?: CoAuthorPerson | null;
+    meet_slug?: string | null;
+    collectable?: boolean;
+    is_co_author?: boolean;
+    hidden_on_my_profile?: boolean;
 }
 
 interface PostPopupProps {
@@ -298,6 +306,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     };
 
     const resolveCollectState = (p: PostData): CollectState | null => {
+        if (p.collectable === false || isProofOfMeetPost(p)) return null;
         if (p.already_claimed) return "claimed";
         if (p.sold_out) return "soldout";
         if (p.is_nft || p.is_owner) return "collect";
@@ -344,6 +353,25 @@ const PostPopup: React.FC<PostPopupProps> = ({
 
                                 {/* Header */}
                                 <View style={styles.postHeader}>
+                                    {post && isProofOfMeetPost(post) ? (
+                                        <View style={styles.userInfo}>
+                                            <CoAuthorAvatars
+                                                owner={{ user_id: post.user_id, username: post.username, avatar: post.avatar }}
+                                                coAuthor={post.co_author!}
+                                                size={36}
+                                            />
+                                            <View style={{ flex: 1, minWidth: 0, marginLeft: 8 }}>
+                                                <CoAuthorNames
+                                                    owner={{ user_id: post.user_id, username: post.username, avatar: post.avatar, official: post.official, seeker_verified: post.seeker_verified }}
+                                                    coAuthor={post.co_author!}
+                                                    onPressUser={() => {}}
+                                                    textStyle={styles.username}
+                                                    mutedColor="rgba(255,255,255,0.55)"
+                                                />
+                                                <ProofOfMeetLabel />
+                                            </View>
+                                        </View>
+                                    ) : (
                                     <View style={styles.userInfo}>
                                         <AvatarWithFrame
                                             avatarUrl={post?.avatar ?? null}
@@ -365,6 +393,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                             />
                                         </View>
                                     </View>
+                                    )}
 
                                     <View style={styles.headerActions}>
                                         {collectState !== null && !post?.is_luma_event && (
@@ -395,6 +424,17 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                     ownerUsername={post.username}
                                                     onBlocked={handleClose}
                                                     useModal={false}
+                                                    meetSlug={post.meet_slug ?? null}
+                                                    isCoAuthor={!!post.is_co_author}
+                                                    about={post.about}
+                                                    hiddenOnMyProfile={!!post.hidden_on_my_profile}
+                                                    onMeetChange={(change) => {
+                                                        if (change.kind === 'caption') setPost((p) => p ? { ...p, about: change.about } : null);
+                                                        else if (change.kind === 'hidden') {
+                                                            setPost((p) => p ? { ...p, hidden_on_my_profile: change.hidden } : null);
+                                                            setToastConfig({ visible: true, message: change.hidden ? "Hidden from your profile" : "Back on your profile", isSuccess: true });
+                                                        } else if (change.kind === 'error') setToastConfig({ visible: true, message: change.message, isSuccess: false });
+                                                    }}
                                                 />
                                             )}
                                         </View>

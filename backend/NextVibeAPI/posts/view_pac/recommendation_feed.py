@@ -57,10 +57,14 @@ class RecommendationFeedView(APIView):
 
         posts_queryset = (
             Post.objects
-            .select_related('owner', 'owner__og_avatar')
+            .select_related('owner', 'owner__og_avatar', 'co_author')
             .prefetch_related('media')
             .exclude(owner__user_id=user.user_id)
             .exclude(owner__user_id__in=hidden)
+            # Proof of Meet posts: yours as co-author too, and never with someone hidden or banned
+            .exclude(co_author__user_id=user.user_id)
+            .exclude(co_author__user_id__in=hidden)
+            .exclude(co_author__is_baned=True)
             .filter(moderation_status="approved", is_hide=False)
         )
 
@@ -85,6 +89,9 @@ class RecommendationFeedView(APIView):
                 .filter(moderation_status="approved", is_hide=False)
                 .exclude(owner__user_id=user.user_id)
                 .exclude(owner__user_id__in=hidden)
+                .exclude(co_author__user_id=user.user_id)
+                .exclude(co_author__user_id__in=hidden)
+                .exclude(co_author__is_baned=True)
                 .exclude(id__in=seen_ids)
                 .exclude(id__in=[p.id for p in posts_list])
                 .values_list('id', flat=True)[:500]
@@ -94,7 +101,7 @@ class RecommendationFeedView(APIView):
                 random_ids = random.sample(candidate_ids, sample_size)
                 additional = (
                     Post.objects
-                    .select_related('owner', 'owner__og_avatar')
+                    .select_related('owner', 'owner__og_avatar', 'co_author')
                     .prefetch_related('media')
                     .filter(id__in=random_ids, moderation_status="approved")
                 )

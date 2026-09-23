@@ -13,7 +13,10 @@ bun run dev
 
 Runs on http://localhost:3000. Required env vars: `SOLANA_PRIVATE_KEY`
 (base58), `HELIUS_RPC_URL`, `COLLECTION_ADDRESS`, `OG_COLLECTION_ADDRESS`,
-`MERKLE_TREE_ADDRESS`.
+`MERKLE_TREE_ADDRESS`. Proof of Meet also needs `MEET_COLLECTION_ADDRESS`
+(create the collection once with `bun run src/create-meet-collection.ts`);
+until it's set, `/mint/meet` answers 503 and the backend keeps retrying.
+`MEET_METADATA_PREFIX` defaults to `https://api.nextvibe.io/meta/meet/`.
 
 ## Endpoints
 
@@ -32,6 +35,19 @@ Backend-signed mint of an OG badge cNFT (max edition 25).
 
 Body: `{ recipient, userId, edition }`
 Returns: `{ success, signature, assetId }`
+
+### POST /mint/meet
+
+Backend-signed, gasless mint of one Proof of Meet cNFT: one leaf for each of
+the two people who met and took the selfie. Goes into the Proof of Meet
+collection with symbol `NVMEET`, no royalties, and the NextVibe authority as
+the only (verified) creator; the co-authors are listed in the metadata JSON.
+Nothing is fetched here: the Django backend passes the name (at most 32
+bytes) and the metadata URI, which must be `MEET_METADATA_PREFIX<slug>.json`.
+
+Body: `{ recipient, slug, name, uri }`
+Returns: `{ success, signature, assetId }`; `400 INVALID_REQUEST`,
+`503 MEET_COLLECTION_NOT_CONFIGURED`, `502 MINT_SEND_FAILED`
 
 ### POST /collect/prepare
 

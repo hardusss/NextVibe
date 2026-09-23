@@ -7,7 +7,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Prefetch
 from rest_framework.throttling import ScopedRateThrottle
-from user.src.blocking import is_blocked_between
+from user.src.blocking import blocked_user_ids, is_blocked_between
+from ..src.meet_photos import on_profile_q, post_meet_fields, user_brief
 
 User: AbstractUser = get_user_model()
 
@@ -32,21 +33,29 @@ class PostMenuView(APIView):
                 "liked_posts": []
             }, status=status.HTTP_200_OK)
 
+        # Your own posts, plus Proof of Meet posts you're the co-author of
+        hidden = blocked_user_ids(request.user)
         posts_qs = (
             Post.objects
-            .filter(owner__user_id=id, is_hide=False, is_ai_generated=False)
+            .filter(on_profile_q(id), is_hide=False, is_ai_generated=False)
+            .exclude(owner__user_id__in=hidden)
+            .exclude(co_author__user_id__in=hidden)
+            .exclude(co_author__is_baned=True)
         )
         
         if is_event:
             posts_qs = posts_qs.filter(is_luma_event=True)
             total_posts = Post.objects.filter(owner__user_id=id, is_luma_event=True).exclude(moderation_status="denied").count()
         else:
-            total_posts = Post.objects.filter(owner__user_id=id).exclude(moderation_status="denied").count()
+            total_posts = (
+                Post.objects.filter(owner__user_id=id).exclude(moderation_status="denied").count()
+                + posts_qs.filter(co_author__user_id=id).exclude(moderation_status="denied").count()
+            )
 
         posts_qs = (
             posts_qs
             .exclude(moderation_status="denied")
-            .select_related("owner") 
+            .select_related("owner", "co_author")
             .prefetch_related(
                 Prefetch("media", queryset=PostsMedia.objects.all()),
                 Prefetch("event_requests", queryset=EventRequest.objects.filter(user=request.user), to_attr="user_request")
@@ -63,7 +72,8 @@ class PostMenuView(APIView):
                 "liked_posts": []
             }, status=status.HTTP_200_OK)
 
-        user_owner_posts = posts_qs[0].owner
+        # The profile's owner (a co-authored post's owner is the other person)
+        user_owner_posts = User.objects.filter(user_id=id).first() or posts_qs[0].owner
         user_request = request.user
         data = [
             {
@@ -89,6 +99,8 @@ class PostMenuView(APIView):
                 "luma_event_end_time": post.luma_event_end_time,
                 "event_request_status": post.user_request[0].status if hasattr(post, 'user_request') and post.user_request else None,
                 "total_supply": post.total_supply,
+                **post_meet_fields(post),
+                "owner": user_brief(post.owner) if post.meet_slug else None,
             }
             for post in posts_qs
         ]

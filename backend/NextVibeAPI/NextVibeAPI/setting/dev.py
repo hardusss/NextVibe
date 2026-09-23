@@ -121,6 +121,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'posts.tasks.auto_moderation_check',
         'schedule': crontab(minute='*/5'),  # every 5 min
     },
+    # Proof of Meet photos: 24 h expiry, file clean-up, mint retries
+    'sweep-meet-photos-every-10-min': {
+        'task': 'posts.tasks.sweep_meet_photos',
+        'schedule': crontab(minute='*/10'),
+    },
 }
 
 

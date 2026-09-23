@@ -25,9 +25,10 @@ class PublicUserDetailSerializer(serializers.ModelSerializer):
         """
         Calculates total approved posts and synchronizes the 'post_count' field.
         """
-        # Count approved posts from the Post model
+        # Count approved posts from the Post model (Proof of Meet posts count for both people)
+        from posts.src.meet_photos import on_profile_q
         actual_count = Post.objects.filter(
-            owner__user_id=obj.user_id, 
+            on_profile_q(obj.user_id),
             moderation_status="approved"
         ).count()
 

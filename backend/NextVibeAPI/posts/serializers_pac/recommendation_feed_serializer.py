@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from posts.models import Post, PostsMedia
 from posts.src.collect_eligibility import reserved_editions_active
+from posts.src.meet_photos import post_meet_fields
 from django.conf import settings
 
 
@@ -44,6 +45,11 @@ class PostFeedSerializer(serializers.ModelSerializer):
     owner__edition  = serializers.SerializerMethodField()
     owner__invited_count = serializers.SerializerMethodField()
     event_request_status = serializers.SerializerMethodField()
+    # Proof of Meet: "@owner with @co_author", no Collect
+    post_type       = serializers.SerializerMethodField()
+    co_author       = serializers.SerializerMethodField()
+    meet_slug       = serializers.SerializerMethodField()
+    collectable     = serializers.SerializerMethodField()
 
     class Meta:
         model  = Post
@@ -63,6 +69,8 @@ class PostFeedSerializer(serializers.ModelSerializer):
             'luma_event_start_time', 'luma_event_end_time', 'event_request_status',
             # Event post additions
             'on_event', 'reputation_earned',
+            # Proof of Meet
+            'post_type', 'co_author', 'meet_slug', 'collectable',
         ]
 
     def get_owner__avatar(self, obj):
@@ -112,3 +120,15 @@ class PostFeedSerializer(serializers.ModelSerializer):
 
     def get_event_request_status(self, obj):
         return self.context.get('event_request_statuses', {}).get(obj.id)
+
+    def get_post_type(self, obj):
+        return post_meet_fields(obj)['post_type']
+
+    def get_co_author(self, obj):
+        return post_meet_fields(obj)['co_author']
+
+    def get_meet_slug(self, obj):
+        return obj.meet_slug or None
+
+    def get_collectable(self, obj):
+        return post_meet_fields(obj)['collectable']

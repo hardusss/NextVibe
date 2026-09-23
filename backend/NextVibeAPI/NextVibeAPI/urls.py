@@ -5,12 +5,15 @@ from django.conf.urls.static import static
 from chat.views_cherry import CherryEmbedTokenView, CherryMembersView, CherryMuteView, CherryWebhookView
 from user.views_pac.optout import email_optout, push_optout
 from nvcli.webhook import resend_webhook
+from posts.view_pac.meet_photo import MeetMetadataView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/users/', include('user.urls')),
     path('api/v1/posts/', include('posts.urls')),
     path('api/v1/meet/', include('posts.urls_meet')),
+    # Proof of Meet cNFT metadata; both leaves of a meet point here
+    path('meta/meet/<str:slug>.json', MeetMetadataView.as_view(), name='meet_metadata'),
     path('api/v1/wallets/', include('wallet.urls')),
     path('api/v1/chat/', include('chat.urls')),
     path('api/chat/', include('chat.urls')),

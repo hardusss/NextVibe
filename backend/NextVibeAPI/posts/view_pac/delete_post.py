@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from ..models import Post
+from ..models import MeetPhoto, Post
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -25,6 +25,14 @@ class DeletePostView(APIView):
         except Post.DoesNotExist:
             return Response({"error": "Post not foud, check post id"}, status=status.HTTP_404_NOT_FOUND)
         
+        if post and post.meet_slug and post.owner.user_id == request.user.user_id:
+            # A Proof of Meet post is also on the other person's profile: "delete"
+            # (older app versions) hides it from yours only. Removing it for both
+            # is the takedown (/api/v1/meet/<slug>/photo/takedown).
+            MeetPhoto.objects.filter(post=post, photographer=request.user).update(hidden_by_photographer=True)
+            # "Post deleted" is what those versions check for; it is gone from this profile
+            return Response({"data": "Post deleted", "code": "HIDDEN_FROM_PROFILE"}, status=status.HTTP_200_OK)
+
         if post and post.owner.user_id == request.user.user_id:
             try:
                 user = User.objects.get(user_id=request.user.user_id)

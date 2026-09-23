@@ -69,6 +69,7 @@ opencv-python-headless==4.12.0.88
 packaging==25.0
 parsimonious==0.10.0
 pillow==11.3.0
+pillow-heif==1.8.0
 prompt_toolkit==3.0.52
 propcache==0.4.1
 pyasn1==0.6.1

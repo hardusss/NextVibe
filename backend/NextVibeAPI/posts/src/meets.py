@@ -32,7 +32,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
-from posts.models import EventCheckin, EventRequest, Reputation
+from posts.models import EventCheckin, EventRequest, MeetPhoto, Reputation
 from posts.src import geocode
 from user.src.blocking import blocked_user_ids, is_blocked_between
 
@@ -234,6 +234,7 @@ class Meet:
     pair_count: int  # meetings between these two up to this one
     pair_first_at: datetime
     asset_id: str | None = None
+    selfie: bool = False  # their Proof of Meet photo is live (posts/src/meet_photos.py)
 
     @property
     def tier_label(self) -> str:
@@ -253,11 +254,13 @@ def is_banned(user) -> bool:
     return bool(user.is_baned) and not is_deleted(user)
 
 
-def load_meet(slug, viewer=None):
+def load_meet(slug, viewer=None, visible_only=True):
     """
     The Meet behind a slug, or None. Unknown slugs, meets with an account
     banned by moderation, a blocked pair, and (for a signed-in viewer)
     someone the viewer blocked or was blocked by all look the same.
+    visible_only=False skips those checks: a takedown and the cNFT metadata
+    need the meet whoever blocked whom.
     """
     if not is_slug(slug):
         return None
@@ -273,11 +276,12 @@ def load_meet(slug, viewer=None):
     pair = {a.user_id, b.user_id}
     rows = [r for r in rows if {r.user_id, r.given_by_id} == pair]
 
-    if is_banned(a) or is_banned(b) or is_blocked_between(a.user_id, b.user_id):
-        return None
-    viewer_id = getattr(viewer, "user_id", None)
-    if viewer_id and blocked_user_ids(viewer) & pair:
-        return None
+    if visible_only:
+        if is_banned(a) or is_banned(b) or is_blocked_between(a.user_id, b.user_id):
+            return None
+        viewer_id = getattr(viewer, "user_id", None)
+        if viewer_id and blocked_user_ids(viewer) & pair:
+            return None
 
     upto = max(r.created_at for r in rows)
     points = {r.user_id: r.points for r in rows}
@@ -292,6 +296,7 @@ def load_meet(slug, viewer=None):
         tz = geocode.timezone_at(*latlng, country) if latlng else None
 
     pair_count, pair_first_at = pair_history(a.user_id, b.user_id, upto)
+    asset_id, selfie = photo_proof(slug)
     return Meet(
         slug=slug,
         source=source,
@@ -304,8 +309,28 @@ def load_meet(slug, viewer=None):
         tz=tz,
         pair_count=max(pair_count, 1),
         pair_first_at=pair_first_at or first.created_at,
-        asset_id=None,  # meets aren't minted yet; the footer says "recorded on NextVibe"
+        # Minted with a selfie (Proof of Meet v2); otherwise "recorded on NextVibe"
+        asset_id=asset_id,
+        selfie=selfie,
     )
+
+
+def photo_proof(slug):
+    """
+    (the meet's cNFT, the photographer's leaf first, or None; whether the
+    selfie is live). A taken-down photo keeps its cNFT, not the selfie.
+    """
+    photo = (
+        MeetPhoto.objects.filter(meet_slug=slug)
+        .filter(Q(status=MeetPhoto.Status.MINTED) | ~Q(asset_id_photographer="") | ~Q(asset_id_subject=""))
+        .order_by("-created_at", "-id")
+        .values("status", "asset_id_photographer", "asset_id_subject")
+        .first()
+    )
+    if not photo:
+        return None, False
+    asset_id = photo["asset_id_photographer"] or photo["asset_id_subject"] or None
+    return asset_id, photo["status"] == MeetPhoto.Status.MINTED
 
 
 def latest_meet(user):
@@ -411,17 +436,21 @@ def x_post_text(meet, viewer_id=None) -> str:
     (meetShareText in frontend src/utils/meetShare.ts; keep the two in step).
     Names go without "@": we don't know anyone's X handle, and "@name" would
     tag whoever owns it on X. "Verified on Solana" only once the meet is
-    minted. A long event name is shortened until the post fits.
+    minted. With a live selfie, a "📸 with <name>" line goes above the link.
+    A long event name is shortened until the post fits.
     """
     a, b = meet.people
     other = b if viewer_id == a.user_id else a if viewer_id == b.user_id else None
     who = f"Met {other.username}" if other else f"{a.username} met {b.username}"
+    photo = ""
+    if meet.selfie:
+        photo = f"📸 with {other.username}\n" if other else f"📸 {a.username} with {b.username}\n"
 
     def build(event_name):
         if meet.source == "event":
-            return f"{who} at {event_name or 'an event'} — checked in by tap, Proof of Meet on {X_ACCOUNT}.\n{meet.url}"
+            return f"{who} at {event_name or 'an event'} — checked in by tap, Proof of Meet on {X_ACCOUNT}.\n{photo}{meet.url}"
         proof = f"Proof of Meet on {X_ACCOUNT}, verified on Solana." if meet.asset_id else f"Proof of Meet on {X_ACCOUNT}."
-        return f"{who} in person — {proof} Tap phones. Prove you met.\n{meet.url}"
+        return f"{who} in person — {proof} Tap phones. Prove you met.\n{photo}{meet.url}"
 
     event_name = meet.event_name
     text = build(event_name)

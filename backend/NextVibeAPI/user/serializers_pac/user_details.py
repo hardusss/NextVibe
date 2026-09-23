@@ -13,8 +13,9 @@ class UserDetailSerializer(serializers.ModelSerializer):
         exclude = ('password',)
 
     def get_posts_count(self, obj):
-        # get the current number of posts
-        actual_count = Post.objects.filter(owner__user_id=obj.user_id, moderation_status="approved", is_hide=False).count()
+        # get the current number of posts (Proof of Meet posts count for both people)
+        from posts.src.meet_photos import on_profile_q
+        actual_count = Post.objects.filter(on_profile_q(obj.user_id), moderation_status="approved", is_hide=False).count()
         if obj.post_count != actual_count:
             obj.post_count = actual_count
             obj.save(update_fields=['post_count'])

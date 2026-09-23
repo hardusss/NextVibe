@@ -23,6 +23,11 @@ class ModerationCallbackView(APIView):
                 {"error": "Missing post id"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Checks that aren't about a post (Proof of Meet photos and captions,
+        # posts/src/moderation.py) are answered inline; nothing to update here
+        if not str(post_id).isdigit():
+            return Response({"status": "ignored"}, status=status.HTTP_200_OK)
         
         try:
             post = Post.objects.select_related('owner').get(id=post_id)

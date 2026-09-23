@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     ArrowLeft, Palette, Mail, Sparkles, Moon, Droplets, Radar,
-    ShieldCheck, KeyRound, LogOut, ChevronRight, Trash2, Ban
+    ShieldCheck, KeyRound, LogOut, ChevronRight, Trash2, Ban, Camera
 } from "lucide-react-native";
 import getUserDetail from "@/src/api/user.detail";
 import linkEmail from "@/src/api/link.email";
@@ -780,6 +780,24 @@ function PageSettingsContent() {
                                 <View style={styles.rowBody}>
                                     <Text style={styles.rowText}>Blocked Accounts</Text>
                                     <Text style={styles.rowDescription}>People you've blocked</Text>
+                                </View>
+                                <ChevronRight size={18} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                            <RowDivider />
+                            <TouchableOpacity
+                                style={styles.row}
+                                onPress={() => {
+                                    haptics.impact('light');
+                                    router.push("/meet-photos" as any);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <IconChip tint={colors.accentSoft}>
+                                    <Camera size={18} color={colors.accent} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.rowText}>Proof of Meet</Text>
+                                    <Text style={styles.rowDescription}>Selfies you're in · remove a photo</Text>
                                 </View>
                                 <ChevronRight size={18} color={colors.textSecondary} />
                             </TouchableOpacity>

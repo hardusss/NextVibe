@@ -41,6 +41,7 @@ import { ActivityIndicator as CustomActivityIndicator } from "../CustomActivityI
 import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import UserBadges from "../Shared/UserBadges";
+import { CoAuthorAvatars, CoAuthorNames, ProofOfMeetLabel, isProofOfMeetPost } from "@/components/Meet/CoAuthorHeader";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import { CollectResult } from "../NftClaim/MintBottomSheet/useCollectFlow";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
@@ -355,9 +356,10 @@ export default function PostDetailsScreen() {
     const totalComments = visibleComments.reduce((t, c) => t + 1 + (c.replies?.length ?? 0), 0);
 
     let collectState: CollectState | null = null;
-    if (post.is_nft || post.is_owner) {
+    if ((post.is_nft || post.is_owner) && post.collectable !== false && !isProofOfMeetPost(post)) {
         collectState = post.already_claimed ? "claimed" : post.sold_out ? "soldout" : "collect";
     };
+    const coAuthor = isProofOfMeetPost(post) ? post.co_author! : null;
 
 
     return (
@@ -400,19 +402,39 @@ export default function PostDetailsScreen() {
 
                     {/* Header */}
                     <View style={s.postHeader}>
-                        <TouchableOpacity onPress={() => router.push({ pathname: "/user-profile", params: { id: post.user_id } })}>
-                            <AvatarWithFrame avatarUrl={post.avatar} size={42} isOg={post.is_og} ogEdition={post.og_edition} invitedCount={post.invited_count} />
-                        </TouchableOpacity>
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                            <TouchableOpacity
-                                style={{ flexDirection: "row", alignItems: "center", alignSelf: "flex-start" }}
-                                hitSlop={{ top: 12, bottom: 12, right: 8 }}
-                                onPress={() => router.push({ pathname: "/user-profile", params: { id: post.user_id } })}
-                            >
-                                <Text style={[s.username, { color: theme.textPrimary }]} numberOfLines={1}>{post.username}</Text>
-                                <UserBadges official={post.official} seekerVerified={post.seeker_verified} isLooped isVisible haveModal={false} isStatic={false} size={16} />
-                            </TouchableOpacity>
-                        </View>
+                        {coAuthor ? (
+                            <>
+                                <TouchableOpacity onPress={() => router.push({ pathname: "/user-profile", params: { id: post.user_id } })}>
+                                    <CoAuthorAvatars owner={{ user_id: post.user_id, username: post.username, avatar: post.avatar }} coAuthor={coAuthor} size={42} />
+                                </TouchableOpacity>
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                    <CoAuthorNames
+                                        owner={{ user_id: post.user_id, username: post.username, avatar: post.avatar, official: post.official, seeker_verified: post.seeker_verified }}
+                                        coAuthor={coAuthor}
+                                        onPressUser={(id) => router.push({ pathname: "/user-profile", params: { id } })}
+                                        textStyle={[s.username, { color: theme.textPrimary }]}
+                                        mutedColor={theme.textSecondary}
+                                    />
+                                    <ProofOfMeetLabel />
+                                </View>
+                            </>
+                        ) : (
+                            <>
+                                <TouchableOpacity onPress={() => router.push({ pathname: "/user-profile", params: { id: post.user_id } })}>
+                                    <AvatarWithFrame avatarUrl={post.avatar} size={42} isOg={post.is_og} ogEdition={post.og_edition} invitedCount={post.invited_count} />
+                                </TouchableOpacity>
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                    <TouchableOpacity
+                                        style={{ flexDirection: "row", alignItems: "center", alignSelf: "flex-start" }}
+                                        hitSlop={{ top: 12, bottom: 12, right: 8 }}
+                                        onPress={() => router.push({ pathname: "/user-profile", params: { id: post.user_id } })}
+                                    >
+                                        <Text style={[s.username, { color: theme.textPrimary }]} numberOfLines={1}>{post.username}</Text>
+                                        <UserBadges official={post.official} seekerVerified={post.seeker_verified} isLooped isVisible haveModal={false} isStatic={false} size={16} />
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
                         <View style={{ flexDirection: "row", alignItems: "center" }}>
                             {collectState !== null && !post.is_luma_event && (
                                 <ButtonCollect
@@ -432,6 +454,17 @@ export default function PostDetailsScreen() {
                                 onPostDeleted={() => router.back()}
                                 ownerId={post.user_id}
                                 ownerUsername={post.username}
+                                meetSlug={post.meet_slug ?? null}
+                                isCoAuthor={!!post.is_co_author}
+                                about={post.about}
+                                hiddenOnMyProfile={!!post.hidden_on_my_profile}
+                                onMeetChange={(change) => {
+                                    if (change.kind === 'caption') setPost((p) => p ? { ...p, about: change.about } : null);
+                                    else if (change.kind === 'hidden') {
+                                        setPost((p) => p ? { ...p, hidden_on_my_profile: change.hidden } : null);
+                                        setToastConfig({ visible: true, message: change.hidden ? "Hidden from your profile" : "Back on your profile", isSuccess: true });
+                                    } else if (change.kind === 'error') setToastConfig({ visible: true, message: change.message, isSuccess: false });
+                                }}
                                 onReportResult={(reported, msg) => {
                                     setDropdownOpen(false);
                                     if (msg) setToastConfig({ visible: true, message: msg, isSuccess: false });

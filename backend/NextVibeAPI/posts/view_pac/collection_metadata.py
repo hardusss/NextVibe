@@ -5,6 +5,22 @@ from rest_framework import status
 
 class CollectionMetadataView(APIView):
     def get(self, request) -> Response:
+        if request.query_params.get("kind") == "meet":
+            # The Proof of Meet collection (nft-service/src/create-meet-collection.ts)
+            return Response({
+                "name": "NextVibe Proof of Meet",
+                "symbol": "NVMEET",
+                "description": (
+                    "Two people met in person, tapped phones on NextVibe and took one selfie "
+                    "together. Each of them holds one Proof of Meet; nobody else can collect it."
+                ),
+                "image": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
+                "external_url": "https://nextvibe.io",
+                "properties": {
+                    "files": [{"uri": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg", "type": "image/jpeg"}],
+                    "category": "image",
+                },
+            }, status=status.HTTP_200_OK)
         is_og = request.query_params.get("isOg", "").lower() == "true"
         if is_og:
             metadata = {

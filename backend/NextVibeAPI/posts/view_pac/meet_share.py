@@ -7,7 +7,8 @@ from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
-from posts.src import meet_card
+from posts.src import meet_card, meet_photos
+from posts.src.meet_photo_store import public_key, public_url, read_public
 from posts.src.meets import load_meet
 from user.auth import CustomJWTAuthentication
 from user.models import User
@@ -55,6 +56,15 @@ def _not_found():
 def meet_payload(meet, version):
     a, b = meet.people
     text = meet_card.card_text(meet)
+    card_url = meet_card.card_url(meet.slug, "og", version)
+    story_url = meet_card.card_url(meet.slug, "story", version)
+    photo = meet_photos.live_photo(meet.slug) if meet.selfie else None
+    if photo is not None:
+        # The selfie is live: both cards are the photo (JPEG, public on the media host)
+        photo_version = meet_photos.photo_version(photo)
+        card_url = public_url(meet.slug, "og", photo_version)
+        story_url = public_url(meet.slug, "story", photo_version)
+        version = f"{version}-{photo_version}"
     return {
         "slug": meet.slug,
         "url": meet.url,
@@ -85,9 +95,16 @@ def meet_payload(meet, version):
         "asset_id": meet.asset_id,
         "title": f"@{a.username} met @{b.username} · NextVibe",
         "description": _description(meet),
-        "card_url": meet_card.card_url(meet.slug, "og", version),
-        "story_url": meet_card.card_url(meet.slug, "story", version),
+        "card_url": card_url,
+        "story_url": story_url,
         "version": version,
+        # Proof of Meet v2: the two people's selfie, once both approved and it's minted
+        "selfie": photo is not None,
+        "photo": {
+            "photographer_id": photo.photographer_id,
+            "post_id": photo.post_id,
+        } if photo is not None else None,
+        "photo_available": meet_photos.is_available(),
     }
 
 
@@ -129,7 +146,8 @@ class MeetView(APIView):
 
 class MeetCardView(APIView):
     """
-    GET /api/v1/meet/<slug>/card.png?v=og|story — public PNG.
+    GET /api/v1/meet/<slug>/card.png?v=og|story — public PNG (JPEG once the
+    pair's selfie is live: then it's the photo card, cached 5 minutes).
 
     og = 1200×630 (link previews), story = 1080×1350. Cached an hour, with
     an ETag of the card's version (a hash of everything drawn); the JSON
@@ -149,6 +167,17 @@ class MeetCardView(APIView):
             response = HttpResponse(meet_card.not_found_png(variant), status=404, content_type="image/png")
             response["Cache-Control"] = "no-store"
             return response
+
+        if meet.selfie:
+            photo = meet_photos.live_photo(slug)
+            try:
+                jpeg = read_public(public_key(slug, variant))
+            except Exception:
+                jpeg = None  # storage hiccup: the v1 card still works
+            if photo is not None and jpeg is not None:
+                etag = f'"{variant}-photo-{meet_photos.photo_version(photo)}"'
+                # Short cache: a takedown must reach link previews quickly
+                return _png_response(request, etag, lambda: jpeg, content_type="image/jpeg", max_age=300)
 
         etag = f'"{variant}-{meet_card.card_version(meet)}"'
         return _png_response(request, etag, lambda: meet_card.get_card_png(meet, variant)[0])
@@ -178,12 +207,12 @@ class FirstTapCardView(APIView):
         return _png_response(request, etag, lambda: meet_card.get_teaser_png(user)[0])
 
 
-def _png_response(request, etag, png):
-    """200 with the PNG, or 304 when the client already has this version; cached an hour."""
+def _png_response(request, etag, png, content_type="image/png", max_age=3600):
+    """200 with the image, or 304 when the client already has this version; cached an hour."""
     if etag in [tag.strip() for tag in request.headers.get("If-None-Match", "").split(",")]:
         response = HttpResponse(status=304)
     else:
-        response = HttpResponse(png(), content_type="image/png")
+        response = HttpResponse(png(), content_type=content_type)
     response["ETag"] = etag
-    response["Cache-Control"] = "public, max-age=3600"
+    response["Cache-Control"] = f"public, max-age={max_age}"
     return response

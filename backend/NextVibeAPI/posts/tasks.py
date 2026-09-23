@@ -419,3 +419,25 @@ def auto_moderation_check():
     count = outdated_posts.count()
     outdated_posts.delete()
     print(f"Auto moderation removed {count} old pending posts")
+
+# ── Proof of Meet photos (posts/src/meet_photos.py) ──────────────────────
+
+@shared_task
+def mint_meet_photo(photo_id):
+    """Both people approved: mint their cNFTs, then publish the card and the post."""
+    from posts.src.meet_photos import mint
+    mint(photo_id)
+
+
+@shared_task
+def mint_meet_photos_for_user(user_id):
+    """A wallet was connected: mint the Proof of Meet leaves that person is owed."""
+    from posts.src.meet_photos import mint_for_user
+    mint_for_user(user_id)
+
+
+@shared_task
+def sweep_meet_photos():
+    """Every 10 minutes: expire unanswered requests, delete old files, retry mints."""
+    from posts.src.meet_photos import sweep
+    sweep()

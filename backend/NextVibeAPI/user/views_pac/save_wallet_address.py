@@ -2,6 +2,7 @@ import logging
 import httpx
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from user.src.seeker_verification import needs_onchain_check, verify_seeker_in_background
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -9,6 +10,21 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 logger = logging.getLogger(__name__)
+
+def _queue_meet_mints(user_id):
+    try:
+        from posts.models import MeetPhoto
+        from posts.tasks import mint_meet_photos_for_user
+        owed = MeetPhoto.objects.filter(
+            status__in=(MeetPhoto.Status.APPROVED, MeetPhoto.Status.MINTED),
+        ).filter(
+            Q(photographer_id=user_id, asset_id_photographer="") | Q(subject_id=user_id, asset_id_subject=""),
+        )
+        if owed.exists():
+            mint_meet_photos_for_user.delay(user_id)
+    except Exception:
+        logger.warning("SaveWalletAddressView: queueing Proof of Meet mints failed for %s", user_id, exc_info=True)
+
 
 class SaveWalletAddressView(APIView):
     permission_classes = [IsAuthenticated]
@@ -71,6 +87,9 @@ class SaveWalletAddressView(APIView):
                 transaction.on_commit(
                     lambda: verify_seeker_in_background(user_id, wallet_address)
                 )
+            # Proof of Meet cNFTs minted for the other person while this one
+            # had no wallet land now
+            transaction.on_commit(lambda: _queue_meet_mints(request.user.user_id))
         except Exception as e:
             logger.error("SaveWalletAddressView: Failed to save wallet %s: %s", wallet_address, e, exc_info=True)
             return Response(

@@ -11,6 +11,7 @@ import { useRepCountUp } from '@/hooks/useRepCountUp';
 import { MOTION } from '@/constants/motion';
 import MeetCardPreview, { MEET_CARD_ASPECT } from '@/components/Meet/MeetCardPreview';
 import MeetShareActions from '@/components/Meet/MeetShareActions';
+import MeetSelfieCta from '@/components/Meet/MeetSelfieCta';
 import { useMeet } from '@/components/Meet/useMeet';
 import type { MeetShareInfo } from '@/src/utils/meetShare';
 import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
@@ -28,7 +29,7 @@ type MeetSuccessProps = {
     points: number;
     /** CTA block rendered under the reward — screens own their own actions. */
     actions: React.ReactNode;
-    /** The Proof of Meet this tap made: shows its card, Share on X and Save image. */
+    /** The Proof of Meet this tap made: its card, "Take a selfie together", Share on X and Save image. */
     meetSlug?: string | null;
     /** Where the tap happened, for the X post while the meet loads. */
     atEvent?: boolean;
@@ -126,6 +127,7 @@ export default function MeetSuccess({ user, points, actions, meetSlug = null, at
                 entering={reduceMotion ? undefined : FadeInUp.delay(600).duration(MOTION.duration.normal)}
                 style={[styles.actions, meetSlug ? styles.actionsWithShare : null]}
             >
+                {meetSlug && <MeetSelfieCta slug={meetSlug} otherUsername={user?.username} />}
                 {meetSlug && (
                     <MeetShareActions slug={meetSlug} meet={meet} fallback={fallback} viewerId={viewerId} place="tap" />
                 )}
