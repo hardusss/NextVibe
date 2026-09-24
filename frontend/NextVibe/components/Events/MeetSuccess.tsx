@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScrollView, View, Text, StyleSheet, useColorScheme, useWindowDimensions } from 'react-native';
 import { Sparkles, Users } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -13,6 +13,8 @@ import MeetCardPreview, { MEET_CARD_ASPECT } from '@/components/Meet/MeetCardPre
 import MeetShareActions from '@/components/Meet/MeetShareActions';
 import MeetSelfieCta from '@/components/Meet/MeetSelfieCta';
 import { useMeet } from '@/components/Meet/useMeet';
+import SavedOffchainNote from '@/components/Collectibles/SavedOffchainNote';
+import { useCollectibles } from '@/src/stores/collectiblesStore';
 import type { MeetShareInfo } from '@/src/utils/meetShare';
 import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
 
@@ -48,6 +50,9 @@ export default function MeetSuccess({ user, points, actions, meetSlug = null, at
     const displayPoints = useRepCountUp(true, points);
     const { height: windowHeight } = useWindowDimensions();
     const [meetState] = useMeet(meetSlug);
+    // No wallet: the Proof of Meet is saved to the profile; say so, and offer one (never a modal)
+    const noWallet = useCollectibles((s) => s.summary !== null && !s.summary.has_wallet);
+    useEffect(() => { useCollectibles.getState().refreshSummary(); }, [meetSlug]);
     const meet = meetState.status === 'ready' ? meetState.meet : null;
     const showCard = !!meetSlug && meetState.status !== 'missing' && meetState.status !== 'error';
     // Small phones scroll; the card never gets tiny
@@ -123,6 +128,12 @@ export default function MeetSuccess({ user, points, actions, meetSlug = null, at
                 Reputation added for both of you!
             </Animated.Text>
 
+            {noWallet && meetSlug && (
+                <Animated.View entering={enter(520)} style={styles.savedNote}>
+                    <SavedOffchainNote reason="tap" />
+                </Animated.View>
+            )}
+
             <Animated.View
                 entering={reduceMotion ? undefined : FadeInUp.delay(600).duration(MOTION.duration.normal)}
                 style={[styles.actions, meetSlug ? styles.actionsWithShare : null]}
@@ -139,6 +150,10 @@ export default function MeetSuccess({ user, points, actions, meetSlug = null, at
 }
 
 const styles = StyleSheet.create({
+    savedNote: {
+        marginTop: space.md,
+        alignSelf: 'stretch',
+    },
     fullScreenSuccess: {
         flex: 1,
         width: '100%',

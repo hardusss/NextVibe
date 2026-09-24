@@ -23,6 +23,7 @@ import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-
 import { LinearGradient } from "expo-linear-gradient";
 import { storage } from '@/src/utils/storage';
 import PostPopup from "./PostModal";
+import MeetTileDecor, { meetTileOther, type MeetTilePerson } from "./MeetTileDecor";
 
 const screenWidth = Dimensions.get("window").width;
 const padding = 20;
@@ -43,6 +44,10 @@ interface Post {
     is_nft: boolean;
     moderation_status: string;
     is_luma_event?: boolean;
+    /** Proof of Meet selfie posts: "proof_of_meet", on both people's profiles */
+    post_type?: string;
+    owner?: MeetTilePerson | null;
+    co_author?: MeetTilePerson | null;
 }
 
 type MediaCheck =
@@ -137,16 +142,20 @@ interface PostGridCellProps {
     item: Post;
     isFocused: boolean;
     currentUserId: number | null;
+    /** Whose profile this grid is: a Proof of Meet tile shows the other person */
+    profileUserId: number;
     onPress: (item: Post) => void;
 }
 
-const PostGridCell = memo(({ item, isFocused, currentUserId, onPress }: PostGridCellProps) => {
+const PostGridCell = memo(({ item, isFocused, currentUserId, profileUserId, onPress }: PostGridCellProps) => {
     const hasMedia = item.media && Array.isArray(item.media) && item.media.length > 0 && item.media[0]?.media_url;
     const isMediaVideo = hasMedia && item.media ? isVideo(item.media[0].media_url) : false;
     const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
     const isApproved = item.moderation_status === "approved";
     const isPending = item.moderation_status === "pending" && item.user_id === currentUserId;
     const hasBadges = item.is_nft || item.is_ai_generated || item.is_luma_event;
+    // Proof of Meet: who the profile's owner met (undefined for any other post)
+    const metWith = meetTileOther(item, profileUserId);
 
     return (
         <TouchableOpacity
@@ -267,6 +276,8 @@ const PostGridCell = memo(({ item, isFocused, currentUserId, onPress }: PostGrid
                     )}
                 </View>
             )}
+
+            {metWith !== undefined && isApproved && <MeetTileDecor other={metWith} tileSize={imageSize} />}
         </TouchableOpacity>
     );
 });
@@ -391,9 +402,10 @@ const PostGallery = ({
             item={item}
             isFocused={isFocused}
             currentUserId={userID}
+            profileUserId={id}
             onPress={handlePostPress}
         />
-    ), [handlePostPress, isFocused, userID]);
+    ), [handlePostPress, isFocused, userID, id]);
 
     const handleEndReached = useCallback(() => {
         fetchPosts(true);

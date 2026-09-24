@@ -73,12 +73,15 @@ class OgNftMintView(APIView):
             return Response({"error": "Mint failed on service side."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Save success state to database
-        OgAvatarMint.objects.create(
+        og_mint = OgAvatarMint.objects.create(
             user=request.user,
             asset_id=mint_res.get("assetId"),
             signature=mint_res.get("signature"),
             edition=edition,
         )
+        # Shows in the cNFT tab with everything else
+        from posts.src.collectibles import record_og_badge
+        record_og_badge(request.user, og_mint)
         
 
         # Send push notification to user

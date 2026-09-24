@@ -38,9 +38,15 @@ import SuccessBurst from "@/components/NftClaim/MintBottomSheet/SuccessBurst";
 import EventScreenShell from "@/components/Events/EventScreenShell";
 import EventCta from "@/components/Events/EventCta";
 import MintStatusPill from "@/components/Events/MintStatusPill";
+import SavedOffchainNote from "@/components/Collectibles/SavedOffchainNote";
+import { getCollectible } from "@/src/api/collectibles";
+import { useCollectibles } from "@/src/stores/collectiblesStore";
 
 type CheckinState = "idle" | "loading" | "verified" | "not_registered" | "error";
-type MintStatus = "idle" | "minting" | "success" | "failed";
+type MintStatus = "idle" | "minting" | "success" | "saved" | "failed";
+/** A POAP still on its way after the claim answered: look again this often, this many times. */
+const PENDING_CHECK_MS = 6000;
+const PENDING_CHECKS = 10;
 
 export default function EventCheckinScreen() {
     const router = useRouter();
@@ -69,6 +75,9 @@ export default function EventCheckinScreen() {
     const [mintStatus, setMintStatus] = useState<MintStatus>("idle");
     const [mintError, setMintError] = useState<string | null>(null);
     const [earnedPoints, setEarnedPoints] = useState(0);
+    /** The POAP collectible while it's on its way to Solana (the socket or a check says when it lands) */
+    const [pendingPoapId, setPendingPoapId] = useState<number | null>(null);
+    const pendingUpdate = useCollectibles((s) => (pendingPoapId ? s.updates[String(pendingPoapId)] : undefined));
 
     const effectivePostId = postId ?? resolvedPostId;
     const mintStartedRef = useRef(false);
@@ -127,6 +136,36 @@ export default function EventCheckinScreen() {
             startMint(effectivePostId);
         }
     }, [state, effectivePostId]);
+
+    // Landed while the screen is open (socket), or a quiet check now and then
+    useEffect(() => {
+        if (!pendingPoapId) return;
+        if (pendingUpdate?.status === "minted") {
+            setPendingPoapId(null);
+            setMintStatus("success");
+            haptics.notification('success');
+            return;
+        }
+        if (pendingUpdate?.status === "failed") {
+            setPendingPoapId(null);
+            setMintStatus("failed");
+            setMintError("You're checked in. Putting the POAP on Solana didn't work this time. Tap to retry.");
+            return;
+        }
+        let checks = 0;
+        const timer = setInterval(async () => {
+            if (++checks > PENDING_CHECKS) return clearInterval(timer);
+            try {
+                const item = await getCollectible(pendingPoapId);
+                if (!mountedRef.current) return;
+                if (item.onchain || item.status === "failed") {
+                    useCollectibles.getState().applyEvent({ type: "collectible", id: pendingPoapId,
+                        status: item.onchain ? "minted" : "failed", asset_id: item.asset_id });
+                }
+            } catch { /* the next check, or the socket */ }
+        }, PENDING_CHECK_MS);
+        return () => clearInterval(timer);
+    }, [pendingPoapId, pendingUpdate?.status]);
 
     const showError = (error: unknown) => {
         const info = describeProximityError(error, 'checkin');
@@ -213,13 +252,23 @@ export default function EventCheckinScreen() {
                 lng: loc.longitude
             });
             if (!mountedRef.current) return;
-            if (result.success) {
-                setEarnedPoints(result.earned_points || 0);
+            setEarnedPoints(result.earned_points || 0);
+            if (result.status === "offchain") {
+                // No wallet: kept on the profile, a wallet can come any time
+                setMintStatus("saved");
+                useCollectibles.getState().refreshSummary();
+                AccessibilityInfo.announceForAccessibility?.("POAP saved to your profile. Claim it anytime.");
+            } else if (result.success) {
                 setMintStatus("success");
                 haptics.notification('success');
                 AccessibilityInfo.announceForAccessibility?.(
-                    `Event NFT minted. Plus ${result.earned_points || 0} reputation points.`
+                    `Event NFT minted. Plus ${result.earned_points || 0} REP.`
                 );
+            } else if ((result.status === "queued" || result.status === "minting") && result.collectible?.id
+                && !result.collectible?.error) {
+                // Still on its way (the queue had it): the pill keeps saying so until it lands
+                setMintStatus("minting");
+                setPendingPoapId(result.collectible.id);
             } else {
                 setMintStatus("failed");
                 setMintError(result.error || "You're checked in — the POAP mint failed. Tap to retry.");
@@ -347,6 +396,11 @@ export default function EventCheckinScreen() {
                                         error={mintError}
                                         onRetry={() => startMint(effectivePostId)}
                                     />
+                                </Animated.View>
+                            )}
+                            {mintStatus === "saved" && (
+                                <Animated.View entering={enter(560)} style={styles.savedNote}>
+                                    <SavedOffchainNote reason="checkin" />
                                 </Animated.View>
                             )}
                         </View>
@@ -565,6 +619,10 @@ const styles = StyleSheet.create({
         fontSize: typeScale.sub,
         marginTop: space.md,
         includeFontPadding: false,
+    },
+    savedNote: {
+        marginTop: space.md,
+        alignSelf: 'stretch',
     },
     pillWrap: {
         marginTop: space.xs,

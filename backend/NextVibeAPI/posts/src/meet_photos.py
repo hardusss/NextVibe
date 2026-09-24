@@ -12,13 +12,18 @@ Every upload is EXIF-stripped and re-encoded (meet_photo_image), checked by
 the moderation service before the other person can ever see it, and
 rendered with the NextVibe layer on the server (meet_photo_card): the
 preview the photographer sends is that render. The subject has 24 hours.
-Their approval runs moderation again, publishes the card at
-meet/<slug>/story.jpg and og.jpg, then mints one cNFT per person with a
-wallet (the other one gets theirs when they connect a wallet) and creates
-the post both profiles show. Each cNFT lists both people's wallets as its
-creators, next to NextVibe's, so every copy carries both addresses on-chain
-as proof of the meet. Nothing is minted or posted for a photo that wasn't
-approved, and no extra REP is given for a selfie.
+Their approval runs moderation again and the photo goes live right away,
+wallet or not: the card at meet/<slug>/story.jpg and og.jpg, and the post
+both profiles show ("minted" is the status name for live).
+
+The cNFTs are each person's Proof of Meet collectible, recorded at the tap
+(posts/src/collectibles.py): minted then for someone with a wallet, when
+they connect one for someone without. Their metadata shows this photo while
+it's live. Each leaf lists both people's wallets as its creators, next to
+NextVibe's, so every copy carries both addresses on-chain as proof of the
+meet. When the first leaf lands, the photo card is drawn again with its
+asset id. Nothing is posted for a photo that wasn't approved, and no extra
+REP is given for a selfie.
 
 Either person can take it down at any time: the post is deleted, the public
 images turn back into the v1 card at the same URLs, the metadata stops
@@ -33,7 +38,6 @@ import secrets
 import threading
 from datetime import timedelta
 
-import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
@@ -41,7 +45,6 @@ from django.db.models import F, Q, Value
 from django.db.models.functions import Greatest
 from django.utils import timezone
 
-from posts.constants import NFT_SERVICE_URL
 from posts.models import MeetPhoto, Post, PostsMedia
 from posts.src import meet_card, meet_photo_card, moderation, realtime
 from posts.src.meet_card import local_time
@@ -68,7 +71,8 @@ MAX_UPLOADS = 8
 MAX_REJECTIONS = 2
 CAPTION_MAX = 255
 ONCHAIN_NAME_BYTES = 32  # Bubblegum's limit for the on-chain name
-SWEEP_MINT_BATCH = 20
+SWEEP_PUBLISH_BATCH = 20
+PUBLISH_RETRY_AFTER = timedelta(minutes=2)
 PUSH_TITLE = "Proof of Meet"
 TIER_NAMES = {"in_person": "In person", "peer_verified": "Peer verified", "organizer_verified": "Organizer verified"}
 ROLES = ("photographer", "subject")
@@ -80,10 +84,6 @@ class MeetPhotoError(Exception):
     def __init__(self, code, message, http=400, **extra):
         super().__init__(message)
         self.code, self.message, self.http, self.extra = code, message, http, extra
-
-
-class MintError(Exception):
-    pass
 
 
 def _not_found():
@@ -412,15 +412,15 @@ def _after_moderation_failed(photo):
 
 def _after_approve(photo):
     realtime.publish([photo.photographer_id, photo.subject_id], _event(photo.meet_slug, "approved", photo=photo))
-    _enqueue_mint(photo.pk)
+    _enqueue_publish(photo.pk)
 
 
-def _enqueue_mint(photo_id):
+def _enqueue_publish(photo_id):
     try:
-        from posts.tasks import mint_meet_photo
-        mint_meet_photo.delay(photo_id)
+        from posts.tasks import publish_meet_photo
+        publish_meet_photo.delay(photo_id)
     except Exception:
-        # The sweep retries approved photos every 10 minutes
+        # The sweep publishes approved photos every 10 minutes
         logger.warning("meet_photos.enqueue_failed photo=%s", photo_id, exc_info=True)
 
 
@@ -428,11 +428,10 @@ def _enqueue_mint(photo_id):
 
 def onchain_name(meet) -> str:
     """The metadata's name when it fits Bubblegum's 32 bytes; shorter forms otherwise."""
+    from posts.src.collectible_metadata import meet_onchain_name
+
     a, b = meet.people
-    for name in (f"Proof of Meet — @{a.username} × @{b.username}", f"@{a.username} × @{b.username}", "Proof of Meet"):
-        if len(name.encode("utf-8")) <= ONCHAIN_NAME_BYTES:
-            return name
-    return "Proof of Meet"
+    return meet_onchain_name(a.username, b.username)
 
 
 def _listed_wallet(photo, role) -> str:
@@ -462,72 +461,106 @@ def co_author_wallets(photo, meet) -> list:
     return wallets
 
 
-def _mint_leaf(photo, meet, wallet) -> str:
-    body = {
-        "recipient": wallet, "slug": photo.meet_slug, "name": onchain_name(meet), "uri": metadata_url(photo.meet_slug),
-        "coAuthors": co_author_wallets(photo, meet),
-    }
-    try:
-        response = requests.post(f"{NFT_SERVICE_URL}/mint/meet", json=body, timeout=90)
-        data = response.json()
-    except Exception as e:
-        raise MintError(str(e)) from e
-    if not data.get("success") or not data.get("assetId"):
-        raise MintError(data.get("error") or f"HTTP {response.status_code}")
-    return data["assetId"]
-
-
-def mint(photo_id):
+def publish_approved(photo_id):
     """
-    Mint the missing leaves of an approved (or already live) photo, one per
-    person with a wallet; publish once the first exists. Safe to run again:
-    a leaf that exists is never minted twice, and runs don't overlap.
+    Both said yes: the photo goes live now, wallet or not. Safe to run again:
+    runs don't overlap, and a photo that's live (or was taken down) is left alone.
     """
-    guard = f"meet_photo_mint:{photo_id}"
+    guard = f"meet_photo_publish:{photo_id}"
     if not cache.add(guard, 1, 300):
         return
     try:
         photo = MeetPhoto.objects.select_related("photographer", "subject").filter(pk=photo_id).first()
-        if photo is None or photo.status not in (Status.APPROVED, Status.MINTED):
+        if photo is None or photo.status != Status.APPROVED:
             return
         meet = load_meet(photo.meet_slug, visible_only=False)
         if meet is None:
             return
-        for role in ROLES:
-            user = getattr(photo, role)
-            if getattr(photo, f"asset_id_{role}") or not user.wallet_address or is_deleted(user) or user.is_baned:
-                continue
-            try:
-                asset_id = _mint_leaf(photo, meet, user.wallet_address)
-            except MintError as e:
-                logger.warning("meet_photos.mint_failed photo=%s role=%s: %s", photo.pk, role, e)
-                continue
-            MeetPhoto.objects.filter(pk=photo.pk).update(
-                **{f"asset_id_{role}": asset_id, f"wallet_{role}": user.wallet_address},
-            )
-            # The next leaf lists this wallet as a co-author, even if it changes meanwhile
-            setattr(photo, f"wallet_{role}", user.wallet_address)
-            logger.info("meet_photos.minted photo=%s role=%s asset=%s", photo.pk, role, asset_id)
-        photo.refresh_from_db()
-        if photo.status == Status.APPROVED and (photo.asset_id_photographer or photo.asset_id_subject):
-            publish(photo)
+        _ensure_collectibles(photo, meet)
+        _copy_leaves(photo)
+        publish(photo)
     finally:
         cache.delete(guard)
 
 
-def mint_for_user(user_id):
-    """A person connected a wallet: the leaves they're owed land now."""
-    ids = (
-        MeetPhoto.objects.filter(status__in=(Status.APPROVED, Status.MINTED))
-        .filter(Q(photographer_id=user_id, asset_id_photographer="") | Q(subject_id=user_id, asset_id_subject=""))
-        .values_list("pk", flat=True)
+def _ensure_collectibles(photo, meet):
+    """Meets tapped before collectibles were recorded at the tap get theirs now."""
+    from posts.src import collectibles
+
+    people = {photo.photographer.user_id: photo.photographer, photo.subject.user_id: photo.subject}
+    a, b = (people.get(person.user_id) for person in meet.people)
+    if a is None or b is None:
+        return
+    with transaction.atomic():
+        collectibles.record_meet(photo.meet_slug, a, b, when=meet.met_at)
+
+
+def _copy_leaves(photo):
+    """The photo shows the leaves that exist already (minted at the tap)."""
+    from posts.models import Collectible
+
+    minted = dict(
+        Collectible.objects.filter(kind=Collectible.Kind.MEET, source_id=photo.meet_slug,
+                                   status=Collectible.Status.MINTED)
+        .values_list("user_id", "asset_id")
     )
-    for pk in list(ids):
-        mint(pk)
+    wallets = dict(
+        Collectible.objects.filter(kind=Collectible.Kind.MEET, source_id=photo.meet_slug,
+                                   status=Collectible.Status.MINTED)
+        .values_list("user_id", "wallet")
+    )
+    fields = {}
+    for role in ROLES:
+        user_id = getattr(photo, f"{role}_id")
+        if minted.get(user_id) and not getattr(photo, f"asset_id_{role}"):
+            fields[f"asset_id_{role}"] = minted[user_id]
+            fields[f"wallet_{role}"] = wallets.get(user_id) or ""
+    if fields:
+        MeetPhoto.objects.filter(pk=photo.pk).update(**fields)
+        for key, value in fields.items():
+            setattr(photo, key, value)
+
+
+def leaf_minted(row):
+    """
+    Someone's Proof of Meet collectible landed (collectible_mint.py): their
+    photo lists the asset id, and the first leaf redraws the live photo card
+    ("recorded on NextVibe" becomes "verified on Solana · 8xK…3fQ").
+    """
+    photo = (
+        MeetPhoto.objects.filter(meet_slug=row.source_id, status__in=(Status.APPROVED, Status.MINTED))
+        .filter(Q(photographer_id=row.user_id) | Q(subject_id=row.user_id))
+        .select_related("photographer", "subject").order_by("-created_at", "-id").first()
+    )
+    if photo is None:
+        return
+    role = _role(photo, row.user)
+    if getattr(photo, f"asset_id_{role}"):
+        return
+    first = not (photo.asset_id_photographer or photo.asset_id_subject)
+    MeetPhoto.objects.filter(pk=photo.pk).update(**{f"asset_id_{role}": row.asset_id, f"wallet_{role}": row.wallet})
+    setattr(photo, f"asset_id_{role}", row.asset_id)
+    setattr(photo, f"wallet_{role}", row.wallet)
+    if first and photo.status == Status.MINTED:
+        _redraw_cards(photo)
+    logger.info("meet_photos.leaf slug=%s photo=%s role=%s asset=%s", photo.meet_slug, photo.pk, role, row.asset_id)
+
+
+def _redraw_cards(photo):
+    store = private_store()
+    meet = load_meet(photo.meet_slug, visible_only=False)
+    if store is None or meet is None or photo.purged_at:
+        return
+    try:
+        picture = open_jpeg(store.get(photo.raw_key))
+        for variant in ("story", "og"):
+            put_public(public_key(photo.meet_slug, variant), meet_photo_card.render_jpeg(meet, picture, variant))
+    except Exception:
+        logger.warning("meet_photos.redraw_failed slug=%s photo=%s", photo.meet_slug, photo.pk, exc_info=True)
 
 
 def publish(photo):
-    """First leaf minted: the card gets its asset id, and the co-authored post goes up."""
+    """Approved: the card (with an asset id if a leaf exists already) and the co-authored post go up."""
     slug = photo.meet_slug
     meet = load_meet(slug, visible_only=False)
     store = private_store()
@@ -682,7 +715,7 @@ def _purge(photo):
 
 
 def sweep(now=None):
-    """Every 10 minutes (Celery beat): expiry, file clean-up and mint retries."""
+    """Every 10 minutes (Celery beat): expiry, file clean-up and publish retries."""
     now = now or timezone.now()
     for photo in MeetPhoto.objects.filter(status=Status.PENDING, sent_at__lte=now - DECISION_WINDOW):
         _expire(photo, now=now)
@@ -700,15 +733,10 @@ def sweep(now=None):
     for photo in unpurged.filter(due):
         _purge(photo)
 
-    # Leaves someone can receive now: a wallet, an account in good standing, no leaf yet.
-    # Photos nobody can mint for wait for a wallet (SaveWalletAddressView queues those).
-    photographer_owed = Q(asset_id_photographer="", photographer__wallet_address__gt="",
-                          photographer__is_baned=False)
-    subject_owed = Q(asset_id_subject="", subject__wallet_address__gt="", subject__is_baned=False)
-    owed = MeetPhoto.objects.filter(status__in=(Status.APPROVED, Status.MINTED)).filter(
-        photographer_owed | subject_owed)
-    for pk in list(owed.order_by("decided_at").values_list("pk", flat=True)[:SWEEP_MINT_BATCH]):
-        mint(pk)
+    # Approved photos whose publish didn't run (a worker restart, a storage hiccup)
+    stuck = MeetPhoto.objects.filter(status=Status.APPROVED, decided_at__lte=now - PUBLISH_RETRY_AFTER)
+    for pk in list(stuck.order_by("decided_at").values_list("pk", flat=True)[:SWEEP_PUBLISH_BATCH]):
+        publish_approved(pk)
 
 
 # ── Caption and profile visibility ───────────────────────────────────────

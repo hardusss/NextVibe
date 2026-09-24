@@ -14,9 +14,13 @@ import { useNavigationContainerRef, usePathname, useRootNavigationState, useRout
 import { walletLogger, WalletTag } from '@/src/utils/walletLogger';
 import { openMeetSheet } from '@/src/stores/meetSheetStore';
 import { openMeetPhotoSheet } from '@/src/stores/meetPhotoStore';
+import { openConnectWallet } from '@/src/stores/connectWalletStore';
 import { useAppReady, useAppReadyStore } from './appReadyStore';
 import { usePendingIntent } from './pendingIntent';
-import { isBootstrapPath, MEET_KIND, MEET_PHOTO_KIND, MEETS_KIND, pickNavigationMethod, PROFILE_PATH, type PendingIntent } from './intents';
+import {
+    COLLECTIBLES_KIND, isBootstrapPath, MEET_KIND, MEET_PHOTO_KIND, MEETS_KIND, pickNavigationMethod, PROFILE_PATH,
+    WALLET_KIND, type PendingIntent,
+} from './intents';
 
 const TAG = WalletTag.NAV_INTENT;
 /** Never wait longer than this for the Stack to register its state. */
@@ -95,10 +99,25 @@ export function useIntentConsumer(options: { beforeNavigate?: (intent: PendingIn
             return;
         }
 
+        if (taken.kind === WALLET_KIND) {
+            // nextvibe.io/u/wallet: the connect sheet over whatever is on screen
+            try {
+                optionsRef.current.beforeNavigate?.(taken);
+                walletLogger.info(TAG, 'Consuming intent: connect wallet sheet', { id: taken.id, from: pathname, source: taken.source });
+                if (isBootstrapPath(pathname)) router.replace('/home');
+                openConnectWallet('link');
+                optionsRef.current.afterNavigate?.(taken);
+            } catch (e) {
+                walletLogger.error(TAG, 'Opening the connect sheet failed', e, { id: taken.id });
+            }
+            return;
+        }
+
         const firstSegment = segments[0] as string | undefined;
         const method = pickNavigationMethod(pathname, firstSegment, taken);
-        // The profile uses `intent` to open its sheet once per tap, even if it remounts.
-        const params = taken.path === PROFILE_PATH && (taken.kind === 'seeker_verified' || taken.kind === MEETS_KIND)
+        // The profile uses `intent` to open its sheet (or tab) once per tap, even if it remounts.
+        const params = taken.path === PROFILE_PATH
+            && (taken.kind === 'seeker_verified' || taken.kind === MEETS_KIND || taken.kind === COLLECTIBLES_KIND)
             ? { ...(taken.params ?? {}), intent: taken.id }
             : taken.params;
         const href: any = params && Object.keys(params).length ? { pathname: taken.path, params } : taken.path;

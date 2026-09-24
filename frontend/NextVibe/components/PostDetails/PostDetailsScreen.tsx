@@ -42,6 +42,7 @@ import DropDown from "../Shared/Posts/PostsDropdown";
 import Web3Toast from "../Shared/Toasts/Web3Toast";
 import UserBadges from "../Shared/UserBadges";
 import { CoAuthorAvatars, CoAuthorNames, ProofOfMeetLabel, isProofOfMeetPost } from "@/components/Meet/CoAuthorHeader";
+import MeetChainLine from "@/components/Collectibles/MeetChainLine";
 import MintBottomSheet, { MintBottomSheetRef } from "../NftClaim/MintBottomSheet";
 import { CollectResult } from "../NftClaim/MintBottomSheet/useCollectFlow";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
@@ -416,6 +417,8 @@ export default function PostDetailsScreen() {
                                         mutedColor={theme.textSecondary}
                                     />
                                     <ProofOfMeetLabel />
+                                    <MeetChainLine items={post.meet_collectibles} ownerId={post.user_id}
+                                        mutedColor={theme.textSecondary} />
                                 </View>
                             </>
                         ) : (

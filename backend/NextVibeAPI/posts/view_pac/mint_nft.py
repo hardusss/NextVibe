@@ -11,6 +11,7 @@ import requests
 
 from ..constants import COLLECT_MAX_EDITIONS, NFT_SERVICE_URL
 from ..models import PendingClaim, Post, UserCollection
+from ..src import collectibles
 
 User = get_user_model()
 logger = logging.getLogger("posts.collect")
@@ -96,7 +97,7 @@ class MintNftView(APIView):
 
         with transaction.atomic():
             locked = Post.objects.select_for_update().get(id=post.id)
-            UserCollection.objects.create(
+            collection = UserCollection.objects.create(
                 user=request.user,
                 post=locked,
                 asset_id=mint_res.get("assetId"),
@@ -107,6 +108,7 @@ class MintNftView(APIView):
             locked.minted_count += 1
             locked.is_nft = True
             locked.save(update_fields=["minted_count", "is_nft"])
+            collectibles.record_collected(request.user, locked, collection)
 
         logger.info("publish.done user=%s post=%s edition=%s asset=%s",
                     request.user.pk, post_id, edition, mint_res.get("assetId"))

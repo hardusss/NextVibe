@@ -423,21 +423,60 @@ def auto_moderation_check():
 # ── Proof of Meet photos (posts/src/meet_photos.py) ──────────────────────
 
 @shared_task
+def publish_meet_photo(photo_id):
+    """Both people approved: the photo, its cards and the post go live."""
+    from posts.src.meet_photos import publish_approved
+    publish_approved(photo_id)
+
+
+@shared_task
 def mint_meet_photo(photo_id):
-    """Both people approved: mint their cNFTs, then publish the card and the post."""
-    from posts.src.meet_photos import mint
-    mint(photo_id)
+    """The name tasks queued before collectibles had (still in Redis during a deploy)."""
+    from posts.src.meet_photos import publish_approved
+    publish_approved(photo_id)
 
 
 @shared_task
 def mint_meet_photos_for_user(user_id):
-    """A wallet was connected: mint the Proof of Meet leaves that person is owed."""
-    from posts.src.meet_photos import mint_for_user
-    mint_for_user(user_id)
+    """Likewise: a wallet was connected, so that person's queue runs."""
+    from posts.src.collectible_mint import mint_pending_for_user
+    mint_pending_for_user(user_id)
 
 
 @shared_task
 def sweep_meet_photos():
-    """Every 10 minutes: expire unanswered requests, delete old files, retry mints."""
+    """Every 10 minutes: expire unanswered requests, delete old files, retry publishing."""
     from posts.src.meet_photos import sweep
     sweep()
+
+
+# ── Collectibles (posts/src/collectibles.py, collectible_mint.py) ─────────
+
+@shared_task
+def process_collectibles(ids):
+    """Right after a check-in, tap or collect: build the metadata, mint what's queued."""
+    from posts.src.collectible_mint import process
+    process(ids)
+
+
+@shared_task(bind=True, max_retries=8)
+def mint_collectibles_for_user(self, user_id):
+    """A wallet was connected, or Claim / Claim all: that person's queue runs now."""
+    from posts.src.collectible_mint import mint_pending_for_user
+    if mint_pending_for_user(user_id) is None:
+        # Another run has them; this one comes back for what that run doesn't pick up
+        raise self.retry(countdown=15)
+
+
+@shared_task
+def sweep_collectibles():
+    """Every 2 minutes: retries that are due, mints nobody answered, missing metadata."""
+    from posts.src.collectible_mint import sweep
+    sweep()
+
+
+@shared_task
+def send_wallet_reminders():
+    """Hourly: the connect-a-wallet reminders that are due (posts/src/wallet_reminders.py)."""
+    from posts.src.wallet_reminders import run
+    run()

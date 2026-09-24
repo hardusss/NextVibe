@@ -12,6 +12,10 @@ import {
     PROFILE_PATH,
     TAP_KIND,
     TAP_PATH,
+    COLLECTIBLES_KIND,
+    COLLECTIBLES_OPEN_PARAM,
+    WALLET_KIND,
+    WALLET_PATH,
 } from '../intents';
 
 const NOW = 1_700_000_000_000;
@@ -209,5 +213,32 @@ describe('pickNavigationMethod', () => {
     it('pushes shared screens', () => {
         expect(pickNavigationMethod('/home', '(tabs)', post)).toBe('push');
         expect(pickNavigationMethod('/chat-room', '(shared)', post)).toBe('push');
+    });
+});
+
+describe('collectibles links', () => {
+    it('nextvibe.io/u/collectibles opens the own profile on its cNFT tab', () => {
+        for (const url of ['https://nextvibe.io/u/collectibles', 'nextvibe://u/collectibles']) {
+            expect(intentFromUrl(url, false, NOW)).toMatchObject({
+                path: PROFILE_PATH, params: { open: COLLECTIBLES_OPEN_PARAM }, kind: COLLECTIBLES_KIND, source: 'link',
+            });
+        }
+        // The "now on Solana" push
+        expect(intentFromNotification({ type: 'collectibles_minted', url: '/u/collectibles', count: 7 }, 'n', NOW).intent)
+            .toMatchObject({ path: PROFILE_PATH, params: { open: COLLECTIBLES_OPEN_PARAM }, kind: COLLECTIBLES_KIND, source: 'push' });
+    });
+
+    it('nextvibe.io/u/wallet opens the connect sheet (no screen of its own)', () => {
+        expect(intentFromUrl('https://nextvibe.io/u/wallet', true, NOW)).toMatchObject({
+            path: WALLET_PATH, kind: WALLET_KIND, source: 'link',
+        });
+        expect(intentFromNotification({ type: 'wallet_reminder', url: '/u/wallet', step: '24h' }, 'n', NOW).intent)
+            .toMatchObject({ path: WALLET_PATH, kind: WALLET_KIND, source: 'push' });
+    });
+
+    it('both are known /u/ paths (never "Unmatched Route" or home)', () => {
+        expect(isUnknownUPath('https://nextvibe.io/u/collectibles')).toBe(false);
+        expect(isUnknownUPath('https://nextvibe.io/u/wallet')).toBe(false);
+        expect(isUnknownUPath('https://nextvibe.io/u/wallets')).toBe(true);
     });
 });

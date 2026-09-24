@@ -62,5 +62,12 @@ class DeleteAccountView(APIView):
         except Exception:
             logger.error("[Account] Proof of Meet takedown failed for user_id=%s", user.user_id, exc_info=True)
 
+        # Collectibles not on Solana yet go with the account; minted ones stay on-chain
+        try:
+            from posts.src.collectibles import forget_account
+            forget_account(user)
+        except Exception:
+            logger.error("[Account] Collectibles clean-up failed for user_id=%s", user.user_id, exc_info=True)
+
         logger.info("[Account] Soft-deleted user_id=%s", user.user_id)
         return Response({"success": True}, status=status.HTTP_200_OK)

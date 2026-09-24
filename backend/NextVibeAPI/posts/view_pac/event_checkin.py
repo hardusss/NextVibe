@@ -1,15 +1,15 @@
 import logging
 import random
+import time
 
-import requests
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from ..models import Post, EventRequest, EventCheckin, UserCollection, Reputation
-from ..constants import NFT_SERVICE_URL
+from ..models import Collectible, Post, EventRequest, EventCheckin, Reputation
+from ..src import collectibles
 
 logger = logging.getLogger("posts.checkin")
 
@@ -17,9 +17,10 @@ logger = logging.getLogger("posts.checkin")
 def grant_checkin(user, post, h3_geo=None):
     """Idempotently record a verified check-in.
 
-    Creates the EventCheckin (mint_status defaults to 'pending' — that row is
-    the pending-mint record for the POAP) and the Reputation(source='checkin')
-    award, so both exist even if the cNFT mint later fails or never runs.
+    Creates the EventCheckin, the Reputation(source='checkin') award and the
+    POAP collectible, in one transaction and with or without a wallet: the
+    POAP is queued (and minted right away) for someone with a wallet, saved
+    off-chain for someone without (posts/src/collectibles.py).
     Returns (checkin, earned_points).
     """
     with transaction.atomic():
@@ -48,6 +49,8 @@ def grant_checkin(user, post, h3_geo=None):
                 h3_geo=h3_geo,
                 source='checkin',
             )
+
+        collectibles.record_poap(user, post, when=checkin.checked_in_at)
 
     logger.info(
         "checkin.granted user=%s post=%s points=%s new_checkin=%s new_rep=%s",
@@ -144,13 +147,27 @@ class EventCheckinView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+SAVED_TEXT = "Saved to your profile · Claim anytime"
+SAVED_TEXT_OLD_APPS = "Saved to your profile. Connect a wallet anytime to put it on Solana."
+QUEUED_TEXT = "Putting it on Solana. It lands in a minute."
+MINT_FAILED_TEXT = "You're checked in. Putting the POAP on Solana didn't work this time. Tap to retry."
+# How long the check-in screen may wait for a worker that's minting this POAP
+MINT_WAIT_SECONDS = 45
+
+
 class ClaimEventNftView(APIView):
     """POST /posts/claim-event-cnft/<post_id>/
 
-    Mints the POAP cNFT for an already checked-in user. The check-in itself
-    (EventCheckin + Reputation) is granted at verification time by
-    grant_checkin — this view only performs the mint and transitions the
-    check-in's mint_status, so a mint failure never un-checks anyone in.
+    The check-in's POAP. The check-in recorded it already (grant_checkin):
+    queued for someone with a wallet, off-chain for someone without. This
+    view answers where it stands and, with a wallet, mints it now (or waits
+    for the worker already minting it), so the check-in screen can say it
+    landed. A failure never un-checks anyone in; the row retries by itself.
+
+    Always 200 once checked in: `status` is the collectible's, `success`
+    means it's on Solana. Apps that send `wallet_optional` treat an off-chain
+    POAP as done ("Saved to your profile"); older ones read success=false and
+    show the text in their retry pill.
     """
     permission_classes = [IsAuthenticated]
 
@@ -176,88 +193,72 @@ class ClaimEventNftView(APIView):
         ).first()
         earned_points = existing_rep.points if existing_rep else 0
 
-        if UserCollection.objects.filter(user=request.user, post=post).exists():
-            if checkin.mint_status != EventCheckin.MintStatus.MINTED:
-                checkin.mint_status = EventCheckin.MintStatus.MINTED
-                checkin.save(update_fields=['mint_status'])
-            return Response({
-                "success": True,
-                "already_owned": True,
-                "message": "You already have an NFT for this event.",
-                "earned_points": earned_points,
-            }, status=status.HTTP_200_OK)
-
-        if not request.user.wallet_address:
-            return Response({"error": "No wallet address. Please link your wallet."}, status=status.HTTP_400_BAD_REQUEST)
-
-        total_supply = int(post.total_supply if post.total_supply is not None else 50)
-        if int(post.minted_count) >= total_supply:
+        row = Collectible.objects.filter(user=request.user, kind=Collectible.Kind.POAP, source_id=str(post.id)).first()
+        if row is None:
+            # Checked in before POAPs were recorded at check-in
+            with transaction.atomic():
+                row = collectibles.record_poap(request.user, post, when=checkin.checked_in_at)
+        if row is None:
             return Response({"error": "NFTs for this event are sold out."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Provisional edition for the mint request; the DB writes below re-run
-        # under a row lock, so concurrent claims can't double-write a row —
-        # only the on-chain edition number can drift in a race.
-        edition = post.minted_count + 1
+        wallet_optional = bool(request.data.get("wallet_optional"))
+        if row.status == Collectible.Status.MINTED:
+            return self._answer(row, earned_points, already_owned=True,
+                                message="You already have an NFT for this event.")
 
-        try:
-            mint_res = requests.post(
-                url=f"{NFT_SERVICE_URL}/mint",
-                json={
-                    "recipient": request.user.wallet_address,
-                    "postId": post.id,
-                    "edition": edition,
-                },
-                timeout=90,
-            ).json()
-        except Exception:
-            checkin.mint_status = EventCheckin.MintStatus.FAILED
-            checkin.save(update_fields=['mint_status'])
-            logger.error(
-                "checkin.mint_error user=%s post=%s edition=%s",
-                request.user.pk, post.id, edition, exc_info=True,
-            )
-            return Response(
-                {"error": "Minting service error. Please try again."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        if not collectibles.can_receive(request.user):
+            logger.info("checkin.poap_saved_offchain user=%s post=%s", request.user.pk, post.id)
+            return self._answer(row, earned_points, message=SAVED_TEXT,
+                                error=None if wallet_optional else SAVED_TEXT_OLD_APPS)
 
-        if not mint_res.get("success"):
-            checkin.mint_status = EventCheckin.MintStatus.FAILED
-            checkin.save(update_fields=['mint_status'])
-            logger.error(
-                "checkin.mint_rejected user=%s post=%s edition=%s service_error=%s",
-                request.user.pk, post.id, edition, mint_res.get('error'),
-            )
-            return Response(
-                {"error": f"Failed to mint NFT: {mint_res.get('error', 'Unknown error')}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if row.status in collectibles.CLAIMABLE:
+            try:
+                row = collectibles.claim(request.user, row.pk)
+            except collectibles.CollectibleError:
+                row.refresh_from_db()
+        row = self._mint_now(row)
+        if row.status == Collectible.Status.MINTED:
+            logger.info("checkin.minted user=%s post=%s edition=%s", request.user.pk, post.id, row.edition)
+            return self._answer(row, earned_points, message="Event NFT minted successfully!")
+        if row.status in collectibles.PENDING and not row.last_error:
+            return self._answer(row, earned_points, message=QUEUED_TEXT, error=QUEUED_TEXT)
+        logger.warning("checkin.mint_not_yet user=%s post=%s status=%s error=%s",
+                       request.user.pk, post.id, row.status, row.last_error)
+        return self._answer(row, earned_points, message=MINT_FAILED_TEXT, error=MINT_FAILED_TEXT)
 
-        with transaction.atomic():
-            locked_post = Post.objects.select_for_update().get(id=post.id)
-            UserCollection.objects.create(
-                user=request.user,
-                post=locked_post,
-                asset_id=mint_res.get("assetId"),
-                signature=mint_res.get("signature"),
-                edition=edition,
-                price=0,
-            )
-            locked_post.minted_count += 1
-            locked_post.is_nft = True
-            locked_post.save(update_fields=["minted_count", "is_nft"])
-            checkin.mint_status = EventCheckin.MintStatus.MINTED
-            checkin.save(update_fields=['mint_status'])
+    def _mint_now(self, row):
+        """Mint it in this request (the screen waits); if a worker has it, wait for that one."""
+        from ..src import collectible_mint
 
-        logger.info(
-            "checkin.minted user=%s post=%s edition=%s",
-            request.user.pk, post.id, edition,
-        )
-        return Response({
-            "success": True,
-            "message": "Event NFT minted successfully!",
+        if row.status == Collectible.Status.QUEUED:
+            if collectible_mint.budget_left() < 1 or not collectible_mint.tree_has_room(1):
+                return row  # it waits in the queue
+            minted = collectible_mint.mint_row(row.pk, force=True)
+            if minted is not None:
+                return minted
+        deadline = time.monotonic() + MINT_WAIT_SECONDS
+        while time.monotonic() < deadline:
+            row.refresh_from_db()
+            if row.status != Collectible.Status.MINTING:
+                break
+            time.sleep(0.5)
+        return row
+
+    def _answer(self, row, earned_points, message, error=None, already_owned=False):
+        onchain = row.status == Collectible.Status.MINTED
+        payload = {
+            "success": onchain or (error is None and row.status == Collectible.Status.OFFCHAIN),
+            "status": row.status,
+            "saved": True,
+            "already_owned": already_owned,
+            "message": message,
             "earned_points": earned_points,
-        }, status=status.HTTP_200_OK)
+            "collectible": collectibles.card(row, owner=True),
+        }
+        if error and not onchain:
+            payload["success"] = False
+            payload["error"] = error
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 class EventCheckinListView(APIView):

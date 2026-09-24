@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, forwardRef, useImperativeHandle, useState } from 'react';
+import React, { useCallback, useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
 import {
     Text, StyleSheet, View, useColorScheme,
     TouchableOpacity, Linking,
@@ -19,7 +19,7 @@ import { X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 
-import ButtonWallet from '../../ProfilePage/ButtonWallet';
+import { openConnectWallet } from '@/src/stores/connectWalletStore';
 import { CollectInfo } from '@/src/api/collect';
 import { useCollectFlow, CollectError, CollectResult } from './useCollectFlow';
 import HeroCard from './HeroCard';
@@ -101,6 +101,11 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
 
     const [visible, setVisible] = useState(false);
     const { status, error, result, run, reset, walletType } = useCollectFlow(props.postId, props.isOwner);
+    // Connected from this sheet: the collect goes on at once, before the
+    // caller's wallet state catches up
+    const [connectedHere, setConnectedHere] = useState(false);
+    const [collectAfterConnect, setCollectAfterConnect] = useState(false);
+    const walletConnected = props.walletConnected || connectedHere;
 
     const info: CollectInfo = props.collect ?? {
         minted: 0, total: 50, claimedByMe: false, irlEligible: false, reservedEditionsActive: false,
@@ -202,7 +207,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         opacity: backdropOpacity.value,
     }));
 
-    const canCollect = props.walletConnected
+    const canCollect = walletConnected
         && status === 'idle'
         && !info.claimedByMe
         && (props.isOwner || editionsLeft > 0);
@@ -224,6 +229,31 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
             if (outcome.kind === 'error') playError();
         }
     };
+
+    /**
+     * No wallet: collecting a post still needs one (everything else doesn't).
+     * The connect sheet opens (this sheet steps aside: a bottom sheet can't
+     * show over a Modal on Android), and once the wallet is saved the sheet
+     * comes back and the collect runs in one go.
+     */
+    const handleConnectWallet = () => {
+        closeSheet(() => {
+            reset();
+            swipeRef.current?.reset();
+            openConnectWallet('collect', () => {
+                setConnectedHere(true);
+                openSheet();
+                setCollectAfterConnect(true);
+            });
+        });
+    };
+
+    useEffect(() => {
+        if (!collectAfterConnect || !visible || !walletConnected || status !== 'idle') return;
+        setCollectAfterConnect(false);
+        executeCollect();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [collectAfterConnect, visible, walletConnected, status]);
 
     /**
      * Opens the in-app wallet on the Collectibles tab with the minted asset
@@ -390,8 +420,16 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                     <View style={{ flex: 1 }} />
 
                     {/* Footer: wallet connect / swipe track / success actions */}
-                    {!props.walletConnected ? (
-                        <ButtonWallet widthButton={"100%"} page={props.page} />
+                    {!walletConnected ? (
+                        <View style={styles.successActions}>
+                            <TouchableOpacity
+                                style={[styles.primaryBtn, { backgroundColor: c.accent }]}
+                                onPress={handleConnectWallet}
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.primaryBtnText}>Connect a wallet to collect</Text>
+                            </TouchableOpacity>
+                        </View>
                     ) : status === 'success' ? (
                         <View style={styles.successActions}>
                             <TouchableOpacity

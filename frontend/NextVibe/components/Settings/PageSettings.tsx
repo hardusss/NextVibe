@@ -6,8 +6,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     ArrowLeft, Palette, Mail, Sparkles, Moon, Droplets, Radar,
-    ShieldCheck, KeyRound, LogOut, ChevronRight, Trash2, Ban, Camera
+    ShieldCheck, KeyRound, LogOut, ChevronRight, Trash2, Ban, Camera, BellRing
 } from "lucide-react-native";
+import { getNotificationSettings, setWalletReminders as saveWalletReminders } from "@/src/api/collectibles";
 import getUserDetail from "@/src/api/user.detail";
 import linkEmail from "@/src/api/link.email";
 import verifySeeker from "@/src/api/verify.seeker";
@@ -114,6 +115,8 @@ function PageSettingsContent() {
     const [toastMessage, setToastMessage] = useState("");
     const [toastSuccess, setToastSuccess] = useState(true);
     const [isBluetoothEnabled, setIsBluetoothEnabled] = useState<boolean>(true);
+    /** Settings → Notifications → Wallet reminders (on the server; on by default) */
+    const [walletReminders, setWalletRemindersState] = useState<boolean>(true);
     const [newEmail, setNewEmail] = useState("");
     const [isLinkingEmail, setIsLinkingEmail] = useState(false);
     const [isVerifyingSeeker, setIsVerifyingSeeker] = useState(false);
@@ -191,6 +194,24 @@ function PageSettingsContent() {
         };
         loadBluetoothSetting();
     }, []);
+
+    useEffect(() => {
+        getNotificationSettings()
+            .then((settings) => setWalletRemindersState(settings.wallet_reminders))
+            .catch(() => { /* keeps the default */ });
+    }, []);
+
+    const handleToggleWalletReminders = async (newValue: boolean) => {
+        haptics.selection();
+        setWalletRemindersState(newValue);
+        try {
+            const saved = await saveWalletReminders(newValue);
+            setWalletRemindersState(saved.wallet_reminders);
+        } catch {
+            setWalletRemindersState(!newValue);
+            showToast("Couldn't save that. Try again.", false);
+        }
+    };
 
     const handleToggleBluetooth = async (newValue: boolean) => {
         haptics.selection();
@@ -696,6 +717,26 @@ function PageSettingsContent() {
                                 <Switch
                                     value={isBluetoothEnabled}
                                     onValueChange={handleToggleBluetooth}
+                                    color={colors.accent}
+                                />
+                            </View>
+                        </View>
+
+                        <Text style={styles.sectionHeader}>NOTIFICATIONS</Text>
+                        <View style={styles.card}>
+                            <View style={styles.row}>
+                                <IconChip tint={colors.accentSoft}>
+                                    <BellRing size={18} color={colors.accent} />
+                                </IconChip>
+                                <View style={styles.rowBody}>
+                                    <Text style={styles.rowText}>Wallet reminders</Text>
+                                    <Text style={styles.rowDescription}>
+                                        A few reminders to connect a wallet while collectibles are saved off-chain
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={walletReminders}
+                                    onValueChange={handleToggleWalletReminders}
                                     color={colors.accent}
                                 />
                             </View>

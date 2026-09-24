@@ -3,6 +3,83 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 24 — Wallet-optional NextVibe: check in, tap and take the selfie now, claim on Solana later
+- feat(backend): one `Collectible` table is the single source of truth for everything a person holds from NextVibe (POAP, Proof of Meet, collected post, OG badge), on Solana or not: status offchain → queued → minting → minted (or failed), wallet, asset id, signature, attempts, last error, and the metadata frozen when it was recorded. It is unique on (user, kind, source_id), which is the double-mint guard, and the worker moves a row from queued to minting with a compare-and-set, so Claim, a wallet connect and the sweep can race without a second mint. The check-in, both tap flows, the selfie, post collect and the OG badge record their row inside their own transaction, in a savepoint so recording can never break the action. With a wallet the row is queued and minted right away; without one it is saved off-chain.
+- feat(backend): no wallet gate on live actions. The check-in answers "Saved to your profile · Claim anytime" (older apps keep their old wording). A tap records one Proof of Meet per person, each following their own wallet, so a tap between a wallet and no wallet mints one side and saves the other. People with a wallet now get their Proof of Meet on Solana at every tap; v1 taps never minted before. A selfie publishes as soon as both approve and reuses the leaves minted at the tap. Organizer stats already counted every check-in, wallet or not. Post collect and the Seeker badge still need a wallet.
+- feat(backend): Claim and auto-mint. New endpoints:
+  - `POST /api/v1/collectibles/<id>/claim`: 409 while minting or once minted, 400 `{code: "no_wallet"}` without a wallet.
+  - `POST /api/v1/collectibles/claim-all`.
+  - `GET /api/v1/me/collectibles/summary`.
+  - `GET /api/v1/users/<username>/collectibles?cursor=&kind=`: every row, plus the owner's other wallet assets from DAS, deduplicated by asset id.
+  - `GET /api/v1/collectibles/<id>`.
+  - `GET/PATCH /api/v1/me/notification-settings`.
+- feat(backend): saving a wallet queues everything off-chain or failed for it and mints it in one gasless batch, oldest first, into the same collection and tree. Every row sends a socket event, and each batch sends one push: "7 of your collectibles are now on Solana · Your POAPs and Proof of Meets landed in your wallet." (or "5 landed, 2 will retry automatically."), which opens `nextvibe.io/u/collectibles`.
+  - A new wallet takes only what isn't minted yet. The new `DELETE save-wallet` returns queued rows to off-chain.
+  - Retries back off 30 s, 2 min, 10 min, 30 min, then stop as failed ("Couldn't put this on Solana · Try again"). Before a retry, and after a mint nobody answered, a DAS lookup by metadata URI finds a leaf that did land.
+  - Before each batch the tree's capacity is checked: a batch it can't finish never starts, and admins get an alert at 80 %.
+  - At most 5,000 mints a day and 200 per person per batch; the rest waits for the next run.
+- feat(backend): the metadata is served at the same URI before and after the mint: the existing `/api/v1/posts/<id>/metadata/<edition>/` for POAPs and posts, and a new `/meta/meet/<slug>/<user id>.json` for each person in a meet. It carries a `Recorded` date, plus `Claimed later` when the mint came more than a day after that. A live selfie adds its traits; after a takedown the image is the v1 card again. Once a meet's selfie is live, its card image gets a new URL, so phones don't keep the cached v1 card.
+- feat(backend): reminders to connect a wallet, for people who have something off-chain and no wallet. Schedule: +24 h (names the latest meet or event), +3 d (the count), +7 d (push plus the Resend email `claim-reminder`), then weekly up to four more.
+  - Sent only 10:00–21:00 in the person's time zone (the app sends it; Europe/Kyiv otherwise), and at most one reminder push every 3 days.
+  - Every send is logged, so a step never repeats; tokens that Expo receipts report as unregistered are cleared.
+  - Reminders stop on connect, at the end of the schedule, or when Settings → Notifications → "Wallet reminders" is off.
+  - An hourly beat job sends them; a sweep every 2 minutes retries mints that are due.
+- feat(backend): `backfill_collectibles` (`--dry-run`, `--kind`, `--queue`; idempotent, prints counts per kind): existing POAP, meet, post and OG mints become minted rows with their asset ids, past check-ins and meets of people without a wallet become off-chain rows, and post collects become minted rows. Deleting an account removes its off-chain and queued rows; minted ones stay, and the deletion sheet says so. A revoked check-in or a deleted event removes its off-chain POAP.
+- feat(nft-service): new `GET /tree` (capacity, minted, remaining) for the queue's capacity check. `/mint/meet` accepts a person's own metadata URI (`/meta/meet/<slug>/<user id>.json`). Names are cut to Bubblegum's 32 bytes. `/mint` and `/mint/og` now answer 502 for a mint that failed on-chain, like `/mint/meet` already did.
+- feat(frontend): the cNFT tab reads the new table and shows it with or without a wallet.
+  - One card for both states: image, name, kind, date. Off-chain adds only a neutral "Not on Solana yet" chip and, for the owner, Claim ("Minting…", "Try again"). Others see the chip but never a Claim button.
+  - Filters All · POAPs · Proof of Meet · Collected, with counts, and "N saved off-chain · Claim all". Empty state: "Check in at an event or tap phones with someone. Everything you collect shows up here."
+  - Detail sheet: on Solana, the asset id (short, copyable), mint date, "View on Solana" and owner wallet; not yet, "Recorded on NextVibe · Sep 26, 2026" and "Claim to put this on Solana". A Proof of Meet opens its meet sheet.
+  - The "Collectibles (N)" label follows the tab's own count.
+- feat(frontend): a new connect-wallet sheet: Phantom, Solflare, Backpack and a passkey wallet on iOS, MWA on Android and Seeker, with Seed Vault untouched. It opens from:
+  - Claim, Claim all and the banner.
+  - The reminders (`nextvibe.io/u/wallet`).
+  - Collect: "Collecting a post needs a wallet. Connect one and the collect goes on right away."
+  After a connect it shows "Putting 7 collectibles on Solana… 3 of 7 on Solana", and the cards switch to "Minting…" at once.
+- feat(frontend): the rest of the app.
+  - The check-in, tap and selfie success screens say "Saved to your profile · Claim anytime", with a one-line note about connecting later.
+  - Profile banner "3 collectibles saved off-chain · Connect wallet", dismissible for 7 days.
+  - Settings → Notifications → "Wallet reminders".
+  - Proof of Meet tiles in the profile grid: a 1.5 px #8B5CF6 border, the two-circles glyph on a dark pill ("MEET" on tiles 120 px and wider), and the other person's avatar bottom-left. The post shows "On Solana · 8xK…3fQ" or "Not on Solana yet · Claim".
+  - `nextvibe.io/u/collectibles` and `/u/wallet` are router cases.
+  - The mint pill says "+N REP" instead of "pts".
+  - JS only (OTA): no native dependency, and `runtimeVersion`, the native config and the URL schemes are unchanged.
+- feat(landing): browser pages for `nextvibe.io/u/wallet` and `/u/collectibles`, with "Open in NextVibe".
+- Checked: end to end on the iOS simulator against a local API, a real Celery worker and a stub nft-service. The wallet app's handshake can't run in the simulator, so a local stand-in saved the wallet the way the sheet does.
+  - Check-in and tap without a wallet: the success screens, then the tab with chips and Claim.
+  - Claim opens the connect sheet; after a connect: "Putting 2 collectibles on Solana…", cards on "Minting…", then landed.
+  - The batch push and the +24 h reminder (sent inside 10:00–21:00, not repeated, held back by the 3-day gap) replayed on the simulator, opening the cNFT tab and the connect sheet.
+  - Collect asks for a wallet and records nothing.
+  - The grid tile and the post's status line; a mixed tab on your own profile and on someone else's.
+  - The asset ids in that run come from the stub. Nothing was minted on devnet or mainnet.
+- Tests: 60 new backend (`test_collectibles.py` 40, `test_wallet_reminders.py` 15, `test_backfill_collectibles.py` 5), plus the check-in and selfie suites rewritten for wallet-optional; full Django suite 429/429. Jest 155/155 and 8 render tests with 3 snapshots (`npm run test:components`: the card on and off Solana, the grid tile). `tsc` clean for the app and the nft-service. The landing builds; worker tests 7/7.
+- ⚠️ Deploy, in this order:
+  1. The nft-service (`GET /tree`, per-person meet URIs).
+  2. The backend, then on the host `python manage.py makemigrations posts --name wallet_optional_collectibles && python manage.py migrate`. It adds three tables, `Collectible`, `CollectibleReminder` and `ReminderPreference`; until the migration runs, profiles fall back to the old counts.
+  3. `python manage.py backfill_collectibles`. Add `--queue` to also mint what wallet holders never got.
+  4. Restart the Celery worker and beat (two new schedules).
+  5. Settings: `HELIUS_API_KEY` for DAS; optional `COLLECTIBLES_DAILY_MINT_CAP` (5000), `COLLECTIBLES_USER_BATCH_CAP` (200), `COLLECTIBLES_MINT_PAUSE` (0.2 s).
+  6. Upload the landing, then ship the app by OTA.
+- Files:
+  - `backend/NextVibeAPI/posts/`:
+    - `{models.py,admin.py,apps.py,signals.py,tasks.py,urls_collectibles.py}`
+    - `src/{collectibles,collectible_metadata,collectible_mint,das,push,wallet_reminders,meet_photos,meets}.py`
+    - `view_pac/{collectibles,event_checkin,event_connections,collect,mint_nft,get_metadata,get_post,posts_menu}.py`
+    - `management/commands/backfill_collectibles.py`
+    - `tests/{test_collectibles,test_wallet_reminders,test_backfill_collectibles,test_event_checkin,test_meet_photos}.py`
+  - `backend/NextVibeAPI/user/`: `views_pac/{save_wallet_address,delete_account,mint_og,user_detail}.py`, `src/notify_admin_new_user.py`
+  - `backend/NextVibeAPI/NextVibeAPI/{urls.py,setting/dev.py,setting/prod.py}`
+  - `backend/NextVibeAPI/nvcli/{render.py,templates/claim-reminder.yaml}`
+  - `nft-service/{src/index.ts,README.md}`
+  - `frontend/NextVibe/components/`:
+    - `Collectibles/{CollectibleCard,CollectibleDetailSheet,CollectibleChainSection,CollectiblesTab,OffchainBanner,SavedOffchainNote,CollectiblesLanding,MeetChainLine}.tsx`
+    - `Wallet/ConnectWalletSheet.tsx`
+    - `ProfilePage/{MeetTileDecor,PostsMenu,PostModal,ProfilePage.ios,ProfilePage.android,UserProfilePage,CollectionsMenu}.tsx`
+    - `Events/{EventCheckinScreen,MeetSuccess,MintStatusPill}.tsx`, `NftClaim/MintBottomSheet/index.tsx`, `PostDetails/PostDetailsScreen.tsx`, `Proximity/ProximityPrompt.tsx`, `Settings/{PageSettings,DeleteAccountSheet}.tsx`
+  - `frontend/NextVibe/src/`: `api/{collectibles,save.wallet,event.checkin}.ts`, `stores/{collectiblesStore,connectWalletStore}.ts`, `utils/collectibles.ts`, `navigation/{intents,useIntentConsumer}.ts`, `types/post.ts`
+  - `frontend/NextVibe/`: `app/_layout.tsx`, `jest.components.{config,setup}.js`, `package.json` (a test script only), plus tests
+  - Landing: `frontend/src/{App.tsx,components/WalletHome.tsx,components/CollectiblesHome.tsx}`
+
 ## Sep 23 — Delete works again in the profile popup; Proof of Meet names stacked; both wallets on every Proof of Meet NFT
 - fix(frontend): deleting a post from the profile grid's popup works again. Its ⋮ menu drew the confirm, report and "Remove photo" dialogs in place inside the 22-pt ⋮ button (the popup is itself a Modal, so they skip their own), where they collapsed into a thin vertical line and nothing could be confirmed. They now render through a `PortalHost` at the popup's root, full screen, and the report's confirm stacks over the report sheet (iOS can't show two sibling Modals). After a delete or "Remove photo" the post leaves the grid and its cache right away and the profile's post count drops by one; a failed delete says "Couldn't delete the post. Try again." and a report shows its result (both used to be silent). `@gorhom/portal` is now a direct dependency (the same 1.0.14 bottom-sheet already ships). JS only (OTA).
 - fix(frontend): Proof of Meet posts show their two people one per line: "@owner" over "with @co_author", each with its badges, then "Proof of Meet". Feed, profiles, the popup and the post page share it. On one line the two names were cut to fit each other and sat unevenly.

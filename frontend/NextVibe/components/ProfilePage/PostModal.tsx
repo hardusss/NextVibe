@@ -37,6 +37,7 @@ import likePost from "@/src/api/like.post";
 import { requestToAttend } from "@/src/api/event.requests";
 import DropDown from "../Shared/Posts/PostsDropdown";
 import { CoAuthorAvatars, CoAuthorNames, ProofOfMeetLabel, isProofOfMeetPost, type CoAuthorPerson } from "@/components/Meet/CoAuthorHeader";
+import MeetChainLine, { type MeetCollectibleState } from "@/components/Collectibles/MeetChainLine";
 import UserBadges from "../Shared/UserBadges";
 import ButtonCollect, { CollectState } from "../NftClaim/ButtonCollect";
 import { AvatarWithFrame } from "@/components/ProfilePage/AvatarWithFrame";
@@ -107,6 +108,8 @@ interface PostData {
     collectable?: boolean;
     is_co_author?: boolean;
     hidden_on_my_profile?: boolean;
+    /** Each person's Proof of Meet collectible (the chain line under the names) */
+    meet_collectibles?: MeetCollectibleState[] | null;
 }
 
 interface PostPopupProps {
@@ -376,6 +379,8 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                     mutedColor="rgba(255,255,255,0.55)"
                                                 />
                                                 <ProofOfMeetLabel />
+                                                <MeetChainLine items={post.meet_collectibles} ownerId={post.user_id}
+                                                    mutedColor="rgba(255,255,255,0.55)" />
                                             </View>
                                         </View>
                                     ) : (

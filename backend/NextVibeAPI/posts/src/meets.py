@@ -27,12 +27,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone as dt_timezone
 from urllib.parse import quote
 
-from django.db import connections, transaction
+from django.db import DatabaseError, connections, transaction
 from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
-from posts.models import EventCheckin, EventRequest, MeetPhoto, Reputation
+from posts.models import Collectible, EventCheckin, EventRequest, MeetPhoto, Reputation
 from posts.src import geocode
 from user.src.blocking import blocked_user_ids, is_blocked_between
 
@@ -309,7 +309,7 @@ def load_meet(slug, viewer=None, visible_only=True):
         tz=tz,
         pair_count=max(pair_count, 1),
         pair_first_at=pair_first_at or first.created_at,
-        # Minted with a selfie (Proof of Meet v2); otherwise "recorded on NextVibe"
+        # The first of the two leaves to land; until then "recorded on NextVibe"
         asset_id=asset_id,
         selfie=selfie,
     )
@@ -317,9 +317,19 @@ def load_meet(slug, viewer=None, visible_only=True):
 
 def photo_proof(slug):
     """
-    (the meet's cNFT, the photographer's leaf first, or None; whether the
-    selfie is live). A taken-down photo keeps its cNFT, not the selfie.
+    (the meet's cNFT or None, whether the selfie is live). The cNFT is the
+    first of the two people's Proof of Meet collectibles to land (or a leaf
+    Proof of Meet v2 minted for a photo). A taken-down photo keeps its cNFT,
+    not the selfie.
     """
+    try:
+        with transaction.atomic():
+            asset_id = (
+                Collectible.objects.filter(kind=Collectible.Kind.MEET, source_id=slug, status=Collectible.Status.MINTED)
+                .exclude(asset_id="").order_by("minted_at", "id").values_list("asset_id", flat=True).first()
+            )
+    except DatabaseError:
+        asset_id = None  # the table isn't migrated yet (deploy window): the v1 answer
     photo = (
         MeetPhoto.objects.filter(meet_slug=slug)
         .filter(Q(status=MeetPhoto.Status.MINTED) | ~Q(asset_id_photographer="") | ~Q(asset_id_subject=""))
@@ -328,8 +338,8 @@ def photo_proof(slug):
         .first()
     )
     if not photo:
-        return None, False
-    asset_id = photo["asset_id_photographer"] or photo["asset_id_subject"] or None
+        return asset_id or None, False
+    asset_id = asset_id or photo["asset_id_photographer"] or photo["asset_id_subject"] or None
     return asset_id, photo["status"] == MeetPhoto.Status.MINTED
 
 

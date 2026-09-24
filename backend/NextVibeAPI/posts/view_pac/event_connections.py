@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ..models import EventCheckin, Reputation, Post
 from ..constants import IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
+from ..src import collectibles
 from ..src.meets import ensure_user_meet_slugs, meet_url, slug_for_pair_event, slug_for_pair_today, tap_slug
 from user.models import User
 from user.src.send_push_message import send
@@ -52,6 +53,14 @@ def _blocked_response():
         "error": "You can't connect with this person.",
         "code": "BLOCKED",
     }, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _collectible_fields(rows, user):
+    """The caller's own Proof of Meet collectible: on its way to Solana, or saved off-chain."""
+    row = next((r for r in rows or [] if r.user_id == user.user_id), None)
+    if row is None:
+        return {}
+    return {"collectible": {"id": row.pk, "kind": row.kind, "status": row.status, "onchain": row.is_onchain}}
 
 
 def _meet_fields(slug):
@@ -538,6 +547,8 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
             source='event',
             meet_slug=meet_slug,
         )
+        # Both people's Proof of Meet, minted now for whoever has a wallet
+        meet_rows = collectibles.record_meet(meet_slug, requesting_user, scanned_user)
 
     return Response({
         "success": True,
@@ -545,6 +556,7 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
         "earned_points": scanner_gains,
         "scanned_user": scanned_user_payload,
         **_meet_fields(meet_slug),
+        **_collectible_fields(meet_rows, requesting_user),
     }, status=status.HTTP_200_OK)
 
 
@@ -698,6 +710,8 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
             source='irl',
             meet_slug=meet_slug,
         )
+        # Both people's Proof of Meet, minted now for whoever has a wallet
+        meet_rows = collectibles.record_meet(meet_slug, requesting_user, scanned_user)
         transaction.on_commit(
             lambda: _send_tap_push_in_background(scanned_user, requesting_user.username)
         )
@@ -715,6 +729,7 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
             "is_seeker_verified": scanned_user.seeker_verified,
         },
         **_meet_fields(meet_slug),
+        **_collectible_fields(meet_rows, requesting_user),
     }, status=status.HTTP_200_OK)
 
 

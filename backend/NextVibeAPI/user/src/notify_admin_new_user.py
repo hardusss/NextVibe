@@ -26,3 +26,20 @@ def notify_admin_new_user(new_user) -> None:
         notification_type="new_user",
         text_preview=f"🆕 New user registered: @{new_user.username}",
     )
+
+
+def notify_admin_text(text: str) -> None:
+    """
+    An operational alert (e.g. the cNFT tree filling up) through the same
+    channel: an in-app notification, and its push, to the admin account.
+    """
+    User = get_user_model()
+    admin = User.all_objects.filter(user_id=ADMIN_USER_ID).first()
+    if admin is None:
+        return
+    Notification.objects.create(
+        sender=None,
+        recipient=admin,
+        notification_type="new_user",  # the admin-only type: its push shows text_preview as is
+        text_preview=text[:255],
+    )

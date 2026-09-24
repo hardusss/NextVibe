@@ -20,14 +20,26 @@ until it's set, `/mint/meet` answers 503 and the backend keeps retrying.
 
 ## Endpoints
 
+### GET /tree
+
+How full the Merkle tree is. The Django collectibles queue
+(`posts/src/collectible_mint.py`) reads it before each batch: it never
+starts a batch the tree can't finish, and it alerts the admin at 80 %.
+
+Returns: `{ success, tree, capacity, minted, remaining }`; `502 TREE_STATUS_FAILED`
+
 ### POST /mint
 
 Fully backend-signed mint of a post edition to a recipient. Used for the
-owner's publish path and for collectors whose wallet cannot co-sign
-(LazorKit / passkey sessions).
+owner's publish path, for collectors whose wallet cannot co-sign
+(LazorKit / passkey sessions), and for event POAPs (the collectibles queue).
+The on-chain name comes from the metadata JSON and is cut to 32 bytes. A
+mint that fails on-chain answers 502 (a skipped preflight still confirms a
+failed transaction), so the caller retries instead of recording a leaf
+that isn't there; `/mint/og` does the same.
 
 Body: `{ recipient, postId, edition }`
-Returns: `{ success, signature, assetId }`
+Returns: `{ success, signature, assetId }`; `502 METADATA_FETCH_FAILED`, `502 MINT_SEND_FAILED`
 
 ### POST /mint/og
 
@@ -46,7 +58,9 @@ unverified, 0 %), so every leaf names the two wallets on-chain as proof of
 the meet. `coAuthors` must include the recipient; it holds one wallet only
 while the other person hasn't connected one (their own leaf lists both).
 Nothing is fetched here: the Django backend passes the name (at most 32
-bytes) and the metadata URI, which must be `MEET_METADATA_PREFIX<slug>.json`.
+bytes) and the metadata URI: `MEET_METADATA_PREFIX<slug>/<user id>.json`
+(each person's own copy, for every Proof of Meet recorded at a tap) or
+`MEET_METADATA_PREFIX<slug>.json` (leaves minted for a v2 selfie before that).
 
 Body: `{ recipient, slug, name, uri, coAuthors }`
 Returns: `{ success, signature, assetId }`; `400 INVALID_REQUEST`,

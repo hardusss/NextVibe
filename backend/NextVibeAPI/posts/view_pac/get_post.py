@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import Post, Comment, UserCollection
 from ..constants import COLLECT_MAX_EDITIONS
 from ..src.collect_eligibility import is_irl_connected, reserved_editions_active
+from ..src import collectibles
 from ..src.meet_photos import post_for_meet, post_meet_fields
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
@@ -124,6 +125,11 @@ class GetPostView(APIView):
                 "luma_event_end_time": post.luma_event_end_time,
                 "event_request_status": (lambda req: req.status if req else None)(post.event_requests.filter(user=request.user).first()),
                 **post_meet_fields(post),
+                # Proof of Meet: each person's collectible, for the chain line under the post
+                "meet_collectibles": (
+                    collectibles.meet_states([post.meet_slug], request.user).get(post.meet_slug, [])
+                    if post.meet_slug else None
+                ),
                 "is_co_author": post.co_author_id == request.user.user_id,
                 "hidden_on_my_profile": bool(meet_photo and getattr(
                     meet_photo, "hidden_by_photographer" if meet_photo.photographer_id == request.user.user_id

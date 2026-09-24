@@ -28,10 +28,13 @@ PLACEHOLDER_RE = re.compile(r"\{([a-z_][a-z0-9_]*)\}")
 # (meet_context); {tap_card}, the first-tap teaser, is only for users who
 # never tapped with anyone.
 MEET_PLACEHOLDERS = ("meet_with", "meet_where", "meet_link", "meet_card", "meet_x")
+# The claim reminder's: what the user has saved off-chain (posts/src/wallet_reminders.py)
+CLAIM_PLACEHOLDERS = ("claim_headline", "claim_count", "claim_items")
 USER_PLACEHOLDERS = ("username", "first_name", "rep", "joined", "events", "met", "seeker", "seeker_total", "unsubscribe",
-                     "tap_card", *MEET_PLACEHOLDERS)
+                     "tap_card", *MEET_PLACEHOLDERS, *CLAIM_PLACEHOLDERS)
 NO_MEET = "no meet card to share"
 TAPPED_ALREADY = "already tapped with someone"
+NOTHING_OFFCHAIN = "nothing saved off-chain"
 # Filled from the template itself, never asked for.
 TEMPLATE_PLACEHOLDERS = ("link", "preheader")
 CHANNELS = ("push", "email", "both")
@@ -267,7 +270,30 @@ def user_context(user, seeker_total: int | None = None, needs=(), preview: bool 
         ctx["tap_card"] = first_tap_card(user, preview)
     if set(needs) & set(MEET_PLACEHOLDERS):
         ctx.update(meet_context(user))
+    if set(needs) & set(CLAIM_PLACEHOLDERS):
+        ctx.update(claim_context(user, preview))
     return ctx
+
+
+def claim_context(user, preview: bool = False) -> dict:
+    """
+    {claim_headline} "Your POAP from … is still off-chain", {claim_count}
+    "3 collectibles", {claim_items} the list; all None when nothing of theirs
+    is waiting (a sample when previewing, so the template can be looked at).
+    """
+    from posts.src.wallet_reminders import claim_texts
+
+    texts = claim_texts(user)
+    if texts is None:
+        if not preview:
+            return dict.fromkeys(CLAIM_PLACEHOLDERS)
+        texts = {"headline": "Your Proof of Meet with @toji is still off-chain", "count_text": "2 collectibles",
+                 "items": "Proof of Meet with @toji, POAP from Solana Meetup"}
+    return {
+        "claim_headline": texts["headline"],
+        "claim_count": texts["count_text"],
+        "claim_items": texts["items"],
+    }
 
 
 def first_tap_card(user, preview: bool = False) -> str | None:
@@ -313,6 +339,8 @@ def skip_reason(ctx: dict) -> str | None:
         return NO_MEET
     if "tap_card" in ctx and ctx["tap_card"] is None:
         return TAPPED_ALREADY
+    if any(name in ctx and ctx[name] is None for name in CLAIM_PLACEHOLDERS):
+        return NOTHING_OFFCHAIN
     return None
 
 

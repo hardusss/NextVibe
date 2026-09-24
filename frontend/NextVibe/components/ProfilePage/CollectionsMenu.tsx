@@ -130,7 +130,7 @@ interface OgAvatarCardProps {
  * - loading : request in flight, shows spinner, button disabled
  * - done    : avatar was set, shows CheckCircle2, button locked
  */
-function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatarCardProps) {
+export function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatarCardProps) {
     const accentColor = isDark ? '#d8b4fe' : '#7c3aed';
     const borderColor = isDark ? 'rgba(196,167,255,0.35)' : 'rgba(109,40,217,0.25)';
     const cardBg = isDark ? 'rgba(167,139,250,0.08)' : 'rgba(109,40,217,0.05)';

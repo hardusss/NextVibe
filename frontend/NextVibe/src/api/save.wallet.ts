@@ -2,6 +2,7 @@ import axios from "axios";
 import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 import { walletLogger, WalletTag, extractErrorMessage } from "../utils/walletLogger";
+import { startLanding } from "../stores/collectiblesStore";
 
 export default async function saveWallet(walletAddress: string) {
     const TOKEN = await storage.getItem("access");
@@ -30,6 +31,10 @@ export default async function saveWallet(walletAddress: string) {
             walletAddress
         }, config);
         walletLogger.info(WalletTag.API, `saveWallet: Successfully linked wallet address ${walletAddress}`, response.data);
+        // Everything saved off-chain is on its way to this wallet now:
+        // "Putting 7 collectibles on Solana…", whichever screen connected it
+        const queued = Number(response.data?.collectibles?.queued) || 0;
+        if (queued > 0) startLanding(queued);
         return response.data;
     } catch (error: any) {
         const errMsg = extractErrorMessage(error);

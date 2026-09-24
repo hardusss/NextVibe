@@ -32,12 +32,15 @@ import { useBleScanner } from "@/hooks/useBleScanner";
 import ProximityPrompt from "@/components/Proximity/ProximityPrompt";
 import MeetSheet from "@/components/Meet/MeetSheet";
 import MeetPhotoSheet from "@/components/Meet/MeetPhotoSheet";
+import ConnectWalletSheet from "@/components/Wallet/ConnectWalletSheet";
+import CollectiblesLanding from "@/components/Collectibles/CollectiblesLanding";
 import { clearProfileCache } from "@/components/ProfilePage/ProfilePage";
 import WebSocketService from "@/src/services/WebSocketService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import { completeColdStartHandshake } from "@/src/services/walletDeepLink";
 import { markSeekerIntroPending } from "@/src/stores/seekerIntroStore";
 import { handleMeetPhotoSignal, isMeetPhotoEvent } from "@/src/stores/meetPhotoStore";
+import { handleCollectibleEvent, isCollectibleEvent, useCollectibles } from "@/src/stores/collectiblesStore";
 import { intentFromNotification, intentFromUrl, isBootstrapPath } from "@/src/navigation/intents";
 import { hydratePendingIntent, setPendingIntent } from "@/src/navigation/pendingIntent";
 import { subscribeIntentLinks } from "@/src/navigation/intentQueue";
@@ -263,6 +266,9 @@ export default function RootLayout() {
             if (data?.type === 'meet_photo' && typeof data.slug === 'string') {
                 handleMeetPhotoSignal(data.slug, String(data.status ?? ''), 'push');
             }
+            if (data?.type === 'collectibles_minted') {
+                useCollectibles.getState().refreshSummary();
+            }
         });
 
         return () => subscription.remove();
@@ -334,6 +340,12 @@ export default function RootLayout() {
                 return;
             }
 
+            // A collectible of yours changed (queued, minting, on Solana): cards update in place
+            if (isCollectibleEvent(event)) {
+                handleCollectibleEvent(event);
+                return;
+            }
+
             if (event.type === 'reaction_update' && Array.isArray(event.reactions)) {
                 const otherReaction = event.reactions.find((r: any) => r.reacted_by_me === false);
 
@@ -382,6 +394,15 @@ export default function RootLayout() {
         };
         loadUser();
     }, [segments, authVersion]);
+
+    // Collectibles: whose summary and banner snooze are loaded; the summary
+    // also tells the server this phone's time zone (reminder quiet hours)
+    useEffect(() => {
+        const collectibles = useCollectibles.getState();
+        collectibles.restore(userID ? String(userID) : null).then(() => {
+            if (userID) useCollectibles.getState().refreshSummary();
+        });
+    }, [userID]);
 
     useEffect(() => {
         if (!userID) {
@@ -466,6 +487,8 @@ export default function RootLayout() {
                                 <ProximityPrompt />
                                 <MeetSheet />
                                 <MeetPhotoSheet />
+                                <ConnectWalletSheet />
+                                <CollectiblesLanding />
                             </WebSocketProvider>
                         </ErrorBoundary>
                     </LazorKitProvider>

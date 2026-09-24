@@ -1,0 +1,145 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Proof of Meet grid tile the accent border, the glyph (MEET on big tiles) and the mini avatar: big tile 1`] = `
+[
+  <View
+    pointerEvents="none"
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "rgba(10,4,16,0.62)",
+        "borderRadius": 10,
+        "flexDirection": "row",
+        "gap": 4,
+        "height": 20,
+        "paddingHorizontal": 5,
+        "position": "absolute",
+        "right": 6,
+        "top": 6,
+      }
+    }
+    testID="meet-glyph"
+  >
+    <View
+      style={
+        {
+          "height": 10,
+          "width": 15,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "borderColor": "#FFFFFF",
+            "borderRadius": 5,
+            "borderWidth": 1.5,
+            "height": 10,
+            "left": 0,
+            "position": "absolute",
+            "top": 0,
+            "width": 10,
+          }
+        }
+      />
+      <View
+        style={
+          [
+            {
+              "borderColor": "#FFFFFF",
+              "borderRadius": 5,
+              "borderWidth": 1.5,
+              "height": 10,
+              "left": 0,
+              "position": "absolute",
+              "top": 0,
+              "width": 10,
+            },
+            {
+              "borderColor": "#C4B5FD",
+              "left": 5,
+            },
+          ]
+        }
+      />
+    </View>
+    <Text
+      style={
+        {
+          "color": "#FFFFFF",
+          "fontFamily": "Dank Mono Bold",
+          "fontSize": 9,
+          "includeFontPadding": false,
+          "letterSpacing": 0.6,
+        }
+      }
+    >
+      MEET
+    </Text>
+  </View>,
+  <View
+    accessibilityLabel="with @toji"
+    pointerEvents="none"
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "#0A0410",
+        "borderRadius": 11,
+        "bottom": 6,
+        "height": 22,
+        "justifyContent": "center",
+        "left": 6,
+        "position": "absolute",
+        "width": 22,
+      }
+    }
+    testID="meet-avatar"
+  >
+    <View
+      style={
+        [
+          {
+            "borderRadius": 9,
+            "height": 18,
+            "width": 18,
+          },
+          {
+            "alignItems": "center",
+            "backgroundColor": "#8B5CF6",
+            "justifyContent": "center",
+          },
+        ]
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#FFFFFF",
+            "fontFamily": "Dank Mono Bold",
+            "fontSize": 10,
+            "includeFontPadding": false,
+          }
+        }
+      >
+        T
+      </Text>
+    </View>
+  </View>,
+  <View
+    pointerEvents="none"
+    style={
+      {
+        "borderColor": "#8B5CF6",
+        "borderRadius": 12,
+        "borderWidth": 1.5,
+        "bottom": 0,
+        "left": 0,
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    testID="meet-border"
+  />,
+]
+`;

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from .managers import PostsManager, CommentManager, CommentReplyManager
 from decimal import Decimal
 import uuid
@@ -388,3 +389,132 @@ class MeetPhoto(models.Model):
 
     def __str__(self):
         return f"Meet photo {self.meet_slug} by {self.photographer_id} with {self.subject_id} ({self.status})"
+
+
+class Collectible(models.Model):
+    """
+    Everything a person holds from NextVibe, on Solana or not yet: one row per
+    person per item (posts/src/collectibles.py). The cNFT tab, Claim and the
+    wallet reminders read only this table.
+
+    A check-in or a tap records the row in its own transaction, whether or not
+    the person has a wallet: queued (and minted right away) with one, off-chain
+    without. Connecting a wallet later queues everything off-chain at once.
+    `metadata` is the JSON behind `metadata_uri`, frozen when the row is
+    recorded, so an item looks the same before and after it's minted.
+
+    UserCollection, MeetPhoto and OgAvatarMint stay the ledgers of their own
+    flows (editions, consent); a mint writes them in the same transaction.
+    """
+
+    class Kind(models.TextChoices):
+        POAP = "poap", "Event POAP"
+        MEET = "meet", "Proof of Meet"
+        POST = "post", "Collected post"
+        BADGE = "badge", "Badge"
+
+    class Status(models.TextChoices):
+        OFFCHAIN = "offchain", "Off-chain"
+        QUEUED = "queued", "Queued"
+        MINTING = "minting", "Minting"
+        MINTED = "minted", "Minted"
+        FAILED = "failed", "Failed"
+
+    user = models.ForeignKey("user.User", on_delete=models.CASCADE, related_name="collectibles")
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+    # event id / meet_slug / post id / badge key
+    source_id = models.CharField(max_length=64)
+    # The event (POAP) or the collected post; a minted row outlives a deleted post
+    post = models.ForeignKey(
+        Post, null=True, blank=True, on_delete=models.SET_NULL, related_name="collectibles",
+    )
+    # Proof of Meet: the other person
+    counterpart = models.ForeignKey(
+        "user.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    metadata_uri = models.URLField(max_length=300)
+    metadata = models.JSONField(default=dict, blank=True)
+    # Cached from the metadata for fast grids
+    image_url = models.URLField(max_length=500, blank=True, default="")
+    name = models.CharField(max_length=120)
+    # POAP and collected-post editions (part of the frozen metadata)
+    edition = models.PositiveIntegerField(null=True, blank=True)
+    # When it happened: the check-in, the tap, the collect
+    recorded_at = models.DateTimeField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.OFFCHAIN, db_index=True)
+    # The wallet it goes (or went) to
+    wallet = models.CharField(max_length=50, blank=True, default="")
+    asset_id = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    signature = models.CharField(max_length=128, blank=True, default="")
+    minted_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    # Backoff: a queued row isn't picked before this
+    next_attempt_at = models.DateTimeField(null=True, blank=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    # What queued it ("connect:<ts>", "claim_all:<ts>", …): one push per batch
+    batch = models.CharField(max_length=40, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            # The double-mint guard: one row per person per source
+            models.UniqueConstraint(fields=["user", "kind", "source_id"], name="one_collectible_per_source"),
+        ]
+        indexes = [
+            models.Index(fields=["user", "status"]),
+            models.Index(fields=["user", "-recorded_at"]),
+            models.Index(fields=["kind", "source_id"]),
+            models.Index(fields=["status", "next_attempt_at"]),
+        ]
+        ordering = ["-recorded_at", "-id"]
+
+    @property
+    def is_onchain(self) -> bool:
+        return self.status == self.Status.MINTED
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.source_id} for {self.user_id} ({self.status})"
+
+
+class CollectibleReminder(models.Model):
+    """
+    A wallet reminder that went out (or was skipped) for one person, one step,
+    one channel. The unique constraint keeps a step from ever going out twice
+    (posts/src/wallet_reminders.py).
+    """
+    user = models.ForeignKey("user.User", on_delete=models.CASCADE, related_name="collectible_reminders")
+    step = models.CharField(max_length=16)  # 24h, 3d, 7d, w1 … w4
+    channel = models.CharField(max_length=8)  # push | email
+    status = models.CharField(max_length=16)  # sent | failed | unregistered | skipped
+    # Expo ticket / Resend id, or the reason it failed
+    detail = models.CharField(max_length=255, blank=True, default="")
+    receipt_checked = models.BooleanField(default=False)
+    # The job's clock when it went out (the 3-day gap is measured from it)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "step", "channel"], name="one_reminder_per_step"),
+        ]
+        indexes = [models.Index(fields=["user", "-created_at"])]
+
+    def __str__(self):
+        return f"Wallet reminder {self.step}/{self.channel} for {self.user_id} ({self.status})"
+
+
+class ReminderPreference(models.Model):
+    """
+    Settings → Notifications for one person. No row means the defaults:
+    wallet reminders on, time zone unknown (Europe/Kyiv).
+    """
+    user = models.OneToOneField(
+        "user.User", on_delete=models.CASCADE, primary_key=True, related_name="reminder_preference",
+    )
+    wallet_reminders = models.BooleanField(default=True)
+    # IANA name the app reports, for quiet hours
+    timezone = models.CharField(max_length=64, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Reminder settings of {self.user_id}"

@@ -60,6 +60,8 @@ const MEET_COLLECTION_ADDRESS = process.env.MEET_COLLECTION_ADDRESS ?? '';
 /** Every Proof of Meet leaf points at its meet's JSON on the API */
 const MEET_METADATA_PREFIX = process.env.MEET_METADATA_PREFIX ?? 'https://api.nextvibe.io/meta/meet/';
 const MEET_SLUG_RE = /^[0-9A-Za-z]{12}$/;
+/** A leaf recorded at a tap points at its holder's copy: `${MEET_METADATA_PREFIX}<slug>/<user id>.json` */
+const MEET_HOLDER_PATH_RE = /^[0-9A-Za-z]{12}\/[1-9][0-9]{0,11}\.json$/;
 /** A meet has two people; both are creators of every one of its leaves */
 const MAX_MEET_CO_AUTHORS = 2;
 /** Bubblegum's on-chain limits (bytes) */
@@ -160,6 +162,36 @@ const logError = (event: string, error: unknown, fields: Record<string, unknown>
 };
 
 /**
+ * `name`, cut with "…" to Bubblegum's 32 bytes: a longer name fails the mint on-chain.
+ */
+function fitName(name: unknown): string {
+    const clean = String(name ?? '').trim() || 'NextVibe'
+    if (Buffer.byteLength(clean, 'utf8') <= MAX_NAME_BYTES) return clean
+    let chars = [...clean]
+    while (chars.length && Buffer.byteLength(chars.join('') + '…', 'utf8') > MAX_NAME_BYTES) chars = chars.slice(0, -1)
+    return chars.join('').trimEnd() + '…'
+}
+
+/**
+ * The metadata URIs /mint/meet accepts: the meet's shared JSON (leaves minted
+ * for a v2 selfie) or one holder's copy (every collectible recorded at a tap).
+ */
+function isMeetUri(uri: unknown, slug: string): boolean {
+    if (typeof uri !== 'string' || !uri.startsWith(MEET_METADATA_PREFIX) || Buffer.byteLength(uri, 'utf8') > MAX_URI_BYTES) return false
+    const path = uri.slice(MEET_METADATA_PREFIX.length)
+    return path === `${slug}.json` || (MEET_HOLDER_PATH_RE.test(path) && path.startsWith(`${slug}/`))
+}
+
+/**
+ * Without preflight a rejected mint still confirms: never report a leaf that isn't there.
+ */
+function assertLanded(result: any) {
+    if (result?.result?.value?.err) {
+        throw new Error(`mint failed on-chain: ${JSON.stringify(result.result.value.err)}`)
+    }
+}
+
+/**
  * Single in-process mutex so leaf indices cannot interleave.
  */
 let mintChain: Promise<unknown> = Promise.resolve()
@@ -217,6 +249,25 @@ const memoWithUserSigner = (memo: string, userPubkey: string) => {
 new Elysia()
 
     /**
+     * GET /tree
+     *
+     * How full the Merkle tree is. The Django queue checks it before each
+     * batch (it never starts one the tree can't finish) and alerts at 80 %.
+     */
+    .get("/tree", async ({ set }: { set: any }) => {
+        try {
+            const cfg = await fetchTreeConfigFromSeeds(umi, { merkleTree: publicKey(MERKLE_TREE_ADDRESS) })
+            const capacity = Number(cfg.totalMintCapacity)
+            const minted = Number(cfg.numMinted)
+            return { success: true, tree: MERKLE_TREE_ADDRESS, capacity, minted, remaining: Math.max(0, capacity - minted) }
+        } catch (error) {
+            logError("tree.status_failed", error, {})
+            set.status = 502
+            return { success: false, error: "TREE_STATUS_FAILED" }
+        }
+    })
+
+    /**
      * POST /mint
      *
      * Mints a compressed NFT (cNFT) and verifies it against the NextVibe 
@@ -262,7 +313,7 @@ new Elysia()
                     collectionMint: publicKey(COLLECTION_ADDRESS),
                     collectionAuthority: umi.identity,
                     metadata: {
-                        name: meta.name,
+                        name: fitName(meta.name),
                         uri: `https://api.nextvibe.io/api/v1/posts/${postId}/metadata/${edition}/`,
                         sellerFeeBasisPoints: 500,
                         collection: { key: publicKey(COLLECTION_ADDRESS), verified: false },
@@ -272,6 +323,7 @@ new Elysia()
                     send: { skipPreflight: true, maxRetries: 3 },
                     confirm: { commitment: "confirmed" },
                 })
+                assertLanded(result)
                 return { signature: result.signature, assetId: leafInfo.assetId.toString() }
             })
 
@@ -340,7 +392,7 @@ new Elysia()
                     collectionMint: publicKey(OG_COLLECTION_ADDRESS),
                     collectionAuthority: umi.identity,
                     metadata: {
-                        name: meta.name,
+                        name: fitName(meta.name),
                         uri: metaUrl,
                         sellerFeeBasisPoints: 500,
                         collection: { key: publicKey(OG_COLLECTION_ADDRESS), verified: false },
@@ -350,6 +402,7 @@ new Elysia()
                     send: { skipPreflight: true, maxRetries: 3 },
                     confirm: { commitment: "confirmed" },
                 })
+                assertLanded(result)
                 return { signature: result.signature, assetId: leafInfo.assetId.toString() }
             })
 
@@ -386,7 +439,8 @@ new Elysia()
      * @body recipient - wallet of the person receiving this leaf
      * @body slug      - the meet's slug (12 characters)
      * @body name      - on-chain name, at most 32 bytes
-     * @body uri       - `${MEET_METADATA_PREFIX}<slug>.json`
+     * @body uri       - `${MEET_METADATA_PREFIX}<slug>/<user id>.json` (the holder's
+     *                   copy, recorded at the tap) or `${MEET_METADATA_PREFIX}<slug>.json`
      * @body coAuthors - the two people's wallets (one while the other has
      *                   none yet), the recipient's among them
      */
@@ -402,7 +456,7 @@ new Elysia()
         const valid = typeof recipient === 'string' && SOLANA_ADDRESS_RE.test(recipient)
             && typeof slug === 'string' && MEET_SLUG_RE.test(slug)
             && typeof name === 'string' && name.length > 0 && Buffer.byteLength(name, 'utf8') <= MAX_NAME_BYTES
-            && uri === `${MEET_METADATA_PREFIX}${slug}.json` && Buffer.byteLength(uri, 'utf8') <= MAX_URI_BYTES
+            && isMeetUri(uri, slug)
             && Array.isArray(coAuthors) && coAuthors.length >= 1 && coAuthors.length <= MAX_MEET_CO_AUTHORS
             && coAuthors.every((address: unknown) => typeof address === 'string' && SOLANA_ADDRESS_RE.test(address) && isPublicKey(address))
             && coAuthors.includes(recipient)
@@ -434,10 +488,7 @@ new Elysia()
                     send: { skipPreflight: true, maxRetries: 3 },
                     confirm: { commitment: "confirmed" },
                 })
-                // Without preflight a rejected mint still confirms: never report a leaf that isn't there
-                if (result.result.value.err) {
-                    throw new Error(`mint failed on-chain: ${JSON.stringify(result.result.value.err)}`)
-                }
+                assertLanded(result)
                 return { signature: result.signature, assetId: leafInfo.assetId.toString() }
             })
 

@@ -50,6 +50,18 @@ export const TAP_PATH = '/event-nfc-share';
  * "ready"): the photo sheet opens over the current screen, like the meet sheet.
  */
 export const MEET_PHOTO_KIND = 'meet_photo';
+/**
+ * nextvibe.io/u/collectibles (the "now on Solana" push): the own profile on
+ * its cNFT tab.
+ */
+export const COLLECTIBLES_OPEN_PARAM = 'collectibles';
+export const COLLECTIBLES_KIND = 'collectibles';
+/**
+ * nextvibe.io/u/wallet (the connect-a-wallet reminders, push and email): the
+ * connect sheet opens over the current screen (home on a cold start).
+ */
+export const WALLET_KIND = 'wallet';
+export const WALLET_PATH = '/u/wallet';
 
 
 /** Splits "/a/b?x=1&y=2" into a pathname and decoded params. */
@@ -79,8 +91,9 @@ function seekerIntent(id: string, source: IntentSource, createdAt: number, extra
 }
 
 /**
- * Proof of Meet links (/u/meet/<slug>, /u/meets, /u/tap) as intents, or
- * null for any other path. Shared by links and push `url`s.
+ * Links that don't open a screen of their own (/u/meet/<slug>, /u/meets,
+ * /u/tap, /u/collectibles, /u/wallet) as intents, or null for any other path.
+ * Shared by links and push `url`s.
  */
 function meetIntent(appPath: string, id: string, source: IntentSource, now: number): PendingIntent | null {
     const slug = meetLinkSlug(appPath);
@@ -92,6 +105,13 @@ function meetIntent(appPath: string, id: string, source: IntentSource, now: numb
     }
     if (isTapLink(appPath)) {
         return { id, path: TAP_PATH, params: { mode: 'irl' }, source, kind: TAP_KIND, createdAt: now };
+    }
+    const { path } = splitHref(appPath);
+    if (path === '/u/collectibles') {
+        return { id, path: PROFILE_PATH, params: { open: COLLECTIBLES_OPEN_PARAM }, source, kind: COLLECTIBLES_KIND, createdAt: now };
+    }
+    if (path === WALLET_PATH) {
+        return { id, path: WALLET_PATH, source, kind: WALLET_KIND, createdAt: now };
     }
     return null;
 }
@@ -188,6 +208,8 @@ const KNOWN_U_PATHS = [
     /^\/u\/meet\/[^/]+(?:\/card\.png)?$/,
     /^\/u\/meets$/,
     /^\/u\/tap$/, // Tap to Meet
+    /^\/u\/collectibles$/, // the cNFT tab
+    /^\/u\/wallet$/, // the connect-a-wallet sheet
     /^\/u\/send(?:\/.*)?$/, // payment requests
 ];
 

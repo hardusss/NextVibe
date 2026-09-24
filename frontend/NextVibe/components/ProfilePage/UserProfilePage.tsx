@@ -37,7 +37,8 @@ import haptics from "@/src/utils/haptics";
 
 // Components
 import PostGallery, { clearPostsCache } from "./PostsMenu";
-import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
+import { clearCollectionsCache } from "./CollectionsMenu";
+import CollectiblesTab, { clearCollectiblesTabCache } from "@/components/Collectibles/CollectiblesTab";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import RecommendedUsers from "./recommendateProfiles";
 import UserBadges from "../Shared/UserBadges";
@@ -253,6 +254,11 @@ const UserProfileView = () => {
         ]).start();
     };
 
+    /** The cNFT tab's own total, so the label matches what it lists */
+    const handleCollectiblesCount = useCallback((total: number) => {
+        setUserData((prev) => (prev.cnft_count === total ? prev : { ...prev, cnft_count: total }));
+    }, []);
+
     const handleTabPress = (tab: Tab) => {
         if (tab === activeTab) return;
         animateTabSwitch(tab);
@@ -349,6 +355,7 @@ const UserProfileView = () => {
         setRefreshing(true);
         clearPostsCache();
         clearCollectionsCache();
+        clearCollectiblesTabCache();
         await fetchUserData();
         setRefreshKey(prev => prev + 1);
         setRefreshing(false);
@@ -707,14 +714,15 @@ const UserProfileView = () => {
                         pointerEvents={activeTab === 'cNFTs' ? 'auto' : 'none'}
                         style={[StyleSheet.absoluteFill, { opacity: cnftsOpacity, transform: [{ translateX: cnftsTranslate }], zIndex: activeTab === 'cNFTs' ? 1 : 0 }]}
                     >
-                        <CollectionsGallery
+                        <CollectiblesTab
                             key={`collections-${refreshKey}`}
-                            id={+id}
+                            username={userData.username}
                             isOwnProfile={false}
+                            onCount={handleCollectiblesCount}
                             ListHeaderComponent={profileHeader}
                             ListEmptyComponent={
-                                <EmptyState iconType="cnfts" title="No cNFTs Yet"
-                                    description="This user hasn't collected or created any cNFTs yet."
+                                <EmptyState iconType="cnfts" title="No collectibles yet"
+                                    description="Nothing collected here yet: POAPs, Proof of Meets and collected posts show up in this tab."
                                     colorScheme={isDark ? "dark" : "light"} />
                             }
                             refreshControl={refreshControl}

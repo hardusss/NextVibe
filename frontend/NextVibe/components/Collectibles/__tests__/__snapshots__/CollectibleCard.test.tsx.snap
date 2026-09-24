@@ -1,0 +1,298 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CollectibleCard: the same card on-chain or not renders the same component for both states; off-chain adds only the chip: off-chain 1`] = `
+<View
+  accessibilityLabel="Superteam Ukraine Kyiv #12, POAP · Sep 26, 2026, Not on Solana yet"
+  accessibilityRole="button"
+  accessibilityState={
+    {
+      "busy": undefined,
+      "checked": undefined,
+      "disabled": undefined,
+      "expanded": undefined,
+      "selected": undefined,
+    }
+  }
+  accessibilityValue={
+    {
+      "max": undefined,
+      "min": undefined,
+      "now": undefined,
+      "text": undefined,
+    }
+  }
+  accessible={true}
+  collapsable={false}
+  focusable={true}
+  onBlur={[Function]}
+  onClick={[Function]}
+  onFocus={[Function]}
+  onResponderGrant={[Function]}
+  onResponderMove={[Function]}
+  onResponderRelease={[Function]}
+  onResponderTerminate={[Function]}
+  onResponderTerminationRequest={[Function]}
+  onStartShouldSetResponder={[Function]}
+  style={
+    [
+      {
+        "borderRadius": 14,
+        "borderWidth": 1,
+        "overflow": "hidden",
+      },
+      {
+        "backgroundColor": "#F5F3FF",
+        "borderColor": "rgba(17,24,39,0.06)",
+        "opacity": 1,
+        "width": 170,
+      },
+    ]
+  }
+  testID="collectible-7"
+>
+  <View
+    style={
+      [
+        {
+          "overflow": "hidden",
+          "width": "100%",
+        },
+        {
+          "backgroundColor": "#E9E4FB",
+          "height": 213,
+        },
+      ]
+    }
+  >
+    <View
+      contentFit="cover"
+      source={
+        {
+          "uri": "https://media.nextvibe.io/posts_media/kyiv.jpg",
+        }
+      }
+      style={
+        {
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        }
+      }
+      testID="expo-image"
+      transition={150}
+    />
+    <View
+      style={
+        {
+          "backgroundColor": "rgba(10,4,16,0.86)",
+          "borderColor": "rgba(255,255,255,0.18)",
+          "borderRadius": 999,
+          "borderWidth": 0.5,
+          "left": 8,
+          "maxWidth": "88%",
+          "paddingHorizontal": 8,
+          "paddingVertical": 3,
+          "position": "absolute",
+          "top": 8,
+        }
+      }
+      testID="not-on-solana-chip"
+    >
+      <Text
+        numberOfLines={1}
+        style={
+          {
+            "color": "rgba(255,255,255,0.82)",
+            "fontFamily": "Dank Mono Bold",
+            "fontSize": 10,
+            "includeFontPadding": false,
+          }
+        }
+      >
+        Not on Solana yet
+      </Text>
+    </View>
+  </View>
+  <View
+    style={
+      {
+        "gap": 2,
+        "paddingBottom": 12,
+        "paddingHorizontal": 12,
+        "paddingTop": 8,
+      }
+    }
+  >
+    <Text
+      numberOfLines={2}
+      style={
+        [
+          {
+            "fontFamily": "Dank Mono Bold",
+            "fontSize": 14,
+            "includeFontPadding": false,
+            "lineHeight": 18,
+          },
+          {
+            "color": "#111827",
+          },
+        ]
+      }
+    >
+      Superteam Ukraine Kyiv #12
+    </Text>
+    <Text
+      numberOfLines={1}
+      style={
+        [
+          {
+            "fontFamily": "Dank Mono",
+            "fontSize": 11,
+            "includeFontPadding": false,
+          },
+          {
+            "color": "rgba(17,24,39,0.5)",
+          },
+        ]
+      }
+    >
+      POAP · Sep 26, 2026
+    </Text>
+  </View>
+</View>
+`;
+
+exports[`CollectibleCard: the same card on-chain or not renders the same component for both states; off-chain adds only the chip: on-chain 1`] = `
+<View
+  accessibilityLabel="Superteam Ukraine Kyiv #12, POAP · Sep 26, 2026"
+  accessibilityRole="button"
+  accessibilityState={
+    {
+      "busy": undefined,
+      "checked": undefined,
+      "disabled": undefined,
+      "expanded": undefined,
+      "selected": undefined,
+    }
+  }
+  accessibilityValue={
+    {
+      "max": undefined,
+      "min": undefined,
+      "now": undefined,
+      "text": undefined,
+    }
+  }
+  accessible={true}
+  collapsable={false}
+  focusable={true}
+  onBlur={[Function]}
+  onClick={[Function]}
+  onFocus={[Function]}
+  onResponderGrant={[Function]}
+  onResponderMove={[Function]}
+  onResponderRelease={[Function]}
+  onResponderTerminate={[Function]}
+  onResponderTerminationRequest={[Function]}
+  onStartShouldSetResponder={[Function]}
+  style={
+    [
+      {
+        "borderRadius": 14,
+        "borderWidth": 1,
+        "overflow": "hidden",
+      },
+      {
+        "backgroundColor": "#F5F3FF",
+        "borderColor": "rgba(17,24,39,0.06)",
+        "opacity": 1,
+        "width": 170,
+      },
+    ]
+  }
+  testID="collectible-7"
+>
+  <View
+    style={
+      [
+        {
+          "overflow": "hidden",
+          "width": "100%",
+        },
+        {
+          "backgroundColor": "#E9E4FB",
+          "height": 213,
+        },
+      ]
+    }
+  >
+    <View
+      contentFit="cover"
+      source={
+        {
+          "uri": "https://media.nextvibe.io/posts_media/kyiv.jpg",
+        }
+      }
+      style={
+        {
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        }
+      }
+      testID="expo-image"
+      transition={150}
+    />
+  </View>
+  <View
+    style={
+      {
+        "gap": 2,
+        "paddingBottom": 12,
+        "paddingHorizontal": 12,
+        "paddingTop": 8,
+      }
+    }
+  >
+    <Text
+      numberOfLines={2}
+      style={
+        [
+          {
+            "fontFamily": "Dank Mono Bold",
+            "fontSize": 14,
+            "includeFontPadding": false,
+            "lineHeight": 18,
+          },
+          {
+            "color": "#111827",
+          },
+        ]
+      }
+    >
+      Superteam Ukraine Kyiv #12
+    </Text>
+    <Text
+      numberOfLines={1}
+      style={
+        [
+          {
+            "fontFamily": "Dank Mono",
+            "fontSize": 11,
+            "includeFontPadding": false,
+          },
+          {
+            "color": "rgba(17,24,39,0.5)",
+          },
+        ]
+      }
+    >
+      POAP · Sep 26, 2026
+    </Text>
+  </View>
+</View>
+`;

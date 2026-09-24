@@ -3,8 +3,9 @@ Proof of Meet v2: the shared selfie at a tap (posts/src/meet_photos.py).
 
 Covers:
 - the happy path: lock → upload → send → approve → moderation → render →
-  two mints → the co-authored post on both profiles → /u/meet/<slug> and its
-  card switch to the selfie, the metadata JSON, the X post's "📸" line
+  the co-authored post on both profiles (wallet or not) and both people's
+  Proof of Meet collectibles minted → /u/meet/<slug> and its card switch to
+  the selfie, the metadata JSON, the X post's "📸" line
 - reject (no mint, no post, v1 card), 24 h expiry, block, account deletion
 - only the two people: a third party gets 404 on every endpoint
 - EXIF (GPS) never reaches the stored raw or the published card
@@ -14,7 +15,7 @@ Covers:
 - limits: the lock, retakes, rejections, the upload rate limit
 - moderation: flagged uploads never reach the subject; outages aren't failures
 - rendering: long names, no city, events, Seeker on both sides, portrait and landscape
-- lazy mint for someone without a wallet
+- no wallet: the photo goes live anyway; the leaf lands when a wallet is connected
 - every leaf lists both people's wallets as co-authors (creators), and so
   does the metadata JSON
 """
@@ -32,8 +33,8 @@ from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APIClient
 
-from posts.models import MeetPhoto, Post, Reputation
-from posts.src import meet_photo_card, meet_photos, meets, moderation
+from posts.models import Collectible, MeetPhoto, Post, Reputation
+from posts.src import collectible_mint, meet_photo_card, meet_photos, meets, moderation
 from posts.src.meet_photo_store import R2PrivateStore, private_store, public_key
 from posts.view_pac.meet_photo import MeetPhotoUploadThrottle, MeetPhotoView
 from user.models import Block, User
@@ -41,7 +42,12 @@ from user.models import Block, User
 Status = MeetPhoto.Status
 # The real functions, before each test patches the module attributes
 REAL_IMAGE_PASSES = moderation.image_passes
-REAL_MINT_LEAF = meet_photos._mint_leaf
+REAL_MINT_CALL = collectible_mint._mint_call
+# Real-shaped wallets: the queue checks addresses before minting
+ALICE_WALLET = "3x9az88Dkbxa6tkKByxqEn7jBTJCJCD4dVvou49L24ET"
+BOB_WALLET = "9jLkNAaW9E47LQMHvjohy2uAAyr1331bAxgJKFRU7wF6"
+BOB_NEW_WALLET = "5YXbGQH4hwJfVPqtFCupTYzMv7DgpXgwmS7BvueaBphE"
+ALICE_OLD_WALLET = "3ps2GMwD3tSQM1HTagNh1JzGvpkCEXkXEAt7rgNfdfGS"
 PHOTOGRAPHER_ASSET = "8xKq9ZrYpD3fQh1LmNbVcXz2Wt5Ue6Rs7Ta8Pb9Qc3fQ"
 SUBJECT_ASSET = "4TzAbCdEfGhJkLmNpQrStUvWxYz123456789aBcD9aB"
 
@@ -112,16 +118,22 @@ class MeetPhotoTestCase(TestCase):
         self.pushes = []
         patch("posts.src.meet_photos._push", side_effect=lambda user, body, photo: self.pushes.append((user.username, body)))
         self.enqueued = []
-        patch("posts.src.meet_photos._enqueue_mint", side_effect=self.enqueued.append)
+        patch("posts.src.meet_photos._enqueue_publish", side_effect=self.enqueued.append)
+        # Each person's Proof of Meet collectible is the leaf; the queue runs right away
         self.leaves = iter([PHOTOGRAPHER_ASSET, SUBJECT_ASSET, "5ThirdLeafAssetId1111111111111111111111111"])
-        self.mint_leaf = patch("posts.src.meet_photos._mint_leaf", side_effect=lambda photo, meet, wallet: next(self.leaves))
+        self.mint_leaf = patch("posts.src.collectible_mint._mint_call", side_effect=self.fake_leaf)
+        patch("posts.src.collectibles.enqueue", side_effect=collectible_mint.process)
+        patch("posts.src.collectibles.enqueue_user", side_effect=collectible_mint.mint_pending_for_user)
+        patch("posts.src.collectible_mint.tree_status", return_value=None)
+        patch("posts.src.collectible_mint.MINT_PAUSE", new=0)
+        patch("posts.src.push.send", return_value=None)
         # Throttling is tested on its own
         original = MeetPhotoView.get_throttles
         MeetPhotoView.get_throttles = lambda view: []
         self.addCleanup(setattr, MeetPhotoView, "get_throttles", original)
 
-        self.alice = make_user("alice", wallet_address="A1ice1111111111111111111111111111111111111")
-        self.bob = make_user("bob", wallet_address="B0b11111111111111111111111111111111111111111")
+        self.alice = make_user("alice", wallet_address=ALICE_WALLET)
+        self.bob = make_user("bob", wallet_address=BOB_WALLET)
         self.carol = make_user("carol")
         self.slug = self.tap(self.alice, self.bob)
         self.a = client_for(self.alice)
@@ -130,6 +142,11 @@ class MeetPhotoTestCase(TestCase):
 
     def tearDown(self):
         cache.clear()
+
+    def fake_leaf(self, row, wallet):
+        """alice (the photographer) gets PHOTOGRAPHER_ASSET, bob SUBJECT_ASSET, anyone else the next one."""
+        by_name = {"alice": PHOTOGRAPHER_ASSET, "bob": SUBJECT_ASSET}
+        return by_name.get(row.user.username) or next(self.leaves), "sig"
 
     def tap(self, a, b, when=None):
         slug = meets.tap_slug(a.user_id, b.user_id, "irl", when=when)
@@ -177,7 +194,7 @@ class MeetPhotoTestCase(TestCase):
 
     def live_photo(self, data=None):
         photo = self.approved_photo(data)
-        meet_photos.mint(photo.pk)
+        meet_photos.publish_approved(photo.pk)
         photo.refresh_from_db()
         self.assertEqual(photo.status, Status.MINTED)
         return photo
@@ -244,10 +261,15 @@ class HappyPathTests(MeetPhotoTestCase):
         # …but /u/meet stays on the v1 card until it's minted
         self.assertFalse(self.api_json(f"/api/v1/meet/{self.slug}")["selfie"])
 
-        meet_photos.mint(photo.pk)
+        meet_photos.publish_approved(photo.pk)
         photo.refresh_from_db()
         self.assertEqual(photo.status, Status.MINTED)
         self.assertEqual((photo.asset_id_photographer, photo.asset_id_subject), (PHOTOGRAPHER_ASSET, SUBJECT_ASSET))
+        # The leaves are the two people's Proof of Meet collectibles
+        self.assertEqual(
+            dict(Collectible.objects.filter(source_id=self.slug).values_list("user__username", "asset_id")),
+            {"alice": PHOTOGRAPHER_ASSET, "bob": SUBJECT_ASSET},
+        )
         self.assertEqual((photo.wallet_photographer, photo.wallet_subject),
                          (self.alice.wallet_address, self.bob.wallet_address))
         self.assertEqual(self.mint_leaf.call_count, 2)
@@ -831,7 +853,7 @@ class ModerationTests(MeetPhotoTestCase):
 
 class MintTests(MeetPhotoTestCase):
     def fake_nft_service(self):
-        """The real _mint_leaf against a stubbed nft-service; returns the bodies it gets."""
+        """The real /mint/meet call against a stubbed nft-service; returns the bodies it gets."""
         bodies = []
         assets = iter([PHOTOGRAPHER_ASSET, SUBJECT_ASSET])
 
@@ -841,11 +863,14 @@ class MintTests(MeetPhotoTestCase):
             response.json.return_value = {"success": True, "assetId": next(assets), "signature": "sig"}
             return response
 
-        self.mint_leaf.side_effect = REAL_MINT_LEAF
-        patcher = mock.patch("posts.src.meet_photos.requests.post", side_effect=post)
+        self.mint_leaf.side_effect = REAL_MINT_CALL
+        patcher = mock.patch("posts.src.collectible_mint.requests.post", side_effect=post)
         patcher.start()
         self.addCleanup(patcher.stop)
         return bodies
+
+    def holder_uri(self, user):
+        return f"https://api.nextvibe.io/meta/meet/{self.slug}/{user.user_id}.json"
 
     def test_every_leaf_lists_both_wallets(self):
         bodies = self.fake_nft_service()
@@ -854,12 +879,14 @@ class MintTests(MeetPhotoTestCase):
         # alice is the meet's A (she confirmed the tap): the same order on both leaves
         self.assertEqual([(body["recipient"], body["coAuthors"]) for body in bodies],
                          [(alice, [alice, bob]), (bob, [alice, bob])])
+        # Each leaf points at its holder's copy of the metadata
+        self.assertEqual([body["uri"] for body in bodies], [self.holder_uri(self.alice), self.holder_uri(self.bob)])
 
     def test_a_late_wallet_is_on_its_own_leaf_and_in_the_json(self):
         bodies = self.fake_nft_service()
         User.objects.filter(pk=self.bob.pk).update(wallet_address=None)
         photo = self.approved_photo()
-        meet_photos.mint(photo.pk)
+        meet_photos.publish_approved(photo.pk)
         alice = self.alice.wallet_address
         self.assertEqual([(body["recipient"], body["coAuthors"]) for body in bodies], [(alice, [alice])])
 
@@ -869,9 +896,12 @@ class MintTests(MeetPhotoTestCase):
 
         self.assertEqual(wallets(), {"Participant A wallet": alice})
         # He connects one: his leaf names both, alice's stays as minted
-        User.objects.filter(pk=self.bob.pk).update(wallet_address="B0bNew111111111111111111111111111111111111")
-        meet_photos.mint_for_user(self.bob.user_id)
-        bob = "B0bNew111111111111111111111111111111111111"
+        bob = BOB_NEW_WALLET
+        bob_client = client_for(User.objects.get(pk=self.bob.pk))
+        with mock.patch("user.views_pac.save_wallet_address.verify_seeker_in_background"):
+            response = bob_client.post("/api/v1/users/save-wallet/", {"walletAddress": bob}, format="json")
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["collectibles"], {"queued": 1})
         self.assertEqual(bodies[1]["recipient"], bob)
         self.assertEqual(bodies[1]["coAuthors"], [alice, bob])
         self.assertEqual(wallets(), {"Participant A wallet": alice, "Participant B wallet": bob})
@@ -882,8 +912,8 @@ class MintTests(MeetPhotoTestCase):
         alice, bob = self.alice.wallet_address, self.bob.wallet_address
         self.assertEqual(meet_photos.co_author_wallets(photo, meet), [alice, bob])
         # The wallet a leaf went to wins over one connected later
-        photo.wallet_photographer = "A1iceOld11111111111111111111111111111111111"
-        self.assertEqual(meet_photos.co_author_wallets(photo, meet), ["A1iceOld11111111111111111111111111111111111", bob])
+        photo.wallet_photographer = ALICE_OLD_WALLET
+        self.assertEqual(meet_photos.co_author_wallets(photo, meet), [ALICE_OLD_WALLET, bob])
         # A wallet is listed once, even if it moved between the two accounts
         photo.wallet_photographer = bob
         self.assertEqual(meet_photos.co_author_wallets(photo, meet), [bob])
@@ -896,79 +926,101 @@ class MintTests(MeetPhotoTestCase):
         photo.subject.auth_provider = "deleted"
         self.assertEqual(meet_photos.co_author_wallets(photo, meet), [alice])
 
-    def test_lazy_mint_for_someone_without_a_wallet(self):
+    def test_no_wallet_goes_live_and_the_leaf_lands_on_connect(self):
         self.bob.wallet_address = None  # the test client holds this very object
         self.bob.save(update_fields=["wallet_address"])
         photo = self.approved_photo()
-        meet_photos.mint(photo.pk)
+        meet_photos.publish_approved(photo.pk)
         photo.refresh_from_db()
-        # Live with alice's leaf; bob's lands when he connects a wallet
+        # Live with alice's leaf; bob's collectible waits off-chain for a wallet
         self.assertEqual(photo.status, Status.MINTED)
         self.assertEqual((photo.asset_id_photographer, photo.asset_id_subject), (PHOTOGRAPHER_ASSET, ""))
+        bobs = Collectible.objects.get(user=self.bob, source_id=self.slug)
+        self.assertEqual(bobs.status, Collectible.Status.OFFCHAIN)
         state = self.b.get(self.url()).json()
         self.assertTrue(state["photo"]["waiting_for_wallet"])
-        with mock.patch("posts.tasks.mint_meet_photos_for_user.delay", side_effect=meet_photos.mint_for_user) as delay, \
-                mock.patch("user.views_pac.save_wallet_address.verify_seeker_in_background"):
+        with mock.patch("user.views_pac.save_wallet_address.verify_seeker_in_background"):
             response = self.b.post("/api/v1/users/save-wallet/",
-                                   {"walletAddress": "B0bNew111111111111111111111111111111111111"}, format="json")
-            self.assertEqual(response.status_code, 200)
-            delay.assert_called_once_with(self.bob.user_id)
+                                   {"walletAddress": BOB_NEW_WALLET}, format="json")
+        self.assertEqual(response.status_code, 200)
         photo.refresh_from_db()
         self.assertEqual(photo.asset_id_subject, SUBJECT_ASSET)
-        self.assertEqual(photo.wallet_subject, "B0bNew111111111111111111111111111111111111")
+        self.assertEqual(photo.wallet_subject, BOB_NEW_WALLET)
         self.assertEqual(Post.objects.filter(meet_slug=self.slug).count(), 1)
 
-    def test_no_wallets_waits(self):
+    def test_no_wallets_still_goes_live(self):
+        """Nobody waits for a wallet: the post and the cards go up, both collectibles are saved off-chain."""
         User.objects.filter(pk__in=[self.alice.pk, self.bob.pk]).update(wallet_address=None)
         photo = self.approved_photo()
-        meet_photos.mint(photo.pk)
+        meet_photos.publish_approved(photo.pk)
         photo.refresh_from_db()
-        self.assertEqual(photo.status, Status.APPROVED)
-        self.assertFalse(Post.objects.filter(meet_slug=self.slug).exists())
+        self.assertEqual(photo.status, Status.MINTED)
+        self.assertTrue(Post.objects.filter(meet_slug=self.slug).exists())
+        self.assertEqual(self.mint_leaf.call_count, 0)
+        self.assertEqual(set(Collectible.objects.filter(source_id=self.slug).values_list("status", flat=True)),
+                         {Collectible.Status.OFFCHAIN})
+        # The card says "recorded on NextVibe" until a leaf lands
+        self.assertIn("recorded on NextVibe", APIClient().get(f"/api/v1/meet/{self.slug}").json()["proof_line"])
 
-    def test_failed_mint_is_retried_by_the_sweep(self):
+    def test_first_leaf_redraws_the_live_card(self):
+        User.objects.filter(pk__in=[self.alice.pk, self.bob.pk]).update(wallet_address=None)
         photo = self.approved_photo()
-        self.mint_leaf.side_effect = meet_photos.MintError("MINT_SEND_FAILED")
-        meet_photos.mint(photo.pk)
+        meet_photos.publish_approved(photo.pk)
+        before = self.public_bytes("story")
+        with mock.patch("user.views_pac.save_wallet_address.verify_seeker_in_background"):
+            client_for(User.objects.get(pk=self.alice.pk)).post(
+                "/api/v1/users/save-wallet/", {"walletAddress": ALICE_WALLET},
+                format="json")
+        photo.refresh_from_db()
+        self.assertEqual(photo.asset_id_photographer, PHOTOGRAPHER_ASSET)
+        self.assertNotEqual(self.public_bytes("story"), before)
+        self.assertIn("verified on Solana · 8xK…3fQ", APIClient().get(f"/api/v1/meet/{self.slug}").json()["proof_line"])
+
+    def test_a_failed_publish_is_retried_by_the_sweep(self):
+        photo = self.approved_photo()
+        with mock.patch("posts.src.meet_photos.publish", side_effect=RuntimeError("storage")):
+            with self.assertRaises(RuntimeError):
+                meet_photos.publish_approved(photo.pk)
         photo.refresh_from_db()
         self.assertEqual(photo.status, Status.APPROVED)
         self.assertTrue(self.a.get(self.url()).json()["photo"]["minting"])
-        self.mint_leaf.side_effect = lambda p, m, w: next(self.leaves)
-        meet_photos.sweep()
+        meet_photos.sweep(now=timezone.now() + timedelta(minutes=5))
         photo.refresh_from_db()
         self.assertEqual(photo.status, Status.MINTED)
 
-    def test_mints_never_overlap(self):
+    def test_publishes_never_overlap(self):
         photo = self.approved_photo()
-        cache.add(f"meet_photo_mint:{photo.pk}", 1, 300)
-        meet_photos.mint(photo.pk)
-        self.assertEqual(self.mint_leaf.call_count, 0)
+        cache.add(f"meet_photo_publish:{photo.pk}", 1, 300)
+        meet_photos.publish_approved(photo.pk)
+        photo.refresh_from_db()
+        self.assertEqual(photo.status, Status.APPROVED)
 
-    def test_taken_down_before_the_mint_finished(self):
+    def test_taken_down_before_it_went_live(self):
         photo = self.approved_photo()
         self.b.post(self.url("takedown"))
-        meet_photos.mint(photo.pk)
-        self.assertEqual(self.mint_leaf.call_count, 0)
+        meet_photos.publish_approved(photo.pk)
         self.assertFalse(Post.all_objects.filter(meet_slug=self.slug).exists())
 
     def test_nft_service_request(self):
         photo = self.approved_photo()
         meet = meets.load_meet(self.slug)
+        meet_photos._ensure_collectibles(photo, meet)
+        row = Collectible.objects.select_related("user", "counterpart").get(user=self.alice, source_id=self.slug)
         response = mock.Mock(status_code=200)
         response.json.return_value = {"success": True, "assetId": "Asset111", "signature": "sig"}
-        with mock.patch("posts.src.meet_photos.requests.post", return_value=response) as post:
-            self.assertEqual(REAL_MINT_LEAF(photo, meet, "W"), "Asset111")
+        with mock.patch("posts.src.collectible_mint.requests.post", return_value=response) as post:
+            self.assertEqual(REAL_MINT_CALL(row, "W"), ("Asset111", "sig"))
         self.assertTrue(post.call_args.args[0].endswith("/mint/meet"))
         self.assertEqual(post.call_args.kwargs["json"], {
             "recipient": "W", "slug": self.slug, "name": meet_photos.onchain_name(meet),
-            "uri": f"https://api.nextvibe.io/meta/meet/{self.slug}.json",
-            "coAuthors": [self.alice.wallet_address, self.bob.wallet_address],
+            "uri": self.holder_uri(self.alice),
+            "coAuthors": ["W", self.bob.wallet_address],
         })
         response.json.return_value = {"success": False, "error": "MEET_COLLECTION_NOT_CONFIGURED"}
         response.status_code = 503
-        with mock.patch("posts.src.meet_photos.requests.post", return_value=response):
-            with self.assertRaisesRegex(meet_photos.MintError, "MEET_COLLECTION_NOT_CONFIGURED"):
-                REAL_MINT_LEAF(photo, meet, "W")
+        with mock.patch("posts.src.collectible_mint.requests.post", return_value=response):
+            with self.assertRaisesRegex(collectible_mint.ServiceNotReady, "MEET_COLLECTION_NOT_CONFIGURED"):
+                REAL_MINT_CALL(row, "W")
 
 
 class RenderTests(TestCase):

@@ -39,6 +39,7 @@ from ..constants import (
     NFT_SERVICE_URL,
 )
 from ..models import PendingClaim, Post, Reputation, UserCollection
+from ..src import collectibles
 from ..src.collect_eligibility import is_irl_connected
 from ..src.collect_memo import build_memo
 
@@ -102,6 +103,8 @@ def _finalize_collect(user, post_id, edition, asset_id, signature):
         post.is_nft = True
         post.save(update_fields=["minted_count", "is_nft"])
         PendingClaim.objects.filter(user=user, post=post).delete()
+        # Shows in the cNFT tab with everything else (collects always have a wallet)
+        collectibles.record_collected(user, post, collection)
 
         if is_irl_connected(user, post):
             Reputation.objects.create(

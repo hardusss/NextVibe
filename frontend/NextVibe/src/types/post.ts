@@ -1,6 +1,7 @@
 import { PostMedia } from "@/components/PostDetails/PostMediaItem";
 import { CollectInfo } from "@/src/api/collect";
 import type { CoAuthorPerson } from "@/components/Meet/CoAuthorHeader";
+import type { MeetCollectibleState } from "@/components/Collectibles/MeetChainLine";
 
 export interface PostData {
     user_id: number;
@@ -42,4 +43,6 @@ export interface PostData {
     collectable?: boolean;
     is_co_author?: boolean;
     hidden_on_my_profile?: boolean;
+    /** Each person's Proof of Meet collectible (the chain line under the names) */
+    meet_collectibles?: MeetCollectibleState[] | null;
 }

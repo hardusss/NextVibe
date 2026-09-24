@@ -34,11 +34,15 @@ import formatNumber from "@/src/utils/formatNumber";
 import ButtonSettings from "./ButtonSettings";
 import ButtonWallet from "./ButtonWallet";
 import PostGallery, { clearPostsCache } from "./PostsMenu";
-import CollectionsGallery, { clearCollectionsCache } from "./CollectionsMenu";
+import { clearCollectionsCache } from "./CollectionsMenu";
+import CollectiblesTab, { clearCollectiblesTabCache } from "@/components/Collectibles/CollectiblesTab";
+import OffchainBanner from "@/components/Collectibles/OffchainBanner";
+import { useCollectibles } from "@/src/stores/collectiblesStore";
+import { EMPTY_TAB_TEXT } from "@/src/utils/collectibles";
 import { ActivityIndicator } from "../CustomActivityIndicator";
 import UserBadges from "../Shared/UserBadges";
 import SeekerBadgeSheet, { SeekerBadgeSheetRef } from "../Shared/SeekerBadgeSheet";
-import { MEETS_OPEN_PARAM, SEEKER_OPEN_PARAM } from "@/src/navigation/intents";
+import { COLLECTIBLES_OPEN_PARAM, MEETS_OPEN_PARAM, SEEKER_OPEN_PARAM } from "@/src/navigation/intents";
 import { walletLogger, WalletTag } from "@/src/utils/walletLogger";
 import { useSeekerIntro } from "@/src/stores/seekerIntroStore";
 
@@ -62,6 +66,8 @@ const HEADER_HEIGHT = 200;
 const handledSeekerIntents = new Set<string>();
 /** Same for nextvibe.io/u/meets (`open=meets` opens POAPs & History). */
 const handledMeetsIntents = new Set<string>();
+/** And nextvibe.io/u/collectibles (`open=collectibles` switches to the cNFT tab). */
+const handledCollectiblesIntents = new Set<string>();
 /** Let the screen finish arriving (tab switch / splash replace) before sliding up. */
 const SEEKER_SHEET_DELAY_MS = 350;
 
@@ -76,6 +82,7 @@ export const clearProfileCache = () => {
     profileHasFetched = false;
     clearPostsCache();
     clearCollectionsCache();
+    clearCollectiblesTabCache();
 };
 
 type UserData = {
@@ -170,6 +177,8 @@ const ProfileView = () => {
     const [loading, setLoading] = useState<boolean>(!cachedUserData);
     const [refreshing, setRefreshing] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
+    /** Bumped to reload just the cNFT tab (open=collectibles) */
+    const [collectiblesKey, setCollectiblesKey] = useState(0);
     const [activeTab, setActiveTab] = useState<Tab>("Posts");
     const [invitedCount, setInvitedCount] = useState<number>(cachedInvitedCount ?? 0);
     const [visible, setVisible] = useState<boolean>(false);
@@ -278,6 +287,16 @@ const ProfileView = () => {
         });
     }, []);
 
+    /** The cNFT tab's own total: a check-in or a meet since the profile loaded shows in the label */
+    const handleCollectiblesCount = useCallback((total: number) => {
+        setUserData((prev) => {
+            if (prev.cnft_count === total) return prev;
+            const next = { ...prev, cnft_count: total };
+            cachedUserData = next;
+            return next;
+        });
+    }, []);
+
     const fetchUserData = async () => {
         setFetchError(false);
         try {
@@ -326,6 +345,8 @@ const ProfileView = () => {
         profileHasFetched = false;
         clearPostsCache();
         clearCollectionsCache();
+        clearCollectiblesTabCache();
+        useCollectibles.getState().refreshSummary();
         await fetchUserData();
         setRefreshing(false);
     }, [activeTab]);
@@ -437,6 +458,24 @@ const ProfileView = () => {
         }, SEEKER_SHEET_DELAY_MS);
         return () => clearTimeout(timer);
     }, [meetsRequested, intentParam, isFocused, interactionsFinished, loading]);
+
+    // nextvibe.io/u/collectibles (the "now on Solana" push, "See them"): the cNFT tab, once per tap
+    const collectiblesRequested = openParam === COLLECTIBLES_OPEN_PARAM;
+    useEffect(() => {
+        if (!collectiblesRequested || !isFocused || loading) return;
+        if (!(intentParam && handledCollectiblesIntents.has(intentParam))) {
+            if (intentParam) handledCollectiblesIntents.add(intentParam);
+            // Fresh cards: they may have landed since the tab was last loaded
+            clearCollectiblesTabCache();
+            setCollectiblesKey((k) => k + 1);
+            if (activeTab !== "cNFTs") {
+                animateTabSwitch("cNFTs");
+                setActiveTab("cNFTs");
+            }
+            walletLogger.info(WalletTag.NAV_INTENT, 'Profile: cNFT tab opened for open=collectibles', { intent: intentParam });
+        }
+        router.setParams({ open: undefined, intent: undefined });
+    }, [collectiblesRequested, intentParam, isFocused, loading]);
 
     useFocusEffect(
         useCallback(() => {
@@ -594,6 +633,8 @@ const ProfileView = () => {
                     </View>
                 </View>
 
+                <OffchainBanner />
+
                 <View style={[st.tabBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
                     {TABS.map((tab) => {
                         const isActive = activeTab === tab;
@@ -725,14 +766,15 @@ const ProfileView = () => {
                             style={[cnftsAnimatedStyle, StyleSheet.absoluteFill, { zIndex: activeTab === 'cNFTs' ? 1 : 0 }]}
                         >
                             {interactionsFinished ? (
-                                <CollectionsGallery
-                                    key={`collections-${refreshKey}`}
-                                    id={id as number}
+                                <CollectiblesTab
+                                    key={`collections-${refreshKey}-${collectiblesKey}`}
+                                    username={userData.username}
                                     isOwnProfile={true}
+                                    onCount={handleCollectiblesCount}
                                     ListHeaderComponent={profileHeader}
                                     ListEmptyComponent={
-                                        <EmptyState Icon={Layers} title="No cNFTs Yet"
-                                            description="Your collected and created cNFTs will appear here."
+                                        <EmptyState Icon={Layers} title="No collectibles yet"
+                                            description={EMPTY_TAB_TEXT}
                                             colorScheme={isDark ? "dark" : "light"} />
                                     }
                                     refreshControl={refreshControl}

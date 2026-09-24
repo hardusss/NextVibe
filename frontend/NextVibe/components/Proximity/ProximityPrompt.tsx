@@ -26,6 +26,8 @@ import MeetCardPreview, { MEET_CARD_ASPECT } from '@/components/Meet/MeetCardPre
 import MeetShareActions from '@/components/Meet/MeetShareActions';
 import MeetSelfieCta from '@/components/Meet/MeetSelfieCta';
 import { useMeet } from '@/components/Meet/useMeet';
+import SavedOffchainNote from '@/components/Collectibles/SavedOffchainNote';
+import { useCollectibles } from '@/src/stores/collectiblesStore';
 import UserBadges from '@/components/Shared/UserBadges';
 import SuccessBurst from '@/components/NftClaim/MintBottomSheet/SuccessBurst';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
@@ -82,6 +84,9 @@ export default function ProximityPrompt() {
     // The Proof of Meet this tap made: card preview and sharing on the success card
     const successSlug = snapshot.phase === 'success' ? snapshot.meetSlug : null;
     const [meetState] = useMeet(successSlug);
+    // No wallet: the Proof of Meet is saved to the profile (the note under "You met")
+    const noWallet = useCollectibles((st) => st.summary !== null && !st.summary.has_wallet);
+    useEffect(() => { if (successSlug) useCollectibles.getState().refreshSummary(); }, [successSlug]);
     const { height: windowHeight } = useWindowDimensions();
 
     // OS-delivered tap links (NFC tag read, universal/app link).
@@ -266,6 +271,11 @@ export default function ProximityPrompt() {
                         </LinearGradient>
                     )}
                     <Text style={[styles.message, { color: muted }]}>Reputation added for both of you.</Text>
+                    {noWallet && s.meetSlug && (
+                        <View style={styles.savedNote}>
+                            <SavedOffchainNote reason="tap" onBeforeOpen={close} />
+                        </View>
+                    )}
                     <View style={styles.actions}>
                         {s.meetSlug && <MeetSelfieCta slug={s.meetSlug} otherUsername={s.peer?.username} onOpenCamera={close} />}
                         {s.meetSlug && (
@@ -525,6 +535,10 @@ function PulseIcon({ children, reduceMotion }: { children: React.ReactNode; redu
 }
 
 const styles = StyleSheet.create({
+    savedNote: {
+        marginTop: space.sm,
+        alignSelf: 'stretch',
+    },
     anchor: {
         flex: 1,
         justifyContent: 'flex-end',

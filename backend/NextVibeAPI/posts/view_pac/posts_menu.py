@@ -8,6 +8,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models import Prefetch
 from rest_framework.throttling import ScopedRateThrottle
 from user.src.blocking import blocked_user_ids, is_blocked_between
+from ..src import collectibles
 from ..src.meet_photos import on_profile_q, post_meet_fields, user_brief
 
 User: AbstractUser = get_user_model()
@@ -75,6 +76,8 @@ class PostMenuView(APIView):
         # The profile's owner (a co-authored post's owner is the other person)
         user_owner_posts = User.objects.filter(user_id=id).first() or posts_qs[0].owner
         user_request = request.user
+        # Proof of Meet posts: each person's collectible, for the post view's chain line
+        meet_states = collectibles.meet_states([post.meet_slug for post in posts_qs], request.user)
         data = [
             {
                 "user_id": post.owner.user_id,
@@ -101,6 +104,7 @@ class PostMenuView(APIView):
                 "total_supply": post.total_supply,
                 **post_meet_fields(post),
                 "owner": user_brief(post.owner) if post.meet_slug else None,
+                "meet_collectibles": meet_states.get(post.meet_slug, []) if post.meet_slug else None,
             }
             for post in posts_qs
         ]

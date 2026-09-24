@@ -8,6 +8,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from ..serializers_pac import UserDetailSerializer
 from posts.models import UserCollection, Reputation
 from user.models import InviteUser, OgAvatarMint, Block
+from django.db import DatabaseError, transaction
 from django.db.models import Sum, Q
 
 User = get_user_model()
@@ -23,6 +24,18 @@ BANED_FIELDS = [
     "is_active",
     "last_activity"
 ]
+
+def _cnft_count(user, viewer) -> int:
+    """What the cNFT tab lists: every collectible, on Solana or not (posts/src/collectibles.py)."""
+    try:
+        with transaction.atomic():
+            from posts.src.collectibles import visible_rows
+            return visible_rows(user, viewer).count()
+    except DatabaseError:
+        # Collectibles not migrated yet (deploy window): the old count
+        return (UserCollection.objects.filter(user=user, post__is_ai_generated=False).count()
+                + OgAvatarMint.objects.filter(user=user).count())
+
 
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -59,8 +72,7 @@ class UserDetailView(APIView):
                     status=status.HTTP_200_OK
                 )
 
-            # Count cNFTs posts and og
-            cnft_count = UserCollection.objects.filter(user=user, post__is_ai_generated=False).count() + OgAvatarMint.objects.filter(user=user).count()
+            cnft_count = _cnft_count(user, request.user)
 
             # Get count invited
             try:

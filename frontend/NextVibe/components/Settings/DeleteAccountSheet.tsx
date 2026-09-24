@@ -91,6 +91,7 @@ const DeleteAccountSheet = ({ isVisible, onClose, onConfirm }: Props) => {
                 <Text style={styles.title}>Delete Account</Text>
                 <Text style={styles.subtitle}>
                     This permanently removes your profile, personal details, and content from NextVibe. This can't be undone.
+                    Collectibles already on Solana stay in your wallet; ones saved off-chain are removed.
                 </Text>
 
                 <TouchableOpacity style={styles.row} onPress={handleConfirm} disabled={loading}>

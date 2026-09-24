@@ -126,6 +126,16 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'posts.tasks.sweep_meet_photos',
         'schedule': crontab(minute='*/10'),
     },
+    # Collectibles: due retries, mints nobody answered, missing metadata
+    'sweep-collectibles-every-2-min': {
+        'task': 'posts.tasks.sweep_collectibles',
+        'schedule': crontab(minute='*/2'),
+    },
+    # Connect-a-wallet reminders that are due (10:00–21:00 local time)
+    'wallet-reminders-hourly': {
+        'task': 'posts.tasks.send_wallet_reminders',
+        'schedule': crontab(minute=5),
+    },
 }
 
 

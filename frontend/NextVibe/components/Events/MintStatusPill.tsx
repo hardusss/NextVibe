@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
-import { Check, AlertTriangle } from 'lucide-react-native';
+import { Check, AlertTriangle, Bookmark } from 'lucide-react-native';
 import Animated, {
     FadeIn,
     useSharedValue,
@@ -16,7 +16,7 @@ import { useRepCountUp } from '@/hooks/useRepCountUp';
 import { MOTION } from '@/constants/motion';
 import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
 
-export type MintPillStatus = 'minting' | 'success' | 'failed';
+export type MintPillStatus = 'minting' | 'success' | 'saved' | 'failed';
 
 type MintStatusPillProps = {
     status: MintPillStatus;
@@ -27,7 +27,8 @@ type MintStatusPillProps = {
 
 /**
  * Compact lazy-mint indicator. Lives between the event info and the CTAs so
- * the mint never blocks the rest of the screen.
+ * the mint never blocks the rest of the screen. `saved`: no wallet, the POAP
+ * is kept on the profile off-chain (a neutral pill, not an error).
  */
 export default function MintStatusPill({ status, points = 0, error, onRetry }: MintStatusPillProps) {
     const isDark = useColorScheme() === 'dark';
@@ -97,13 +98,20 @@ export default function MintStatusPill({ status, points = 0, error, onRetry }: M
                             Minting your cNFT…
                         </Animated.Text>
                     </>
+                ) : status === 'saved' ? (
+                    <>
+                        <Bookmark size={15} color={isDark ? colors.text : '#111827'} />
+                        <Text style={[styles.text, { color: isDark ? colors.text : '#111827' }]}>
+                            Saved to your profile · Claim anytime
+                        </Text>
+                    </>
                 ) : (
                     <>
                         <View style={styles.checkCircle}>
                             <Check size={13} color={colors.success} strokeWidth={3} />
                         </View>
                         <Text style={[styles.text, { color: colors.success }]}>
-                            {points > 0 ? `cNFT minted · +${displayPoints} pts` : 'Already in your collection'}
+                            {points > 0 ? `cNFT minted · +${displayPoints} REP` : 'Already in your collection'}
                         </Text>
                     </>
                 )}

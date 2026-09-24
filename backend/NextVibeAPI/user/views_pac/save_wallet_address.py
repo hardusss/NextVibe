@@ -2,7 +2,6 @@ import logging
 import httpx
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
 from user.src.seeker_verification import needs_onchain_check, verify_seeker_in_background
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,19 +10,15 @@ from rest_framework import status
 
 logger = logging.getLogger(__name__)
 
-def _queue_meet_mints(user_id):
+def _queue_collectibles(user):
+    """Everything saved off-chain goes to the wallet now (posts/src/collectibles.py)."""
     try:
-        from posts.models import MeetPhoto
-        from posts.tasks import mint_meet_photos_for_user
-        owed = MeetPhoto.objects.filter(
-            status__in=(MeetPhoto.Status.APPROVED, MeetPhoto.Status.MINTED),
-        ).filter(
-            Q(photographer_id=user_id, asset_id_photographer="") | Q(subject_id=user_id, asset_id_subject=""),
-        )
-        if owed.exists():
-            mint_meet_photos_for_user.delay(user_id)
+        from posts.src.collectibles import queue_for_user
+        with transaction.atomic():
+            return queue_for_user(user, origin="connect")
     except Exception:
-        logger.warning("SaveWalletAddressView: queueing Proof of Meet mints failed for %s", user_id, exc_info=True)
+        logger.warning("SaveWalletAddressView: queueing collectibles failed for %s", user.user_id, exc_info=True)
+        return 0
 
 
 class SaveWalletAddressView(APIView):
@@ -50,7 +45,8 @@ class SaveWalletAddressView(APIView):
 
         if request.user.wallet_address == wallet_address:
             logger.info("SaveWalletAddressView: User %s already has matching address %s", request.user.user_id, wallet_address)
-            return Response({"success": True}, status=status.HTTP_200_OK)
+            queued = _queue_collectibles(request.user)
+            return Response({"success": True, "collectibles": {"queued": queued}}, status=status.HTTP_200_OK)
 
         # A different wallet may already be linked (e.g. an auto-saved LazorKit
         # wallet, or one "disconnected" client-side only). Connecting a new
@@ -87,9 +83,8 @@ class SaveWalletAddressView(APIView):
                 transaction.on_commit(
                     lambda: verify_seeker_in_background(user_id, wallet_address)
                 )
-            # Proof of Meet cNFTs minted for the other person while this one
-            # had no wallet land now
-            transaction.on_commit(lambda: _queue_meet_mints(request.user.user_id))
+            # Everything they collected without a wallet goes on Solana now
+            queued = _queue_collectibles(request.user)
         except Exception as e:
             logger.error("SaveWalletAddressView: Failed to save wallet %s: %s", wallet_address, e, exc_info=True)
             return Response(
@@ -119,4 +114,24 @@ class SaveWalletAddressView(APIView):
                     error,
                 )
 
+        return Response({"success": True, "collectibles": {"queued": queued}}, status=status.HTTP_200_OK)
+
+    def delete(self, request) -> Response:
+        """
+        Unlink the wallet from the account. Collectibles already on Solana
+        stay in it; the ones queued for it go back to off-chain.
+        """
+        user = request.user
+        if not user.wallet_address:
+            return Response({"success": True}, status=status.HTTP_200_OK)
+        logger.info("SaveWalletAddressView: User %s unlinks wallet %s", user.user_id, user.wallet_address)
+        with transaction.atomic():
+            user.wallet_address = None
+            user.save(update_fields=["wallet_address"])
+            try:
+                from posts.src.collectibles import wallet_removed
+                with transaction.atomic():
+                    wallet_removed(user)
+            except Exception:
+                logger.warning("SaveWalletAddressView: unqueueing collectibles failed for %s", user.user_id, exc_info=True)
         return Response({"success": True}, status=status.HTTP_200_OK)
