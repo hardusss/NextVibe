@@ -19,7 +19,7 @@ import { BlurView } from "expo-blur";
 import LiquidGlassView from '@/components/Shared/LiquidGlassView';
 import GlassBadge from "@/components/Shared/GlassBadge";
 import { Image } from 'expo-image';
-import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar } from "lucide-react-native";
+import { ImageIcon, Video, Clock3, Sparkles, Gem, Calendar, Handshake } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { storage } from '@/src/utils/storage';
 import PostPopup from "./PostModal";
@@ -59,6 +59,8 @@ interface PostGalleryProps {
     previous: string;
     /** A post was deleted from its popup (already gone from the grid): the profile updates its count */
     onPostDeleted?: (postId: number) => void;
+    /** How many posts this grid lists in all (the profile's "Posts (N)") */
+    onCount?: (total: number) => void;
     ListHeaderComponent?: FlatListProps<Post>["ListHeaderComponent"];
     ListEmptyComponent?: FlatListProps<Post>["ListEmptyComponent"];
     refreshControl?: FlatListProps<Post>["refreshControl"];
@@ -153,9 +155,10 @@ const PostGridCell = memo(({ item, isFocused, currentUserId, profileUserId, onPr
     const mediaUrl = hasMedia && item.media ? item.media[0].media_url : null;
     const isApproved = item.moderation_status === "approved";
     const isPending = item.moderation_status === "pending" && item.user_id === currentUserId;
-    const hasBadges = item.is_nft || item.is_ai_generated || item.is_luma_event;
     // Proof of Meet: who the profile's owner met (undefined for any other post)
     const metWith = meetTileOther(item, profileUserId);
+    const isMeet = metWith !== undefined;
+    const hasBadges = item.is_nft || item.is_ai_generated || item.is_luma_event || isMeet;
 
     return (
         <TouchableOpacity
@@ -274,10 +277,15 @@ const PostGridCell = memo(({ item, isFocused, currentUserId, profileUserId, onPr
                             <Calendar size={11} color="#d8b4fe" strokeWidth={2} />
                         </GlassBadge>
                     )}
+                    {isMeet && (
+                        <GlassBadge variant="grid-meet" iconOnly>
+                            <Handshake size={11} color="#ede9fe" strokeWidth={2} />
+                        </GlassBadge>
+                    )}
                 </View>
             )}
 
-            {metWith !== undefined && isApproved && <MeetTileDecor other={metWith} tileSize={imageSize} />}
+            {isMeet && isApproved && <MeetTileDecor other={metWith} tileSize={imageSize} />}
         </TouchableOpacity>
     );
 });
@@ -288,6 +296,7 @@ const PostGallery = ({
     id,
     previous,
     onPostDeleted,
+    onCount,
     ListHeaderComponent,
     ListEmptyComponent,
     refreshControl,
@@ -306,6 +315,8 @@ const PostGallery = ({
     const indexRef = useRef(cached ? cached.length : 0);
     const [userID, setUserID] = useState<number | null>(null);
     const isFetchingRef = useRef(false);
+    const onCountRef = useRef(onCount);
+    onCountRef.current = onCount;
 
     const [popupVisible, setPopupVisible] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -341,6 +352,9 @@ const PostGallery = ({
             const response = await getMenuPosts(id, indexRef.current, POSTS_PER_PAGE);
             const newPosts = response.data;
             setHasMore(response.more_posts);
+            if (!shouldLoadMore && typeof response.total_posts === "number") {
+                onCountRef.current?.(response.total_posts);
+            }
 
             setPosts((prevPosts) => {
                 const actualUserID = currentUserID ?? userID;

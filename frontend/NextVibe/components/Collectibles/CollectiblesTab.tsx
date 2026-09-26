@@ -147,8 +147,11 @@ export default function CollectiblesTab({
     }, [username, filter, load]);
 
     // The profile label follows this tab: a check-in or a meet made since the
-    // profile loaded shows in "Collectibles (N)" without a refetch
-    const total = data?.counts?.all;
+    // profile loaded shows in "Collectibles (N)" without a refetch. It counts
+    // what "All" shows: the pinned OG card stands in for the badge rows, and
+    // the owner's other wallet NFTs come last.
+    const allData = filter === "all" ? data : tabCache.get(cacheKey(username, "all")) ?? null;
+    const total = allData?.counts ? shownTotal(allData) : undefined;
     const onCountRef = useRef(onCount);
     onCountRef.current = onCount;
     useEffect(() => {
@@ -246,7 +249,9 @@ export default function CollectiblesTab({
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
                 {FILTERS.map(({ key, label }) => {
                     const active = key === filter;
-                    const count = countFor(tabCache.get(cacheKey(username, "all"))?.counts, key);
+                    const count = key === "all" && total !== undefined
+                        ? total
+                        : countFor(tabCache.get(cacheKey(username, "all"))?.counts, key);
                     return (
                         <Pressable
                             key={key}
@@ -315,6 +320,12 @@ export default function CollectiblesTab({
             <CollectibleDetailSheet ref={sheetRef} onClaim={isOwnProfile ? handleClaim : undefined} />
         </View>
     );
+}
+
+/** Cards the "All" filter shows: rows (badges folded into the OG card) plus wallet extras. */
+function shownTotal(d: TabData): number {
+    const c = d.counts!;
+    return c.all - (d.og ? c.badge : 0) + (d.og ? 1 : 0) + d.external.length;
 }
 
 function dedupe(items: Collectible[]): Collectible[] {

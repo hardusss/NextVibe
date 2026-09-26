@@ -7,9 +7,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Prefetch
 from rest_framework.throttling import ScopedRateThrottle
-from user.src.blocking import blocked_user_ids, is_blocked_between
+from user.src.blocking import is_blocked_between
 from ..src import collectibles
-from ..src.meet_photos import on_profile_q, post_meet_fields, user_brief
+from ..src.meet_photos import post_meet_fields, profile_posts, user_brief
 
 User: AbstractUser = get_user_model()
 
@@ -34,28 +34,15 @@ class PostMenuView(APIView):
                 "liked_posts": []
             }, status=status.HTTP_200_OK)
 
-        # Your own posts, plus Proof of Meet posts you're the co-author of
-        hidden = blocked_user_ids(request.user)
-        posts_qs = (
-            Post.objects
-            .filter(on_profile_q(id), is_hide=False, is_ai_generated=False)
-            .exclude(owner__user_id__in=hidden)
-            .exclude(co_author__user_id__in=hidden)
-            .exclude(co_author__is_baned=True)
-        )
-        
+        # Your own posts, plus Proof of Meet posts you're the co-author of;
+        # total_posts is the same list's size (the profile's "Posts (N)")
+        posts_qs = profile_posts(id, request.user)
         if is_event:
             posts_qs = posts_qs.filter(is_luma_event=True)
-            total_posts = Post.objects.filter(owner__user_id=id, is_luma_event=True).exclude(moderation_status="denied").count()
-        else:
-            total_posts = (
-                Post.objects.filter(owner__user_id=id).exclude(moderation_status="denied").count()
-                + posts_qs.filter(co_author__user_id=id).exclude(moderation_status="denied").count()
-            )
+        total_posts = posts_qs.count()
 
         posts_qs = (
             posts_qs
-            .exclude(moderation_status="denied")
             .select_related("owner", "co_author")
             .prefetch_related(
                 Prefetch("media", queryset=PostsMedia.objects.all()),

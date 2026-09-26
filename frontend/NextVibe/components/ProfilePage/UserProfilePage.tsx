@@ -697,6 +697,7 @@ const UserProfileView = () => {
                             id={+id}
                             previous={"user-profile"}
                             onPostDeleted={() => setUserData((prev) => ({ ...prev, post_count: Math.max(0, prev.post_count - 1) }))}
+                            onCount={(total) => setUserData((prev) => (prev.post_count === total ? prev : { ...prev, post_count: total }))}
                             ListHeaderComponent={profileHeader}
                             ListEmptyComponent={
                                 <EmptyState iconType="posts" title="No Posts Yet"

@@ -13,7 +13,8 @@ export type GlassBadgeVariant =
     | 'grid'
     | 'grid-nft'
     | 'grid-ai'
-    | 'grid-event';
+    | 'grid-event'
+    | 'grid-meet';
 
 type VariantConfig = {
     colorScheme: 'dark' | 'light';
@@ -79,6 +80,12 @@ const VARIANTS: Record<GlassBadgeVariant, VariantConfig> = {
         tintColor: 'rgba(168,85,247,0.2)',
         fallbackBackgroundColor: 'rgba(168,85,247,0.25)',
         fallbackBorderColor: 'rgba(168,85,247,0.4)',
+    },
+    'grid-meet': {
+        colorScheme: 'dark',
+        tintColor: 'rgba(139,92,246,0.3)',
+        fallbackBackgroundColor: 'rgba(139,92,246,0.4)',
+        fallbackBorderColor: 'rgba(196,181,253,0.45)',
     },
 };
 

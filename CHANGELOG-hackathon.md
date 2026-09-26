@@ -3,6 +3,11 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 26 — Profile: Proof of Meet badge in the grid; post and collectible counts match what the tabs show
+- feat(frontend): Proof of Meet tiles in the profile grid get their own icon badge (handshake), next to the event, NFT and AI badges. Files: `frontend/NextVibe/components/ProfilePage/PostsMenu.tsx`, `components/Shared/GlassBadge.tsx`
+- fix(backend): one query, `profile_posts(profile, viewer)`, builds the Posts grid and its count: approved posts plus your own still in moderation, co-authored Proof of Meet posts, no hidden or AI posts, nothing with a blocked or banned person. `user-detail` returns that count as `post_count`; before, the header counted approved posts including AI ones and skipped pending, so it drifted from the grid. The collectibles count folds the OG badge into the one OG card the tab shows. Files: `backend/NextVibeAPI/posts/src/meet_photos.py`, `posts/view_pac/posts_menu.py`, `user/views_pac/user_detail.py`
+- fix(frontend): "Posts (N)" follows the grid's own total, and "Collectibles (N)" and the "All" chip count what "All" shows (the OG card and your other wallet NFTs included). Files: `frontend/NextVibe/components/ProfilePage/{PostsMenu,ProfilePage.android,ProfilePage.ios,UserProfilePage}.tsx`, `components/Collectibles/CollectiblesTab.tsx`
+
 ## Sep 26 — App Store resubmission (Guideline 2.2): no beta wording, the invite code is optional and Skip is always on screen
 - feat(frontend): the invite code sheet after a first Apple / Google / wallet sign-in is rewritten. Copy: "Have an invite code?", "Enter a friend's code to connect with them right away — or skip for now.", "Join NextVibe" (enabled at 6 characters) and "Skip".
   - Skip is in the sheet header (top-right, outside the scroll area) and again under Join.

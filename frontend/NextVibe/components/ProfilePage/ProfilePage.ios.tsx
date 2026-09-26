@@ -287,6 +287,16 @@ const ProfileView = () => {
         });
     }, []);
 
+    /** The Posts grid's own total, so "Posts (N)" matches what it lists */
+    const handlePostsCount = useCallback((total: number) => {
+        setUserData((prev) => {
+            if (prev.post_count === total) return prev;
+            const next = { ...prev, post_count: total };
+            cachedUserData = next;
+            return next;
+        });
+    }, []);
+
     /** The cNFT tab's own total: a check-in or a meet since the profile loaded shows in the label */
     const handleCollectiblesCount = useCallback((total: number) => {
         setUserData((prev) => {
@@ -745,6 +755,7 @@ const ProfileView = () => {
                                     id={id as number}
                                     previous="profile"
                                     onPostDeleted={handlePostDeleted}
+                                onCount={handlePostsCount}
                                     ListHeaderComponent={profileHeader}
                                     ListEmptyComponent={
                                         <EmptyState Icon={Camera} title="No Posts Yet"

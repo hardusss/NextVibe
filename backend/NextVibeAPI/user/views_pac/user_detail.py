@@ -26,11 +26,18 @@ BANED_FIELDS = [
 ]
 
 def _cnft_count(user, viewer) -> int:
-    """What the cNFT tab lists: every collectible, on Solana or not (posts/src/collectibles.py)."""
+    """
+    What the cNFT tab lists: every collectible, on Solana or not
+    (posts/src/collectibles.py), with the OG badge as the one pinned OG card.
+    The owner's other wallet NFTs (DAS) are added by the app once the tab loads.
+    """
     try:
         with transaction.atomic():
-            from posts.src.collectibles import visible_rows
-            return visible_rows(user, viewer).count()
+            from posts.src.collectibles import visible_rows, Kind
+            rows = visible_rows(user, viewer)
+            if getattr(user, "og_avatar", None) is None:
+                return rows.count()
+            return rows.exclude(kind=Kind.BADGE).count() + 1
     except DatabaseError:
         # Collectibles not migrated yet (deploy window): the old count
         return (UserCollection.objects.filter(user=user, post__is_ai_generated=False).count()
@@ -83,6 +90,9 @@ class UserDetailView(APIView):
 
             serializer = UserDetailSerializer(user)
             data = serializer.data.copy()
+            # What the Posts tab lists for this viewer (posts_menu uses the same query)
+            from posts.src.meet_photos import profile_posts
+            data["post_count"] = profile_posts(user.user_id, request.user).count()
 
             is_subscribed = False
             if isProfile == "true":

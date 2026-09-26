@@ -1042,6 +1042,25 @@ def on_profile_q(user_id) -> Q:
     )
 
 
+def profile_posts(profile_id, viewer):
+    """
+    The posts a profile grid lists for `viewer`, so also its "Posts (N)":
+    approved ones, plus the viewer's own still being moderated; no hidden or
+    AI posts, nothing with a blocked or banned person on it.
+    """
+    from user.src.blocking import blocked_user_ids
+
+    hidden = blocked_user_ids(viewer)
+    return (
+        Post.objects
+        .filter(on_profile_q(profile_id), is_hide=False, is_ai_generated=False)
+        .filter(Q(moderation_status="approved") | Q(moderation_status="pending", owner__user_id=viewer.user_id))
+        .exclude(owner__user_id__in=hidden)
+        .exclude(co_author__user_id__in=hidden)
+        .exclude(co_author__is_baned=True)
+    )
+
+
 def post_for_meet(post, user):
     """The MeetPhoto behind a Proof of Meet post, when `user` is one of its two people."""
     if not post.meet_slug:
