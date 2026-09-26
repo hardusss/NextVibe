@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
-import { Check, AlertTriangle, Bookmark } from 'lucide-react-native';
+import { Gem, AlertTriangle, Bookmark } from 'lucide-react-native';
 import Animated, {
     FadeIn,
     useSharedValue,
@@ -9,28 +9,25 @@ import Animated, {
     withSequence,
     withTiming,
 } from 'react-native-reanimated';
-import GlassSurface from '@/components/Shared/GlassSurface';
-import CustomActivityIndicator from '@/components/CustomActivityIndicator';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
 import { useRepCountUp } from '@/hooks/useRepCountUp';
 import { MOTION } from '@/constants/motion';
-import { space, radius, colors, type as typeScale } from '@/src/theme/tokens';
+import { space, radius, type as typeScale } from '@/src/theme/tokens';
 
 export type MintPillStatus = 'minting' | 'success' | 'saved' | 'failed';
 
 type MintStatusPillProps = {
     status: MintPillStatus;
     points?: number;
-    error?: string | null;
     onRetry?: () => void;
 };
 
 /**
- * Compact lazy-mint indicator. Lives between the event info and the CTAs so
- * the mint never blocks the rest of the screen. `saved`: no wallet, the POAP
- * is kept on the profile off-chain (a neutral pill, not an error).
+ * Compact POAP status chip for the check-in pass: minting, on Solana (+REP),
+ * saved off-chain (no wallet), or failed with Retry. The failure's reason is
+ * shown by the screen under the event name.
  */
-export default function MintStatusPill({ status, points = 0, error, onRetry }: MintStatusPillProps) {
+export default function MintStatusPill({ status, points = 0, onRetry }: MintStatusPillProps) {
     const isDark = useColorScheme() === 'dark';
     const reduceMotion = useReduceMotion();
     const displayPoints = useRepCountUp(status === 'success', points);
@@ -40,7 +37,7 @@ export default function MintStatusPill({ status, points = 0, error, onRetry }: M
         if (status === 'minting' && !reduceMotion) {
             pulse.value = withRepeat(
                 withSequence(
-                    withTiming(0.6, { duration: MOTION.duration.slow }),
+                    withTiming(0.35, { duration: MOTION.duration.slow }),
                     withTiming(1, { duration: MOTION.duration.slow })
                 ),
                 -1,
@@ -50,114 +47,104 @@ export default function MintStatusPill({ status, points = 0, error, onRetry }: M
             pulse.value = withTiming(1, { duration: MOTION.duration.fast });
         }
     }, [status, reduceMotion]);
-
     const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
-    const mutedColor = isDark ? colors.sub : 'rgba(17,24,39,0.5)';
+    const tone = TONES[status][isDark ? 'dark' : 'light'];
     const enter = reduceMotion ? undefined : FadeIn.duration(MOTION.duration.fast);
 
-    if (status === 'failed') {
-        return (
-            <Animated.View
-                key="failed"
-                entering={enter}
-                style={[styles.pill, styles.failedPill]}
-                accessibilityLiveRegion="polite"
-            >
-                <AlertTriangle size={16} color={colors.danger} />
-                <Text style={[styles.text, { color: colors.danger, flexShrink: 1 }]} numberOfLines={2}>
-                    {error || 'Minting failed.'}
-                </Text>
+    let body: React.ReactNode;
+    if (status === 'minting') {
+        body = (
+            <>
+                <Animated.View style={[styles.dot, { backgroundColor: tone.icon }, pulseStyle]} />
+                <Text style={[styles.text, { color: tone.text }]}>Minting POAP…</Text>
+            </>
+        );
+    } else if (status === 'saved') {
+        body = (
+            <>
+                <Bookmark size={13} color={tone.icon} strokeWidth={2.2} />
+                <Text style={[styles.text, { color: tone.text }]}>POAP saved · claim anytime</Text>
+            </>
+        );
+    } else if (status === 'failed') {
+        body = (
+            <>
+                <AlertTriangle size={13} color={tone.icon} strokeWidth={2.2} />
+                <Text style={[styles.text, { color: tone.text }]}>POAP didn't go through</Text>
                 {onRetry && (
-                    <TouchableOpacity onPress={onRetry} activeOpacity={0.7} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry minting">
-                        <Text style={[styles.text, styles.retryText]}>Retry</Text>
+                    <TouchableOpacity onPress={onRetry} activeOpacity={0.7} hitSlop={10}
+                        accessibilityRole="button" accessibilityLabel="Retry minting">
+                        <Text style={[styles.text, styles.retry, { color: tone.text }]}>Retry</Text>
                     </TouchableOpacity>
                 )}
-            </Animated.View>
+            </>
+        );
+    } else {
+        body = (
+            <>
+                <Gem size={13} color={tone.icon} strokeWidth={2.2} />
+                <Text style={[styles.text, { color: tone.text }]}>
+                    {points > 0 ? `POAP minted · +${displayPoints} REP` : 'POAP in your collection'}
+                </Text>
+            </>
         );
     }
 
     return (
-        <Animated.View key={status} entering={enter} accessibilityLiveRegion="polite">
-            <GlassSurface
-                style={[
-                    styles.pill,
-                    {
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                        borderWidth: 1,
-                        borderColor: isDark ? colors.border : 'rgba(0,0,0,0.06)',
-                    },
-                ]}
-                glassEffectStyle="regular"
-                colorScheme={isDark ? 'dark' : 'light'}
-            >
-                {status === 'minting' ? (
-                    <>
-                        <CustomActivityIndicator size="small" style={styles.spinner} />
-                        <Animated.Text style={[styles.text, { color: mutedColor }, pulseStyle]}>
-                            Minting your cNFT…
-                        </Animated.Text>
-                    </>
-                ) : status === 'saved' ? (
-                    <>
-                        <Bookmark size={15} color={isDark ? colors.text : '#111827'} />
-                        <Text style={[styles.text, { color: isDark ? colors.text : '#111827' }]}>
-                            Saved to your profile · Claim anytime
-                        </Text>
-                    </>
-                ) : (
-                    <>
-                        <View style={styles.checkCircle}>
-                            <Check size={13} color={colors.success} strokeWidth={3} />
-                        </View>
-                        <Text style={[styles.text, { color: colors.success }]}>
-                            {points > 0 ? `cNFT minted · +${displayPoints} REP` : 'Already in your collection'}
-                        </Text>
-                    </>
-                )}
-            </GlassSurface>
+        <Animated.View
+            key={status}
+            entering={enter}
+            style={[styles.chip, { backgroundColor: tone.bg, borderColor: tone.border }]}
+            accessibilityLiveRegion="polite"
+        >
+            {body}
         </Animated.View>
     );
 }
 
+type Tone = { bg: string; border: string; text: string; icon: string };
+const TONES: Record<MintPillStatus, { dark: Tone; light: Tone }> = {
+    minting: {
+        dark: { bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.10)', text: '#C4B5FD', icon: '#C4B5FD' },
+        light: { bg: 'rgba(17,24,39,0.04)', border: 'rgba(17,24,39,0.08)', text: '#6D28D9', icon: '#7C3AED' },
+    },
+    success: {
+        dark: { bg: 'rgba(168,85,247,0.16)', border: 'rgba(196,181,253,0.30)', text: '#F3E8FF', icon: '#D8B4FE' },
+        light: { bg: 'rgba(124,58,237,0.10)', border: 'rgba(124,58,237,0.22)', text: '#5B21B6', icon: '#7C3AED' },
+    },
+    saved: {
+        dark: { bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.10)', text: '#E9D5FF', icon: '#C4B5FD' },
+        light: { bg: 'rgba(17,24,39,0.04)', border: 'rgba(17,24,39,0.08)', text: '#4C1D95', icon: '#7C3AED' },
+    },
+    failed: {
+        dark: { bg: 'rgba(251,191,36,0.10)', border: 'rgba(251,191,36,0.28)', text: '#FDE68A', icon: '#FCD34D' },
+        light: { bg: 'rgba(217,119,6,0.08)', border: 'rgba(217,119,6,0.25)', text: '#92400E', icon: '#D97706' },
+    },
+};
+
 const styles = StyleSheet.create({
-    pill: {
+    chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: space.sm,
+        gap: space.xs + 2,
+        height: 30,
+        paddingHorizontal: space.md,
         borderRadius: radius.pill,
-        paddingHorizontal: space.lg,
-        paddingVertical: space.xs,
-        minHeight: 44,
-        overflow: 'hidden',
-    },
-    failedPill: {
-        backgroundColor: 'rgba(248,113,113,0.12)',
         borderWidth: 1,
-        borderColor: 'rgba(248,113,113,0.25)',
-        paddingVertical: space.sm,
     },
-    spinner: {
-        width: 36,
-        height: 36,
-    },
-    checkCircle: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: 'rgba(74,222,128,0.15)',
-        alignItems: 'center',
-        justifyContent: 'center',
+    dot: {
+        width: 7,
+        height: 7,
+        borderRadius: 3.5,
     },
     text: {
         fontFamily: 'Dank Mono Bold',
-        fontSize: typeScale.sub,
+        fontSize: typeScale.caption,
         includeFontPadding: false,
     },
-    retryText: {
-        color: colors.accent,
+    retry: {
         textDecorationLine: 'underline',
-        marginLeft: space.xs,
+        marginLeft: 2,
     },
 });

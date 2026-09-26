@@ -11,7 +11,7 @@ import {
     Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ShieldCheck, ShieldX, Nfc, Smartphone } from "lucide-react-native";
+import { ShieldCheck, ShieldX, Nfc, Smartphone, BadgeCheck } from "lucide-react-native";
 import Animated, {
     FadeInDown,
     FadeInUp,
@@ -23,6 +23,8 @@ import Animated, {
     withSpring,
 } from "react-native-reanimated";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Device from "expo-device";
 import { checkinEvent, claimEventNft } from "@/src/api/event.checkin";
 import { verifyProximityToken } from "@/src/api/proximity.token";
@@ -33,8 +35,6 @@ import { getQuickLocation } from "@/src/proximity/location";
 import { MOTION } from "@/constants/motion";
 import { space, radius, colors, type as typeScale } from "@/src/theme/tokens";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
-import GlassSurface from "@/components/Shared/GlassSurface";
-import GlassBadge from "@/components/Shared/GlassBadge";
 import CustomActivityIndicator from "@/components/CustomActivityIndicator";
 import SuccessBurst from "@/components/NftClaim/MintBottomSheet/SuccessBurst";
 import EventScreenShell from "@/components/Events/EventScreenShell";
@@ -49,6 +49,11 @@ type MintStatus = "idle" | "minting" | "success" | "saved" | "failed";
 /** A POAP still on its way after the claim answered: look again this often, this many times. */
 const PENDING_CHECK_MS = 6000;
 const PENDING_CHECKS = 10;
+/** EventScreenShell's header under the status bar: padding + 44pt row + margins. */
+const SHELL_HEADER = space.xs + 6 + 44 + 14;
+const DEFAULT_MESSAGE = "You're verified! Welcome to the event.";
+/** The pass never shrinks the picture below this, even on the smallest phones. */
+const MIN_HERO = 120;
 
 export default function EventCheckinScreen() {
     const router = useRouter();
@@ -75,6 +80,9 @@ export default function EventCheckinScreen() {
     /** The event picture's own width / height, so it's shown whole */
     const [imageAspect, setImageAspect] = useState<number | null>(null);
     const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
+    /** Height of the status + name block under the picture (measured) */
+    const [infoHeight, setInfoHeight] = useState(92);
     const [postName, setPostName] = useState<string>("");
     const [resolvedPostId, setResolvedPostId] = useState<number | null>(null);
     const [mintStatus, setMintStatus] = useState<MintStatus>("idle");
@@ -349,14 +357,16 @@ export default function EventCheckinScreen() {
                 );
 
             case "verified": {
-                // The pass: the event picture whole (never cropped), capped so the
-                // details under it stay in the top part of the screen
+                // The pass fills the top half of the screen: the picture as large
+                // as fits (whole, never cropped), then the status and the name.
                 const heroWidth = windowWidth - space.lg * 2;
-                const heroCap = Math.round(Math.min(420, Math.max(200, windowHeight * 0.36)));
-                const heroHeight = Math.min(heroCap, Math.round(heroWidth / (imageAspect ?? 1)));
+                const naturalHeight = Math.round(heroWidth / (imageAspect ?? 16 / 9));
+                const room = windowHeight / 2 - insets.top - SHELL_HEADER - infoHeight - space.md;
+                const heroHeight = Math.max(MIN_HERO, Math.min(naturalHeight, Math.round(room)));
+                const extraMessage = message && message !== DEFAULT_MESSAGE ? message : null;
                 return (
                     <Animated.View
-                        entering={reduceMotion ? undefined : FadeInUp.springify().damping(15)}
+                        entering={reduceMotion ? undefined : FadeInUp.springify().damping(16)}
                         style={styles.verifiedWrap}
                     >
                         <ScrollView
@@ -364,20 +374,16 @@ export default function EventCheckinScreen() {
                             contentContainerStyle={styles.verifiedScrollContent}
                             showsVerticalScrollIndicator={false}
                         >
-                            <Animated.View entering={enter(0)} style={styles.passGlow}>
-                                <GlassSurface
-                                    style={styles.passCard}
-                                    glassEffectStyle="regular"
-                                    colorScheme={isDark ? "dark" : "light"}
-                                >
+                            <Animated.View entering={enter(0)} style={styles.heroShadow}>
+                                <View style={[styles.hero, { height: heroHeight }]}>
                                     {postImage ? (
-                                        <View style={[styles.hero, { height: heroHeight }]}>
-                                            {/* Fills the sides when the picture is taller or wider than the frame */}
+                                        <>
+                                            {/* The same picture, blurred, fills whatever the whole one leaves */}
                                             <Image
                                                 source={{ uri: postImage }}
                                                 style={StyleSheet.absoluteFill}
                                                 contentFit="cover"
-                                                blurRadius={28}
+                                                blurRadius={45}
                                             />
                                             <View style={[StyleSheet.absoluteFill, styles.heroShade]} />
                                             <Image
@@ -391,65 +397,73 @@ export default function EventCheckinScreen() {
                                                     if (width > 0 && height > 0) setImageAspect(width / height);
                                                 }}
                                             />
-                                            {!reduceMotion && (
-                                                <SuccessBurst trigger={mintStatus === "success"} color={colors.success} />
-                                            )}
-                                        </View>
+                                        </>
                                     ) : (
-                                        <View style={styles.heroFallback}>
-                                            <View style={[styles.iconCircle, styles.successCircle]}>
-                                                <ShieldCheck size={44} color={colors.success} strokeWidth={1.5} />
-                                            </View>
-                                            {!reduceMotion && (
-                                                <SuccessBurst trigger={mintStatus === "success"} color={colors.success} />
-                                            )}
-                                        </View>
-                                    )}
-
-                                    <View style={styles.passBody}>
-                                        <Animated.View entering={enter(120)}>
-                                            <GlassBadge variant="feed-event" feedLight={!isDark}>
-                                                <ShieldCheck size={14} color={colors.success} />
-                                                <Text style={styles.badgeText}>Checked in</Text>
-                                            </GlassBadge>
-                                        </Animated.View>
-                                        <Animated.Text
-                                            entering={enter(200)}
-                                            style={[styles.eventName, { color: main }]}
-                                            numberOfLines={3}
-                                            accessibilityRole="header"
+                                        <LinearGradient
+                                            colors={["#2E1065", "#1A0B33", "#0F0620"]}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                            style={[StyleSheet.absoluteFill, styles.heroFallback]}
                                         >
-                                            {postName}
-                                        </Animated.Text>
-                                        <Animated.Text entering={enter(280)} style={[styles.passMessage, { color: mutedColor }]}>
-                                            {message}
-                                        </Animated.Text>
-
-                                        {effectivePostId != null && mintStatus !== "idle" && (
-                                            <Animated.View entering={enter(360)} style={styles.passFooter}>
-                                                <View style={[styles.passDivider, { backgroundColor: isDark ? colors.border : "rgba(17,24,39,0.08)" }]} />
-                                                <View style={styles.pillWrap}>
-                                                    <MintStatusPill
-                                                        status={mintStatus}
-                                                        points={earnedPoints}
-                                                        error={mintError}
-                                                        onRetry={() => startMint(effectivePostId)}
-                                                    />
-                                                </View>
-                                            </Animated.View>
-                                        )}
-                                        {mintStatus === "saved" && (
-                                            <Animated.View entering={enter(440)} style={styles.savedNote}>
-                                                <SavedOffchainNote reason="checkin" />
-                                            </Animated.View>
-                                        )}
-                                    </View>
-                                </GlassSurface>
+                                            <BadgeCheck size={52} color="#D8B4FE" strokeWidth={1.4} />
+                                        </LinearGradient>
+                                    )}
+                                    {!reduceMotion && (
+                                        <SuccessBurst trigger={mintStatus === "success"} color="#C084FC" />
+                                    )}
+                                </View>
                             </Animated.View>
+
+                            <View
+                                style={styles.info}
+                                onLayout={(e) => {
+                                    const h = Math.round(e.nativeEvent.layout.height);
+                                    if (Math.abs(h - infoHeight) > 1) setInfoHeight(h);
+                                }}
+                            >
+                                <Animated.View entering={enter(100)} style={styles.chipsRow}>
+                                    <View style={[styles.checkedChip, isDark ? styles.checkedChipDark : styles.checkedChipLight]}>
+                                        <BadgeCheck size={14} color={isDark ? "#E9D5FF" : "#6D28D9"} strokeWidth={2.2} />
+                                        <Text style={[styles.checkedChipText, { color: isDark ? "#F3E8FF" : "#4C1D95" }]}>
+                                            Checked in
+                                        </Text>
+                                    </View>
+                                    {effectivePostId != null && mintStatus !== "idle" && (
+                                        <MintStatusPill
+                                            status={mintStatus}
+                                            points={earnedPoints}
+                                            onRetry={() => startMint(effectivePostId)}
+                                        />
+                                    )}
+                                </Animated.View>
+                                <Animated.Text
+                                    entering={enter(180)}
+                                    style={[styles.eventName, { color: main }]}
+                                    numberOfLines={2}
+                                    accessibilityRole="header"
+                                >
+                                    {postName}
+                                </Animated.Text>
+                                {mintStatus === "failed" && !!mintError ? (
+                                    <Text style={[styles.passMessage, { color: mutedColor }]} numberOfLines={3}>
+                                        {mintError}
+                                    </Text>
+                                ) : extraMessage ? (
+                                    <Text style={[styles.passMessage, { color: mutedColor }]} numberOfLines={2}>
+                                        {extraMessage}
+                                    </Text>
+                                ) : null}
+                            </View>
+
+                            {mintStatus === "saved" && (
+                                <Animated.View entering={enter(300)} style={styles.savedNote}>
+                                    <SavedOffchainNote reason="checkin" />
+                                </Animated.View>
+                            )}
                         </ScrollView>
 
                         <Animated.View
-                            entering={reduceMotion ? undefined : FadeInUp.delay(400).duration(MOTION.duration.normal)}
+                            entering={reduceMotion ? undefined : FadeInUp.delay(350).duration(MOTION.duration.normal)}
                             style={styles.ctaBlock}
                         >
                             {!canTapToMeet && (
@@ -575,7 +589,8 @@ const styles = StyleSheet.create({
     verifiedShellBody: {
         justifyContent: "flex-start",
         alignItems: "stretch",
-        paddingHorizontal: space.lg,
+        // Full width, so the scroll view doesn't clip the picture's glow
+        paddingHorizontal: 0,
         paddingBottom: space.md,
     },
     verifiedWrap: {
@@ -586,64 +601,74 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     verifiedScrollContent: {
+        paddingHorizontal: space.lg,
         paddingBottom: space.lg,
     },
-    passGlow: {
+    heroShadow: {
+        borderRadius: 24,
         ...Platform.select({
             ios: {
-                shadowColor: colors.accent,
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.28,
-                shadowRadius: 26,
+                shadowColor: "#7C3AED",
+                shadowOffset: { width: 0, height: 12 },
+                shadowOpacity: 0.3,
+                shadowRadius: 22,
             },
-            android: {},
-        }),
-    },
-    passCard: {
-        borderRadius: radius.xl,
-        borderWidth: 1,
-        borderColor: colors.border,
-        overflow: "hidden",
-        ...Platform.select({
-            android: { elevation: 6 },
+            android: { elevation: 10 },
         }),
     },
     hero: {
         width: "100%",
-        backgroundColor: "rgba(10,4,16,0.6)",
-        // The glass card doesn't clip on iOS: round the picture itself
-        borderTopLeftRadius: radius.xl - 1,
-        borderTopRightRadius: radius.xl - 1,
+        borderRadius: 24,
         overflow: "hidden",
+        backgroundColor: "#140A26",
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: "rgba(255,255,255,0.14)",
     },
     heroShade: {
-        backgroundColor: "rgba(10,4,16,0.35)",
+        // Dark enough that the blurred fill reads as a mat, not a seam
+        backgroundColor: "rgba(10,4,16,0.62)",
     },
     heroFallback: {
         alignItems: "center",
         justifyContent: "center",
-        paddingTop: space.xl,
-        paddingBottom: space.sm,
     },
-    passBody: {
-        padding: space.lg,
+    info: {
+        marginTop: space.md,
         gap: space.sm,
-        alignItems: "flex-start",
+    },
+    chipsRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: space.sm,
+    },
+    checkedChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.xs + 2,
+        height: 30,
+        paddingHorizontal: space.md,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+    },
+    checkedChipDark: {
+        backgroundColor: "rgba(168,85,247,0.24)",
+        borderColor: "rgba(216,180,254,0.40)",
+    },
+    checkedChipLight: {
+        backgroundColor: "rgba(124,58,237,0.12)",
+        borderColor: "rgba(124,58,237,0.28)",
+    },
+    checkedChipText: {
+        fontFamily: "Dank Mono Bold",
+        fontSize: typeScale.caption,
+        includeFontPadding: false,
     },
     passMessage: {
         fontFamily: "Dank Mono",
         fontSize: typeScale.sub,
-        lineHeight: 21,
+        lineHeight: 20,
         includeFontPadding: false,
-    },
-    passFooter: {
-        alignSelf: "stretch",
-        gap: space.md,
-        marginTop: space.xs,
-    },
-    passDivider: {
-        height: StyleSheet.hairlineWidth,
-        alignSelf: "stretch",
     },
     iconCircle: {
         width: 110,
@@ -658,10 +683,6 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(168,85,247,0.1)",
         borderColor: "rgba(168,85,247,0.2)",
     },
-    successCircle: {
-        backgroundColor: "rgba(74,222,128,0.1)",
-        borderColor: "rgba(74,222,128,0.25)",
-    },
     dangerCircle: {
         backgroundColor: "rgba(248,113,113,0.1)",
         borderColor: "rgba(248,113,113,0.25)",
@@ -669,12 +690,6 @@ const styles = StyleSheet.create({
     warningCircle: {
         backgroundColor: "rgba(251,191,36,0.1)",
         borderColor: "rgba(251,191,36,0.25)",
-    },
-    badgeText: {
-        fontFamily: "Dank Mono Bold",
-        fontSize: typeScale.caption,
-        color: colors.success,
-        includeFontPadding: false,
     },
     heading: {
         fontFamily: "Dank Mono Bold",
@@ -707,14 +722,12 @@ const styles = StyleSheet.create({
         marginTop: space.xs,
         alignSelf: 'stretch',
     },
-    pillWrap: {
-        maxWidth: "100%",
-    },
     ctaBlock: {
         width: "100%",
         gap: space.sm,
         paddingTop: space.md,
         paddingBottom: space.sm,
+        paddingHorizontal: space.lg,
     },
     ctaRow: {
         flexDirection: "row",

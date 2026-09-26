@@ -3,6 +3,9 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 26 — Check-in pass: the top half of the screen, no green
+- feat(frontend): the check-in pass now fits the top half of the screen on every phone: the picture takes whatever height is left above the middle (at least 120 pt) and stays whole on a dark blurred mat, with a soft violet glow instead of a card. Under it, violet "Checked in" and POAP chips ("POAP minted · +N REP", "Minting POAP…", "POAP saved · claim anytime", "POAP didn't go through · Retry"), then the event name; the stock welcome line is gone and a failure's reason shows under the name. No green left on the screen; the success sparkles are violet. Files: `frontend/NextVibe/components/Events/{EventCheckinScreen,MintStatusPill}.tsx`
+
 ## Sep 26 — Check-in success screen redesign
 - feat(frontend): after a check-in, the event reads like a pass at the top of the screen. The event picture spans the full width at its own aspect ratio and is never cropped (a blurred copy of it fills the sides when it's capped at about a third of the screen); under it "Checked in", the event name, the welcome line and the POAP status, then Done and Tap to Meet side by side at the bottom. Small screens scroll the pass; the buttons stay put. Files: `frontend/NextVibe/components/Events/EventCheckinScreen.tsx`
 
