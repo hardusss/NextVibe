@@ -33,6 +33,9 @@ export type WalletState =
         walletType: 'none' 
       };
 
+/** Deep-linked wallets (Phantom / Solflare / Backpack) can't sign from the app. */
+const DEEPLINK_SIGN_UNAVAILABLE = "Sending from this wallet isn't available in NextVibe. Use your wallet app to send.";
+
 /**
  * iOS-specific wallet hook — returns deep-linked wallet if active, otherwise falls back to LazorKit.
  */
@@ -81,10 +84,10 @@ export default function useWalletAddress(): WalletState {
                     setDeeplinkAddr(null);
                 },
                 signAndSendTransaction: async (transaction, minContextSlot) => {
-                    throw new Error("Signing transactions via deep links is not supported yet");
+                    throw new Error(DEEPLINK_SIGN_UNAVAILABLE);
                 },
                 signTransaction: async (transaction) => {
-                    throw new Error("Signing transactions via deep links is not supported yet");
+                    throw new Error(DEEPLINK_SIGN_UNAVAILABLE);
                 },
                 walletType: 'mwa'
             } as WalletState;

@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { View, Text, TouchableOpacity, useColorScheme, StyleSheet, StatusBar, Linking, ScrollView } from "react-native";
 import LottieView from "lottie-react-native";
-import { RefreshCw, Bug } from "lucide-react-native";
+import { RefreshCw, LifeBuoy } from "lucide-react-native";
 
 interface ErrorFallbackProps {
     error: Error;
@@ -56,11 +56,14 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
                     The app encountered an unexpected error. We're sorry for the inconvenience.
                 </Text>
 
-                <View style={[styles.errorBox, { backgroundColor: theme.cardBackground }]}>
-                    <Text style={[styles.errorText, { color: theme.errorText }]} numberOfLines={3}>
-                        {error.toString()}
-                    </Text>
-                </View>
+                {/* The raw error is for development builds only */}
+                {__DEV__ && (
+                    <View style={[styles.errorBox, { backgroundColor: theme.cardBackground }]}>
+                        <Text style={[styles.errorText, { color: theme.errorText }]} numberOfLines={3}>
+                            {error.toString()}
+                        </Text>
+                    </View>
+                )}
 
                 <Text style={[styles.subtitle, { color: theme.textSecondary, fontSize: 14, marginTop: 10 }]}>
                     Please try restarting the app. If this keeps happening, let us know.
@@ -80,9 +83,9 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
                     style={styles.secondaryButton}
                     onPress={handleContactSupport}
                 >
-                    <Bug size={20} color={theme.secondaryButtonText} style={{ marginRight: 6 }} />
+                    <LifeBuoy size={20} color={theme.secondaryButtonText} style={{ marginRight: 6 }} />
                     <Text style={[styles.secondaryButtonText, { color: theme.secondaryButtonText }]}>
-                        Report to Developers
+                        Contact Support
                     </Text>
                 </TouchableOpacity>
             </View>

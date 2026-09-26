@@ -230,7 +230,7 @@ const AddLumaEventSheet = forwardRef<AddLumaEventSheetRef, Props>(({ onSaved }, 
 
         if (locString === "Online") {
             setCreateEventState("error");
-            setError("Online events are not supported yet.");
+            setError("Only in-person events can be added. This one is online.");
             return;
         };
 

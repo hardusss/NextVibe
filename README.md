@@ -18,7 +18,7 @@
 
 NextVibe is a mobile-first IRL Networking Layer built on Solana. It turns physical-world interactions — NFC taps, event check-ins, and real-life meetups — into an on-chain social graph backed by compressed NFTs, reputation scores, and verifiable proof of presence.
 
-> **Closed Beta is Live.** Download the latest build and use the invite code **`SEEKER`** to bypass the waitlist and claim your OG cNFT Avatar.
+> **NextVibe is live.** Download the app and sign up. Invite codes are optional: have one from a friend? Enter it when you join.
 
 ## Why NextVibe Exists
 

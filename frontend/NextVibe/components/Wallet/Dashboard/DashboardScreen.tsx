@@ -18,7 +18,6 @@ import PortfolioList from "./PortfolioList";
 import CollectiblesScreen from "@/components/Wallet/Collectibles/CollectiblesScreen";
 import CollectibleDetailSheet from "@/components/Wallet/Collectibles/CollectibleDetailSheet";
 import useOwnedAssets, { OwnedAsset } from "@/components/Wallet/Collectibles/useOwnedAssets";
-import Web3Toast from "@/components/Shared/Toasts/Web3Toast";
 import { buildCnftDetailParams } from "@/components/Wallet/Shared/NftTxRow";
 import { useCnftDisplayData } from "@/src/utils/solana/cnftMetadata";
 
@@ -64,6 +63,8 @@ export default function WalletDashboardScreen() {
     // Swap is flag-gated on iOS; deep-link ('mwa') wallets stay excluded even
     // with the flag on — that path can't sign transactions on iOS.
     const showSwap = Platform.OS !== "ios" || (FEATURE_IOS_SWAP && walletType !== "mwa");
+    // Same reason for Send: no entry point that can only end in an error.
+    const showSend = Platform.OS !== "ios" || walletType !== "mwa";
     const { data, isLoading, isRefreshing, refresh } = usePortfolio();
     const {
         lastTransaction,
@@ -76,7 +77,6 @@ export default function WalletDashboardScreen() {
     // UI state management
     const [isBalanceHidden, setIsBalanceHidden] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [isToastVisible, setIsToastVisible] = useState(false);
 
     // Tokens | Collectibles segmented view + owned NFTs (Helius DAS)
     const params = useLocalSearchParams<{ tab?: string; asset?: string; assetName?: string; assetImage?: string }>();
@@ -186,13 +186,6 @@ export default function WalletDashboardScreen() {
     };
 
     /**
-     * Shows coming soon notification for unavailable features
-     */
-    const showComingSoonToast = () => {
-        setIsToastVisible(true);
-    };
-
-    /**
      * Navigates to transactions history screen
      */
     const navigateToTransactions = () => {
@@ -286,13 +279,6 @@ export default function WalletDashboardScreen() {
                 >
                     <View style={styles.dashboardBody}>
                         <View style={styles.dashboardTop}>
-                            <Web3Toast
-                                message="In next update..."
-                                visible={isToastVisible}
-                                onHide={() => setIsToastVisible(false)}
-                                isSuccess={false}
-                            />
-
                             <FadeIn delay={0}>
                                 <Header
                                     isDarkMode={isDarkMode}
@@ -322,6 +308,7 @@ export default function WalletDashboardScreen() {
                                     onSwap={() => router.push("/swap")}
                                     onNfcDeposit={() => depositSheetRef.current?.present()}
                                     showSwap={showSwap}
+                                    showSend={showSend}
                                 />
                             </FadeIn>
 

@@ -3,6 +3,29 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 26 — App Store resubmission (Guideline 2.2): no beta wording, the invite code is optional and Skip is always on screen
+- feat(frontend): the invite code sheet after a first Apple / Google / wallet sign-in is rewritten. Copy: "Have an invite code?", "Enter a friend's code to connect with them right away — or skip for now.", "Join NextVibe" (enabled at 6 characters) and "Skip".
+  - Skip is in the sheet header (top-right, outside the scroll area) and again under Join.
+  - The sheet sizes to its content, stays below the status bar, and is capped at 90% of the window and at the space above the keyboard; the body scrolls when it doesn't fit. The code cells shrink on narrow screens.
+  - The code field is now a `BottomSheetTextInput`, so the sheet follows the keyboard. The old plain `TextInput` left Join and Skip behind the keyboard on small phones. While the keyboard is up the ticket icon folds away, so both Skips stay above the keyboard even on an iPhone SE, and iOS shows a Latin keyboard for the code whatever the keyboard language.
+  - Checked on iPhone SE (3rd gen), iPhone 16 Pro, iPhone 16 Pro Max and iPad Air 11" (M3) in iPhone compatibility mode, keyboard closed and open.
+  - Closing the sheet any other way (drag down, backdrop tap, Android back) signs up without a code, so nobody is left on the sign-in screen without an account. If that sign-up fails, a toast says so.
+  - Files: `frontend/NextVibe/components/oauth-components/InviteCodeSheet.tsx`, `components/oauth-components/__tests__/InviteCodeSheet.test.tsx`
+- fix(frontend): nothing unfinished or test-like on screen.
+  - The collectible "Send — coming soon" button is hidden while `FEATURE_CNFT_SEND` is off.
+  - The wallet card said "Temporarily unavailable — back soon" during every connect; it now says "Waiting for your wallet…".
+  - On iOS, Send is hidden for wallets connected by deep link, which can't sign in the app, and their error no longer says "not supported yet".
+  - "Online events are not supported yet." became "Only in-person events can be added. This one is online."
+  - The promo banner drops "alpha" and no longer asks iPhone users to rate NextVibe on the dApp Store.
+  - The crash screen shows the raw error only in dev builds and says "Contact Support" instead of "Report to Developers".
+  - Chat wallpaper settings: "LIVE PREVIEW" became "HOW IT LOOKS".
+  - Removed the unused `VibeMapScreen.tsx` ("VibeMap is coming… early map access"), the unused `DevnetBanner.tsx` and the dead "In next update..." toast.
+  - Files: `frontend/NextVibe/components/{Wallet/Collectibles/CollectibleDetailSheet,Wallet/SelectWalletLogin/WalletOptionCard,Wallet/Dashboard/DashboardScreen,Wallet/Dashboard/QuickActions,Events/AddLumaEventSheet,Shared/PromoBanner,ErrorFallback,Settings/ChatWallpaperModal}.tsx`, `hooks/useWalletAddress.ios.ts`, `constants/FeatureFlags.ts`
+- fix(backend): the OG collection metadata no longer promises "exclusive access" or "early access to features". Files: `backend/NextVibeAPI/posts/view_pac/collection_metadata.py`
+- test(backend): sign-up without an invite code works on every path (Apple with "" and null, Google, wallet, email) and creates the account with no inviter; a friend's code still counts for the friend. Files: `backend/NextVibeAPI/user/tests_signup_without_invite.py`
+- docs(repo): the README banner no longer says closed beta or waitlist. Files: `README.md`
+- fix(landing, separate repo ~/NextVibeLanding): nextvibe.io/terms (linked from the app's sign-up screen) replaces "2. Closed Beta Disclaimer" with "2. Service Availability"; the download buttons say "iOS App" / "Download for iOS" instead of "iOS Beta" / "iOS TestFlight (Beta)"; homepage labels drop "Alpha". Files: `frontend/src/components/{Terms,Header,Footer,HeroSection,TractionRoadmapSection,ui/TractionSparkline}.tsx`
+
 ## Sep 24 — Wallet-optional NextVibe: check in, tap and take the selfie now, claim on Solana later
 - feat(backend): one `Collectible` table is the single source of truth for everything a person holds from NextVibe (POAP, Proof of Meet, collected post, OG badge), on Solana or not: status offchain → queued → minting → minted (or failed), wallet, asset id, signature, attempts, last error, and the metadata frozen when it was recorded. It is unique on (user, kind, source_id), which is the double-mint guard, and the worker moves a row from queued to minting with a compare-and-set, so Claim, a wallet connect and the sweep can race without a second mint. The check-in, both tap flows, the selfie, post collect and the OG badge record their row inside their own transaction, in a savepoint so recording can never break the action. With a wallet the row is queued and minted right away; without one it is saved off-chain.
 - feat(backend): no wallet gate on live actions. The check-in answers "Saved to your profile · Claim anytime" (older apps keep their old wording). A tap records one Proof of Meet per person, each following their own wallet, so a tap between a wallet and no wallet mints one side and saves the other. People with a wallet now get their Proof of Meet on Solana at every tap; v1 taps never minted before. A selfie publishes as soon as both approve and reuses the leaves minted at the tap. Organizer stats already counted every check-in, wallet or not. Post collect and the Seeker badge still need a wallet.

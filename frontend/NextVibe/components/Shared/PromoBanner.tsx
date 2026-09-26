@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, Animated, StyleSheet,
-    Dimensions, Linking, PanResponder,
+    Dimensions, Linking, PanResponder, Platform,
 } from 'react-native';
 import { X, Star, Twitter } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -116,11 +116,12 @@ export default function PromoBanner() {
                 state.cycleCompletedAt = 0;
             }
 
-            // Step 0 → rate, Step 1 → follow_x
-            const next: PromoKind = state.cycleStep === 0 ? 'rate' : 'follow_x';
+            // Step 0 → rate, Step 1 → follow_x. The rate link opens the Solana
+            // dApp Store, which iOS doesn't have, so iOS only gets follow_x.
+            const next: PromoKind = state.cycleStep === 0 && Platform.OS !== 'ios' ? 'rate' : 'follow_x';
 
             // Advance cycle
-            if (state.cycleStep === 0) {
+            if (next === 'rate') {
                 state.cycleStep = 1;
             } else {
                 // Both shown — mark cycle as completed
@@ -154,7 +155,7 @@ export default function PromoBanner() {
     const title = isRate ? 'Enjoying NextVibe?' : 'Follow us on 𝕏';
     const subtitle = isRate
         ? 'Rate us on the dApp Store — it really helps!'
-        : 'Stay tuned for updates, drops & alpha.';
+        : 'Get the latest news, drops and events.';
     const btnLabel = isRate ? 'Rate Now' : 'Follow';
     const IconComponent = isRate ? Star : Twitter;
     const gradientColors: readonly [string, string] = isRate

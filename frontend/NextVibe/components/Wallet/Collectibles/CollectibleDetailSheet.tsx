@@ -43,7 +43,7 @@ function parseEdition(name: string): string | null {
 /**
  * Detail sheet for a single owned collectible, shared between the wallet
  * Collectibles tab and history deep-links. The Send flow is staged behind
- * FEATURE_CNFT_SEND and ships as a disabled "coming soon" button.
+ * FEATURE_CNFT_SEND and stays hidden while the flag is off.
  */
 const CollectibleDetailSheet: React.FC<CollectibleDetailSheetProps> = ({ visible, asset, onClose }) => {
     const [modalVisible, setModalVisible] = useState(false);
@@ -160,17 +160,13 @@ const CollectibleDetailSheet: React.FC<CollectibleDetailSheetProps> = ({ visible
                                     <Text style={s.solscanText}>View on Solscan</Text>
                                 </TouchableOpacity>
 
-                                {/* Send — staged behind FEATURE_CNFT_SEND */}
-                                <TouchableOpacity
-                                    style={[s.sendBtn, !FEATURE_CNFT_SEND && s.sendBtnDisabled]}
-                                    activeOpacity={FEATURE_CNFT_SEND ? 0.8 : 1}
-                                    disabled={!FEATURE_CNFT_SEND}
-                                >
-                                    <Send size={14} color={FEATURE_CNFT_SEND ? "#fff" : "rgba(255,255,255,0.35)"} />
-                                    <Text style={[s.sendText, !FEATURE_CNFT_SEND && s.sendTextDisabled]}>
-                                        {FEATURE_CNFT_SEND ? "Send" : "Send — coming soon"}
-                                    </Text>
-                                </TouchableOpacity>
+                                {/* Send: hidden until FEATURE_CNFT_SEND ships */}
+                                {FEATURE_CNFT_SEND && (
+                                    <TouchableOpacity style={s.sendBtn} activeOpacity={0.8}>
+                                        <Send size={14} color="#fff" />
+                                        <Text style={s.sendText}>Send</Text>
+                                    </TouchableOpacity>
+                                )}
 
                                 {/* Verification note */}
                                 <View style={s.noteRow}>
@@ -284,17 +280,11 @@ const s = StyleSheet.create({
         backgroundColor: "#8B5CF6",
         marginBottom: 14,
     },
-    sendBtnDisabled: {
-        backgroundColor: "rgba(139,92,246,0.18)",
-    },
     sendText: {
         color: "#fff",
         fontSize: 13,
         fontFamily: "Dank Mono Bold",
         includeFontPadding: false,
-    },
-    sendTextDisabled: {
-        color: "rgba(255,255,255,0.35)",
     },
     noteRow: {
         flexDirection: "row",

@@ -158,7 +158,7 @@ export const ChatWallpaperModal: React.FC<Props> = ({ visible, onClose }) => {
         >
           {/* Live Preview Box */}
           <View style={styles.previewSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>LIVE PREVIEW</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>HOW IT LOOKS</Text>
             <View style={[styles.previewFrame, { borderColor: colors.border }]}>
               <ChatBackground
                 overrideType={selectedType}

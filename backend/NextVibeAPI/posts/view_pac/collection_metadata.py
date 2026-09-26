@@ -26,7 +26,11 @@ class CollectionMetadataView(APIView):
             metadata = {
                 "name": "NextVibe OG Status",
                 "symbol": "NVOG",
-                "description": "NextVibe OG Status is a special NFT collection that grants exclusive access to the NextVibe platform. Holders of this NFT enjoy unique privileges, including early access to features, special events, and more.",
+                "description": (
+                    "NextVibe OG Status is a limited collection for members who brought at least "
+                    "three friends to NextVibe. Holding one adds the OG badge, with its edition "
+                    "number, to your NextVibe profile."
+                ),
             "image": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
             "type": "image/jpeg",
             "properties": {

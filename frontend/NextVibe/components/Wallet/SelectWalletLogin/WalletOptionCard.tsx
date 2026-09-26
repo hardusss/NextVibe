@@ -208,7 +208,7 @@ export const WalletOptionCard: React.FC<WalletOptionCardProps> = ({
           {isDisabled && (
             <View style={styles.pauseBanner}>
               <Clock size={13} color="#f59e0b" />
-              <Text style={styles.pauseText}>Temporarily unavailable — back soon</Text>
+              <Text style={styles.pauseText}>Waiting for your wallet…</Text>
             </View>
           )}
 
