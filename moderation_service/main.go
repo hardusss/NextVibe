@@ -164,6 +164,10 @@ func sendCallback(resp Response) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
+	// The API refuses callbacks without the shared secret
+	if secret := os.Getenv("MODERATION_CALLBACK_SECRET"); secret != "" {
+		req.Header.Set("X-Moderation-Secret", secret)
+	}
 
 	client := &http.Client{}
 	res, err := client.Do(req)
@@ -209,8 +213,14 @@ func main() {
 		port = "8080"
 	}
 
+	// Only the API on this host calls the service (http://127.0.0.1:8080/moderation)
+	host := os.Getenv("HOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
 	http.HandleFunc("/moderation", moderationHandler)
 	http.HandleFunc("/health", healthHandler)
-	log.Printf("🚀 Moderation service running on http://localhost:%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Printf("🚀 Moderation service running on http://%s:%s", host, port)
+	log.Fatal(http.ListenAndServe(host+":"+port, nil))
 }

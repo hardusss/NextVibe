@@ -22,6 +22,9 @@ PUBLIC_MEDIA_URL = os.getenv("PUBLIC_MEDIA_URL", "")
 # MEET_PHOTO_LOCAL_DIR keeps them on disk instead, for local runs.
 MEET_PHOTO_BUCKET = os.getenv("R2_PRIVATE_BUCKET_NAME", "")
 MEET_PHOTO_LOCAL_DIR = os.getenv("MEET_PHOTO_LOCAL_DIR", "")
+# Shared with moderation_service: its result callback must send it as
+# X-Moderation-Secret. Empty refuses every callback.
+MODERATION_CALLBACK_SECRET = os.getenv("MODERATION_CALLBACK_SECRET", "")
 # The socket service's Redis: Django publishes in-app events on its pub/sub
 # channel (posts/src/realtime.py)
 REALTIME_REDIS_URL = os.getenv("REALTIME_REDIS_URL", "redis://127.0.0.1:6379/0")

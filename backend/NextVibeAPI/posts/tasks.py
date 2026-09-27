@@ -385,8 +385,13 @@ def send_post_for_moderation(self, post_id):
                     filename = file_result.get("filename", "media")
                     reasons.append(f"inappropriate media: {filename}")
             
-            reason = ", ".join(reasons) if reasons else "violated community guidelines"
+            reason = ", ".join(reasons) if reasons else None
             print(f"[MODERATION] User notified about rejection: {reason}")
+
+        # The author hears about it here; the moderation service's callback is
+        # only a second path
+        from posts.src.moderation_notify import notify_author
+        notify_author(post, passed, None if passed else reason)
             
     except requests.exceptions.Timeout:
         print(f"[MODERATION] Timeout for post {post_id}, retrying...")
