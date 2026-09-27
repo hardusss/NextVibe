@@ -92,6 +92,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    # Records issued refresh tokens so a password change can revoke them (user/src/sessions.py)
+    'rest_framework_simplejwt.token_blacklist',
     'cloudinary',
     'cloudinary_storage',
     "storages",
@@ -132,6 +134,10 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute='*/2'),
     },
     # Connect-a-wallet reminders that are due (10:00–21:00 local time)
+    'flush-expired-refresh-tokens-daily': {
+        'task': 'posts.tasks.flush_expired_refresh_tokens',
+        'schedule': crontab(hour=3, minute=30),
+    },
     'wallet-reminders-hourly': {
         'task': 'posts.tasks.send_wallet_reminders',
         'schedule': crontab(minute=5),
@@ -155,7 +161,9 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=90),
     "ROTATE_REFRESH_TOKENS": True,  
-    "BLACKLIST_AFTER_ROTATION": True,
+    # Off on purpose: two tabs or requests refreshing at once must not sign
+    # someone out. Tokens are revoked on password changes and account deletion.
+    "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": True,
     'USER_ID_FIELD': 'user_id',
     'USER_ID_CLAIM': 'user_id', 

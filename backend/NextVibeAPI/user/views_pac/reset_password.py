@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
+from ..src.sessions import revoke_refresh_tokens
 from ..src.two_fa import TwoFA
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -50,5 +51,7 @@ class UpdatePassword(APIView):
             return Response({"message": "New password is required"}, status=201)
         user.set_password(new_password)
         user.save()
+        # Other devices signed in with the old password have to sign in again
+        revoke_refresh_tokens(user)
         return Response({"message": "Password updated successfully"}, status=200)
     

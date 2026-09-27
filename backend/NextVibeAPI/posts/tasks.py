@@ -485,3 +485,10 @@ def send_wallet_reminders():
     """Hourly: the connect-a-wallet reminders that are due (posts/src/wallet_reminders.py)."""
     from posts.src.wallet_reminders import run
     run()
+
+
+@shared_task
+def flush_expired_refresh_tokens():
+    """Drop records of refresh tokens that have expired (rest_framework_simplejwt.token_blacklist)."""
+    from django.core.management import call_command
+    call_command("flushexpiredtokens")
