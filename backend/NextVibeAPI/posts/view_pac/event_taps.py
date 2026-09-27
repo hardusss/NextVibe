@@ -21,6 +21,10 @@ class EventTapsView(APIView):
         except Post.DoesNotExist:
             return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        # Where people checked in and tapped is for the organizer only
+        if post.owner != request.user:
+            return Response({"error": "Only the event owner can view taps"}, status=status.HTTP_403_FORBIDDEN)
+
         # Decode event's default center location from its h3_geo
         center_coords = None
         if post.h3_geo:

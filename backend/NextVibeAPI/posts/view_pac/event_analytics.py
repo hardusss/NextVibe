@@ -129,11 +129,8 @@ class EventAnalyticsView(APIView):
 
         except Exception as e:
             traceback.print_exc()
-            return Response({
-                "error": "Internal server error occurred.",
-                "detail": str(e),
-                "traceback": traceback.format_exc()
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Internal server error occurred."},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class EventTopUsersView(APIView):
@@ -149,6 +146,11 @@ class EventTopUsersView(APIView):
                 post = Post.objects.get(id=post_id, is_luma_event=True)
             except Post.DoesNotExist:
                 return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Only the owner sees who came and their wallets
+            if post.owner != request.user:
+                return Response({"error": "Only the event owner can view top attendees"},
+                                status=status.HTTP_403_FORBIDDEN)
 
             top_users_qs = Reputation.objects.filter(
                 event=post
@@ -183,11 +185,8 @@ class EventTopUsersView(APIView):
 
         except Exception as e:
             traceback.print_exc()
-            return Response({
-                "error": "Internal server error occurred.",
-                "detail": str(e),
-                "traceback": traceback.format_exc()
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Internal server error occurred."},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class EventSocialGraphView(APIView):
@@ -270,11 +269,8 @@ class EventSocialGraphView(APIView):
 
         except Exception as e:
             traceback.print_exc()
-            return Response({
-                "error": "Internal server error occurred.",
-                "detail": str(e),
-                "traceback": traceback.format_exc()
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Internal server error occurred."},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class EventBroadcastView(APIView):
@@ -326,8 +322,5 @@ class EventBroadcastView(APIView):
 
         except Exception as e:
             traceback.print_exc()
-            return Response({
-                "error": "Internal server error occurred.",
-                "detail": str(e),
-                "traceback": traceback.format_exc()
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Internal server error occurred."},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
