@@ -9,6 +9,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from ..models import EventCheckin, Reputation, Post
 from ..constants import IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
 from ..src import collectibles
+from ..src.proximity_presence import is_sharing
 from ..src.meets import ensure_user_meet_slugs, meet_url, slug_for_pair_event, slug_for_pair_today, tap_slug
 from user.models import User
 from user.src.send_push_message import send
@@ -571,6 +572,12 @@ class EventNFCConnectView(APIView):
     throttle_scope = "tap"
 
     def post(self, request):
+        # This endpoint gets the other person's id, not a token: only count the tap
+        # while they're on the Tap to Meet screen (their phone renews a token)
+        if not is_sharing(request.data.get('scanned_user_id')):
+            return Response({"error": "Ask them to open Tap to Meet on their phone, then tap again.",
+                             "code": "NOT_SHARING"}, status=status.HTTP_403_FORBIDDEN)
+
         event_id = request.data.get('event_id')
         scanned_user_id = request.data.get('scanned_user_id')
         latitude = request.data.get('latitude')
@@ -746,6 +753,12 @@ class IRLTapView(APIView):
     throttle_scope = "tap"
 
     def post(self, request):
+        # This endpoint gets the other person's id, not a token: only count the tap
+        # while they're on the Tap to Meet screen (their phone renews a token)
+        if not is_sharing(request.data.get('scanned_user_id')):
+            return Response({"error": "Ask them to open Tap to Meet on their phone, then tap again.",
+                             "code": "NOT_SHARING"}, status=status.HTTP_403_FORBIDDEN)
+
         return process_irl_tap(
             requesting_user=request.user,
             scanned_user_id=request.data.get('scanned_user_id'),

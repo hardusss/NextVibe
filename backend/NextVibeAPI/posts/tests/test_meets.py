@@ -77,6 +77,11 @@ class MeetTestCase(TestCase):
         patcher = mock.patch.object(geocode, "lookup", return_value=("Kyiv", "UA"))
         self.lookup = patcher.start()
         self.addCleanup(patcher.stop)
+        # These tests call the legacy tap endpoints directly; the other person
+        # counts as sharing Tap to Meet (see test_irl_tap.SharingRequiredTests)
+        sharing = mock.patch("posts.view_pac.event_connections.is_sharing", return_value=True)
+        sharing.start()
+        self.addCleanup(sharing.stop)
 
         self.alice = make_user("alice")
         self.bob = make_user("bob")

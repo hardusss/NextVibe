@@ -10,6 +10,7 @@ Covers:
 - "people you met" lists hide the pair but keep the REP total
 - unblock restores visibility and taps
 """
+from unittest import mock
 from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
@@ -46,6 +47,11 @@ class BlockingTestCase(TestCase):
         self.alice_client = client_for(self.alice)
         self.bob_client = client_for(self.bob)
         self.carol_client = client_for(self.carol)
+        # These tests call the legacy tap endpoints directly; the other person
+        # counts as sharing Tap to Meet (see test_irl_tap.SharingRequiredTests)
+        sharing = mock.patch("posts.view_pac.event_connections.is_sharing", return_value=True)
+        sharing.start()
+        self.addCleanup(sharing.stop)
 
     def tearDown(self):
         cache.clear()

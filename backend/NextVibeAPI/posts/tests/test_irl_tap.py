@@ -11,6 +11,7 @@ Covers:
 - per-event analytics unaffected by IRL rows (event=None)
 """
 from datetime import timedelta
+from unittest import mock
 
 from django.test import TestCase
 from django.utils import timezone
@@ -37,6 +38,11 @@ class IRLTapTestCase(TestCase):
         )
         self.client = APIClient()
         self.client.force_authenticate(user=self.alice)
+        # These tests call the legacy tap endpoints directly; the other person
+        # counts as sharing Tap to Meet (see test_irl_tap.SharingRequiredTests)
+        sharing = mock.patch("posts.view_pac.event_connections.is_sharing", return_value=True)
+        sharing.start()
+        self.addCleanup(sharing.stop)
 
     def tap(self, scanned_user, lat=None, lng=None):
         body = {"scanned_user_id": scanned_user.user_id}
@@ -201,3 +207,33 @@ class IRLTapTestCase(TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["event_id"], active_event.id)
         self.assertEqual(events[0]["event_name"], "Tonight")
+
+
+class SharingRequiredTests(TestCase):
+    """The legacy tap endpoints only count a tap while the other person is on Tap to Meet."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.alice = User.objects.create_user(username="alice", email="alice@test.com", password="pass12345")
+        self.bob = User.objects.create_user(username="bob", email="bob@test.com", password="pass12345")
+        self.alice_client = APIClient()
+        self.alice_client.force_authenticate(user=self.alice)
+        self.bob_client = APIClient()
+        self.bob_client.force_authenticate(user=self.bob)
+
+    def test_a_tap_on_someone_who_isnt_sharing_is_refused(self):
+        res = self.alice_client.post(IRL_TAP_URL, {"scanned_user_id": self.bob.user_id}, format="json")
+        self.assertEqual(res.status_code, 403)
+        self.assertEqual(res.data["code"], "NOT_SHARING")
+        res = self.alice_client.post("/api/v1/posts/event-nfc-connect/",
+                                     {"event_id": 1, "scanned_user_id": self.bob.user_id}, format="json")
+        self.assertEqual(res.data["code"], "NOT_SHARING")
+        self.assertFalse(Reputation.objects.exists())
+
+    def test_a_tap_counts_while_they_share(self):
+        shared = self.bob_client.post(GENERATE_TOKEN_URL, {"interaction_type": "irl"}, format="json")
+        self.assertEqual(shared.status_code, 200, shared.data)
+        res = self.alice_client.post(IRL_TAP_URL, {"scanned_user_id": self.bob.user_id}, format="json")
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(Reputation.objects.filter(source="irl").count(), 2)

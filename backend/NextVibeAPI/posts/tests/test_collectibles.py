@@ -94,6 +94,8 @@ class CollectiblesTestCase(TestCase):
 
         # TestCase never commits: run on_commit work (the queue) right away
         patch("django.db.transaction.on_commit", side_effect=lambda func, using=None, robust=False: func())
+        # Taps below use the legacy endpoints: the other person counts as sharing
+        patch("posts.view_pac.event_connections.is_sharing", return_value=True)
         patch("posts.src.geocode.lookup", return_value=("Kyiv", "UA"))
         self.service = FakeNftService()
         patch("posts.src.collectible_mint.requests.post", side_effect=self.service.post)
