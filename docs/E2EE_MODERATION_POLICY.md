@@ -1,52 +1,78 @@
-# NextVibe End-to-End Encryption (E2EE) & Moderation Policy Trade-off Architecture
+# End-to-end encryption and moderation
 
-> **Status (Sep 27, 2026):** this page describes the end-to-end encryption design and the
-> moderation policy that goes with it. The app doesn't use the device key exchange yet, so
-> chats are not end-to-end encrypted today. [SECURITY.md](SECURITY.md#chats-and-encryption)
-> describes what the code does now.
+> **Status (Sep 27, 2026):** chats are end-to-end encrypted (format v3) between people whose
+> apps have a device key. [SECURITY.md](SECURITY.md#chats-and-encryption) lists what the
+> server can and can't see.
 
-## 1. Executive Summary & Policy Decision
-With the rollout of End-to-End Encryption (Phase 3), message text and private media attachments are encrypted client-side using Double Ratchet / AES-256-GCM before transmission over the network and storage in the database.
+## 1. Policy
 
-As a direct consequence of zero-knowledge server-side storage:
-- **Server-side Automated Moderation Scanners**: Cannot inspect message text or private media attachments for active E2EE chats, as the server holds only ciphertext blobs.
-- **Public Content**: Public posts, public comments, vibe feeds, and user profiles remain unencrypted and continue to be scanned automatically by `moderation_service` (Go).
-- **E2EE Chat Moderation**: Shifts from involuntary server-side text scanning to **user-initiated voluntary reporting** (matches standard Signal/WhatsApp moderation architecture).
+- **Chats:** message text and chat photos and videos are encrypted on the phone. The server
+  stores and relays ciphertext, so it can't scan chats.
+- **Public content** (posts, comments, profiles, Proof of Meet selfies and captions) is not
+  encrypted and is still checked by `moderation_service` before anyone else sees it.
+- **Chat moderation** relies on the person who received a message reporting it: their app
+  can read it, so they can send it in (the model Signal and WhatsApp use).
 
----
-
-## 2. Technical Architecture & Trust Boundaries
+## 2. How v3 works
 
 ```
-┌───────────────────────────────┐                  ┌───────────────────────────────┐
-│     Sender Client (Device)    │                  │   Recipient Client (Device)   │
-│ 1. AES-256-GCM Encrypt Text   │                  │ 1. Receive Ciphertext         │
-│ 2. Encrypt Media prior to R2  │                  │ 2. Local Ratchet Decrypt      │
-└───────────────┬───────────────┘                  └───────────────┬───────────────┘
-                │ Ciphertext Payload                               │ Voluntary Report
-                ▼                                                  ▼
+┌──────────────────────────────┐                     ┌──────────────────────────────┐
+│ Sender's phone               │                     │ Every phone of both people   │
+│ 1. new message key           │                     │ 1. open its copy of the key  │
+│ 2. seal text + media keys    │    ciphertext       │    (NaCl box, own secret)    │
+│ 3. seal each photo/video     │ ──────────────────▶ │ 2. open text + media keys    │
+│ 4. box the message key for   │                     │ 3. download and open photos  │
+│    each device of both       │                     │    and videos                │
+└──────────────────────────────┘                     └──────────────────────────────┘
+                 │                                                   ▲
+                 ▼                                                   │
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│                             NextVibe Server / Gateway                            │
-│  - Routes & stores ciphertext blobs (zero-knowledge)                              │
-│  - Endpoint `POST /api/v2/chat/report-message` processes user-submitted reports   │
+│ NextVibe realtime service: stores and relays ciphertext; publishes device        │
+│ public keys (POST/GET /api/v2/e2ee/devices); media bucket holds sealed files only │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### What the Server Stores
-- `chat_message.text`: Encrypted JSON blob containing ciphertext, nonce, and sender device ratchet header.
-- Metadata (Plaintext for routing & UX): `chat_id`, `sender_id`, `created_at`, `reply_to_id`, `message_receipts`, `message_reactions`.
+- **Device keys:** each app install makes an X25519 key pair; the secret key stays in the
+  phone's secure storage, the public key is published (at most 10 devices per account).
+- **Messages:** a fresh 32-byte key per message; the payload (`{"t": text, "m": [media keys]}`)
+  is sealed with XSalsa20-Poly1305 (NaCl `secretbox`), and the message key is sealed for every
+  device of both people with NaCl `box` (sender device key + recipient device key).
+- **Media:** each photo or video is sealed with its own key before upload; the key travels
+  inside the sealed message. The app opens the file into its cache to show it.
+- **Stored envelope** (`chat_message.text`):
+  `{"v": 3, "sender_device_id", "sender_key", "nonce", "ciphertext", "keys": {device: {"n", "k"}}}`.
+- **Safety number:** 60 digits made from both people's device keys; the same on both phones.
+  Comparing it in person (or scanning each other's QR code) shows nobody sits in between.
+- **Older messages:** v2/v1 envelopes and plain text still open on every device. While the
+  other person's app has no device key, messages go in the v2 format so they can read them.
+- **Plaintext metadata the server keeps:** chat and sender ids, times, reply links, reactions,
+  read receipts and message sizes.
 
-### User-Initiated Voluntary Abuse Reporting
-If a recipient receives abusive, illegal, or harassing content in an E2EE chat:
-1. The user taps **"Report Message"** in the app.
-2. The client packages the locally-decrypted message content, sender's identity public key, sender signature, and message metadata.
-3. The report is submitted to `POST /api/v2/chat/report-message`.
-4. `moderation_service` receives the voluntary report for review.
+Code: `frontend/NextVibe/src/services/e2ee/{core,keys,media}.ts`,
+`src/services/CryptoService.ts`, `socket_service/src/e2ee.py`,
+`backend/NextVibeAPI/e2ee/models.py`.
 
----
+## 3. Trade-offs
 
-## 3. Product Sign-off Checklist
-- [x] Product & Legal align on E2EE zero-knowledge trust model.
-- [x] Server-side automated scanning disabled for E2EE chats.
-- [x] User-initiated voluntary reporting UI enabled in mobile app.
-- [x] Safety number comparison & identity verification UI live.
+- A phone that loses its key (the app reinstalled on Android, a new phone) can't read v3
+  messages sealed before it had a key. There's no key backup.
+- The server publishes the device keys, so a server that lied about them could read new
+  messages; the safety number is how people check. The app doesn't warn when the number
+  changes.
+- Reporting sends the reported message's decrypted text to NextVibe, so the reporter decides
+  what leaves the chat.
+
+## 4. Reporting
+
+- `POST /api/v2/chat/report-message` (`socket_service/src/keys.py`) accepts a report from a
+  chat participant with the decrypted text and a reason, and answers `reported`.
+- TODO(founder): the endpoint doesn't store reports or pass them to `moderation_service` yet,
+  and the app has no "Report message" button in chats. Decide where reports go (a table the
+  admin console reads, or an email) before relying on it.
+
+## 5. Checklist
+
+- [x] Server can't read v3 chat text or media.
+- [x] Public content is still moderated automatically.
+- [x] Safety number shown in the chat (shield icon).
+- [ ] Report button in chats and a place where reports are kept (see section 4).

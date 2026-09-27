@@ -13,12 +13,16 @@ collectibles landing on Solana).
   the API's `SECRET_KEY`; only access tokens are accepted. A bad token closes the socket with
   code 4401; more than 5 connections per user closes it with 4408.
 - **MySQL:** reads and writes the API's chat and user tables directly with SQLAlchemy (`chat_*`,
-  `user_user`, `user_block`, `user_useronlinesession`), including online status.
+  `user_user`, `user_block`, `user_useronlinesession`, `e2ee_device`), including online status.
 - **Redis:** pub/sub channel `chat_pubsub_events` fans events out across instances; the API
   publishes its `meet_photo` and `collectible` events on the same channel. Presence, typing and
   a per-user limit of `MAX_EVENTS_PER_SECOND` events live in Redis too.
-- **R2:** chat media in the public bucket under `chat_media/`, uploaded inline or through a
-  presigned URL.
+- **R2:** chat media in the public bucket under `chat_media/chat_<chat>_<random hex>.<ext>`,
+  uploaded inline or through a presigned URL (a message can only attach files named for its
+  own chat). In end-to-end encrypted chats the files are sealed on the phone.
+- **End-to-end encryption:** the service stores and relays message text as the app sends it
+  (v3 envelopes are sealed on the phone) and publishes device public keys; see
+  [docs/E2EE_MODERATION_POLICY.md](../docs/E2EE_MODERATION_POLICY.md).
 - **Expo:** push to offline recipients; the notification doesn't include the message text.
 
 ## WebSocket and REST
@@ -33,11 +37,14 @@ reactions, typing, edits within 15 minutes, deletes, and relayed WebRTC signalli
 | POST, DELETE | `/messages/{message_id}/reactions`, `/messages/{message_id}/reactions/{emoji}` | Add or remove a reaction |
 | PATCH, DELETE | `/messages/{message_id}` | Edit or delete a message |
 | POST | `/media/upload-url` | Presigned upload URL for chat media |
-| POST | `/keys/register-device` | Register a device's identity key, signed prekey and one-time prekeys |
-| GET | `/keys/prekey/{target_user_id}` | A user's prekey bundle (consumes one one-time prekey per device) |
+| POST | `/e2ee/devices` | Publish this install's X25519 public key (`{device_id, public_key}`); at most 10 devices per account, the least recently seen go first |
+| GET | `/e2ee/devices?user_ids=1,2` | Public keys of up to 20 people |
+| POST | `/keys/register-device` | Register a device's identity key, signed prekey and one-time prekeys (not used by the app) |
+| GET | `/keys/prekey/{target_user_id}` | A user's prekey bundle, consuming one one-time prekey per device (not used by the app) |
 | POST | `/chat/report-message` | Checks chat membership and acknowledges the report; nothing is stored |
 
-The app doesn't call the `/keys/*` routes yet; see [docs/SECURITY.md](../docs/SECURITY.md#chats-and-encryption).
+Reply previews carry the replied-to text whole when it's an encrypted envelope (the app
+shortens it after decrypting); plain text is cut at 100 characters.
 
 ## Run it
 
@@ -98,9 +105,9 @@ redis-server --port 6390 --save "" --daemonize yes
 for t in tests/test_*.py; do redis-cli -p 6390 flushall; REDIS_PORT=6390 JWT_SECRET_KEY=test python -m pytest -q "$t"; done
 ```
 
-On Sep 27, 2026 this ran 22 tests: 19 pass. `test_presigned_media_upload_flow` needs R2
-credentials, `test_cross_pod_pubsub_routing` expects a Redis on port 6379, and
-`test_push_notification_dispatch_for_offline_user` fails.
+On Sep 27, 2026 this ran 28 tests: 25 pass. `test_presigned_media_upload_flow` fails when
+its whole file runs (it passes on its own), `test_cross_pod_pubsub_routing` expects a Redis on
+port 6379, and `test_push_notification_dispatch_for_offline_user` fails.
 
 ## Files
 
@@ -111,5 +118,6 @@ credentials, `test_cross_pod_pubsub_routing` expects a Redis on port 6379, and
 | `auth.py` | JWT check |
 | `db.py`, `src/models/` | SQLAlchemy engine and models of the shared tables |
 | `src/messages.py`, `src/keys.py`, `src/notifications.py` | REST routes, key routes, Expo push |
+| `src/e2ee.py`, `src/models/e2ee_model.py` | Device public keys for end-to-end encryption |
 | `r2_storage.py` | Chat media on R2 |
 | `config.py` | Settings |

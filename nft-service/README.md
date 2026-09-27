@@ -18,6 +18,11 @@ On-chain flows are described in [docs/SOLANA.md](../docs/SOLANA.md).
   (`https://api.nextvibe.io/api/v1/posts/<post_id>/metadata/<edition>/`, used for the on-chain
   name). Proof of Meet names and URIs come from the API in the request.
 - **Stores:** nothing. One in-process lock serializes mints so leaf numbers never collide.
+- **Access:** it listens on 127.0.0.1 by default. With `NFT_SERVICE_SECRET` set, every call
+  must carry the same value in `x-internal-secret` (compared in constant time) or gets 401;
+  the API sends it on every call. `MINTS_DISABLED=true` answers 503 `MINTS_DISABLED` on
+  `/mint`, `/mint/og`, `/mint/meet` and `/collect/*`; the API's queue treats that as "not
+  ready" and retries later.
 
 ## Run it
 
@@ -25,7 +30,7 @@ On-chain flows are described in [docs/SOLANA.md](../docs/SOLANA.md).
 cd nft-service
 bun install
 cp .env.example .env     # fill it in
-bun run dev              # http://localhost:3000, restarts on changes
+bun run dev              # http://127.0.0.1:3000, restarts on changes
 ```
 
 In production it runs as the `nextvibe-nft` systemd unit, which the deploy workflow restarts
@@ -52,19 +57,25 @@ Listed in [.env.example](.env.example).
 | `OG_COLLECTION_ADDRESS` | for OG badges | Collection for /mint/og (the OG badge) |
 | `MEET_COLLECTION_ADDRESS` | for Proof of Meet | Proof of Meet collection (create once with `bun run src/create-meet-collection.ts`); empty makes /mint/meet answer 503 |
 | `MEET_METADATA_PREFIX` | no | URL prefix of Proof of Meet metadata JSON (default https://api.nextvibe.io/meta/meet/) |
+| `NFT_SERVICE_SECRET` | recommended | Shared secret the API sends as x-internal-secret; with it set, calls without it get 401 (empty accepts every caller) |
+| `HOST` | no | Address to listen on (default 127.0.0.1: only the API on this host calls the service) |
+| `PORT` | no | HTTP port (default 3000) |
+| `MINTS_DISABLED` | no | true stops every mint and collect (503 MINTS_DISABLED); the API's queue waits and retries later |
 
 ## Files
 
 | File | What |
 |---|---|
 | `src/index.ts` | The HTTP service: every endpoint below |
+| `src/internal-auth.ts` | The shared-secret check and the mint switch |
 | `src/create-tree.ts` | Creates the Bubblegum Merkle tree |
 | `src/create-collection.ts`, `src/create-meet-collection.ts` | Create collection NFTs |
 
 ## Tests
 
-There is no test suite; the `test` script in `package.json` is a placeholder. The API's tests fake this service
-(`posts/tests/test_collectibles.py`, `test_collect.py`, `test_meet_photos.py`).
+`bun test` runs `src/internal-auth.test.ts` (the shared-secret check and the mint switch).
+The API's tests fake this service (`posts/tests/test_collectibles.py`, `test_collect.py`,
+`test_meet_photos.py`).
 
 ## Endpoints
 

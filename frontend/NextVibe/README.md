@@ -10,6 +10,7 @@ Package / bundle id: `com.nextvibe.app`.
 |---|---|
 | REST API | `https://api.nextvibe.io/api/v1`, hardcoded in `src/utils/url_api.ts`; JWT in `Authorization`, refreshed by the axios interceptor (`src/utils/axiosInterceptor.ts`) |
 | Realtime | `wss://realtime.nextvibe.io/ws` and `https://realtime.nextvibe.io/api/v2` (`src/services/WebSocketService.ts`, `src/api/chat.ts`) |
+| Chat encryption | End-to-end (v3): this install's key pair in secure storage, public keys through `/api/v2/e2ee/devices`, messages and chat files sealed on the phone (`src/services/e2ee/`, `src/services/CryptoService.ts`); see [docs/SECURITY.md](../../docs/SECURITY.md#chats-and-encryption) |
 | Solana reads | The API's RPC proxy `/api/v1/wallets/rpc/` (`app/_layout.tsx`) |
 | Wallets | Mobile Wallet Adapter (Android, Seed Vault on Seeker), LazorKit passkey wallets, Phantom / Solflare / Backpack deep links on iOS |
 | Swaps | Jupiter Swap API, Android only (`src/services/JupiterService.ts`) |
@@ -65,8 +66,8 @@ Listed in [.env.example](.env.example). `EXPO_PUBLIC_*` values are bundled into 
 ## Tests
 
 ```bash
-npx jest --watchAll=false        # logic: utils, stores, navigation (155 tests)
-npm run test:components          # component render tests with snapshots (15 tests)
+npx jest --watchAll=false        # logic: utils, stores, navigation, chat encryption (183 tests)
+npm run test:components          # component render tests with snapshots (23 tests)
 npx tsc --noEmit                 # type check
 ```
 
@@ -81,7 +82,8 @@ mocks in `jest.components.setup.js`).
 | `components/` | Screens and UI by feature (`Events/`, `Proximity/`, `Meet/`, `NftClaim/`, `Collectibles/`, `ProfilePage/`, `Wallet/`, `Chat/`) |
 | `src/api/` | API clients |
 | `src/proximity/`, `hooks/useProximity*.ts`, `hooks/useBleScanner.tsx` | Tap to Meet (see [docs/TAP_TO_MEET.md](../../docs/TAP_TO_MEET.md)) |
-| `src/services/`, `src/stores/` | Wallets, chat transport, Zustand stores |
+| `src/services/`, `src/stores/` | Wallets, chat transport and encryption (`src/services/e2ee/`), Zustand stores |
+| `components/Auth/` | The email code step (sign-up, sign-in) and Forgot password |
 | `modules/nfc-send`, `modules/ble-share` | Native modules (Kotlin, Swift) |
 | `app.config.js`, `with*.js` | Expo config and config plugins (Mapbox Maven, MWA intent queries, iOS Info.plist keys) |
 
