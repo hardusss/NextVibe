@@ -241,7 +241,7 @@ class HappyPathTests(MeetPhotoTestCase):
         self.assertFalse(bob_view["can_start"])
 
         self.send()
-        self.assertEqual(self.pushes, [("bob", "@alice took your Proof of Meet photo")])
+        self.assertEqual(self.pushes, [("bob", "@alice took your Proof of Meet photo.")])
         bob_view = self.b.get(self.url()).json()
         self.assertEqual(bob_view["status"], "pending")
         self.assertEqual(bob_view["photo"]["role"], "subject")
@@ -273,7 +273,7 @@ class HappyPathTests(MeetPhotoTestCase):
         self.assertEqual((photo.wallet_photographer, photo.wallet_subject),
                          (self.alice.wallet_address, self.bob.wallet_address))
         self.assertEqual(self.mint_leaf.call_count, 2)
-        self.assertIn(("alice", "@bob said yes — your Proof of Meet is live"), self.pushes)
+        self.assertIn(("alice", "@bob said yes — your Proof of Meet is live."), self.pushes)
 
         # One post, on both profiles, "@alice with @bob"
         post = photo.post
@@ -398,7 +398,7 @@ class RejectAndExpiryTests(MeetPhotoTestCase):
         self.assertEqual(self.private_files(), [])
         self.assertEqual(self.enqueued, [])
         self.assertFalse(Post.objects.filter(meet_slug=self.slug).exists())
-        self.assertIn(("alice", "@bob passed on this one"), self.pushes)
+        self.assertIn(("alice", "@bob passed on this one."), self.pushes)
         meet_json = APIClient().get(f"/api/v1/meet/{self.slug}").json()
         self.assertFalse(meet_json["selfie"])
         self.assertIn("/card.png?v=og", meet_json["card_url"])

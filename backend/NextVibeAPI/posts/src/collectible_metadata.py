@@ -153,7 +153,7 @@ def _poap(row) -> dict:
         attributes.append({"trait_type": "Organizer", "value": f"@{event.owner.username}"})
     attributes += [
         {"trait_type": "Attendee", "value": f"@{user.username}"},
-        {"trait_type": "Edition", "value": f"{row.edition} of {total}"},
+        {"trait_type": "Edition", "value": f"#{row.edition} of {total}"},
         {"trait_type": "Recorded", "value": recorded.date().isoformat()},
     ]
     data = {
@@ -255,7 +255,7 @@ def legacy_post_json(post, edition, absolute=None) -> dict:
         "image": image,
         "seller_fee_basis_points": 500,
         "attributes": [
-            {"trait_type": "Edition", "value": f"{edition} of {post.total_supply}"},
+            {"trait_type": "Edition", "value": f"#{edition} of {post.total_supply}"},
             {"trait_type": "Original Creator", "value": f"@{post.owner.username}"},
         ],
         "properties": {
@@ -282,7 +282,7 @@ def _badge(row) -> dict:
         "image": image,
         "attributes": [
             {"trait_type": "Status", "value": "OG"},
-            {"trait_type": "Edition", "value": f"{row.edition} of 25"},
+            {"trait_type": "Edition", "value": f"#{row.edition} of 25"},
             {"trait_type": "Recorded", "value": row.recorded_at.date().isoformat()},
         ],
         "properties": {"files": [{"uri": image, "type": "image/jpg"}], "category": "image"},

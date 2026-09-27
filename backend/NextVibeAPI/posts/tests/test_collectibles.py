@@ -273,7 +273,7 @@ class ConnectAndClaimTests(CollectiblesTestCase):
         user, title, body, data = self.pushes[0]
         self.assertEqual(user, self.bob.user_id)
         self.assertEqual(title, "5 of your collectibles are now on Solana")
-        self.assertEqual(body, "Your POAPs and Proof of Meets landed in your wallet.")
+        self.assertEqual(body, "Your POAPs and Proof of Meet cards landed in your wallet.")
         self.assertEqual(data["url"], "/u/collectibles")
         # A socket update for every card
         minted_events = {env["id"] for ids, env in self.events
@@ -480,7 +480,7 @@ class MetadataTests(CollectiblesTestCase):
         data = json.loads(before)
         self.assertEqual(data["name"], "Superteam Ukraine Kyiv #1")
         traits = {t["trait_type"]: t["value"] for t in data["attributes"]}
-        self.assertEqual((traits["Type"], traits["Attendee"], traits["Edition"]), ("POAP", "@bob", "1 of 50"))
+        self.assertEqual((traits["Type"], traits["Attendee"], traits["Edition"]), ("POAP", "@bob", "#1 of 50"))
         # The organizer renames the event: the POAP says what it was
         Post.objects.filter(pk=self.event.pk).update(about="Renamed")
         self.connect(self.bob)

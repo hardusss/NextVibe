@@ -323,7 +323,7 @@ def send(slug, user):
 
 def _after_send(photo, photographer, subject):
     realtime.publish([subject.user_id], _event(photo.meet_slug, "pending", photo=photo, by=photographer))
-    _push(subject, f"@{photographer.username} took your Proof of Meet photo", photo)
+    _push(subject, f"@{photographer.username} took your Proof of Meet photo.", photo)
 
 
 # ── The subject's answer ─────────────────────────────────────────────────
@@ -402,7 +402,7 @@ def _after_reject(photo):
     _purge(photo)
     # The subject's own sheet already knows; the photographer's opens with the news
     realtime.publish([photo.photographer_id], _event(photo.meet_slug, "rejected", photo=photo))
-    _push(photo.photographer, f"@{photo.subject.username} passed on this one", photo)
+    _push(photo.photographer, f"@{photo.subject.username} passed on this one.", photo)
 
 
 def _after_moderation_failed(photo):
@@ -597,7 +597,7 @@ def publish(photo):
 
 def _after_publish(photo):
     realtime.publish([photo.photographer_id, photo.subject_id], _event(photo.meet_slug, "minted", photo=photo))
-    _push(photo.photographer, f"@{photo.subject.username} said yes — your Proof of Meet is live", photo)
+    _push(photo.photographer, f"@{photo.subject.username} said yes — your Proof of Meet is live.", photo)
 
 
 # ── Takedown, expiry, clean-up ───────────────────────────────────────────

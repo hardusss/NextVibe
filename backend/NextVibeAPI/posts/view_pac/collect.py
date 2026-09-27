@@ -74,7 +74,7 @@ def _send_push_async(owner, username, edition, total, post_id):
         send(
             token=push_token,
             title="Your post was collected",
-            body=f"{username} collected edition {edition}/{total} of your post.",
+            body=f"@{username} collected your post, #{edition} of {total}.",
         )
         logger.info("collect.push_sent post=%s author=%s edition=%s", post_id, getattr(owner, "id", None), edition)
     except Exception:
@@ -238,7 +238,7 @@ class CollectPrepareView(APIView):
             ):
                 return _error(
                     "RESERVED_FOR_IRL",
-                    "Early editions are reserved for people who met the author IRL",
+                    "Early editions are reserved for people who met the author IRL.",
                     status.HTTP_403_FORBIDDEN,
                     user=request.user, post_id=post_id,
                 )

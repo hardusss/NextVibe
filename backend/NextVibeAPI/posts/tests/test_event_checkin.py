@@ -175,7 +175,7 @@ class EventCheckinTestCase(TestCase):
         self.assertFalse(Collectible.objects.exists())
         res = self.claim()
         self.assertEqual(res.status_code, 400)
-        self.assertIn("sold out", res.data["error"])
+        self.assertIn("No POAPs left", res.data["error"])
 
     # --- Claim: mints a queued POAP now, and says where it stands ---
 
@@ -274,7 +274,7 @@ class EventCheckinTestCase(TestCase):
         res = self.client.post(CLAIM_URL.format(self.event.id), {"wallet_optional": True}, format="json")
         self.assertEqual(res.status_code, 200)
         self.assertTrue(res.data["success"])
-        self.assertEqual((res.data["status"], res.data["message"]), ("offchain", "Saved to your profile · Claim anytime"))
+        self.assertEqual((res.data["status"], res.data["message"]), ("offchain", "POAP saved · claim anytime"))
         self.assertTrue(res.data["collectible"]["can_claim"])
         self.assertFalse(res.data["collectible"]["onchain"])
         # Older apps show the text in their retry pill

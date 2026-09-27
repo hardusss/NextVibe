@@ -50,7 +50,7 @@ class ModerationCallbackView(APIView):
         
         # Notify user if post moderation is not success
         if not post_passed:
-            reason = data.get("reason", "violated community guidelines")
+            reason = data.get("reason", "violated our guidelines")
             existing = Notification.objects.filter(
                 recipient=post.owner,
                 post=post,

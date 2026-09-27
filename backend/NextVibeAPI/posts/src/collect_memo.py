@@ -10,13 +10,13 @@ EVENT_SLUG_MAX_LEN = 32
 
 def build_memo(post, edition: int) -> str:
     """
-    `NextVibe | claimed post <id> | ed. <n>/<total> | event: <slug>`
+    `NextVibe | collected post <id> | #<n> of <total> | event: <slug>`
 
     The event segment is omitted when the post is not tied to an event.
     Always ASCII, at most MEMO_MAX_LEN chars.
     """
     total = post.total_supply or COLLECT_MAX_EDITIONS
-    memo = f"NextVibe | claimed post {post.id} | ed. {edition}/{total}"
+    memo = f"NextVibe | collected post {post.id} | #{edition} of {total}"
 
     if post.on_event_id:
         # Event posts have no dedicated title field; the first line of the

@@ -33,7 +33,7 @@ def trigger_push_and_cache(sender, instance, created, **kwargs):
             body_text = "Check out their profile!"
             
         elif instance.notification_type == 'moderation_fail':
-            body_text = "Please review our community guidelines."
+            body_text = "Please review our guidelines."
             
         elif instance.notification_type == 'event_request':
             body_text = "Someone requested to join your event!"

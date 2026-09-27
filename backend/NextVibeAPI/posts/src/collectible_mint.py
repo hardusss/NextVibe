@@ -463,11 +463,11 @@ def batch_push_text(landed, waiting, kinds):
     if waiting:
         return title, f"{landed} landed, {waiting} will retry automatically."
     if kinds == {Kind.MEET}:
-        body = "Your Proof of Meets landed in your wallet."
+        body = "Your Proof of Meet cards landed in your wallet."
     elif kinds == {Kind.POAP}:
         body = "Your POAPs landed in your wallet."
     else:
-        body = "Your POAPs and Proof of Meets landed in your wallet."
+        body = "Your POAPs and Proof of Meet cards landed in your wallet."
     return title, body
 
 

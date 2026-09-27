@@ -11,8 +11,8 @@ class CollectionMetadataView(APIView):
                 "name": "NextVibe Proof of Meet",
                 "symbol": "NVMEET",
                 "description": (
-                    "Two people met in person, tapped phones on NextVibe and took one selfie "
-                    "together. Each of them holds one Proof of Meet; nobody else can collect it."
+                    "Two people met in person and tapped phones on NextVibe. Each of them "
+                    "holds one Proof of Meet; nobody else can collect it."
                 ),
                 "image": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
                 "external_url": "https://nextvibe.io",
@@ -48,9 +48,9 @@ class CollectionMetadataView(APIView):
             "name": "NextVibe Collection",
             "symbol": "NVIBE",
             "description": (
-                "Proof-of-attendance and collected posts from NextVibe, the IRL networking "
-                "layer on Solana. Every item is minted when someone checks in to an event "
-                "or collects a post in the app."
+                "POAPs from event check-ins and posts collected on NextVibe, the IRL "
+                "networking layer on Solana. Items go on Solana when their holder has a "
+                "wallet connected."
             ),
             "image": "https://media.nextvibe.io/NextVibeNFTCollectionImage.jpg",
             "type": "image/jpeg",

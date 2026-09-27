@@ -150,7 +150,7 @@ class EventCheckinView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-SAVED_TEXT = "Saved to your profile · Claim anytime"
+SAVED_TEXT = "POAP saved · claim anytime"
 SAVED_TEXT_OLD_APPS = "Saved to your profile. Connect a wallet anytime to put it on Solana."
 QUEUED_TEXT = "Putting it on Solana. It lands in a minute."
 MINT_FAILED_TEXT = "You're checked in. Putting the POAP on Solana didn't work this time. Tap to retry."
@@ -204,12 +204,12 @@ class ClaimEventNftView(APIView):
             with transaction.atomic():
                 row = collectibles.record_poap(request.user, post, when=checkin.checked_in_at)
         if row is None:
-            return Response({"error": "NFTs for this event are sold out."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "No POAPs left for this event."}, status=status.HTTP_400_BAD_REQUEST)
 
         wallet_optional = bool(request.data.get("wallet_optional"))
         if row.status == Collectible.Status.MINTED:
             return self._answer(row, earned_points, already_owned=True,
-                                message="You already have an NFT for this event.")
+                                message="You already have this event's POAP.")
 
         if not collectibles.can_receive(request.user):
             logger.info("checkin.poap_saved_offchain user=%s post=%s", request.user.pk, post.id)
@@ -224,7 +224,7 @@ class ClaimEventNftView(APIView):
         row = self._mint_now(row)
         if row.status == Collectible.Status.MINTED:
             logger.info("checkin.minted user=%s post=%s edition=%s", request.user.pk, post.id, row.edition)
-            return self._answer(row, earned_points, message="Event NFT minted successfully!")
+            return self._answer(row, earned_points, message="POAP minted.")
         if row.status in collectibles.PENDING and not row.last_error:
             return self._answer(row, earned_points, message=QUEUED_TEXT, error=QUEUED_TEXT)
         logger.warning("checkin.mint_not_yet user=%s post=%s status=%s error=%s",

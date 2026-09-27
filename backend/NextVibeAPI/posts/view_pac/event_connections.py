@@ -210,8 +210,8 @@ class UserEventConnectionsView(APIView):
                 reputation_items.append({
                     "id": f"rep_{rep.id}",
                     "type": "cherry_invite_code",
-                    "title": "CHERRY Invite Code Activation",
-                    "description": "Activated account using CHERRY invite code",
+                    "title": "Cherry invite code activated",
+                    "description": "Account activated with a Cherry invite code",
                     "points": rep.points,
                     "date": rep.created_at or user_date,
                     "icon": "🍒",
@@ -223,7 +223,7 @@ class UserEventConnectionsView(APIView):
                 reputation_items.append({
                     "id": f"rep_{rep.id}",
                     "type": "email_verification",
-                    "title": "Email Linked & Verified",
+                    "title": "Email linked and verified",
                     "description": "Linked and verified account email address",
                     "points": rep.points,
                     "date": rep.created_at or user_date,
@@ -236,8 +236,8 @@ class UserEventConnectionsView(APIView):
                 reputation_items.append({
                     "id": f"rep_{rep.id}",
                     "type": "invite_reward",
-                    "title": "Community Referral Bonus",
-                    "description": "Reputation for inviting friends to NextVibe",
+                    "title": "Referral bonus",
+                    "description": "REP for inviting friends to NextVibe",
                     "points": rep.points,
                     "date": rep.created_at or user_date,
                     "icon": "👥",
@@ -271,7 +271,7 @@ class UserEventConnectionsView(APIView):
                 reputation_items.append({
                     "id": f"rep_{rep.id}",
                     "type": "event_post",
-                    "title": f"Post at Event: {event_title}",
+                    "title": f"Post at event: {event_title}",
                     "description": f"+{rep.points} REP for creating a post at event '{event_title}'",
                     "points": rep.points,
                     "date": rep.created_at or (p.create_at if p else user_date),
@@ -302,8 +302,8 @@ class UserEventConnectionsView(APIView):
                 reputation_items.append({
                     "id": f"rep_{rep.id}",
                     "type": "generic",
-                    "title": "Reputation Reward",
-                    "description": f"Reputation awarded by {rep.given_by.username if rep.given_by else 'NextVibe System'}",
+                    "title": "Bonus REP",
+                    "description": f"Given by {rep.given_by.username if rep.given_by else 'NextVibe'}",
                     "points": rep.points,
                     "date": rep.created_at or user_date,
                     "icon": "⭐",
@@ -333,7 +333,7 @@ class UserEventConnectionsView(APIView):
                 reputation_items.append({
                     "id": f"post_rep_{p.id}",
                     "type": "event_post",
-                    "title": f"Post at Event: {event_title}",
+                    "title": f"Post at event: {event_title}",
                     "description": f"+{pts} REP for creating a post at event '{event_title}'",
                     "points": pts,
                     "date": p.create_at,
@@ -361,7 +361,7 @@ class UserEventConnectionsView(APIView):
                     "id": f"checkin_fallback_{checkin.id}",
                     "type": "event_checkin",
                     "title": f"Checked in: {event_title}",
-                    "description": f"Verified attendance & POAP claimed for '{event_title}'",
+                    "description": f"Verified attendance at event '{event_title}'",
                     "points": 50,
                     "date": checkin.checked_in_at,
                     "image": event_image,
@@ -593,7 +593,7 @@ def _send_tap_push_async(receiver, tapper_username):
         send(
             token=push_token,
             title="Tap to Meet",
-            body=f"{tapper_username} tapped with you",
+            body=f"@{tapper_username} tapped with you.",
         )
     except Exception:
         logger.warning("networking.tap_push_failed receiver=%s", receiver.pk, exc_info=True)
@@ -643,7 +643,7 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
     ).exists()
     if already_tapped:
         return Response({
-            "error": f"You already tapped with {scanned_user.username} today. See you tomorrow!",
+            "error": f"You already tapped with {scanned_user.username} today. See you tomorrow.",
             "code": "ALREADY_TAPPED_TODAY",
             # Both pressed Confirm at once: the other request wrote the meet
             **_meet_fields(slug_for_pair_today(requesting_user.user_id, scanned_user.user_id, day_start)),
@@ -654,7 +654,7 @@ def process_irl_tap(requesting_user, scanned_user_id, latitude=None, longitude=N
     ).count()
     if my_taps_today >= IRL_TAP_DAILY_LIMIT:
         return Response({
-            "error": "You've hit today's tap limit. Back at it tomorrow!",
+            "error": "You've hit today's tap limit. Back at it tomorrow.",
             "code": "IRL_DAILY_LIMIT",
         }, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
