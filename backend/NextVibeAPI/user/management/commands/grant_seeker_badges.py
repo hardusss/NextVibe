@@ -8,6 +8,7 @@ from user.src.seeker_verification import (
     check_sgt_onchain,
     grant_seeker_verified,
 )
+from verification.wallets import is_proven
 
 
 class Command(BaseCommand):
@@ -16,7 +17,9 @@ class Command(BaseCommand):
         "Seed Vault username ends in .skr; pass 2 grants source='onchain' to "
         "wallets holding a Seeker Genesis Token (scanned through nft-service, "
         "which talks to Helius — the API key and service URL come from settings/"
-        "env, nothing here). DB writes only, no push notifications. Users already "
+        "env, nothing here). Both passes need a wallet the account proved it "
+        "controls (a wallet sign-in or a signed verify message); the rest are "
+        "counted as unproven. DB writes only, no push notifications. Users already "
         "seeker_verified are skipped, so the command is safe to re-run."
     )
 
@@ -52,7 +55,7 @@ class Command(BaseCommand):
 
         self.counts = {
             "skr_granted": 0, "onchain_granted": 0,
-            "already_used": 0, "not_found": 0, "skipped": 0,
+            "already_used": 0, "not_found": 0, "skipped": 0, "unproven": 0,
         }
         self.errors = 0
         remaining = options["limit"] if options["limit"] is not None else float("inf")
@@ -66,6 +69,9 @@ class Command(BaseCommand):
                 if remaining <= 0:
                     break
                 remaining -= 1
+                if not is_proven(user, user.wallet_address):
+                    self.counts["unproven"] += 1
+                    continue
                 if self._grant(user, None, "skr"):
                     self.counts["skr_granted"] += 1
                     granted_ids.add(user.user_id)
@@ -83,6 +89,9 @@ class Command(BaseCommand):
                 if remaining <= 0:
                     break
                 remaining -= 1
+                if not is_proven(user, user.wallet_address):
+                    self.counts["unproven"] += 1
+                    continue
                 if not first:
                     time.sleep(options["sleep"])
                 first = False
@@ -103,7 +112,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             "skr_granted={skr_granted} onchain_granted={onchain_granted} "
             "already_used={already_used} not_found={not_found} "
-            "skipped={skipped}".format(**self.counts)
+            "skipped={skipped} unproven={unproven}".format(**self.counts)
         ))
         if self.errors:
             self.stdout.write(self.style.WARNING(

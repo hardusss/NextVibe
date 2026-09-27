@@ -3,6 +3,7 @@ import httpx
 from django.conf import settings
 from django.db import transaction
 from user.src.seeker_verification import needs_onchain_check, verify_seeker_in_background
+from verification.wallets import check_proof, is_proven, record_proof
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
@@ -46,10 +47,25 @@ class SaveWalletAddressView(APIView):
             logger.warning("SaveWalletAddressView: Invalid address length (%s chars)", len(wallet_address))
             return Response({"error": "Invalid Solana address."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # A signed "Verify wallet for NextVibe" message proves the account controls
+        # the wallet (needed for Seeker Verified). A bad one still links the wallet.
+        proven = False
+        if request.data.get("proof") is not None:
+            proof_error = check_proof(wallet_address, request.data.get("proof"))
+            proven = proof_error is None
+            if proof_error:
+                logger.warning("SaveWalletAddressView: proof refused for %s: %s", wallet_address, proof_error)
+
         if request.user.wallet_address == wallet_address:
             logger.info("SaveWalletAddressView: User %s already has matching address %s", request.user.user_id, wallet_address)
+            if proven:
+                record_proof(request.user, wallet_address)
+                if needs_onchain_check(request.user):
+                    user_id = request.user.user_id
+                    transaction.on_commit(lambda: verify_seeker_in_background(user_id, wallet_address))
             queued = _queue_collectibles(request.user)
-            return Response({"success": True, "collectibles": {"queued": queued}}, status=status.HTTP_200_OK)
+            return Response({"success": True, "collectibles": {"queued": queued},
+                             "walletProven": is_proven(request.user, wallet_address)}, status=status.HTTP_200_OK)
 
         # A different wallet may already be linked (e.g. an auto-saved LazorKit
         # wallet, or one "disconnected" client-side only). Connecting a new
@@ -80,6 +96,8 @@ class SaveWalletAddressView(APIView):
         try:
             request.user.wallet_address = wallet_address
             request.user.save(update_fields=["wallet_address"])
+            if proven:
+                record_proof(request.user, wallet_address)
             logger.info("SaveWalletAddressView: Successfully saved wallet %s for user %s", wallet_address, request.user.user_id)
             if needs_onchain_check(request.user):
                 user_id = request.user.user_id
@@ -117,7 +135,8 @@ class SaveWalletAddressView(APIView):
                     error,
                 )
 
-        return Response({"success": True, "collectibles": {"queued": queued}}, status=status.HTTP_200_OK)
+        return Response({"success": True, "collectibles": {"queued": queued}, "walletProven": proven},
+                        status=status.HTTP_200_OK)
 
     def delete(self, request) -> Response:
         """

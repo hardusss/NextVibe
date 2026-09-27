@@ -91,8 +91,13 @@ def verify_seeker_in_background(user_id, wallet_address: str):
 
 def _verify_and_notify(user_id, wallet_address):
     from django.contrib.auth import get_user_model
+    from verification.wallets import is_proven
     user = get_user_model().all_objects.filter(user_id=user_id).first()
     if not user or not needs_onchain_check(user):
+        return
+    # The badge needs a wallet the account proved it controls (a signed message)
+    if not is_proven(user, wallet_address):
+        logger.info("seeker.verify user=%s wallet=%s result=unproven", user_id, wallet_address)
         return
 
     try:

@@ -10,6 +10,8 @@ export interface MwaAdapterResult {
     account: MwaAccount | null;
     connect: (wallet?: 'phantom' | 'solflare' | 'backpack') => Promise<MwaAccount | null>;
     disconnect: () => Promise<void>;
+    /** Android (MWA) only: the wallet signs the bytes (see src/utils/walletProof.ts). */
+    signMessage?: (message: Uint8Array) => Promise<Uint8Array | null>;
 }
 
 export function useMwaAdapter(): MwaAdapterResult {

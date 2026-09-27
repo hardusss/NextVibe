@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'posts',
     'chat',
     'wallet',
+    'verification',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

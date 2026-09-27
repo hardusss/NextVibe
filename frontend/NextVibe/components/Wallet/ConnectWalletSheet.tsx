@@ -16,6 +16,7 @@ import { closeConnectWallet, useConnectWallet, type ConnectWalletReason } from "
 import { COLLECTIBLES_OPEN_PARAM, PROFILE_PATH } from "@/src/navigation/intents";
 import { landingText } from "@/src/utils/collectibles";
 import { extractErrorMessage, walletLogger, WalletTag } from "@/src/utils/walletLogger";
+import { signWalletProof, type WalletProof } from "@/src/utils/walletProof";
 import haptics from "@/src/utils/haptics";
 import { colors, radius, space, type as typeScale } from "@/src/theme/tokens";
 
@@ -62,7 +63,7 @@ export default function ConnectWalletSheet() {
     const insets = useSafeAreaInsets();
     const { height } = useWindowDimensions();
     const router = useRouter();
-    const { account, connect, disconnect } = useMwaAdapter();
+    const { account, connect, disconnect, signMessage } = useMwaAdapter();
     const summary = useCollectibles((s) => s.summary);
     const landing = useCollectibles((s) => s.landing);
     const [phase, setPhase] = useState<Phase>("choose");
@@ -85,10 +86,10 @@ export default function ConnectWalletSheet() {
     const close = useCallback(() => sheetRef.current?.dismiss(), []);
     useSheetBackHandler(open, close);
 
-    const finish = useCallback(async (address: string) => {
+    const finish = useCallback(async (address: string, proof?: WalletProof | null) => {
         setPhase("saving");
         try {
-            const data = await saveWallet(address);
+            const data = await saveWallet(address, proof);
             if (!mounted.current) return;
             haptics.notification("success");
             const queued = Number(data?.collectibles?.queued) || 0;
@@ -124,7 +125,10 @@ export default function ConnectWalletSheet() {
                 return;
             }
             const address = Platform.OS === "ios" ? connected.publicKey.toBase58() : connected.address.toString();
-            await finish(address);
+            // One signature proves the wallet is theirs (Seeker Verified needs it); declining still links it
+            const proof = Platform.OS === "android" ? await signWalletProof(signMessage) : null;
+            if (!mounted.current) return;
+            await finish(address, proof);
         } catch (e) {
             if (!mounted.current) return;
             const message = extractErrorMessage(e);
@@ -132,7 +136,7 @@ export default function ConnectWalletSheet() {
             setError(message);
             setPhase("error");
         }
-    }, [account, busy, connect, disconnect, finish]);
+    }, [account, busy, connect, disconnect, finish, signMessage]);
 
     const passkey = useCallback(() => {
         close();

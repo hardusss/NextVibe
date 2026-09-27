@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from user.serializers_pac import UserWalletSignInSerializer
 from user.src.seeker_verification import needs_onchain_check, verify_seeker_in_background
+from verification.wallets import record_proof
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db import transaction
@@ -132,6 +133,8 @@ class WalletSignInView(APIView):
                 if used_key and not cache.add(used_key, 1, timeout=SIGN_IN_MAX_AGE_SECONDS * 2):
                     return Response({"error": "This sign-in request was already used. Please try again."},
                                     status=status.HTTP_401_UNAUTHORIZED)
+                if used_key:
+                    record_proof(user, wallet_address)
                 refresh = RefreshToken.for_user(user)
                 logger.info(
                     "Wallet sign-in successful for existing user: user_id=%s, address=%s",
@@ -175,6 +178,8 @@ class WalletSignInView(APIView):
                         return Response({"error": "This sign-in request was already used. Please try again."},
                                         status=status.HTTP_401_UNAUTHORIZED)
                     user = serializer.save()
+                    if used_key:
+                        record_proof(user, wallet_address)
                     logger.info(
                         "Successfully registered new user via wallet: user_id=%s, address=%s",
                         user.user_id,
