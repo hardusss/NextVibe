@@ -186,7 +186,9 @@ REST_FRAMEWORK = {
         "readers": "100/min",
         "search": "100/min",
         "notifications": "150/min",  
-        "auth": "10/min",
+        "auth": "30/min",
+        # Wallet sign-in; people at one event often share an IP
+        "wallet_auth": "30/min",
         'invite': '30/min',
 
         # Posts/Feed

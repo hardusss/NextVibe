@@ -25,8 +25,9 @@ User = get_user_model()
 class SignupWithoutInviteTest(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
-        # "auth" is 10/min in one locmem bucket; don't let the test count matter
-        self._throttles = {v: v.throttle_classes for v in (AppleRegisterView, GoogleRegisterView, RegisterUserView)}
+        # Sign-in throttles share one locmem bucket; don't let the test count matter
+        self._throttles = {v: v.throttle_classes for v in (AppleRegisterView, GoogleRegisterView, RegisterUserView,
+                                                             WalletSignInView)}
         for view in self._throttles:
             view.throttle_classes = []
         self.friend = User.objects.create_user(email="friend@example.com", username="friend", password="Password123!")
