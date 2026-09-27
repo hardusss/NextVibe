@@ -4,7 +4,7 @@ import uuid
 import json
 import base64
 import redis
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
@@ -575,7 +575,8 @@ async def websocket_endpoint(websocket: WebSocket):
                             if len(file_data) > MAX_MEDIA_SIZE_MB * 1024 * 1024:
                                 continue
 
-                            file_name = f"message_{message.id}_{len(media_attachments)}"
+                            # Unguessable, like presigned uploads (src/messages.py)
+                            file_name = f"chat_{message.chat_id}_{uuid.uuid4().hex}"
                             file_ext = "jpg" if "image" in media.get('type', '') else "mp4"
                             relative_path = f"chat_media/{file_name}.{file_ext}"
                             content_type = "image/jpeg" if "image" in media.get('type', '') else "video/mp4"
