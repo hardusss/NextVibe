@@ -3,6 +3,9 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 27 — Repo hygiene before judging
+- chore(repo): stopped tracking a wallet report with personal data (usernames, wallets, balances), generated analytics charts, the celery beat schedule, the compiled moderation binary and 119 Gradle build files of the NFC module. Local copies stay. `.gitignore` now covers them, plus `*.xlsx`, `celerybeat-schedule*`, `scripts_tmp/`, `.DS_Store` and `.env.*` (only `.env.example` files are committed). Files: `.gitignore`
+
 ## Sep 26 — Check-in pass: the top half of the screen, no green
 - feat(frontend): the check-in pass now fits the top half of the screen on every phone: the picture takes whatever height is left above the middle (at least 120 pt) and stays whole on a dark blurred mat, with a soft violet glow instead of a card. Under it, violet "Checked in" and POAP chips ("POAP minted · +N REP", "Minting POAP…", "POAP saved · claim anytime", "POAP didn't go through · Retry"), then the event name; the stock welcome line is gone and a failure's reason shows under the name. No green left on the screen; the success sparkles are violet. Files: `frontend/NextVibe/components/Events/{EventCheckinScreen,MintStatusPill}.tsx`
 
