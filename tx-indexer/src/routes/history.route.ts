@@ -9,13 +9,20 @@ import {
 } from "../db/queries";
 import { env } from "../config/env";
 import { getEnhancedTransactions } from "../services/helius";
-import { isValidSolanaAddress } from "../middleware/internal-auth";
+import { internalAuthGuard, isValidSolanaAddress } from "../middleware/internal-auth";
 import { checkAndRateLimitWallet } from "../services/bot-detector";
 import { shouldKeepTransaction } from "../services/transaction-filter";
 
 export const historyRoutes = new Elysia({ prefix: "/index" }).post(
   "/load-more",
-  async ({ body, set }) => {
+  async ({ body, headers, set }) => {
+    try {
+      internalAuthGuard(headers);
+    } catch {
+      set.status = 401;
+      return { error: "Unauthorized" };
+    }
+
     const { address, limit = env.LOAD_MORE_DEFAULT_LIMIT } = body;
 
     if (!isValidSolanaAddress(address)) {

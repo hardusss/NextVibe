@@ -4,7 +4,7 @@ import {
   mapEnhancedTransaction,
 } from "../db/queries";
 import { getEnhancedTransactions } from "../services/helius";
-import { isValidSolanaAddress } from "../middleware/internal-auth";
+import { internalAuthGuard, isValidSolanaAddress } from "../middleware/internal-auth";
 import { checkAndRateLimitWallet } from "../services/bot-detector";
 import { shouldKeepTransaction } from "../services/transaction-filter";
 
@@ -17,7 +17,14 @@ import { shouldKeepTransaction } from "../services/transaction-filter";
  */
 export const refreshRoutes = new Elysia({ prefix: "/index" }).post(
   "/refresh-latest",
-  async ({ body, set }) => {
+  async ({ body, headers, set }) => {
+    try {
+      internalAuthGuard(headers);
+    } catch {
+      set.status = 401;
+      return { error: "Unauthorized" };
+    }
+
     const { address, limit = 20 } = body;
 
     if (!isValidSolanaAddress(address)) {
