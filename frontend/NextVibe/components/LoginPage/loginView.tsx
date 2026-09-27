@@ -62,8 +62,8 @@ export default function LoginView() {
     const handleWalletSuccess = (backendResponse: any) => {
         Toast.show({
             type: 'success',
-            text1: 'Connected Successfully',
-            text2: 'Welcome to NextVibe!',
+            text1: 'Connected successfully',
+            text2: 'Welcome to NextVibe.',
         });
         navigateAfterSignIn(router, '/home');
     };
@@ -72,7 +72,7 @@ export default function LoginView() {
         const realError = error?.response?.data?.error || error?.message || 'Unknown error';
         Toast.show({
             type: 'error',
-            text1: 'Connection Failed',
+            text1: 'Connection failed',
             text2: realError,
         });
     };
@@ -114,7 +114,7 @@ export default function LoginView() {
                                 contentFit="contain"
                             />
                         </View>
-                        <Text style={styles.title}>Welcome Back</Text>
+                        <Text style={styles.title}>Welcome back</Text>
                         <Text style={styles.subtitle}>Sign in to continue your vibe</Text>
                     </View>
 
@@ -185,7 +185,7 @@ export default function LoginView() {
                             {isLoading ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
-                                <Text style={styles.loginButtonText}>Sign In</Text>
+                                <Text style={styles.loginButtonText}>Sign in</Text>
                             )}
                         </TouchableOpacity>
 

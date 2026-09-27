@@ -486,7 +486,7 @@ const PostItem = memo(({
     const hasMedia = mediaItems.length > 0;
 
     const collectState = resolveCollectState(item);
-    const supplyLabel = `${item.minted_count ?? 0}/${item.total_supply ?? 50}`;
+    const supplyLabel = `${Math.max(0, (item.total_supply ?? 50) - (item.minted_count ?? 0))} left`;
 
     return (
         <TouchableOpacity style={styles.postContainer} onPress={() => {
@@ -672,7 +672,7 @@ const PostItem = memo(({
                         )}
                         {item.is_nft && (
                             <View style={[styles.imageBadge, styles.nftBadge]}>
-                                <Text style={styles.nftBadgeText}>{item.minted_count}/{item.total_supply} minted</Text>
+                                <Text style={styles.nftBadgeText}>{Math.max(0, (item.total_supply ?? 50) - (item.minted_count ?? 0))} left</Text>
                             </View>
                         )}
                         {item.location && (

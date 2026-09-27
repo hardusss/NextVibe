@@ -125,7 +125,7 @@ export default function MeetSuccess({ user, points, actions, meetSlug = null, at
             </Animated.View>
 
             <Animated.Text entering={enter(460)} style={[styles.subtitle, { color: mutedColor }]}>
-                Reputation added for both of you!
+                Reputation added for both of you.
             </Animated.Text>
 
             {noWallet && meetSlug && (

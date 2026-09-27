@@ -92,7 +92,7 @@ function fromKind(kind: ProximityErrorKind, stage: ProximityStage, server?: stri
                 "You can't connect with this person.", { tone: 'info' });
         case 'dailyLimit':
             return info(kind, 'Daily tap limit reached',
-                server ?? "You've hit today's tap limit. Back at it tomorrow!", { tone: 'warning' });
+                server ?? "You've hit today's tap limit. Back at it tomorrow.", { tone: 'warning' });
         case 'notCheckedIn':
             return stage === 'generate'
                 ? info(kind, 'Check in first',

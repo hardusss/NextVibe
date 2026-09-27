@@ -168,7 +168,7 @@ const HeroCard = ({
                                     <Text style={styles.username} numberOfLines={1}>@{creatorUsername}</Text>
                                 </View>
                                 <View style={styles.editionChip}>
-                                    <Text style={styles.editionChipText}>#{chipEdition} / {total}</Text>
+                                    <Text style={styles.editionChipText}>#{chipEdition} of {total}</Text>
                                 </View>
                             </View>
                         </View>

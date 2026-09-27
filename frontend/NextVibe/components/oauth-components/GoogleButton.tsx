@@ -92,13 +92,13 @@ export default function GoogleButtonAuth({ page }: { page: string }) {
 
     const handleGoogleError = (error: any) => {
         if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-            Toast.show({ type: 'info', text1: 'Sign-in Cancelled', text2: 'Sign-in was cancelled by the user.' });
+            Toast.show({ type: 'info', text1: 'Sign-in cancelled', text2: 'Sign-in was cancelled by the user.' });
         } else if (error.code === statusCodes.IN_PROGRESS) {
-            Toast.show({ type: 'info', text1: 'Sign-in In Progress', text2: 'Sign-in is already in progress.' });
+            Toast.show({ type: 'info', text1: 'Sign-in in progress', text2: 'Sign-in is already in progress.' });
         } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-            Toast.show({ type: 'error', text1: 'Play Services Error', text2: 'Google Play Services are not available or outdated.' });
+            Toast.show({ type: 'error', text1: 'Play Services error', text2: 'Google Play Services are not available or outdated.' });
         } else {
-            Toast.show({ type: 'error', text1: 'Sign-in Error', text2: error.message || 'An unexpected error occurred.' });
+            Toast.show({ type: 'error', text1: 'Sign-in error', text2: error.message || 'An unexpected error occurred.' });
         }
     };
 

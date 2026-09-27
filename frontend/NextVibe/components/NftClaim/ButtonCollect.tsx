@@ -11,7 +11,7 @@ interface ButtonCollectProps {
     onPress: () => void;
     /** Current NFT state — controls appearance and interactivity */
     state?: CollectState;
-    /** e.g. "7/50" — shown as a small badge on collect and sold out states */
+    /** e.g. "46 left" — shown as a small badge in the collect state */
     supplyLabel?: string;
 }
 
@@ -59,7 +59,7 @@ const ButtonCollect = ({ onPress, state = "collect", supplyLabel }: ButtonCollec
         state === "claimed"
             ? "Collected"
             : state === "soldout"
-                ? `Sold out${supplyLabel ? ` ${supplyLabel}` : ""}`
+                ? "Sold out"
                 : "Collect";
 
     const textColor =

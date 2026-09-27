@@ -492,7 +492,7 @@ const PostItem = memo(({
     const hasMedia = mediaItems.length > 0;
 
     const collectState = resolveCollectState(item);
-    const supplyLabel = `${item.minted_count ?? 0}/${item.total_supply ?? 50}`;
+    const supplyLabel = `${Math.max(0, (item.total_supply ?? 50) - (item.minted_count ?? 0))} left`;
     const isDarkFeed = theme.background === "#0A0410";
 
     return (
@@ -677,7 +677,7 @@ const PostItem = memo(({
                         )}
                         {item.is_nft && (
                             <GlassBadge variant="feed-nft" feedLight={!isDarkFeed}>
-                                <Text style={styles.nftBadgeText}>{item.minted_count}/{item.total_supply} minted</Text>
+                                <Text style={styles.nftBadgeText}>{Math.max(0, (item.total_supply ?? 50) - (item.minted_count ?? 0))} left</Text>
                             </GlassBadge>
                         )}
                         {item.location && (

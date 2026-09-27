@@ -155,7 +155,7 @@ export default function VerifyBadge ({ isLooped, isVisible, haveModal, isStatic,
                     </View>
 
                     {/* Title */}
-                    <Text style={[styles.mainTitle, { color: mainColor }]}>Verified Account</Text>
+                    <Text style={[styles.mainTitle, { color: mainColor }]}>Verified account</Text>
 
                     {/* Divider */}
                     <View style={[styles.divider, { backgroundColor: accentText }]} />

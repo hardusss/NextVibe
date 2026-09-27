@@ -198,7 +198,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                 </View>
                 <View style={styles.totalRepPill}>
                     <Star size={13} color="#22c55e" fill="#22c55e" />
-                    <Text style={styles.totalRepTxt}>{totalRepCalc} rep</Text>
+                    <Text style={styles.totalRepTxt}>{totalRepCalc} REP</Text>
                 </View>
             </View>
 
@@ -431,7 +431,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                 </View>
                                                 <View style={styles.repBadge}>
                                                     <Star size={11} color="#fbbf24" fill="#fbbf24" />
-                                                    <Text style={styles.repBadgeTxt}>+{item.checkin_rep} rep</Text>
+                                                    <Text style={styles.repBadgeTxt}>+{item.checkin_rep} REP</Text>
                                                 </View>
                                             </View>
                                         </View>
@@ -445,7 +445,7 @@ export const EventConnectionsSheet = forwardRef<EventConnectionsSheetRef>((_, re
                                                 </View>
                                                 <View style={styles.repBadge}>
                                                     <Star size={11} color="#fbbf24" fill="#fbbf24" />
-                                                    <Text style={styles.repBadgeTxt}>+{item.reputation_earned} rep</Text>
+                                                    <Text style={styles.repBadgeTxt}>+{item.reputation_earned} REP</Text>
                                                 </View>
                                             </View>
                                         </View>

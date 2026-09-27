@@ -107,7 +107,7 @@ const ButtonWallet = ( {
                             <WalletMinimal color="white" size={isFullWidth ? 20 : 18} />
                         </View>
                         {isFullWidth && (
-                            <Text style={styles.labelText}>My Wallet</Text>
+                            <Text style={styles.labelText}>My wallet</Text>
                         )}
                     </View>
 

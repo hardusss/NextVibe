@@ -245,7 +245,7 @@ export default function EventCheckinScreen() {
     const startMint = async (targetPostId: number) => {
         setMintStatus("minting");
         setMintError(null);
-        AccessibilityInfo.announceForAccessibility?.("Minting your event NFT");
+        AccessibilityInfo.announceForAccessibility?.("Minting your POAP");
         try {
             const loc = await getQuickLocation({ request: true, timeoutMs: 8000 });
             if (!mountedRef.current) return;
@@ -276,7 +276,7 @@ export default function EventCheckinScreen() {
                 setMintStatus("success");
                 haptics.notification('success');
                 AccessibilityInfo.announceForAccessibility?.(
-                    `Event NFT minted. Plus ${result.earned_points || 0} REP.`
+                    `POAP minted. Plus ${result.earned_points || 0} REP.`
                 );
             } else if ((result.status === "queued" || result.status === "minting") && result.collectible?.id
                 && !result.collectible?.error) {
@@ -285,7 +285,7 @@ export default function EventCheckinScreen() {
                 setPendingPoapId(result.collectible.id);
             } else {
                 setMintStatus("failed");
-                setMintError(result.error || "You're checked in — the POAP mint failed. Tap to retry.");
+                setMintError(result.error || "You're checked in. Putting the POAP on Solana didn't work this time. Tap to retry.");
                 haptics.notification('error');
             }
         } catch (error: any) {
@@ -301,7 +301,7 @@ export default function EventCheckinScreen() {
             setMintStatus("failed");
             // The check-in and its reputation are already recorded server-side;
             // only the mint needs retrying.
-            setMintError(serverError || "You're checked in — the POAP mint failed. Tap to retry.");
+            setMintError(serverError || "You're checked in. Putting the POAP on Solana didn't work this time. Tap to retry.");
             haptics.notification('error');
         }
     };
@@ -330,7 +330,7 @@ export default function EventCheckinScreen() {
                         </Animated.View>
 
                         <Text style={[styles.heading, { color: main }]}>
-                            Event Check-in
+                            Event check-in
                         </Text>
                         <Text style={[styles.description, { color: mutedColor }]}>
                             Tap the button below to verify your attendance at this event.
@@ -338,7 +338,7 @@ export default function EventCheckinScreen() {
 
                         <View style={styles.ctaWidth}>
                             <EventCta
-                                label="Verify Attendance"
+                                label="Verify attendance"
                                 icon={<ShieldCheck size={20} color={colors.text} strokeWidth={1.8} />}
                                 onPress={handleVerify}
                             />
@@ -351,7 +351,7 @@ export default function EventCheckinScreen() {
                     <View style={styles.centerContent}>
                         <CustomActivityIndicator size="large" />
                         <Text style={[styles.loadingText, { color: mutedColor }]}>
-                            Verifying...
+                            Verifying…
                         </Text>
                     </View>
                 );
@@ -485,7 +485,7 @@ export default function EventCheckinScreen() {
                                         icon={<Smartphone size={18} color={colors.text} />}
                                         onPress={handleTapToMeet}
                                         disabled={!canTapToMeet}
-                                        accessibilityLabel="Tap to meet people at this event"
+                                        accessibilityLabel="Tap to Meet with people at this event"
                                     />
                                 </View>
                             </View>
@@ -505,7 +505,7 @@ export default function EventCheckinScreen() {
                         </View>
 
                         <Text style={[styles.heading, { color: colors.danger }]}>
-                            Not Registered
+                            Not registered
                         </Text>
                         <Text style={[styles.description, { color: mutedColor }]}>
                             {message}
@@ -513,7 +513,7 @@ export default function EventCheckinScreen() {
 
                         <View style={styles.ctaWidth}>
                             <EventCta
-                                label="Go Back"
+                                label="Go back"
                                 variant="secondary"
                                 onPress={() => safeBack(router)}
                             />
@@ -562,7 +562,7 @@ export default function EventCheckinScreen() {
                             </View>
                             <View style={{ flex: 1 }}>
                                 <EventCta
-                                    label="Go Back"
+                                    label="Go back"
                                     variant="secondary"
                                     onPress={() => safeBack(router)}
                                 />
@@ -574,7 +574,7 @@ export default function EventCheckinScreen() {
     };
 
     return (
-        <EventScreenShell title="Event Check-in" bodyStyle={state === "verified" ? styles.verifiedShellBody : undefined}>
+        <EventScreenShell title="Event check-in" bodyStyle={state === "verified" ? styles.verifiedShellBody : undefined}>
             {renderContent()}
         </EventScreenShell>
     );

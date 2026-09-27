@@ -24,8 +24,8 @@ export default async function Login(email: string, password: string, router: Rou
         storage.setItem("refresh", response.data.token.refresh)
         Toast.show({
             type: 'success',
-            text1: 'Registration successful',
-            text2: 'Welcome to NextVibe'
+            text1: 'Signed in',
+            text2: 'Welcome to NextVibe.'
         });
         setTimeout(() => {
             navigateAfterSignIn(router, "/profile", "push");
@@ -35,7 +35,7 @@ export default async function Login(email: string, password: string, router: Rou
     .catch(error => {
         Toast.show({
             type: 'error',
-            text1: 'Registration failed',
+            text1: 'Sign-in failed',
             text2: error.message
         });
     });

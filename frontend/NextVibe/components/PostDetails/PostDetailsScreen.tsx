@@ -443,7 +443,7 @@ export default function PostDetailsScreen() {
                                 <ButtonCollect
                                     onPress={() => mintSheetRef.current?.present()}
                                     state={collectState}
-                                    supplyLabel={`${post.minted_count ?? 0}/${post.total_supply ?? 50}`}
+                                    supplyLabel={`${Math.max(0, (post.total_supply ?? 50) - (post.minted_count ?? 0))} left`}
                                 />
                             )}
                             <Pressable style={{ padding: 6 }} onPress={() => setDropdownOpen(true)}>
@@ -523,7 +523,7 @@ export default function PostDetailsScreen() {
                                 )}
                                 {post.is_nft && (
                                     <GlassBadge variant="overlay-nft">
-                                        <Text style={s.nftBadgeText}>{post.minted_count}/{post.total_supply} minted</Text>
+                                        <Text style={s.nftBadgeText}>{Math.max(0, (post.total_supply ?? 50) - (post.minted_count ?? 0))} left</Text>
                                     </GlassBadge>
                                 )}
                                 {post.location && (

@@ -256,11 +256,11 @@ export default function EventNFCReceiveScreen() {
 
                         <View style={styles.ctaWidth}>
                             <EventCta
-                                label="Confirm Meet"
+                                label="Confirm meet"
                                 onPress={handleConfirmMeet}
                             />
                             <EventCta
-                                label="Not Now"
+                                label="Not now"
                                 variant="secondary"
                                 onPress={() => safeBack(router)}
                             />
@@ -288,12 +288,12 @@ export default function EventNFCReceiveScreen() {
                         <View style={styles.ctaWidth}>
                             {scannedUser && (
                                 <EventCta
-                                    label="Try Again"
+                                    label="Try again"
                                     onPress={() => setState("ready")}
                                 />
                             )}
                             <EventCta
-                                label="Go Back"
+                                label="Go back"
                                 variant="secondary"
                                 onPress={() => safeBack(router)}
                             />
@@ -324,7 +324,7 @@ export default function EventNFCReceiveScreen() {
     };
 
     return (
-        <EventScreenShell title="Tap to Meet" subtitle={isIrlTap ? 'Not at an event · IRL tap' : null}>
+        <EventScreenShell title="Tap to Meet" subtitle={isIrlTap ? 'In person · not at an event' : null}>
             {renderContent()}
         </EventScreenShell>
     );

@@ -97,7 +97,7 @@ const EditionStrip = ({
                 <View style={styles.irlNoteRow}>
                     <Handshake size={13} color={c.sub} />
                     <Text style={[styles.irlNoteText, { color: c.sub }]}>
-                        Early editions are reserved for people who met the author IRL — you can still collect from #{firstOpenEdition}
+                        Early editions are reserved for people who met the author IRL — you can still collect from #{firstOpenEdition}.
                     </Text>
                 </View>
             )}

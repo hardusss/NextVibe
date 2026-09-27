@@ -33,7 +33,7 @@ export default function ButtonRegister(props: RegisterButtonProps) {
             {isLoading ? (
                 <ActivityIndicator color="#fff" />
             ) : (
-                <Text style={styles.registerButtonText}>Create Account</Text>
+                <Text style={styles.registerButtonText}>Create account</Text>
             )}
         </TouchableOpacity>
     );

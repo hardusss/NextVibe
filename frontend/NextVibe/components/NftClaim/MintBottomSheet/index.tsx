@@ -305,7 +305,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
 
     const headerTitle = () => {
         if (status === 'success') {
-            return isCollector ? `Collected · edition ${resultEdition}/${resultTotal}` : 'Published!';
+            return isCollector ? `Collected · #${resultEdition} of ${resultTotal}` : 'Published';
         }
         return isCollector ? 'Collect this post' : 'Publish as cNFT';
     };
@@ -314,7 +314,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         if (status === 'success') return 'cNFT is in your wallet';
         if (status === 'signing') return 'Confirm in your wallet';
         if (isBusy) return isCollector ? 'Minting on Solana…' : 'Publishing to Solana…';
-        return '≈ free · network fee only';
+        return 'Free';
     };
 
     const busyLabel = () => {
@@ -333,7 +333,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
         ? [
             'cNFT in your wallet',
             `Edition #${status === 'success' ? resultEdition : upcomingEdition} of ${total}`,
-            ...(info.irlEligible ? ['+2 rep · met IRL'] : []),
+            ...(info.irlEligible ? ['+2 REP · met IRL'] : []),
         ]
         : [
             'cNFT in your wallet',
@@ -436,7 +436,7 @@ const MintBottomSheet = forwardRef<MintBottomSheetRef, MintBottomSheetProps>((pr
                                 style={[styles.primaryBtn, { backgroundColor: c.accent }]}
                                 onPress={handleViewInWallet}
                             >
-                                <Text style={styles.primaryBtnText}>View in Wallet</Text>
+                                <Text style={styles.primaryBtnText}>View in wallet</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.secondaryBtn, { borderColor: c.border }]}

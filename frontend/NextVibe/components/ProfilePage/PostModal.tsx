@@ -284,7 +284,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
     const handleRequestToAttend = async (postId: number) => {
         try {
             await requestToAttend(postId);
-            setToastConfig({ visible: true, message: "Your request to attend has been sent!", isSuccess: true });
+            setToastConfig({ visible: true, message: "Your request to attend has been sent.", isSuccess: true });
             setPost((prev) => prev ? { ...prev, event_request_status: "pending" } : null);
         } catch (e: any) {
             setToastConfig({ visible: true, message: e.response?.data?.error || "Failed to send request", isSuccess: false });
@@ -325,7 +325,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
 
     const mediaUrl = post?.media?.[0]?.media_url ?? null;
     const collectState = post ? resolveCollectState(post) : null;
-    const supplyLabel = post ? `${post.minted_count}/${post.total_supply}` : undefined;
+    const supplyLabel = post ? `${Math.max(0, (post.total_supply ?? 50) - (post.minted_count ?? 0))} left` : undefined;
 
     return (
         <Modal
@@ -514,7 +514,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                     {post.is_ai_generated && (
                                                         <GlassBadge variant="overlay">
                                                             <Sparkles size={11} color="#05f0d8" />
-                                                            <Text style={styles.badgeText}>AI Generated</Text>
+                                                            <Text style={styles.badgeText}>AI generated</Text>
                                                         </GlassBadge>
                                                     )}
                                                     {post.is_luma_event && (
@@ -532,7 +532,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                     {post.is_nft && (
                                                         <GlassBadge variant="overlay-nft">
                                                             <Text style={styles.nftBadgeText}>
-                                                                {post.minted_count}/{post.total_supply} minted
+                                                                {Math.max(0, (post.total_supply ?? 50) - (post.minted_count ?? 0))} left
                                                             </Text>
                                                         </GlassBadge>
                                                     )}
@@ -610,7 +610,7 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                                         style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(168,85,247,0.2)", padding: 10, borderRadius: 8, justifyContent: "center", marginTop: 8 }}
                                                                     >
                                                                         <Link2 size={16} color="#d8b4fe" />
-                                                                        <Text style={{ color: "#d8b4fe", fontSize: 14, fontFamily: "Dank Mono Bold" }}>View Event on Luma</Text>
+                                                                        <Text style={{ color: "#d8b4fe", fontSize: 14, fontFamily: "Dank Mono Bold" }}>View event on Luma</Text>
                                                                     </TouchableOpacity>
                                                                 </View>
                                                             );
@@ -621,10 +621,10 @@ const PostPopup: React.FC<PostPopupProps> = ({
                                                         const iconColor = isRejected ? "#ef4444" : "#d8b4fe";
                                                         const btnDisabled = isPending || isRejected;
                                                         const btnLabel = canViewLuma
-                                                            ? "View Event on Luma"
+                                                            ? "View event on Luma"
                                                             : isPending ? "Requested"
-                                                            : isRejected ? "Request Denied"
-                                                            : "Request to Attend";
+                                                            : isRejected ? "Request denied"
+                                                            : "Request to attend";
                                                         const labelColor = isRejected ? "#ef4444" : "#d8b4fe";
 
                                                         return (

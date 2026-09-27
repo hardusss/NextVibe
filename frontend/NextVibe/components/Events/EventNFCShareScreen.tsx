@@ -352,7 +352,7 @@ export default function EventNFCShareScreen() {
                         This link is missing its event. Head back and try again.
                     </Text>
                     <View style={styles.ctaBlock}>
-                        <EventCta label="Go Back" variant="secondary" onPress={() => safeBack(router)} />
+                        <EventCta label="Go back" variant="secondary" onPress={() => safeBack(router)} />
                     </View>
                 </View>
             </EventScreenShell>
@@ -406,7 +406,7 @@ export default function EventNFCShareScreen() {
                         )}
                         {error.retryable && <EventCta label="Try again" onPress={startSession} />}
                         <EventCta
-                            label="Go Back"
+                            label="Go back"
                             variant={error.action === 'goIrl' || error.retryable ? 'ghost' : 'secondary'}
                             onPress={() => safeBack(router)}
                         />

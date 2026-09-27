@@ -42,7 +42,7 @@ export default function ButtonLazorKitSignIn({
     onError,
     buttonStyle,
     textStyle,
-    title = 'Sign in via Lazorkit Wallet',
+    title = 'Sign in via LazorKit wallet',
 }: ButtonLazorKitSignInProps) {
     const isDark = useColorScheme() === 'dark';
     const [isLoading, setIsLoading] = useState(false);

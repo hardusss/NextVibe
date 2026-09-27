@@ -137,9 +137,9 @@ export default function GoogleIconButton({ page }: { page: string }) {
         if (error.code === statusCodes.SIGN_IN_CANCELLED) {
             // Silently ignore
         } else if (error.code === statusCodes.IN_PROGRESS) {
-            Toast.show({ type: 'info', text1: 'Sign-in In Progress' });
+            Toast.show({ type: 'info', text1: 'Sign-in in progress' });
         } else {
-            Toast.show({ type: 'error', text1: 'Sign-in Error', text2: error.message || 'An unexpected error occurred.' });
+            Toast.show({ type: 'error', text1: 'Sign-in error', text2: error.message || 'An unexpected error occurred.' });
         }
     };
 

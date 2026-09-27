@@ -540,7 +540,7 @@ const UserProfileView = () => {
 
                         <View style={st.repBadgeRight}>
                             <Text style={[st.repActionTxt, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(17,24,39,0.7)' }]}>
-                                POAPs & History
+                                POAPs & history
                             </Text>
                             <ChevronRight size={13} color={isDark ? '#4ade80' : '#16a34a'} />
                         </View>
@@ -700,7 +700,7 @@ const UserProfileView = () => {
                             onCount={(total) => setUserData((prev) => (prev.post_count === total ? prev : { ...prev, post_count: total }))}
                             ListHeaderComponent={profileHeader}
                             ListEmptyComponent={
-                                <EmptyState iconType="posts" title="No Posts Yet"
+                                <EmptyState iconType="posts" title="No posts yet"
                                     description="This user hasn't shared any moments yet."
                                     colorScheme={isDark ? "dark" : "light"} />
                             }
@@ -723,7 +723,7 @@ const UserProfileView = () => {
                             ListHeaderComponent={profileHeader}
                             ListEmptyComponent={
                                 <EmptyState iconType="cnfts" title="No collectibles yet"
-                                    description="Nothing collected here yet: POAPs, Proof of Meets and collected posts show up in this tab."
+                                    description="Nothing collected here yet: POAPs, Proof of Meet cards and collected posts show up in this tab."
                                     colorScheme={isDark ? "dark" : "light"} />
                             }
                             refreshControl={refreshControl}
@@ -762,7 +762,7 @@ const UserProfileView = () => {
             <Web3Toast
                 visible={showRepTip}
                 onHide={() => setShowRepTip(false)}
-                message="Earn reputation by attending events, interacting with organizers and other participants 🚀"
+                message="Get REP by attending events and meeting organizers and other participants 🚀"
                 isSuccess={true}
             />
         </View>

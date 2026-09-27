@@ -115,7 +115,7 @@ export default function AppleButtonAuth({ page, onSuccess, onError }: AppleButto
             else {
                 Toast.show({
                     type: 'error',
-                    text1: 'Apple Sign-in Failed',
+                    text1: 'Apple sign-in failed',
                     text2: error?.message || 'An unexpected error occurred.',
                 });
             }

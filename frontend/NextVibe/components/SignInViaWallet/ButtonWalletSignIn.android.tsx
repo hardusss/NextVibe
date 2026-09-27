@@ -34,7 +34,7 @@ export default function ButtonWalletSignIn({
     onError,
     buttonStyle,
     textStyle,
-    title = "Sign in Via Wallet"
+    title = "Sign in via wallet"
 }: ButtonWalletSignInProps) {
     const [isLoading, setIsLoading] = useState(false);
     const isMounted = useRef(true);

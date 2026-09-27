@@ -3,6 +3,10 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 27 — One vocabulary across the app, pushes, cards and the web
+- copy(frontend): the collect sheet says "Free" (no more "≈ free · network fee only"); feed, post and profile badges show supply as "46 left" and editions as "#5 of 50"; "REP" everywhere (history, collect sheet, invite tiers); "Reputation added for both of you." ends the same way on every result screen; check-in announcements say POAP instead of event NFT; sentence case on the sign-in, profile, Tap to Meet and check-in screens; "Proof of Meet cards" instead of "Proof of Meets". Files: `frontend/NextVibe/components/{NftClaim,Home,PostDetails,ProfilePage,Events,LoginPage,RegisterPage,oauth-components,SignInViaWallet}/…`, `src/api/login.ts`, `src/proximity/errors.ts`, `src/validation/register-validator.ts`
+- copy(backend): pushes, check-in answers, history rows, cNFT Edition traits and the collect memo use the same words ("POAP saved · claim anytime", "#3 of 50", "Bonus REP"). Files: `backend/NextVibeAPI/posts/{view_pac,src}/…`, `user/signals.py`
+
 ## Sep 27 — Guards on backend-paid mints
 - fix(backend): only a post's owner can edit or delete it through `/posts/posts/<id>/`, and the fields the server manages (owner, approval, moderation status, supply, mint counts, likes) can no longer be written by clients. Collect prepares are capped at 30 per person per UTC day, so a transaction that is prepared but never submitted still counts. Owner publishes (`cnft-mint`) are capped at 20 per day. Collect, publish, check-in, POAP claim, tap and save-wallet endpoints now have per-user rate limits set above the apps' 3-second polling. Tests: `posts/tests/test_fee_payer_guards.py` (443 tests pass). Files: `posts/view_pac/{post_create,collect,mint_nft,event_checkin,event_connections,proximity_token}.py`, `posts/serializers_pac/post_serializer.py`, `posts/constants.py`, `user/views_pac/save_wallet_address.py`, `NextVibeAPI/setting/{prod,dev}.py`
 

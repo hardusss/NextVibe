@@ -206,7 +206,7 @@ export function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatar
                 </View>
 
                 <Text style={[styles.ogSupplyText, { color: accentColor }]}>
-                    Edition {og.edition} / 25
+                    Edition #{og.edition} of 25
                 </Text>
 
                 <Text style={[styles.ogMintedText, { color: mutedColor }]}>
@@ -235,7 +235,7 @@ export function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatar
                             <>
                                 <RNActivityIndicator size={12} color={accentColor} />
                                 <Text style={[styles.setAvatarText, { color: accentColor }]}>
-                                    Setting...
+                                    Setting…
                                 </Text>
                             </>
                         )}
@@ -243,7 +243,7 @@ export function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatar
                             <>
                                 <CheckCircle2 size={12} color={doneColor} strokeWidth={2} />
                                 <Text style={[styles.setAvatarText, { color: doneColor }]}>
-                                    Avatar Set!
+                                    Avatar set
                                 </Text>
                             </>
                         )}
@@ -251,7 +251,7 @@ export function OgAvatarCard({ og, isDark, isOwnProfile, onSetAvatar }: OgAvatar
                             <>
                                 <UserCircle2 size={12} color={accentColor} strokeWidth={1.8} />
                                 <Text style={[styles.setAvatarText, { color: btnTextColor }]}>
-                                    Set as Avatar
+                                    Set as avatar
                                 </Text>
                             </>
                         )}

@@ -615,7 +615,7 @@ const ProfileView = () => {
 
                         <View style={st.repBadgeRight}>
                             <Text style={[st.repActionTxt, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(17,24,39,0.7)' }]}>
-                                POAPs & History
+                                POAPs & history
                             </Text>
                             <ChevronRight size={13} color={isDark ? '#4ade80' : '#16a34a'} />
                         </View>
@@ -725,7 +725,7 @@ const ProfileView = () => {
                             borderRadius: 14,
                         }}
                     >
-                        <Text style={{ color: '#fff', fontFamily: 'Dank Mono Bold', fontSize: 14 }}>Tap to Retry</Text>
+                        <Text style={{ color: '#fff', fontFamily: 'Dank Mono Bold', fontSize: 14 }}>Tap to retry</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
@@ -746,8 +746,8 @@ const ProfileView = () => {
                                 onCount={handlePostsCount}
                                 ListHeaderComponent={profileHeader}
                                 ListEmptyComponent={
-                                    <EmptyState Icon={Camera} title="No Posts Yet"
-                                        description="Start sharing your moments to make your profile more engaging."
+                                    <EmptyState Icon={Camera} title="No posts yet"
+                                        description="Share your first moment and it shows up here."
                                         colorScheme={isDark ? "dark" : "light"} />
                                 }
                                 refreshControl={refreshControl}

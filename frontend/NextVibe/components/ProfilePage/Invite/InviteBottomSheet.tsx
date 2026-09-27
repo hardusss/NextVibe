@@ -53,9 +53,9 @@ export const CustomBackdrop = ({ animatedIndex, style }: BottomSheetBackdropProp
 };
 
 const MILESTONES = [
-    { target: 1, title: "Basic Frame", desc: "Base profile frame reward", Icon: Gift },
-    { target: 2, title: "+20-50 Rep + Elite Frame", desc: "Random 20-50 rep & cooler frame", Icon: Sparkles },
-    { target: 3, title: "OG cNFT + Mythic Frame", desc: "Max supply 25! Ultimate reward", Icon: Crown },
+    { target: 1, title: "Basic Frame", desc: "Base profile frame", Icon: Gift },
+    { target: 2, title: "+20-50 REP + Elite Frame", desc: "Random 20-50 REP & cooler frame", Icon: Sparkles },
+    { target: 3, title: "OG cNFT + Mythic Frame", desc: "Max supply 25, the top tier", Icon: Crown },
 ];
 
 export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
@@ -119,7 +119,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
         if (inviteCode === '------') return;
         await Clipboard.setStringAsync(inviteCode);
         Vibration.vibrate(50);
-        showToast("Invite code copied!", true);
+        showToast("Invite code copied", true);
     };
 
     /**
@@ -138,7 +138,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
             await mintOgNFT();
             setClaimState('claimed');
             Vibration.vibrate([0, 40, 60, 80]);
-            showToast("OG cNFT successfully minted!", true);
+            showToast("OG cNFT minted.", true);
         } catch (error) {
             setClaimState('idle');
             showToast("Mint failed. Try again.", false);
@@ -197,7 +197,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
                 <BottomSheetView style={[styles.container, { backgroundColor: bg }]}>
                     <View style={styles.header}>
                         <Users size={18} color={iconColor} strokeWidth={1.5} />
-                        <Text style={[styles.headerTitle, { color: mainColor }]}>Invite Friends</Text>
+                        <Text style={[styles.headerTitle, { color: mainColor }]}>Invite friends</Text>
                     </View>
 
                     {isLoading ? (
@@ -295,7 +295,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
                                         <>
                                             <ActivityIndicator size="small" color={accentText} />
                                             <Text style={[styles.claimButtonText, { color: accentText }]}>
-                                                Minting...
+                                                Minting…
                                             </Text>
                                         </>
                                     )}
@@ -304,7 +304,7 @@ export const InviteBottomSheet = forwardRef<InviteSheetRef>((_, ref) => {
                                         <>
                                             <CheckCircle2 size={16} color={claimColor} strokeWidth={2} />
                                             <Text style={[styles.claimButtonText, { color: claimColor }]}>
-                                                OG cNFT Claimed!
+                                                OG cNFT claimed
                                             </Text>
                                         </>
                                     )}

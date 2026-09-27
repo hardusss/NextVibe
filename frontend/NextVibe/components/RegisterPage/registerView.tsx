@@ -147,8 +147,8 @@ export default function RegisterView() {
     const handleWalletSuccess = (backendResponse: any) => {
         Toast.show({
             type: 'success',
-            text1: 'Connected Successfully',
-            text2: 'Welcome to NextVibe!',
+            text1: 'Connected successfully',
+            text2: 'Welcome to NextVibe.',
         });
         navigateAfterSignIn(router, '/home');
     };
@@ -157,7 +157,7 @@ export default function RegisterView() {
         const realError = error?.response?.data?.error || error?.message || 'Unknown error';
         Toast.show({
             type: 'error',
-            text1: 'Connection Failed',
+            text1: 'Connection failed',
             text2: realError,
         });
     };
@@ -198,7 +198,7 @@ export default function RegisterView() {
                                     contentFit="contain"
                                 />
                             </View>
-                            <Text style={styles.title}>Create Account</Text>
+                            <Text style={styles.title}>Create account</Text>
                             <Text style={styles.subtitle}>Start your vibe journey today</Text>
                         </View>
 
@@ -313,7 +313,7 @@ export default function RegisterView() {
 
                             {/* Invite code */}
                             <Animated.View style={{ transform: [{ translateX: shakeAnims.inviteCode }] }}>
-                                <Text style={styles.inputLabel}>Invite Code <Text style={styles.optionalTag}>(optional)</Text></Text>
+                                <Text style={styles.inputLabel}>Invite code <Text style={styles.optionalTag}>(optional)</Text></Text>
                                 <View style={inputStyle('inviteCode')}>
                                     <Ticket size={18} color={iconColor('inviteCode')} style={styles.inputIcon} />
                                     <TextInput
@@ -417,7 +417,7 @@ export default function RegisterView() {
                             <View style={styles.footerContainer}>
                                 <Text style={styles.footerText}>Already have an account?</Text>
                                 <TouchableOpacity onPress={() => router.replace('/login')}>
-                                    <Text style={styles.loginLink}> Sign In</Text>
+                                    <Text style={styles.loginLink}> Sign in</Text>
                                 </TouchableOpacity>
                             </View>
 

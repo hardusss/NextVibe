@@ -414,7 +414,7 @@ const ShareModal = forwardRef<ShareModalRef, ShareModalProps>((props, ref) => {
                             <Link2 size={18} color={colors.accent} />
                         )}
                         <Text style={[styles.copyLinkText, { color: copied ? '#22c55e' : colors.textColor }]}>
-                            {copied ? 'Link copied!' : 'Copy profile link'}
+                            {copied ? 'Link copied' : 'Copy profile link'}
                         </Text>
                     </TouchableOpacity>
 
