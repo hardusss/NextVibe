@@ -59,10 +59,12 @@ class FakeNftService:
         self.fail = 0
         self.error = None
         self.count = 0
+        self.headers = []
 
-    def post(self, url, json=None, timeout=None):
+    def post(self, url, json=None, timeout=None, headers=None):
         path = url.split("://", 1)[-1].split("/", 1)[-1]
         self.calls.append(("/" + path, json))
+        self.headers.append(headers)
         if self.error is not None:
             raise self.error
         response = mock.Mock()
@@ -698,6 +700,21 @@ class GuardTests(CollectiblesTestCase):
         row = self.rows(self.alice).get()
         self.assertEqual((row.status, row.attempts), ("queued", 0))
         self.assertGreater(row.next_attempt_at, timezone.now() + timedelta(minutes=20))
+
+    def test_minting_switched_off_doesnt_burn_attempts(self):
+        disabled = mock.Mock(status_code=503)
+        disabled.json.return_value = {"success": False, "error": "MINTS_DISABLED"}
+        with mock.patch("posts.src.collectible_mint.requests.post", return_value=disabled):
+            self.irl_tap(self.bob, self.alice)
+        row = self.rows(self.alice).get()
+        self.assertEqual((row.status, row.attempts), ("queued", 0))
+        self.assertGreater(row.next_attempt_at, timezone.now() + timedelta(minutes=20))
+
+    def test_calls_to_the_service_carry_the_shared_secret(self):
+        with mock.patch("posts.constants.NFT_SERVICE_SECRET", "s3cret"):
+            self.irl_tap(self.bob, self.alice)
+        self.assertTrue(self.service.headers)
+        self.assertEqual(self.service.headers[-1], {"x-internal-secret": "s3cret"})
 
     def test_a_bad_address_fails_without_calling_the_service(self):
         User.objects.filter(pk=self.alice.pk).update(wallet_address="not-a-solana-address-at-all-0OIl")

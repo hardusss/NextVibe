@@ -64,7 +64,7 @@ from rich.rule import Rule
 
 
 # URL of the nft-service (Elysia server defined in nft-service/src/index.ts)
-NFT_SERVICE_URL = "http://localhost:3000"
+from posts.constants import NFT_SERVICE_URL, nft_service_headers  # noqa: E402
 
 # Seconds to wait between consecutive mints to avoid hitting RPC rate limits.
 # Increase this value if you see "429 Too Many Requests" errors from Helius.
@@ -353,6 +353,7 @@ class Command(BaseCommand):
             response = requests.post(
                 f"{NFT_SERVICE_URL}{endpoint}",
                 json=payload,
+                headers=nft_service_headers(),
                 timeout=MINT_REQUEST_TIMEOUT,
             )
             response.raise_for_status()

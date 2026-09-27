@@ -30,7 +30,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import F, Q
 from django.utils import timezone
 
-from posts.constants import NFT_SERVICE_URL
+from posts.constants import NFT_SERVICE_URL, nft_service_headers
 from posts.models import Collectible, EventCheckin, Post, Reputation, UserCollection
 from posts.src import collectible_metadata as meta
 from posts.src import das, push
@@ -115,7 +115,8 @@ def _never_sent(error) -> bool:
 
 def _post(path, body):
     try:
-        response = requests.post(f"{NFT_SERVICE_URL}{path}", json=body, timeout=MINT_TIMEOUT)
+        response = requests.post(f"{NFT_SERVICE_URL}{path}", json=body, headers=nft_service_headers(),
+                                 timeout=MINT_TIMEOUT)
     except requests.RequestException as e:
         if _never_sent(e):
             raise MintError(f"nft-service unreachable: {e.__class__.__name__}") from e
@@ -124,8 +125,10 @@ def _post(path, body):
         data = response.json()
     except ValueError:
         data = {}
-    if response.status_code == 503 and str(data.get("error", "")).endswith("NOT_CONFIGURED"):
-        raise ServiceNotReady(data.get("error"))
+    error = str(data.get("error", ""))
+    # A collection not set up yet, or minting switched off (MINTS_DISABLED): wait, don't burn attempts
+    if response.status_code == 503 and (error.endswith("NOT_CONFIGURED") or error == "MINTS_DISABLED"):
+        raise ServiceNotReady(error)
     if not data.get("success") or not data.get("assetId"):
         raise MintError(str(data.get("error") or f"HTTP {response.status_code}")[:500])
     return data["assetId"], data.get("signature") or ""
@@ -347,7 +350,7 @@ def tree_status(refresh=False):
         if cached is not None:
             return cached or None
     try:
-        data = requests.get(f"{NFT_SERVICE_URL}/tree", timeout=10).json()
+        data = requests.get(f"{NFT_SERVICE_URL}/tree", headers=nft_service_headers(), timeout=10).json()
         capacity, minted = int(data["capacity"]), int(data["minted"])
         status = {"capacity": capacity, "minted": minted, "remaining": max(0, capacity - minted)}
     except Exception as e:

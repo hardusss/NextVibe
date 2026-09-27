@@ -33,6 +33,14 @@ COLLECT_CLAIM_TTL_SECONDS = 75
 # Base URL of the Elysia nft-service.
 NFT_SERVICE_URL = os.environ.get("NFT_SERVICE_URL", "http://localhost:3000")
 
+# Shared secret nft-service checks on every call (x-internal-secret).
+NFT_SERVICE_SECRET = os.environ.get("NFT_SERVICE_SECRET", "")
+
+
+def nft_service_headers() -> dict:
+    """Headers for every call to nft-service."""
+    return {"x-internal-secret": NFT_SERVICE_SECRET} if NFT_SERVICE_SECRET else {}
+
 # Reputation awarded to each side of an IRL (outside-of-event) tap.
 IRL_TAP_POINTS = 1
 

@@ -6,6 +6,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from user.models import OgAvatarMint
 import requests
+from posts.constants import NFT_SERVICE_URL, nft_service_headers
 from user.src.send_push_message import send
 from user.src.grant_og_status import grant_og_status
 
@@ -58,7 +59,8 @@ class OgNftMintView(APIView):
         # Execute mint via external service
         try:
             mint_res = requests.post(
-                url="http://localhost:3000/mint/og",
+                url=f"{NFT_SERVICE_URL}/mint/og",
+                headers=nft_service_headers(),
                 json={
                     "recipient": wallet_address,
                     "userId": user.user_id,

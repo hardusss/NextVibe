@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.db import IntegrityError
 from django.utils import timezone
 
-from posts.constants import NFT_SERVICE_URL
+from posts.constants import NFT_SERVICE_URL, nft_service_headers
 from user.src.send_push_message import send
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,7 @@ def check_sgt_onchain(wallet_address: str, force: bool = False):
     try:
         res = requests.post(
             url=f"{NFT_SERVICE_URL}/seeker/sgt-check",
+            headers=nft_service_headers(),
             json={"wallet": wallet_address},
             timeout=30,
         ).json()
