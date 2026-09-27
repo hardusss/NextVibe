@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from ..models import EventCheckin, Reputation, Post
 from ..constants import IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
 from ..src import collectibles
@@ -566,6 +567,8 @@ class EventNFCConnectView(APIView):
     Body: { "event_id": int, "scanned_user_id": int, "latitude": float, "longitude": float }
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "tap"
 
     def post(self, request):
         event_id = request.data.get('event_id')
@@ -739,6 +742,8 @@ class IRLTapView(APIView):
     Body: { "scanned_user_id": int, "latitude"?: float, "longitude"?: float }
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "tap"
 
     def post(self, request):
         return process_irl_tap(

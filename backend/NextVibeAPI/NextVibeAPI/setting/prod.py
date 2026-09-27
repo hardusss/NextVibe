@@ -239,6 +239,12 @@ REST_FRAMEWORK = {
         "transaction_fee": "20/min",
         "transaction": "20/min",
         "rpc_proxy": "300/min",
+        # Endpoints that can make the backend pay for a mint. Clients poll
+        # cnft-mint every 3 s while moderation runs, so "publish" stays above 20/min.
+        "collect": "30/min",
+        "publish": "40/min",
+        "checkin": "30/min",
+        "tap": "60/min",
     },
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'user.auth.CustomJWTAuthentication',

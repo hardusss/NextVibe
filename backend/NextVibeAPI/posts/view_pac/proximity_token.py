@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest, EventCheckin
 from user.models import User
@@ -121,6 +122,8 @@ class VerifyProximityTokenView(APIView):
     happens only on the follow-up call the responder's confirmation sends.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "tap"
 
     def post(self, request):
         token = request.data.get('token')

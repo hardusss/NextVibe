@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db import transaction
 from user.src.seeker_verification import needs_onchain_check, verify_seeker_in_background
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -23,6 +24,8 @@ def _queue_collectibles(user):
 
 class SaveWalletAddressView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "profile_edit"
 
     def post(self, request) -> Response:
         wallet_address = request.data.get("walletAddress")

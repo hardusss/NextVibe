@@ -18,6 +18,14 @@ class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
+    def get_queryset(self):
+        # Only the owner may change or delete a post; for anyone else it
+        # doesn't exist (404)
+        queryset = super().get_queryset()
+        if self.action in ("update", "partial_update", "destroy"):
+            return queryset.filter(owner=self.request.user)
+        return queryset
+
     def perform_create(self, serializer):
         is_v2 = self.request.query_params.get("v2") == "true"
 

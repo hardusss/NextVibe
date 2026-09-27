@@ -3,6 +3,9 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 27 — Guards on backend-paid mints
+- fix(backend): only a post's owner can edit or delete it through `/posts/posts/<id>/`, and the fields the server manages (owner, approval, moderation status, supply, mint counts, likes) can no longer be written by clients. Collect prepares are capped at 30 per person per UTC day, so a transaction that is prepared but never submitted still counts. Owner publishes (`cnft-mint`) are capped at 20 per day. Collect, publish, check-in, POAP claim, tap and save-wallet endpoints now have per-user rate limits set above the apps' 3-second polling. Tests: `posts/tests/test_fee_payer_guards.py` (443 tests pass). Files: `posts/view_pac/{post_create,collect,mint_nft,event_checkin,event_connections,proximity_token}.py`, `posts/serializers_pac/post_serializer.py`, `posts/constants.py`, `user/views_pac/save_wallet_address.py`, `NextVibeAPI/setting/{prod,dev}.py`
+
 ## Sep 27 — Repo hygiene before judging
 - chore(repo): stopped tracking a wallet report with personal data (usernames, wallets, balances), generated analytics charts, the celery beat schedule, the compiled moderation binary and 119 Gradle build files of the NFC module. Local copies stay. `.gitignore` now covers them, plus `*.xlsx`, `celerybeat-schedule*`, `scripts_tmp/`, `.DS_Store` and `.env.*` (only `.env.example` files are committed). Files: `.gitignore`
 

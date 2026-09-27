@@ -8,6 +8,15 @@ COLLECT_MAX_EDITIONS = 50
 # How many posts a user may collect per UTC day.
 COLLECT_DAILY_LIMIT = 10
 
+# How many collect transactions one user may prepare per UTC day. Each one is
+# already signed by the backend as fee payer, so it counts even when the
+# client never calls submit.
+COLLECT_DAILY_PREPARE_LIMIT = COLLECT_DAILY_LIMIT * 3
+
+# How many of their own posts a user may publish as a cNFT per UTC day
+# (the backend pays every mint).
+PUBLISH_DAILY_LIMIT = 20
+
 # Editions 2..(1 + COLLECT_IRL_RESERVED_EDITIONS) are reserved for
 # IRL-connected users while the reservation window is open.
 COLLECT_IRL_RESERVED_EDITIONS = 10

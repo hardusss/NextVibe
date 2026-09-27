@@ -1,15 +1,17 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 import logging
 import requests
 
-from ..constants import COLLECT_MAX_EDITIONS, NFT_SERVICE_URL
+from ..constants import COLLECT_MAX_EDITIONS, NFT_SERVICE_URL, PUBLISH_DAILY_LIMIT
 from ..models import PendingClaim, Post, UserCollection
 from ..src import collectibles
 
@@ -23,6 +25,8 @@ class MintNftView(APIView):
     cNFT (backend pays, no price). Collectors use /posts/collect/*.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "publish"
 
     def post(self, request) -> Response:
         post_id = request.data.get("postId")
@@ -65,6 +69,14 @@ class MintNftView(APIView):
         if UserCollection.objects.filter(user=request.user, post=post).exists():
             logger.info("publish.rejected user=%s post=%s reason=already_minted", request.user.pk, post_id)
             return Response({"error": "You already minted this post."}, status=status.HTTP_400_BAD_REQUEST)
+        # The backend pays for every publish: cap them per person per UTC day
+        day_start = timezone.now().astimezone(dt_timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        if UserCollection.objects.filter(
+            user=request.user, post__owner=request.user, minted_at__gte=day_start,
+        ).count() >= PUBLISH_DAILY_LIMIT:
+            logger.info("publish.rejected user=%s post=%s reason=daily_limit", request.user.pk, post_id)
+            return Response({"error": f"You've published {PUBLISH_DAILY_LIMIT} posts today.", "code": "DAILY_LIMIT"},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         # Account for in-flight collect reservations so the owner's edition
         # never collides with a pending claim.

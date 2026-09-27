@@ -19,11 +19,13 @@ from datetime import timedelta, timezone as dt_timezone
 from decimal import Decimal
 
 import requests
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from user.src.send_push_message import send
@@ -32,6 +34,7 @@ from user.src.blocking import is_blocked_between
 from ..constants import (
     COLLECT_CLAIM_TTL_SECONDS,
     COLLECT_DAILY_LIMIT,
+    COLLECT_DAILY_PREPARE_LIMIT,
     COLLECT_IRL_REP_BONUS,
     COLLECT_IRL_RESERVE_HOURS,
     COLLECT_IRL_RESERVED_EDITIONS,
@@ -136,6 +139,8 @@ def _finalize_collect(user, post_id, edition, asset_id, signature):
 
 class CollectPrepareView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "collect"
 
     def post(self, request) -> Response:
         post_id = request.data.get("postId")
@@ -195,6 +200,19 @@ class CollectPrepareView(APIView):
                 resetsAt=resets_at.isoformat(),
             )
 
+        # A prepare hands out a transaction the backend already signed as fee
+        # payer, so prepares are capped too: a client that never calls submit
+        # never reaches the collect limit above.
+        prepares_key = f"collect:prepares:{request.user.pk}:{day_start.date().isoformat()}"
+        if (cache.get(prepares_key) or 0) >= COLLECT_DAILY_PREPARE_LIMIT:
+            return _error(
+                "DAILY_LIMIT",
+                "You've reached today's collect limit.",
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                user=request.user, post_id=post_id,
+                resetsAt=resets_at.isoformat(),
+            )
+
         total = post.total_supply or COLLECT_MAX_EDITIONS
 
         # Reserve the edition under a row lock so concurrent prepares never
@@ -231,6 +249,9 @@ class CollectPrepareView(APIView):
                 edition=next_edition,
                 expires_at=now + timedelta(seconds=COLLECT_CLAIM_TTL_SECONDS),
             )
+
+        cache.add(prepares_key, 0, timeout=int((resets_at - timezone.now()).total_seconds()) + 60)
+        cache.incr(prepares_key)
 
         logger.info(
             "collect.prepare.reserved user=%s post=%s edition=%s claim=%s pending=%s",
@@ -328,6 +349,8 @@ class CollectPrepareView(APIView):
 
 class CollectSubmitView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "collect"
 
     def post(self, request) -> Response:
         claim_id = request.data.get("claimId")

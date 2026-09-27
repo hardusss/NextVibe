@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from ..models import Collectible, Post, EventRequest, EventCheckin, Reputation
@@ -101,6 +102,8 @@ def _res15_cell(lat, lng):
 
 class EventCheckinView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "checkin"
 
     def post(self, request, post_id):
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
@@ -170,6 +173,8 @@ class ClaimEventNftView(APIView):
     show the text in their retry pill.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "checkin"
 
     def post(self, request, post_id):
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
