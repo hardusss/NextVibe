@@ -17,43 +17,19 @@ class TwoFA:
             self.secretConnectKey = base64.b32encode(os.urandom(10)).decode('utf-8')
         self.totp = pyotp.TOTP(self.secretConnectKey)
 
-    def create_2fa(self, email: str) -> Tuple[str, str]:
+    def qr_data_uri(self, email: str) -> str:
         """
-        Generates a QR code for two-factor authentication (2FA)
-        and saves it to R2 storage.
-        
-        Args:
-            email (str): The email address associated with the 2FA account.
-        
-        Returns:
-            Tuple[str, str]: A tuple containing the secret key and the path to the saved QR code.
+        The authenticator QR code as a PNG data URI. It holds the secret, so it
+        is generated on request and never stored.
         """
-        from .cloudflare_save_media import save_file_to_storage  # Import function
-        
-        issuer_name: str = "NextVibe"
-        otp_auth_url: str = self.totp.provisioning_uri(email, issuer_name=issuer_name)
-        
-        # Generate QR code
-        qr = qrcode.make(otp_auth_url)
+        otp_auth_url: str = self.totp.provisioning_uri(email, issuer_name="NextVibe")
+        buffer = BytesIO()
+        qrcode.make(otp_auth_url).save(buffer, format="PNG")
+        return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 
-        qr_buffer = BytesIO()
-        qr.save(qr_buffer, format='PNG')
-        qr_buffer.seek(0)  
-        
-        # Save to R2
-        qr_filename = f"{email}_qrcode.png"
-        file_path = save_file_to_storage(
-            file=qr_buffer,
-            filename=qr_filename,
-            folder="qrcodes",
-            is_qr=True,
-            email=email
-        )
-        
-        from django.conf import settings
-        qr_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_path}"
-        
-        return self.secretConnectKey, qr_url
+    def create_2fa(self, email: str) -> Tuple[str, str]:
+        """A new secret and its QR code (data URI)."""
+        return self.secretConnectKey, self.qr_data_uri(email)
 
     def auth(self, code: int) -> bool:
         return self.totp.verify(code)
