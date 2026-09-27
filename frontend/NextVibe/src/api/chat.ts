@@ -3,6 +3,8 @@ import GetApiUrl from '../utils/url_api';
 import { storage } from '../utils/storage';
 import WebSocketService from '../services/WebSocketService';
 import CryptoService from '../services/CryptoService';
+import type { MediaKey } from '../services/e2ee/core';
+import { extensionFor, sealFile } from '../services/e2ee/media';
 
 function getRealtimeBaseUrl(): string {
   return GetApiUrl()
@@ -26,24 +28,33 @@ export const convertFileToBase64 = async (uri: string): Promise<string> => {
   });
 };
 
-export const prepareMediaForSocket = async (file: {
+type LocalMedia = {
   uri: string;
   type?: string;
   mimeType?: string;
   name?: string;
   fileName?: string;
-}) => {
-  const filename = file.fileName || file.name || file.uri.split('/').pop() || 'media_file.jpg';
-  let contentType = file.mimeType || file.type;
+};
 
+const mediaFileName = (file: LocalMedia) => file.fileName || file.name || file.uri.split('/').pop() || 'media_file.jpg';
+
+/** image/jpeg, video/mp4…, from the picker's type or the file name. */
+export const mediaContentType = (file: LocalMedia): string => {
+  let contentType = file.mimeType || file.type;
   if (!contentType || contentType === 'image' || contentType === 'video') {
-    const ext = filename.split('.').pop()?.toLowerCase();
+    const ext = mediaFileName(file).split('.').pop()?.toLowerCase();
     if (ext === 'png') contentType = 'image/png';
     else if (ext === 'gif') contentType = 'image/gif';
     else if (ext === 'webp') contentType = 'image/webp';
     else if (ext === 'mp4' || ext === 'mov') contentType = 'video/mp4';
-    else contentType = 'image/jpeg';
+    else contentType = file.type === 'video' ? 'video/mp4' : 'image/jpeg';
   }
+  return contentType;
+};
+
+export const prepareMediaForSocket = async (file: LocalMedia) => {
+  const filename = mediaFileName(file);
+  const contentType = mediaContentType(file);
 
   const base64Data = await convertFileToBase64(file.uri);
   return {
@@ -60,6 +71,46 @@ export const uploadMedia = async (
   return prepareMediaForSocket(file);
 };
 
+/**
+ * Text and media as the server stores them: end-to-end encrypted (v3, media
+ * sealed on the phone) when the other person's app has a device key, else the
+ * older format their app can read. If v3 fails, the older format is used.
+ */
+async function sealForChat(
+  mode: 'v3' | 'legacy',
+  currentUserId: number,
+  targetUserId: number,
+  text: string,
+  mediaFiles: LocalMedia[],
+  onProgress?: (progressPercent: number, statusText?: string) => void
+) {
+  const media: { data: string; type: string; name: string }[] = [];
+  const keys: MediaKey[] = [];
+  for (let i = 0; i < mediaFiles.length; i++) {
+    const file = mediaFiles[i];
+    if (mode === 'v3') {
+      const type = mediaContentType(file);
+      const sealed = await sealFile(file.uri, type);
+      media.push({ data: sealed.data, type, name: `media.${extensionFor(type)}` });
+      keys.push(sealed.key);
+    } else {
+      media.push(await prepareMediaForSocket(file));
+    }
+    if (onProgress) {
+      const step = Math.round(10 + ((i + 1) / mediaFiles.length) * 75);
+      onProgress(step, `Processing ${i + 1} of ${mediaFiles.length} (${step}%)`);
+    }
+  }
+
+  let message = text;
+  if (mode === 'v3') {
+    message = await CryptoService.sealText(currentUserId, targetUserId, text, keys, 'v3');
+  } else if (text) {
+    message = await CryptoService.sealText(currentUserId, targetUserId, text, undefined, 'legacy');
+  }
+  return { message, media };
+}
+
 export const sendWebSocketMessage = async (
   chatId: number,
   message: string,
@@ -69,59 +120,31 @@ export const sendWebSocketMessage = async (
   targetUserId?: number,
   onProgress?: (progressPercent: number, statusText?: string) => void
 ) => {
+  const text = (message || '').trim();
+  const files: LocalMedia[] = mediaFiles || [];
+  const currentUserId = Number(await storage.getItem('id')) || 0;
+  const target = targetUserId || 0;
+  if (onProgress && files.length > 0) onProgress(10, `Processing 1 of ${files.length} files...`);
+
+  let sealed: { message: string; media: any[] };
   try {
-    let preparedMedia: any[] = [];
-    if (mediaFiles && mediaFiles.length > 0) {
-      const totalFiles = mediaFiles.length;
-      if (onProgress) onProgress(10, `Processing 1 of ${totalFiles} files...`);
-
-      preparedMedia = [];
-      for (let i = 0; i < mediaFiles.length; i++) {
-        const file = mediaFiles[i];
-        const mediaData = await prepareMediaForSocket(file);
-        preparedMedia.push(mediaData);
-
-        const stepProgress = Math.round(10 + ((i + 1) / totalFiles) * 75);
-        if (onProgress) {
-          onProgress(stepProgress, `Processing ${i + 1} of ${totalFiles} (${stepProgress}%)`);
-        }
-      }
-    }
-
-    if (onProgress) onProgress(90, 'Encrypting & sending...');
-
-    let finalPayload = message;
-    if (message && message.trim()) {
-      try {
-        const currentUserIdStr = await storage.getItem('id');
-        const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : 0;
-        const envelope = await CryptoService.encryptMessage(currentUserId, targetUserId || 0, message.trim());
-        finalPayload = JSON.stringify(envelope);
-      } catch (encryptErr) {
-        console.warn('[E2EE] Encryption fallback warning:', encryptErr);
-      }
-    }
-
-    WebSocketService.send({
-      type: 'message',
-      chat_id: chatId,
-      message: finalPayload,
-      reply_to_id: replyToId || null,
-      client_msg_id: clientMsgId || null,
-      media: preparedMedia,
-    });
-
-    if (onProgress) onProgress(100, 'Sent');
+    const mode = await CryptoService.mode(currentUserId, target);
+    sealed = await sealForChat(mode, currentUserId, target, text, files, onProgress);
   } catch (error) {
-    console.error('Error preparing media / sending message:', error);
-    WebSocketService.send({
-      type: 'message',
-      chat_id: chatId,
-      message,
-      reply_to_id: replyToId || null,
-      client_msg_id: clientMsgId || null,
-    });
+    console.warn('[E2EE] v3 failed, sending in the older format:', error);
+    sealed = await sealForChat('legacy', currentUserId, target, text, files, onProgress);
   }
+
+  if (onProgress) onProgress(90, 'Sending...');
+  WebSocketService.send({
+    type: 'message',
+    chat_id: chatId,
+    message: sealed.message,
+    reply_to_id: replyToId || null,
+    client_msg_id: clientMsgId || null,
+    media: sealed.media,
+  });
+  if (onProgress) onProgress(100, 'Sent');
 };
 
 export const notifyEnterChat = (chatId: number) => {
@@ -210,21 +233,18 @@ export const removeReaction = async (chatId: number, messageId: number, emoji: s
   }
 };
 
-export const editMessage = async (chatId: number, messageId: number, text: string, targetUserId?: number) => {
+/** `mediaKeys`: the keys of the message's encrypted photos and videos, so they stay viewable. */
+export const editMessage = async (chatId: number, messageId: number, text: string, targetUserId?: number, mediaKeys?: MediaKey[]) => {
   if (!messageId || isNaN(messageId) || messageId <= 0) {
     throw new Error('Invalid message ID');
   }
 
   let finalPayload = text;
   if (text && text.trim()) {
-    try {
-      const currentUserIdStr = await storage.getItem('id');
-      const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : 0;
-      const envelope = await CryptoService.encryptMessage(currentUserId, targetUserId || 0, text.trim());
-      finalPayload = JSON.stringify(envelope);
-    } catch (encryptErr) {
-      console.warn('[E2EE] Edit encryption warning:', encryptErr);
-    }
+    const currentUserId = Number(await storage.getItem('id')) || 0;
+    const target = targetUserId || 0;
+    const mode = mediaKeys?.length ? 'v3' : await CryptoService.mode(currentUserId, target);
+    finalPayload = await CryptoService.sealText(currentUserId, target, text.trim(), mediaKeys, mode);
   }
 
   WebSocketService.send({

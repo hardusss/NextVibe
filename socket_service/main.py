@@ -10,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 from db import SessionLocal
 from src.models import Message, MediaAttachment, User, Chat, UserOnlineSession, MessageReaction, MessageReceipt
-from src.messages import router as messages_router, invalidate_chat_cache
+from src.messages import router as messages_router, invalidate_chat_cache, reply_preview_text
 from src.keys import router as keys_router
+from src.e2ee import router as e2ee_router
 from src.notifications import send_chat_push_notification
 from src.blocks import is_chat_blocked
 from r2_storage import r2_storage  
@@ -76,6 +77,7 @@ async def shutdown_event():
 
 app.include_router(messages_router, prefix="/api/v2", tags=["Messages"])
 app.include_router(keys_router, prefix="/api/v2", tags=["Keys"])
+app.include_router(e2ee_router, prefix="/api/v2", tags=["E2EE"])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,  
@@ -550,6 +552,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     # 1. Process off-WS pre-signed upload media_keys (Workstream C1)
                     media_keys = data.get("media_keys", [])
                     for key in media_keys:
+                        # Only files uploaded for this chat (/media/upload-url names them so)
+                        if not isinstance(key, str) or not key.startswith(f"chat_media/chat_{chat_id}_"):
+                            continue
                         if r2_storage.verify_object_exists(key):
                             media_attachment = MediaAttachment(
                                 message_id=message.id,
@@ -623,7 +628,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "id": message.reply_to.id,
                         "sender_id": message.reply_to.sender_id,
                         "sender_name": reply_sender_name,
-                        "text": (message.reply_to.text[:100] + "...") if message.reply_to.text and len(message.reply_to.text) > 100 else message.reply_to.text,
+                        "text": reply_preview_text(message.reply_to.text),
                         "is_deleted": message.reply_to.deleted_at is not None
                     }
 

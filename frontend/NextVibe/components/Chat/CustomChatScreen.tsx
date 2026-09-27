@@ -67,7 +67,8 @@ import WebSocketService from '@/src/services/WebSocketService';
 import ChatBubble from './ChatBubble';
 import P2PStatusBadge from './P2PStatusBadge';
 import ChatTransportManager from '@/src/services/ChatTransport';
-import CryptoService from '@/src/services/CryptoService';
+import CryptoService, { type MessageState, type SafetyState } from '@/src/services/CryptoService';
+import type { MediaKey } from '@/src/services/e2ee/core';
 import BackgroundUploadService from '@/src/services/BackgroundUploadService';
 import MediaUploadManager from '@/src/services/MediaUploadManager';
 import SafetyNumberModal from './SafetyNumberModal';
@@ -112,6 +113,10 @@ interface MessageItem {
     media?: any[];
     edited_at?: string | null;
     deleted_at?: string | null;
+    /** How the text was stored (e2ee = v3, opened on this phone). */
+    e2ee?: MessageState;
+    /** Keys of the message's encrypted photos and videos (kept when it's edited). */
+    e2ee_media?: MediaKey[];
 }
 
 interface DateSeparatorItem {
@@ -203,6 +208,7 @@ export default function CustomChatScreen() {
     const [actionModalVisible, setActionModalVisible] = useState(false);
     const [selectedActionMessage, setSelectedActionMessage] = useState<MessageItem | null>(null);
     const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+    const [safetyState, setSafetyState] = useState<SafetyState | null>(null);
     const [wallpaperModalVisible, setWallpaperModalVisible] = useState(false);
     const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
     const [inputLayoutHeight, setInputLayoutHeight] = useState(70);
@@ -294,6 +300,24 @@ export default function CustomChatScreen() {
         };
     }, [chatId, partnerId]);
 
+    // Publish this phone's chat key so the other side can send it end-to-end encrypted messages
+    useEffect(() => {
+        if (currentUserId) CryptoService.ensurePublished(currentUserId);
+    }, [currentUserId]);
+
+    // The safety number is worked out from both people's device keys when the sheet opens
+    useEffect(() => {
+        if (!safetyModalVisible) return;
+        const otherId = otherUser?.user_id || partnerId;
+        if (!currentUserId || !otherId) return;
+        let active = true;
+        setSafetyState(null);
+        CryptoService.safetyNumber(currentUserId, otherId)
+            .then((state) => { if (active) setSafetyState(state); })
+            .catch(() => { if (active) setSafetyState({ status: 'offline' }); });
+        return () => { active = false; };
+    }, [safetyModalVisible, currentUserId, otherUser?.user_id, partnerId]);
+
     const deduplicateMessages = (list: MessageItem[]): MessageItem[] => {
         const seenKeys = new Set<string>();
         const result: MessageItem[] = [];
@@ -316,56 +340,45 @@ export default function CustomChatScreen() {
     };
 
     const decryptMessageItem = useCallback(async (msg: MessageItem): Promise<MessageItem> => {
-        let updated = { ...msg };
+        const me = currentUserId || 0;
+        const senderId = msg.sender_id || msg.sender?.user_id || 0;
+        // The other person in this chat (the older formats are keyed by both ids)
+        const otherId = otherUser?.user_id || partnerId || (senderId && senderId !== me ? senderId : undefined);
+        const updated: MessageItem = { ...msg };
 
         const raw = msg.content || msg.text || '';
         if (raw && typeof raw === 'string' && raw.trim().startsWith('{')) {
-            try {
-                const senderId = msg.sender_id || (msg.sender?.user_id) || 0;
-                const dec = await CryptoService.decryptMessage(
-                    currentUserId || 0,
-                    senderId,
-                    raw,
-                    otherUser?.user_id
-                );
-                updated.content = dec;
-                updated.text = dec;
-            } catch {
-                if (raw.includes('"ciphertext"')) {
-                    updated.content = '🔒 Encrypted message';
-                    updated.text = '🔒 Encrypted message';
+            const opened = await CryptoService.open(me, otherId, raw);
+            updated.content = opened.text;
+            updated.text = opened.text;
+            updated.e2ee = opened.state;
+            updated.e2ee_media = opened.media;
+            if (Array.isArray(updated.media) && updated.media.length > 0) {
+                if (opened.state === 'e2ee' && opened.media?.length) {
+                    const keys = opened.media;
+                    // Keys come in the order the files were sent; the rest are tried if that ever differs
+                    updated.media = updated.media.map((item: any, i: number) => ({
+                        ...item,
+                        enc: [keys[i], ...keys.filter((_, j) => j !== i)].filter(Boolean),
+                    }));
+                } else if (opened.state === 'locked') {
+                    updated.media = updated.media.map((item: any) => ({ ...item, locked: true }));
                 }
             }
         }
 
-        if (updated.reply_to_snippet && updated.reply_to_snippet.text) {
-            const replyRaw = updated.reply_to_snippet.text;
-            if (typeof replyRaw === 'string' && replyRaw.trim().startsWith('{')) {
-                try {
-                    const replySenderId = updated.reply_to_snippet.sender_id || 0;
-                    const decReply = await CryptoService.decryptMessage(
-                        currentUserId || 0,
-                        replySenderId,
-                        replyRaw,
-                        otherUser?.user_id
-                    );
-                    updated.reply_to_snippet = {
-                        ...updated.reply_to_snippet,
-                        text: decReply
-                    };
-                } catch {
-                    if (replyRaw.includes('"ciphertext"')) {
-                        updated.reply_to_snippet = {
-                            ...updated.reply_to_snippet,
-                            text: '🔒 Encrypted message'
-                        };
-                    }
-                }
-            }
+        const replyRaw = updated.reply_to_snippet?.text;
+        if (typeof replyRaw === 'string' && replyRaw.trim().startsWith('{')) {
+            const opened = await CryptoService.open(me, otherId, replyRaw);
+            const mediaLabel = opened.media?.some((m) => m.type?.includes('video')) ? '🎥 Video' : '📷 Photo';
+            updated.reply_to_snippet = {
+                ...updated.reply_to_snippet,
+                text: opened.text || (opened.media?.length ? mediaLabel : ''),
+            };
         }
 
         return updated;
-    }, [currentUserId, otherUser]);
+    }, [currentUserId, otherUser, partnerId]);
 
     const loadInitialMessages = useCallback(async () => {
         if (!chatId) return;
@@ -743,7 +756,7 @@ export default function CustomChatScreen() {
             );
 
             try {
-                await editMessage(chatId, numMsgId, messageText, otherUser?.user_id);
+                await editMessage(chatId, numMsgId, messageText, otherUser?.user_id, editingMessage.e2ee_media);
                 setToast({ visible: true, message: 'Message edited', isSuccess: true });
             } catch (err: any) {
                 console.error('Failed to edit message:', err);
@@ -1494,7 +1507,7 @@ export default function CustomChatScreen() {
                 visible={safetyModalVisible}
                 onClose={() => setSafetyModalVisible(false)}
                 contactName={partnerName}
-                safetyNumber={`1029 3847 5610 ${chatId.toString().padStart(4, '0')} 9283 7461 8234`}
+                state={safetyState}
             />
 
             <MediaPickerModal

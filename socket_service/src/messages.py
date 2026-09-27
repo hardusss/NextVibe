@@ -15,6 +15,19 @@ from r2_storage import r2_storage
 from src.blocks import is_chat_blocked
 
 router = APIRouter()
+
+
+def reply_preview_text(text):
+    """
+    The replied-to message's text for a reply preview, cut at 100 characters.
+    Encrypted messages go whole: a cut envelope can't be decrypted, and the
+    app shortens the text after decrypting it.
+    """
+    if not text:
+        return text
+    if text.lstrip().startswith("{") and '"ciphertext"' in text:
+        return text
+    return text[:100] + "..." if len(text) > 100 else text
 MESSAGES_PER_PAGE = 20
 
 r = redis.Redis(
@@ -130,7 +143,7 @@ async def get_chat_messages(
                 "id": msg.reply_to.id,
                 "sender_id": msg.reply_to.sender_id,
                 "sender_name": reply_sender_name,
-                "text": (msg.reply_to.text[:100] + "...") if msg.reply_to.text and len(msg.reply_to.text) > 100 else msg.reply_to.text,
+                "text": reply_preview_text(msg.reply_to.text),
                 "is_deleted": msg.reply_to.deleted_at is not None
             }
 

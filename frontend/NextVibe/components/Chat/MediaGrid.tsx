@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, useWindowDimensions, useColorScheme } from 'rea
 import MediaPreview from './MediaPreview';
 import GetApiUrl from '@/src/utils/url_api';
 import { chatColors, chatRadius } from '@/src/theme/chatTheme';
+import type { MediaKey } from '@/src/services/e2ee/core';
 
 interface MediaItem {
   id?: number | string;
@@ -12,6 +13,10 @@ interface MediaItem {
   type?: string;
   mimeType?: string;
   isTemp?: boolean;
+  /** End-to-end encrypted: the keys to open it (its own first). */
+  enc?: MediaKey[];
+  /** Encrypted for another device: can't be opened here. */
+  locked?: boolean;
 }
 
 interface MediaGridProps {
@@ -42,7 +47,7 @@ export default function MediaGrid({ media }: MediaGridProps) {
 
   const isVideoItem = (item: MediaItem): boolean => {
     const url = getMediaUrl(item).toLowerCase();
-    const itemType = (item.type || item.mimeType || '').toLowerCase();
+    const itemType = (item.type || item.mimeType || item.enc?.[0]?.type || '').toLowerCase();
     return (
       itemType.startsWith('video') ||
       url.endsWith('.mp4') ||
@@ -152,6 +157,8 @@ export default function MediaGrid({ media }: MediaGridProps) {
               isInGrid={totalCount > 1}
               isTemp={item.isTemp}
               uploadProgress={(item as any).uploadProgress}
+              mediaKeys={item.enc}
+              locked={item.locked}
             />
             {isLastSlot && (
               <View style={[styles.remainingCountOverlay, { borderRadius: size.borderRadius }]}>

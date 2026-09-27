@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'chat',
     'wallet',
     'verification',
+    'e2ee',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

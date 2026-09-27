@@ -115,7 +115,8 @@ class MediaUploadManager {
     this.notifyListeners(task);
 
     try {
-      const preparedMedia: any[] = [];
+      // What goes out: compressed videos, as picked otherwise (chat.ts reads and seals them)
+      const readyFiles: Array<{ uri: string; type: string; name: string }> = [];
       const totalFiles = task.mediaFiles.length;
 
       for (let i = 0; i < totalFiles; i++) {
@@ -169,15 +170,7 @@ class MediaUploadManager {
         const sizeInBytes = fileInfo.exists && (fileInfo as any).size ? (fileInfo as any).size : 0;
         const sizeMB = sizeInBytes > 0 ? (sizeInBytes / (1024 * 1024)).toFixed(1) : '0';
 
-        const base64Data = await FileSystem.readAsStringAsync(processUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        preparedMedia.push({
-          data: base64Data,
-          type: contentType,
-          name: filename,
-        });
+        readyFiles.push({ uri: processUri, type: contentType, name: filename });
 
         const fileCompletePercent = Math.round(fileWeightEnd);
         task.progressPercent = fileCompletePercent;
@@ -192,7 +185,7 @@ class MediaUploadManager {
       await sendWebSocketMessage(
         task.chatId,
         task.messageText,
-        task.mediaFiles,
+        readyFiles,
         task.replyToId,
         task.clientMsgId,
         task.targetUserId

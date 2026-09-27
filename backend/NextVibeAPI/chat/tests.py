@@ -54,6 +54,20 @@ class ChatUnreadCountTests(TestCase):
         self.assertEqual(len(res.data), 1)
         self.assertEqual(res.data[0]["unread_count"], 2)
 
+    def test_last_message_says_who_sent_it_its_photos_and_if_it_was_read(self):
+        from .models import MediaAttachment
+        message = self._msg(self.alice, text="")
+        MediaAttachment.objects.create(message=message, file="chat_media/chat_1_%s.jpg" % ("a" * 32))
+        MediaAttachment.objects.create(message=message, file="chat_media/chat_1_%s.mp4" % ("b" * 32))
+        last = self.client.get(CHATS_URL).data[0]["last_message"]
+        self.assertEqual(last["sender_id"], self.alice.user_id)
+        self.assertEqual(last["media"], [{"type": "image"}, {"type": "video"}])
+        self.assertFalse(last["is_read"])
+        MessageReceipt.objects.create(message=message, user=self.bob, read_at=timezone.now())
+        last = self.client.get(CHATS_URL).data[0]["last_message"]
+        self.assertTrue(last["is_read"])
+        self.assertIsNotNone(last["read_at"])
+
     def test_read_receipt_clears_unread_for_reader_only(self):
         m1 = self._msg(self.bob)
         m2 = self._msg(self.bob)
