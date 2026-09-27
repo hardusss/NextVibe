@@ -3,6 +3,9 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 27 — License, demo video and iOS status
+- docs: `LICENSE` (source-available, all rights reserved: anyone can read the code and build and run it to evaluate NextVibe; other use needs written permission). The README links the demo video (https://youtu.be/bc-n_gHH1Rk) and shows the App Store version as In Review. Files: `LICENSE`, `README.md`
+
 ## Sep 27 — Documentation for judges
 - docs: the root README is rewritten around what NextVibe does today (Tap to Meet, Proof of Meet, events and POAPs, wallet-optional collectibles, free collects, Seeker Verified), with screenshots, an architecture diagram, a repository map and three ways to run it (install, run the app from source against the production API, self-host). New `docs/ARCHITECTURE.md`, `API.md` (generated from the URL configuration), `SOLANA.md`, `TAP_TO_MEET.md`, `EVENTS.md` and `SECURITY.md`; a README and a `.env.example` for every service. Files: `README.md`, `docs/`, `*/README.md`, `*/.env.example`
 

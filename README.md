@@ -18,8 +18,8 @@ tap, give every attendee a POAP, and see on a live dashboard who came and who me
 | Website | https://nextvibe.io |
 | Solana dApp Store | `solanadappstore://details?id=com.nextvibe.app` (open on a Seeker) |
 | Android APK | https://media.nextvibe.io/NextVibe.apk |
-| iOS | TODO(founder): App Store link after approval |
-| Demo video | TODO(founder): link to the CLOCK IN demo video |
+| iOS (App Store) | In Review |
+| Demo video | https://youtu.be/bc-n_gHH1Rk |
 | Organizer dashboard | https://dashboard.nextvibe.io |
 
 <p align="center">
@@ -103,7 +103,7 @@ separate repositories.
 - **Solana Seeker / Android:** install NextVibe from the Solana dApp Store
   (`solanadappstore://details?id=com.nextvibe.app`) or download the APK:
   https://media.nextvibe.io/NextVibe.apk.
-- **iOS:** TODO(founder): App Store link after approval.
+- **iOS:** the App Store version is In Review.
 
 Tap to Meet needs two phones. An invite code is optional when you sign up.
 
@@ -189,5 +189,6 @@ Project on X: [@NextVibeWeb3](https://x.com/NextVibeWeb3). Security reports:
 
 ## License
 
-TODO(founder): choose a license. Until one is added, all rights are reserved, as the previous
-README stated.
+Source-available, all rights reserved: you can read the code, and build and run it to evaluate
+NextVibe (for example as a hackathon judge). Anything else needs written permission. See
+[LICENSE](LICENSE).

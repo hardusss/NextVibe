@@ -1,0 +1,46 @@
+NextVibe Source-Available License
+
+Copyright (c) 2025-2026 Danylo Klepar. All rights reserved.
+
+This repository is public so that people can read the code and evaluate NextVibe,
+including judges and organizers of hackathons the project is entered in, reviewers,
+potential partners and investors. It is not open-source software.
+
+1. What you may do
+
+   a. Read the source code and the documentation.
+   b. Clone the repository and build and run the software privately, to evaluate or
+      review NextVibe.
+   c. Link to this repository, and quote short excerpts of the code when reviewing or
+      discussing NextVibe.
+
+2. What you may not do without prior written permission from the copyright holder
+
+   a. Copy, modify, merge, publish, distribute, sublicense or sell the software or any
+      part of it, except as allowed in section 1.
+   b. Use the software or any part of it in another product or service, commercial or
+      not.
+   c. Run the software, or a modified version of it, as a service for others.
+   d. Use the NextVibe name, logo or other branding.
+
+3. Third-party material
+
+   Files by third parties that are included in this repository, such as the fonts in
+   frontend/NextVibe/assets/fonts and backend/NextVibeAPI/user/assets/cards and the
+   patches in frontend/NextVibe/patches, remain under their own licenses. Dependencies
+   installed by package managers are covered by their own licenses.
+
+4. Termination
+
+   Any use that breaks these terms ends the permissions in section 1 for that user.
+
+5. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+   INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+   PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+   LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+   USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Permission requests: dklepar29@gmail.com
