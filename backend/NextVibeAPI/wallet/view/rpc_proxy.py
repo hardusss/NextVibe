@@ -26,6 +26,37 @@ _session = requests.Session()
 _DAS_CACHE_METHODS = {"getAssetsByOwner"}
 _DAS_CACHE_TTL_SECONDS = 60
 
+# Methods that scan large parts of the chain. The app, its wallets and Jupiter
+# don't call them; getProgramAccounts is only used by the LazorKit SDK, for its
+# own program.
+_BLOCKED_METHODS = frozenset({
+    "getBlock", "getBlocks", "getBlocksWithLimit", "getBlockProduction",
+    "getLargestAccounts", "getSupply", "getVoteAccounts", "getClusterNodes",
+})
+_PROGRAM_ACCOUNTS_ALLOWED = frozenset({"LazorjRFNavitUaBu5m3WaNPjU1maipvSW2rZfAFAKi"})
+_MAX_BATCH = 20
+
+
+def _rejection(payload) -> str | None:
+    """Why this JSON-RPC payload isn't forwarded, or None when it is."""
+    if isinstance(payload, list):
+        if not payload or len(payload) > _MAX_BATCH:
+            return f"A batch holds 1 to {_MAX_BATCH} requests"
+        items = payload
+    else:
+        items = [payload]
+    for item in items:
+        if not isinstance(item, dict):
+            return "Invalid request"
+        method = item.get("method")
+        if method in _BLOCKED_METHODS:
+            return f"{method} is not available"
+        if method == "getProgramAccounts":
+            params = item.get("params") or [None]
+            if params[0] not in _PROGRAM_ACCOUNTS_ALLOWED:
+                return "getProgramAccounts is not available for this program"
+    return None
+
 
 def _das_cache_key(payload: dict) -> str | None:
     """Returns a cache key for a cacheable single JSON-RPC request, else None."""
@@ -65,11 +96,22 @@ class SolanaRpcProxyView(APIView):
                     status=400,
                 )
 
-            cache_key = None
             try:
-                cache_key = _das_cache_key(json.loads(body))
+                payload = json.loads(body)
             except (ValueError, TypeError):
-                pass  # Not JSON we understand — forward untouched.
+                return JsonResponse(
+                    {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}},
+                    status=400,
+                )
+            reason = _rejection(payload)
+            if reason:
+                return JsonResponse(
+                    {"jsonrpc": "2.0", "id": payload.get("id") if isinstance(payload, dict) else None,
+                     "error": {"code": -32601, "message": reason}},
+                    status=403,
+                )
+
+            cache_key = _das_cache_key(payload)
 
             if cache_key:
                 cached = cache.get(cache_key)
