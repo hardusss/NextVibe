@@ -12,6 +12,7 @@ import {
     useColorScheme,
     SafeAreaView,
     Animated,
+    BackHandler,
 } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import { Checkbox } from 'react-native-paper';
@@ -29,6 +30,8 @@ import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 import ButtonLazorKitSignIn from '../SignInViaWallet/ButtonLazorKitSignIn';
 import * as NavigationBar from 'expo-navigation-bar';
 import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
+import EmailCodeStep from '../Auth/EmailCodeStep';
+import { saveSession, sendEmailCode, verifyEmail, type CodeRequired } from '@/src/api/emailCodes';
 
 type FieldErrors = {
     username?: string;
@@ -53,6 +56,26 @@ export default function RegisterView() {
     const [strengthLabel, setStrengthLabel] = useState('');
     const [focusedInput, setFocusedInput] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+    // The account is made; the code sent to its email signs it in. Leaving
+    // this step goes to sign-in (the account exists, so the form can't be sent again).
+    const [codeStep, setCodeStep] = useState<CodeRequired | null>(null);
+
+    useEffect(() => {
+        if (!codeStep) return;
+        const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+            router.replace('/login');
+            return true;
+        });
+        return () => handler.remove();
+    }, [codeStep, router]);
+
+    const confirmEmail = async (code: string) => {
+        const session = await verifyEmail(email.trim(), password, code);
+        await saveSession(session);
+        Toast.show({ type: 'success', text1: 'Welcome to NextVibe 🎉', text2: 'Your account has been created.' });
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        navigateAfterSignIn(router, '/profile', 'push');
+    };
 
     const shakeAnims = useRef<Record<string, Animated.Value>>({
         username: new Animated.Value(0),
@@ -190,238 +213,256 @@ export default function RegisterView() {
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                     >
-                        <View style={styles.headerContainer}>
-                            <View style={styles.logoWrap}>
-                                <Image
-                                    source={require('../../assets/logo.png')}
-                                    style={styles.logo}
-                                    contentFit="contain"
-                                />
+                        {codeStep ? (
+                            <EmailCodeStep
+                                email={codeStep.email}
+                                title="Confirm your email"
+                                submitLabel="Confirm and continue"
+                                initialResendIn={codeStep.resendIn}
+                                initialError={codeStep.sendError}
+                                autoSubmit
+                                onSubmit={confirmEmail}
+                                onResend={() => sendEmailCode(codeStep.email, password)}
+                                onBack={() => router.replace('/login')}
+                                backLabel="Sign in instead"
+                            />
+                        ) : (
+                        <>
+                            <View style={styles.headerContainer}>
+                                <View style={styles.logoWrap}>
+                                    <Image
+                                        source={require('../../assets/logo.png')}
+                                        style={styles.logo}
+                                        contentFit="contain"
+                                    />
+                                </View>
+                                <Text style={styles.title}>Create account</Text>
+                                <Text style={styles.subtitle}>Start your vibe journey today</Text>
                             </View>
-                            <Text style={styles.title}>Create account</Text>
-                            <Text style={styles.subtitle}>Start your vibe journey today</Text>
-                        </View>
 
-                        <View style={styles.formContainer}>
+                            <View style={styles.formContainer}>
 
-                            {/* Username */}
-                            <Animated.View style={{ transform: [{ translateX: shakeAnims.username }] }}>
-                                <Text style={styles.inputLabel}>Username</Text>
-                                <View style={inputStyle('username')}>
-                                    <User size={18} color={iconColor('username')} style={styles.inputIcon} />
-                                    <TextInput
-                                        placeholder="your_username"
-                                        style={styles.input}
-                                        placeholderTextColor={colors.placeholder}
-                                        value={username}
-                                        onChangeText={t => { setUsername(t); clearFieldError('username'); }}
-                                        onFocus={() => setFocusedInput('username')}
-                                        onBlur={() => setFocusedInput(null)}
-                                    />
-                                </View>
-                                {hasError('username') && (
-                                    <View style={styles.errorRow}>
-                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
-                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
-                                            {fieldErrors.username}
+                                {/* Username */}
+                                <Animated.View style={{ transform: [{ translateX: shakeAnims.username }] }}>
+                                    <Text style={styles.inputLabel}>Username</Text>
+                                    <View style={inputStyle('username')}>
+                                        <User size={18} color={iconColor('username')} style={styles.inputIcon} />
+                                        <TextInput
+                                            placeholder="your_username"
+                                            style={styles.input}
+                                            placeholderTextColor={colors.placeholder}
+                                            value={username}
+                                            onChangeText={t => { setUsername(t); clearFieldError('username'); }}
+                                            onFocus={() => setFocusedInput('username')}
+                                            onBlur={() => setFocusedInput(null)}
+                                        />
+                                    </View>
+                                    {hasError('username') && (
+                                        <View style={styles.errorRow}>
+                                            <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                            <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                                {fieldErrors.username}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </Animated.View>
+
+                                {/* Email */}
+                                <Animated.View style={{ transform: [{ translateX: shakeAnims.email }] }}>
+                                    <Text style={styles.inputLabel}>Email</Text>
+                                    <View style={inputStyle('email')}>
+                                        <Mail size={18} color={iconColor('email')} style={styles.inputIcon} />
+                                        <TextInput
+                                            placeholder="you@example.com"
+                                            style={styles.input}
+                                            placeholderTextColor={colors.placeholder}
+                                            value={email}
+                                            onChangeText={t => { setEmail(t); clearFieldError('email'); }}
+                                            keyboardType="email-address"
+                                            autoCapitalize="none"
+                                            onFocus={() => setFocusedInput('email')}
+                                            onBlur={() => setFocusedInput(null)}
+                                        />
+                                    </View>
+                                    {hasError('email') && (
+                                        <View style={styles.errorRow}>
+                                            <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                            <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                                {fieldErrors.email}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </Animated.View>
+
+                                {/* Password */}
+                                <Animated.View style={{ transform: [{ translateX: shakeAnims.password }] }}>
+                                    <Text style={styles.inputLabel}>Password</Text>
+                                    <View style={inputStyle('password')}>
+                                        <Lock size={18} color={iconColor('password')} style={styles.inputIcon} />
+                                        <TextInput
+                                            placeholder="••••••••"
+                                            style={styles.input}
+                                            placeholderTextColor={colors.placeholder}
+                                            secureTextEntry={hidePassword}
+                                            value={password}
+                                            onChangeText={handlePasswordChange}
+                                            onFocus={() => setFocusedInput('password')}
+                                            onBlur={() => setFocusedInput(null)}
+                                        />
+                                        <TouchableOpacity
+                                            onPress={() => setHidePassword(v => !v)}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        >
+                                            {hidePassword
+                                                ? <EyeOff size={18} color={colors.iconInactive} />
+                                                : <Eye size={18} color={colors.iconInactive} />
+                                            }
+                                        </TouchableOpacity>
+                                    </View>
+                                    {hasError('password') && (
+                                        <View style={styles.errorRow}>
+                                            <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                            <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                                {fieldErrors.password}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </Animated.View>
+
+                                {/* Strength bar */}
+                                {password.length > 0 && (
+                                    <View style={styles.strengthContainer}>
+                                        <View style={styles.strengthBarContainer}>
+                                            {[0, 1, 2, 3].map(level => (
+                                                <View
+                                                    key={level}
+                                                    style={[
+                                                        styles.strengthBarItem,
+                                                        { backgroundColor: strengthScore > level ? getStrengthColor() : (isDark ? '#2A2440' : '#E5E5EA') },
+                                                    ]}
+                                                />
+                                            ))}
+                                        </View>
+                                        <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
+                                            {strengthLabel}
                                         </Text>
                                     </View>
                                 )}
-                            </Animated.View>
 
-                            {/* Email */}
-                            <Animated.View style={{ transform: [{ translateX: shakeAnims.email }] }}>
-                                <Text style={styles.inputLabel}>Email</Text>
-                                <View style={inputStyle('email')}>
-                                    <Mail size={18} color={iconColor('email')} style={styles.inputIcon} />
-                                    <TextInput
-                                        placeholder="you@example.com"
-                                        style={styles.input}
-                                        placeholderTextColor={colors.placeholder}
-                                        value={email}
-                                        onChangeText={t => { setEmail(t); clearFieldError('email'); }}
-                                        keyboardType="email-address"
-                                        autoCapitalize="none"
-                                        onFocus={() => setFocusedInput('email')}
-                                        onBlur={() => setFocusedInput(null)}
-                                    />
-                                </View>
-                                {hasError('email') && (
-                                    <View style={styles.errorRow}>
-                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
-                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
-                                            {fieldErrors.email}
+                                {/* Invite code */}
+                                <Animated.View style={{ transform: [{ translateX: shakeAnims.inviteCode }] }}>
+                                    <Text style={styles.inputLabel}>Invite code <Text style={styles.optionalTag}>(optional)</Text></Text>
+                                    <View style={inputStyle('inviteCode')}>
+                                        <Ticket size={18} color={iconColor('inviteCode')} style={styles.inputIcon} />
+                                        <TextInput
+                                            placeholder="XXXXXX"
+                                            style={styles.input}
+                                            placeholderTextColor={colors.placeholder}
+                                            value={inviteCode}
+                                            onChangeText={t => {
+                                                setInviteCode(t);
+                                                clearFieldError('inviteCode');
+                                            }}
+                                            autoCapitalize="characters"
+                                            autoCorrect={false}
+                                            maxLength={6}
+                                            onFocus={() => setFocusedInput('invite')}
+                                            onBlur={() => setFocusedInput(null)}
+                                        />
+                                        {inviteCode.length > 0 && (
+                                            <Text style={[
+                                                styles.codeCount,
+                                                { color: inviteCode.length === 6 ? ACCENT : colors.placeholder },
+                                            ]}>
+                                                {inviteCode.length}/6
+                                            </Text>
+                                        )}
+                                    </View>
+                                    {hasError('inviteCode') && (
+                                        <View style={styles.errorRow}>
+                                            <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                            <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                                {fieldErrors.inviteCode}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </Animated.View>
+
+                                {/* Terms */}
+                                <Animated.View style={{ transform: [{ translateX: shakeAnims.privacy }] }}>
+                                    <View style={styles.privacyContainer}>
+                                        <Checkbox.Android
+                                            status={checked ? 'checked' : 'unchecked'}
+                                            onPress={() => { setChecked(v => !v); clearFieldError('privacy'); }}
+                                            color={hasError('privacy') ? '#FF3B30' : ACCENT}
+                                            uncheckedColor={hasError('privacy') ? '#FF3B30' : colors.iconInactive}
+                                        />
+                                        <Text style={styles.privacyText}>
+                                            I agree to the{' '}
+                                            <Text style={styles.linkText} onPress={() => Linking.openURL('https://nextvibe.io/privacy')}>
+                                                Privacy Policy
+                                            </Text>
+                                            {' '}and{' '}
+                                            <Text style={styles.linkText} onPress={() => Linking.openURL('https://nextvibe.io/terms')}>
+                                                Terms of Use
+                                            </Text>
                                         </Text>
                                     </View>
-                                )}
-                            </Animated.View>
+                                    {hasError('privacy') && (
+                                        <View style={[styles.errorRow, { marginTop: -14, marginBottom: 10 }]}>
+                                            <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
+                                            <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
+                                                {fieldErrors.privacy}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </Animated.View>
 
-                            {/* Password */}
-                            <Animated.View style={{ transform: [{ translateX: shakeAnims.password }] }}>
-                                <Text style={styles.inputLabel}>Password</Text>
-                                <View style={inputStyle('password')}>
-                                    <Lock size={18} color={iconColor('password')} style={styles.inputIcon} />
-                                    <TextInput
-                                        placeholder="••••••••"
-                                        style={styles.input}
-                                        placeholderTextColor={colors.placeholder}
-                                        secureTextEntry={hidePassword}
-                                        value={password}
-                                        onChangeText={handlePasswordChange}
-                                        onFocus={() => setFocusedInput('password')}
-                                        onBlur={() => setFocusedInput(null)}
+                                <View style={{ marginTop: 8 }}>
+                                    <ButtonRegister
+                                        username={username}
+                                        email={email}
+                                        password={password}
+                                        strength={strengthLabel}
+                                        privacy={checked}
+                                        inviteCode={inviteCode}
+                                        onFieldError={setFieldError as (field: string, msg: string) => void}
+                                        onApiError={handleApiError}
+                                        onVerificationRequired={setCodeStep}
                                     />
-                                    <TouchableOpacity
-                                        onPress={() => setHidePassword(v => !v)}
-                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                    >
-                                        {hidePassword
-                                            ? <EyeOff size={18} color={colors.iconInactive} />
-                                            : <Eye size={18} color={colors.iconInactive} />
-                                        }
+                                </View>
+
+                                <View style={styles.dividerContainer}>
+                                    <View style={styles.dividerLine} />
+                                    <Text style={styles.dividerText}>or continue with</Text>
+                                    <View style={styles.dividerLine} />
+                                </View>
+
+                                {Platform.OS === 'ios' ? (
+                                    <View style={{ gap: 10 }}>
+                                        <View style={styles.socialRow}>
+                                            <GoogleIconButton page="register" />
+                                            <AppleButtonAuth page="register" />
+                                        </View>
+                                        <ButtonLazorKitSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                                    </View>
+                                ) : (
+                                    <View style={{ gap: 12 }}>
+                                        <GoogleButtonAuth page="register" />
+                                        <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                                    </View>
+                                )}
+
+                                <View style={styles.footerContainer}>
+                                    <Text style={styles.footerText}>Already have an account?</Text>
+                                    <TouchableOpacity onPress={() => router.replace('/login')}>
+                                        <Text style={styles.loginLink}> Sign in</Text>
                                     </TouchableOpacity>
                                 </View>
-                                {hasError('password') && (
-                                    <View style={styles.errorRow}>
-                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
-                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
-                                            {fieldErrors.password}
-                                        </Text>
-                                    </View>
-                                )}
-                            </Animated.View>
 
-                            {/* Strength bar */}
-                            {password.length > 0 && (
-                                <View style={styles.strengthContainer}>
-                                    <View style={styles.strengthBarContainer}>
-                                        {[0, 1, 2, 3].map(level => (
-                                            <View
-                                                key={level}
-                                                style={[
-                                                    styles.strengthBarItem,
-                                                    { backgroundColor: strengthScore > level ? getStrengthColor() : (isDark ? '#2A2440' : '#E5E5EA') },
-                                                ]}
-                                            />
-                                        ))}
-                                    </View>
-                                    <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
-                                        {strengthLabel}
-                                    </Text>
-                                </View>
-                            )}
-
-                            {/* Invite code */}
-                            <Animated.View style={{ transform: [{ translateX: shakeAnims.inviteCode }] }}>
-                                <Text style={styles.inputLabel}>Invite code <Text style={styles.optionalTag}>(optional)</Text></Text>
-                                <View style={inputStyle('inviteCode')}>
-                                    <Ticket size={18} color={iconColor('inviteCode')} style={styles.inputIcon} />
-                                    <TextInput
-                                        placeholder="XXXXXX"
-                                        style={styles.input}
-                                        placeholderTextColor={colors.placeholder}
-                                        value={inviteCode}
-                                        onChangeText={t => {
-                                            setInviteCode(t);
-                                            clearFieldError('inviteCode');
-                                        }}
-                                        autoCapitalize="characters"
-                                        autoCorrect={false}
-                                        maxLength={6}
-                                        onFocus={() => setFocusedInput('invite')}
-                                        onBlur={() => setFocusedInput(null)}
-                                    />
-                                    {inviteCode.length > 0 && (
-                                        <Text style={[
-                                            styles.codeCount,
-                                            { color: inviteCode.length === 6 ? ACCENT : colors.placeholder },
-                                        ]}>
-                                            {inviteCode.length}/6
-                                        </Text>
-                                    )}
-                                </View>
-                                {hasError('inviteCode') && (
-                                    <View style={styles.errorRow}>
-                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
-                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
-                                            {fieldErrors.inviteCode}
-                                        </Text>
-                                    </View>
-                                )}
-                            </Animated.View>
-
-                            {/* Terms */}
-                            <Animated.View style={{ transform: [{ translateX: shakeAnims.privacy }] }}>
-                                <View style={styles.privacyContainer}>
-                                    <Checkbox.Android
-                                        status={checked ? 'checked' : 'unchecked'}
-                                        onPress={() => { setChecked(v => !v); clearFieldError('privacy'); }}
-                                        color={hasError('privacy') ? '#FF3B30' : ACCENT}
-                                        uncheckedColor={hasError('privacy') ? '#FF3B30' : colors.iconInactive}
-                                    />
-                                    <Text style={styles.privacyText}>
-                                        I agree to the{' '}
-                                        <Text style={styles.linkText} onPress={() => Linking.openURL('https://nextvibe.io/privacy')}>
-                                            Privacy Policy
-                                        </Text>
-                                        {' '}and{' '}
-                                        <Text style={styles.linkText} onPress={() => Linking.openURL('https://nextvibe.io/terms')}>
-                                            Terms of Use
-                                        </Text>
-                                    </Text>
-                                </View>
-                                {hasError('privacy') && (
-                                    <View style={[styles.errorRow, { marginTop: -14, marginBottom: 10 }]}>
-                                        <AlertCircle size={12} color={isDark ? '#FF6B6B' : '#FF3B30'} />
-                                        <Text style={[styles.errorText, { color: isDark ? '#FF6B6B' : '#FF3B30' }]}>
-                                            {fieldErrors.privacy}
-                                        </Text>
-                                    </View>
-                                )}
-                            </Animated.View>
-
-                            <View style={{ marginTop: 8 }}>
-                                <ButtonRegister
-                                    username={username}
-                                    email={email}
-                                    password={password}
-                                    strength={strengthLabel}
-                                    privacy={checked}
-                                    inviteCode={inviteCode}
-                                    onFieldError={setFieldError as (field: string, msg: string) => void}
-                                    onApiError={handleApiError}
-                                />
                             </View>
-
-                            <View style={styles.dividerContainer}>
-                                <View style={styles.dividerLine} />
-                                <Text style={styles.dividerText}>or continue with</Text>
-                                <View style={styles.dividerLine} />
-                            </View>
-
-                            {Platform.OS === 'ios' ? (
-                                <View style={{ gap: 10 }}>
-                                    <View style={styles.socialRow}>
-                                        <GoogleIconButton page="register" />
-                                        <AppleButtonAuth page="register" />
-                                    </View>
-                                    <ButtonLazorKitSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
-                                </View>
-                            ) : (
-                                <View style={{ gap: 12 }}>
-                                    <GoogleButtonAuth page="register" />
-                                    <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
-                                </View>
-                            )}
-
-                            <View style={styles.footerContainer}>
-                                <Text style={styles.footerText}>Already have an account?</Text>
-                                <TouchableOpacity onPress={() => router.replace('/login')}>
-                                    <Text style={styles.loginLink}> Sign in</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                        </View>
+                        </>
+                        )}
                     </ScrollView>
                 </KeyboardAvoidingView>
             </SafeAreaView>

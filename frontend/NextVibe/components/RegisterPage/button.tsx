@@ -15,7 +15,8 @@ export default function ButtonRegister(props: RegisterButtonProps) {
         if (isLoading) return;
         setIsLoading(true);
         try {
-            await Register(props.username, props.email, props.password, router, props.inviteCode, props.strength, props.privacy);
+            const info = await Register(props.username, props.email, props.password, router, props.inviteCode, props.strength, props.privacy);
+            if (info) props.onVerificationRequired?.(info);
         } catch (error: any) {
             props.onApiError?.(error);
         } finally {

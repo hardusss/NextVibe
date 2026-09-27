@@ -871,6 +871,7 @@ function PageSettingsContent() {
                                 </IconChip>
                                 <View style={styles.rowBody}>
                                     <Text style={styles.rowText}>Reset Password</Text>
+                                    <Text style={styles.rowDescription}>With a code sent to your email</Text>
                                 </View>
                                 <ChevronRight size={18} color={colors.textSecondary} />
                             </TouchableOpacity>
@@ -922,6 +923,7 @@ function PageSettingsContent() {
             />
             <ResetPasswordSheet
                 isVisible={isVisibleResetPassword}
+                email={user?.email}
                 onClose={() => setIsVisibleResetPassword(false)}
                 onSuccess={() => {
                     showPopup('success', 'Success', 'Your password has been successfully changed');

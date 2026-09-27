@@ -38,6 +38,12 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 # /api/v1/nv/resend-webhook/. Empty: the endpoint rejects every call.
 RESEND_WEBHOOK_SECRET = os.environ.get("RESEND_WEBHOOK_SECRET", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Danylo from NextVibe <danylo@nextvibe.io>")
+# Sender of sign-in and password reset codes (verification/email_codes.py)
+EMAIL_CODE_FROM = os.environ.get("EMAIL_CODE_FROM", "") or DEFAULT_FROM_EMAIL
+# On: email + password accounts confirm their email with a code before login
+# and registration hand out tokens (Google, Apple and wallet sign-in never do).
+# Turn it on once the app version with the code screen is out.
+EMAIL_VERIFICATION_REQUIRED = os.environ.get("EMAIL_VERIFICATION_REQUIRED", "").strip().lower() in ("1", "true", "yes", "on")
 
 # Console logging for mint/collect diagnostics — the "posts" logger emits
 # INFO-level flow logs (prepare/submit/mint outcomes) in both environments.

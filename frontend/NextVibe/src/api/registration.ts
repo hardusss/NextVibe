@@ -5,6 +5,7 @@ import { storage } from '../utils/storage';
 import GetApiUrl from '../utils/url_api';
 import { Router } from 'expo-router';
 import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
+import { codeRequired, type CodeRequired } from './emailCodes';
 
 export default async function Register(
     username: string,
@@ -14,7 +15,7 @@ export default async function Register(
     inviteCode: string,
     strength?: string,
     privacy?: boolean,
-) {
+): Promise<CodeRequired | void> {
     if (!validationInput(username, email, password)) return;
 
     const weakStrengths = ['Too Weak', 'Weak'];
@@ -41,6 +42,9 @@ export default async function Register(
 
     try {
         const response = await axios.post(`${GetApiUrl()}/users/register/`, data);
+        // The account is made; the code sent to the email signs it in (the screen shows the code step)
+        const info = codeRequired(response.data, email);
+        if (info) return info;
 
         storage.setItem('id', `${response.data.user_id}`);
         storage.setItem('access', response.data.data.token.access);

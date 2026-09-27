@@ -18,16 +18,21 @@ from .views_pac import (
                             UserLookupView, SeekerShareView, seeker_card_image,
                             ProfileShareView, profile_card_image,
                         )
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
+from rest_framework_simplejwt.views import TokenRefreshView
+from .views_pac.login_view import TokenObtainView
+from verification.views import (
+    ForgotPasswordView, ResetPasswordView, SendEmailCodeView, VerifyEmailView,
 )
 
 urlpatterns = [
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/', TokenObtainView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("register/", RegisterUserView.as_view(), name='register_user'),
     path("login/", LoginUserView.as_view(), name='login_user'),
+    path("email/send-code/", SendEmailCodeView.as_view(), name="email_send_code"),
+    path("email/verify/", VerifyEmailView.as_view(), name="email_verify"),
+    path("password/forgot/", ForgotPasswordView.as_view(), name="password_forgot"),
+    path("password/reset/", ResetPasswordView.as_view(), name="password_reset"),
     path("google-sign-in/", GoogleRegisterView.as_view(), name="google_sing_in"),
     path("user-detail/<int:id>/", UserDetailView.as_view(), name="user-detail"),
     path("recommendations/<int:id>/", RecommendedUsersView.as_view(), name="recommendations_profiles"),
