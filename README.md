@@ -39,7 +39,7 @@ tap, give every attendee a POAP, and see on a live dashboard who came and who me
 
 - **Tap to Meet.** Phones find each other over NFC (Android emulates an NFC tag that iPhones
   read in the background), Bluetooth LE on both platforms, or a QR code on iPhone. The other
-  person confirms, and both get +1 REP. [How it works](docs/TAP_TO_MEET.md)
+  person confirms, and both get REP (+1 each outside events). [How it works](docs/TAP_TO_MEET.md)
 - **Proof of Meet.** Every meet gets a public card (`nextvibe.io/u/meet/…`) and one cNFT per
   person with both wallets as creators. The two can add one selfie, published only when both
   say yes.
