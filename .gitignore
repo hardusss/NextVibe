@@ -1,41 +1,44 @@
+# --- Secrets and local config (only .env.example files are committed) ---
+.env
 **/.env
-
 *.env
-*.log
-*.apk
-celerybeat-schedule
-backend/.venv/
-backend/NextVibeAPI/staticfiles
-
-backend/NextVibeAPI/media/
-
+.env.*
+!.env.example
+backend/NextVibeAPI/NextVibeAPI/.env
 backend/NextVibeAPI/posts/src/.env
 
-backend/NextVibeAPI/NextVibeAPI/.env
+# --- Personal-data exports and generated reports (never commit) ---
+*.xlsx
+backend/NextVibeAPI/nextvibe_analytics_charts.png
 
-__pycache__/
-*.pyc
-
-
-**/__pycache__/
-
-./.vscode
-./.idea
-.idea
-
-.idea/*
-
-**/__pycache__/
-*.pyc
-
-# Celery
+# --- Celery ---
+celerybeat-schedule*
 *.dat
 
-# Logs
-*.log
+# --- Python ---
+__pycache__/
+**/__pycache__/
+*.pyc
+backend/.venv/
+backend/NextVibeAPI/staticfiles
+backend/NextVibeAPI/media/
 
-# Native folders
+# --- Build output and binaries ---
+*.apk
+# the deploy workflow builds moderator_bin on the server
+moderation_service/moderator_bin
 frontend/NextVibe/android/
 frontend/NextVibe/ios/
 assets_index.js
 *.db
+
+# --- Throwaway scripts ---
+scripts_tmp/
+
+# --- Logs ---
+*.log
+
+# --- Editors and OS ---
+.DS_Store
+.idea
+.idea/*
