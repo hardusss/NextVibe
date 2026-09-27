@@ -209,6 +209,8 @@ export default function CustomChatScreen() {
     const [selectedActionMessage, setSelectedActionMessage] = useState<MessageItem | null>(null);
     const [safetyModalVisible, setSafetyModalVisible] = useState(false);
     const [safetyState, setSafetyState] = useState<SafetyState | null>(null);
+    // Whether messages to this person go end-to-end encrypted (their app has a key)
+    const [e2eeOn, setE2eeOn] = useState(false);
     const [wallpaperModalVisible, setWallpaperModalVisible] = useState(false);
     const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
     const [inputLayoutHeight, setInputLayoutHeight] = useState(70);
@@ -304,6 +306,16 @@ export default function CustomChatScreen() {
     useEffect(() => {
         if (currentUserId) CryptoService.ensurePublished(currentUserId);
     }, [currentUserId]);
+
+    useEffect(() => {
+        const otherId = otherUser?.user_id || partnerId;
+        if (!currentUserId || !otherId) return;
+        let active = true;
+        CryptoService.mode(currentUserId, otherId)
+            .then((mode) => { if (active) setE2eeOn(mode === 'v3'); })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [currentUserId, otherUser?.user_id, partnerId]);
 
     // The safety number is worked out from both people's device keys when the sheet opens
     useEffect(() => {
@@ -640,8 +652,14 @@ export default function CustomChatScreen() {
         }, 3000);
     };
 
-    const handleCameraPick = async () => {
+    // iOS won't show the camera or the photo picker while the "Add Media" sheet is still fading out
+    const closeMediaPicker = () => {
         setMediaPickerVisible(false);
+        return new Promise((resolve) => setTimeout(resolve, 450));
+    };
+
+    const handleCameraPick = async () => {
+        await closeMediaPicker();
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -675,26 +693,28 @@ export default function CustomChatScreen() {
     };
 
     const handleGalleryPick = async () => {
-        setMediaPickerVisible(false);
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            setToast({ visible: true, message: 'Gallery permission denied', isSuccess: false });
-            return;
-        }
-
+        await closeMediaPicker();
         const maxAllowed = 10 - selectedMediaFiles.length;
         if (maxAllowed <= 0) {
             setToast({ visible: true, message: 'Maximum 10 media files allowed', isSuccess: false });
             return;
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images', 'videos'],
-            allowsMultipleSelection: true,
-            selectionLimit: maxAllowed,
-            quality: 0.85,
-        });
+        // The system photo picker needs no library permission (iOS 14+, Android):
+        // people pick what to share without giving the app their whole library
+        let result: ImagePicker.ImagePickerResult;
+        try {
+            result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images', 'videos'],
+                allowsMultipleSelection: true,
+                selectionLimit: maxAllowed,
+                quality: 0.85,
+            });
+        } catch {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            setToast({ visible: true, message: "Couldn't open your photos", isSuccess: false });
+            return;
+        }
 
         if (!result.canceled && result.assets && result.assets.length > 0) {
             const newItems = result.assets.map(asset => {
@@ -710,6 +730,16 @@ export default function CustomChatScreen() {
             });
             setSelectedMediaFiles(prev => [...prev, ...newItems].slice(0, 10));
         }
+    };
+
+    /** Who wrote a message: live messages carry only sender_id, not the sender object */
+    const senderName = (msg: MessageItem | null | undefined): string => {
+        if (!msg) return 'User';
+        const senderId = msg.sender_id || msg.sender?.user_id;
+        if (senderId && senderId === currentUserId) return 'You';
+        if (msg.sender?.username && msg.sender.username !== 'Me') return msg.sender.username;
+        if (senderId && otherUser && senderId === otherUser.user_id) return otherUser.username;
+        return 'User';
     };
 
     const handleSendMessage = async () => {
@@ -807,7 +837,7 @@ export default function CustomChatScreen() {
             reply_to_snippet: replyToMessage ? {
                 id: replyToId,
                 sender_id: replyToMessage.sender_id,
-                sender_name: replyToMessage.sender?.username || 'User',
+                sender_name: senderName(replyToMessage),
                 text: replyToMessage.content || replyToMessage.text || '',
             } : null,
             sender: {
@@ -1168,7 +1198,7 @@ export default function CustomChatScreen() {
                             <UserBadges official={otherUser?.official} seekerVerified={otherUser?.seeker_verified} size={16} />
                         </View>
                         <Text style={[styles.partnerStatus, { color: colors.subtext }]}>
-                            {isTyping ? 'typing...' : otherUser?.is_online ? 'Online' : 'Encrypted Chat'}
+                            {isTyping ? 'typing…' : otherUser?.is_online ? 'Online' : e2eeOn ? 'End-to-end encrypted' : 'Chat'}
                         </Text>
                     </View>
                 </TouchableOpacity>
@@ -1316,7 +1346,7 @@ export default function CustomChatScreen() {
                                 <View style={[styles.actionBanner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
                                     <View style={[styles.bannerBar, { backgroundColor: wpColors.accent }]} />
                                     <View style={styles.bannerContent}>
-                                        <Text style={[styles.bannerTitle, { color: wpColors.accent }]}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
+                                        <Text style={[styles.bannerTitle, { color: wpColors.accent }]}>Replying to {senderName(replyToMessage)}</Text>
                                         <Text style={[styles.bannerText, { color: colors.subtext }]} numberOfLines={1}>
                                             {replyToMessage.content || replyToMessage.text}
                                         </Text>
@@ -1474,15 +1504,29 @@ export default function CustomChatScreen() {
                             </View>
 
                             <View style={styles.menuListCompact}>
-                                <TouchableOpacity style={[styles.menuItemCompact, { borderBottomColor: colors.divider }]} onPress={handleActionReply}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.menuItemCompact,
+                                        isActionMsgMine || !!(selectedActionMessage?.content || selectedActionMessage?.text)
+                                            ? { borderBottomColor: colors.divider }
+                                            : { borderBottomWidth: 0 },
+                                    ]}
+                                    onPress={handleActionReply}
+                                >
                                     <MessageSquare size={16} color={colors.accent} style={styles.menuIconCompact} />
                                     <Text style={[styles.menuTextCompact, { color: colors.text }]}>Reply</Text>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity style={[styles.menuItemCompact, { borderBottomColor: colors.divider }]} onPress={handleActionCopy}>
-                                    <Copy size={16} color={colors.text} style={styles.menuIconCompact} />
-                                    <Text style={[styles.menuTextCompact, { color: colors.text }]}>Copy Text</Text>
-                                </TouchableOpacity>
+                                {/* A photo-only message has no text to copy; the last row has no divider under it */}
+                                {!!(selectedActionMessage?.content || selectedActionMessage?.text) && (
+                                    <TouchableOpacity
+                                        style={[styles.menuItemCompact, isActionMsgMine ? { borderBottomColor: colors.divider } : { borderBottomWidth: 0 }]}
+                                        onPress={handleActionCopy}
+                                    >
+                                        <Copy size={16} color={colors.text} style={styles.menuIconCompact} />
+                                        <Text style={[styles.menuTextCompact, { color: colors.text }]}>Copy Text</Text>
+                                    </TouchableOpacity>
+                                )}
 
                                 {isActionMsgMine && (
                                     <>

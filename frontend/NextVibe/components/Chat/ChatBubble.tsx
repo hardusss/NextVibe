@@ -300,14 +300,16 @@ const ChatBubbleComponent: React.FC<Props> = ({
 
           {/* Media attachments */}
           {!isDeleted && message.media && message.media.length > 0 && (
-            <MediaGrid media={message.media} />
+            <MediaGrid media={message.media} onLongPress={handleLongPress} />
           )}
 
-          {/* Content text / tombstone */}
+          {/* Content text / tombstone (a photo-only message has none: no empty line under the photo) */}
           <View style={styles.contentWrapper}>
-            <Text style={[styles.text, isDeleted && styles.deletedText]}>
-              {isDeleted ? '🚫 This message was deleted' : message.content || (message as any).text}
-            </Text>
+            {(isDeleted || !!(message.content || (message as any).text)) && (
+              <Text style={[styles.text, isDeleted && styles.deletedText]}>
+                {isDeleted ? '🚫 This message was deleted' : message.content || (message as any).text}
+              </Text>
+            )}
 
             <View style={styles.statusContainer}>
               {message.edited_at && !isDeleted && (

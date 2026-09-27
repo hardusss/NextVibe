@@ -293,7 +293,9 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
 
   const messageContent = formatLastMessagePreview(activeLastMessage, currentUserId, chat.other_user);
   const messageTime = chat.last_message?.created_at ? timeAgo(chat.last_message.created_at) : '';
-  const avatarUri = chat.other_user.avatar || DEFAULT_AVATAR;
+  // A photo that can't load (deleted, relative URL) falls back to the default one, not an empty circle
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const avatarUri = (!avatarFailed && chat.other_user.avatar) || DEFAULT_AVATAR;
 
   const unreadCount =
     chat.unread_count ||
@@ -336,6 +338,7 @@ export default function ChatItem({ chat, onDelete }: ChatItemProps) {
                   style={styles.avatar}
                   contentFit="cover"
                   transition={200}
+                  onError={() => setAvatarFailed(true)}
                 />
                 {chat.other_user.is_online && (
                   <View style={[styles.onlineIndicator, { borderColor: isDark ? colors.bg : '#FFFFFF' }]} />

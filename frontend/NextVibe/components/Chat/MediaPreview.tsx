@@ -19,6 +19,7 @@ interface MediaPreviewProps {
   mediaKeys?: MediaKey[];
   /** Encrypted for another device. */
   locked?: boolean;
+  onLongPress?: () => void;
 }
 
 interface OnLoadEvent {
@@ -42,7 +43,7 @@ function FullScreenVideo({ uri, playing }: { uri: string; playing: boolean }) {
   return <VideoView player={player} style={styles.fullScreenMedia} contentFit="contain" nativeControls={true} />;
 }
 
-export default function MediaPreview({ uri: remoteUri, type, customSize, isInGrid, isTemp, uploadProgress, mediaKeys, locked }: MediaPreviewProps) {
+export default function MediaPreview({ uri: remoteUri, type, customSize, isInGrid, isTemp, uploadProgress, mediaKeys, locked, onLongPress }: MediaPreviewProps) {
   const opened = useOpenedMedia(remoteUri, locked ? null : mediaKeys);
   // The file to show: the remote one, or the local copy of an encrypted one ('' while it opens)
   const uri = locked ? '' : (opened.uri || '');
@@ -127,6 +128,8 @@ export default function MediaPreview({ uri: remoteUri, type, customSize, isInGri
     <TouchableOpacity
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       onPress={handleOpenModal}
+      onLongPress={onLongPress}
+      delayLongPress={280}
       activeOpacity={0.9}
     >
       <View

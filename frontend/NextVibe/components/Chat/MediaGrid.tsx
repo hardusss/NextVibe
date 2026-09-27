@@ -21,11 +21,13 @@ interface MediaItem {
 
 interface MediaGridProps {
   media: MediaItem[];
+  /** Holding a photo opens the message's actions, like holding its text */
+  onLongPress?: () => void;
 }
 
 const GRID_SPACING = 3;
 
-export default function MediaGrid({ media }: MediaGridProps) {
+export default function MediaGrid({ media, onLongPress }: MediaGridProps) {
   const { width: screenWidth } = useWindowDimensions();
   const isDark = useColorScheme() === 'dark';
   const colors = chatColors[isDark ? 'dark' : 'light'];
@@ -159,6 +161,7 @@ export default function MediaGrid({ media }: MediaGridProps) {
               uploadProgress={(item as any).uploadProgress}
               mediaKeys={item.enc}
               locked={item.locked}
+              onLongPress={onLongPress}
             />
             {isLastSlot && (
               <View style={[styles.remainingCountOverlay, { borderRadius: size.borderRadius }]}>
