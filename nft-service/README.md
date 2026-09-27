@@ -1,22 +1,70 @@
 # nft-service
 
-Bun + Elysia + Umi microservice that mints NextVibe compressed NFTs
-(Bubblegum) on Solana. The backend keypair pays every network fee and acts
-as the collection authority, so minting is gasless for users.
+Bun + Elysia + Umi service that mints NextVibe compressed NFTs (Metaplex Bubblegum) on Solana:
+post editions, event POAPs, Proof of Meet and the OG badge. The backend keypair pays every
+network fee and is the tree creator and collection authority, so minting is free for
+people. It also checks wallets for a Seeker Genesis Token.
 
-## Development
+On-chain flows are described in [docs/SOLANA.md](../docs/SOLANA.md).
+
+## How it fits in
+
+- **Called by:** the Django API and its Celery workers (`NFT_SERVICE_URL`, default
+  `http://localhost:3000`): the collectibles queue (`posts/src/collectible_mint.py`), collect
+  and publish (`posts/view_pac/collect.py`, `mint_nft.py`), the OG badge
+  (`user/views_pac/mint_og.py`), Seeker checks (`user/src/seeker_verification.py`) and backfill
+  commands.
+- **Calls:** Solana through `HELIUS_RPC_URL`, and the API for metadata JSON
+  (`https://api.nextvibe.io/api/v1/posts/<post_id>/metadata/<edition>/`, used for the on-chain
+  name). Proof of Meet names and URIs come from the API in the request.
+- **Stores:** nothing. One in-process lock serializes mints so leaf numbers never collide.
+
+## Run it
 
 ```bash
+cd nft-service
 bun install
-bun run dev
+cp .env.example .env     # fill it in
+bun run dev              # http://localhost:3000, restarts on changes
 ```
 
-Runs on http://localhost:3000. Required env vars: `SOLANA_PRIVATE_KEY`
-(base58), `HELIUS_RPC_URL`, `COLLECTION_ADDRESS`, `OG_COLLECTION_ADDRESS`,
-`MERKLE_TREE_ADDRESS`. Proof of Meet also needs `MEET_COLLECTION_ADDRESS`
-(create the collection once with `bun run src/create-meet-collection.ts`);
-until it's set, `/mint/meet` answers 503 and the backend keeps retrying.
-`MEET_METADATA_PREFIX` defaults to `https://api.nextvibe.io/meta/meet/`.
+In production it runs as the `nextvibe-nft` systemd unit, which the deploy workflow restarts
+(the unit file isn't in this repository).
+
+One-off setup scripts (each one sends a transaction and pays rent from the backend wallet):
+
+```bash
+bun run src/create-tree.ts             # Merkle tree: depth 14 (16,384 leaves), buffer 64, canopy 8
+bun run src/create-collection.ts       # a collection NFT (its current settings create the OG collection)
+bun run src/create-meet-collection.ts  # the Proof of Meet collection; refuses if MEET_COLLECTION_ADDRESS is set
+```
+
+## Environment variables
+
+Listed in [.env.example](.env.example).
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `SOLANA_PRIVATE_KEY` | yes | Base58 secret key of the backend wallet: fee payer for every mint, tree creator and collection authority |
+| `HELIUS_RPC_URL` | yes | Solana RPC URL with API key (Helius), used for sending transactions and Token-2022 scans |
+| `MERKLE_TREE_ADDRESS` | yes | Bubblegum Merkle tree that stores every compressed NFT leaf (create it with `bun run src/create-tree.ts`) |
+| `COLLECTION_ADDRESS` | yes | Collection for /mint and /collect/* (posts and event POAPs) |
+| `OG_COLLECTION_ADDRESS` | for OG badges | Collection for /mint/og (the OG badge) |
+| `MEET_COLLECTION_ADDRESS` | for Proof of Meet | Proof of Meet collection (create once with `bun run src/create-meet-collection.ts`); empty makes /mint/meet answer 503 |
+| `MEET_METADATA_PREFIX` | no | URL prefix of Proof of Meet metadata JSON (default https://api.nextvibe.io/meta/meet/) |
+
+## Files
+
+| File | What |
+|---|---|
+| `src/index.ts` | The HTTP service: every endpoint below |
+| `src/create-tree.ts` | Creates the Bubblegum Merkle tree |
+| `src/create-collection.ts`, `src/create-meet-collection.ts` | Create collection NFTs |
+
+## Tests
+
+There is no test suite; the `test` script in `package.json` is a placeholder. The API's tests fake this service
+(`posts/tests/test_collectibles.py`, `test_collect.py`, `test_meet_photos.py`).
 
 ## Endpoints
 
@@ -98,3 +146,20 @@ Returns: `{ success, signature, assetId }`
 
 Logging: successful collects log `postId`, `edition`, and the signature.
 The serialized transaction is never logged.
+
+### POST /asset-id-from-signature
+
+Reads the asset id and leaf index from a confirmed mint transaction. Used by the API's
+backfill command for old records.
+
+Body: `{ signature }` (base58 or base64)
+Returns: `{ success, assetId, nonce }`; `400 MISSING_SIGNATURE`, `404 ASSET_ID_NOT_FOUND`
+
+### POST /seeker/sgt-check
+
+Whether a wallet holds a Seeker Genesis Token: lists the wallet's Token-2022 accounts through
+the Helius RPC and checks each mint's authority and group against Solana Mobile's values.
+
+Body: `{ wallet }`
+Returns: `{ success, sgtMint }` (`null` when there is none); `400 INVALID_WALLET`,
+`502 SGT_CHECK_FAILED`
