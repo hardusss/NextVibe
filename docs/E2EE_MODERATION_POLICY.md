@@ -1,5 +1,10 @@
 # NextVibe End-to-End Encryption (E2EE) & Moderation Policy Trade-off Architecture
 
+> **Status (Sep 27, 2026):** this page describes the end-to-end encryption design and the
+> moderation policy that goes with it. The app doesn't use the device key exchange yet, so
+> chats are not end-to-end encrypted today. [SECURITY.md](SECURITY.md#chats-and-encryption)
+> describes what the code does now.
+
 ## 1. Executive Summary & Policy Decision
 With the rollout of End-to-End Encryption (Phase 3), message text and private media attachments are encrypted client-side using Double Ratchet / AES-256-GCM before transmission over the network and storage in the database.
 
