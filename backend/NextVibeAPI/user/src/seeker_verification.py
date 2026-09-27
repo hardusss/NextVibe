@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.db import IntegrityError
 from django.utils import timezone
 
-from posts.constants import NFT_SERVICE_URL
+from posts.constants import NFT_SERVICE_URL, nft_service_headers
 from user.src.send_push_message import send
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,7 @@ def check_sgt_onchain(wallet_address: str, force: bool = False):
     try:
         res = requests.post(
             url=f"{NFT_SERVICE_URL}/seeker/sgt-check",
+            headers=nft_service_headers(),
             json={"wallet": wallet_address},
             timeout=30,
         ).json()
@@ -90,8 +91,13 @@ def verify_seeker_in_background(user_id, wallet_address: str):
 
 def _verify_and_notify(user_id, wallet_address):
     from django.contrib.auth import get_user_model
+    from verification.wallets import is_proven
     user = get_user_model().all_objects.filter(user_id=user_id).first()
     if not user or not needs_onchain_check(user):
+        return
+    # The badge needs a wallet the account proved it controls (a signed message)
+    if not is_proven(user, wallet_address):
+        logger.info("seeker.verify user=%s wallet=%s result=unproven", user_id, wallet_address)
         return
 
     try:

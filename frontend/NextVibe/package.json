@@ -19,7 +19,8 @@
       "<rootDir>/src/proximity",
       "<rootDir>/src/stores",
       "<rootDir>/src/navigation",
-      "<rootDir>/src/notifications"
+      "<rootDir>/src/notifications",
+      "<rootDir>/src/services/e2ee"
     ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1"

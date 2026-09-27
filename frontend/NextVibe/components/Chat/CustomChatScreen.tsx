@@ -67,7 +67,8 @@ import WebSocketService from '@/src/services/WebSocketService';
 import ChatBubble from './ChatBubble';
 import P2PStatusBadge from './P2PStatusBadge';
 import ChatTransportManager from '@/src/services/ChatTransport';
-import CryptoService from '@/src/services/CryptoService';
+import CryptoService, { type MessageState, type SafetyState } from '@/src/services/CryptoService';
+import type { MediaKey } from '@/src/services/e2ee/core';
 import BackgroundUploadService from '@/src/services/BackgroundUploadService';
 import MediaUploadManager from '@/src/services/MediaUploadManager';
 import SafetyNumberModal from './SafetyNumberModal';
@@ -112,6 +113,10 @@ interface MessageItem {
     media?: any[];
     edited_at?: string | null;
     deleted_at?: string | null;
+    /** How the text was stored (e2ee = v3, opened on this phone). */
+    e2ee?: MessageState;
+    /** Keys of the message's encrypted photos and videos (kept when it's edited). */
+    e2ee_media?: MediaKey[];
 }
 
 interface DateSeparatorItem {
@@ -203,6 +208,9 @@ export default function CustomChatScreen() {
     const [actionModalVisible, setActionModalVisible] = useState(false);
     const [selectedActionMessage, setSelectedActionMessage] = useState<MessageItem | null>(null);
     const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+    const [safetyState, setSafetyState] = useState<SafetyState | null>(null);
+    // Whether messages to this person go end-to-end encrypted (their app has a key)
+    const [e2eeOn, setE2eeOn] = useState(false);
     const [wallpaperModalVisible, setWallpaperModalVisible] = useState(false);
     const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
     const [inputLayoutHeight, setInputLayoutHeight] = useState(70);
@@ -294,6 +302,34 @@ export default function CustomChatScreen() {
         };
     }, [chatId, partnerId]);
 
+    // Publish this phone's chat key so the other side can send it end-to-end encrypted messages
+    useEffect(() => {
+        if (currentUserId) CryptoService.ensurePublished(currentUserId);
+    }, [currentUserId]);
+
+    useEffect(() => {
+        const otherId = otherUser?.user_id || partnerId;
+        if (!currentUserId || !otherId) return;
+        let active = true;
+        CryptoService.mode(currentUserId, otherId)
+            .then((mode) => { if (active) setE2eeOn(mode === 'v3'); })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [currentUserId, otherUser?.user_id, partnerId]);
+
+    // The safety number is worked out from both people's device keys when the sheet opens
+    useEffect(() => {
+        if (!safetyModalVisible) return;
+        const otherId = otherUser?.user_id || partnerId;
+        if (!currentUserId || !otherId) return;
+        let active = true;
+        setSafetyState(null);
+        CryptoService.safetyNumber(currentUserId, otherId)
+            .then((state) => { if (active) setSafetyState(state); })
+            .catch(() => { if (active) setSafetyState({ status: 'offline' }); });
+        return () => { active = false; };
+    }, [safetyModalVisible, currentUserId, otherUser?.user_id, partnerId]);
+
     const deduplicateMessages = (list: MessageItem[]): MessageItem[] => {
         const seenKeys = new Set<string>();
         const result: MessageItem[] = [];
@@ -316,56 +352,45 @@ export default function CustomChatScreen() {
     };
 
     const decryptMessageItem = useCallback(async (msg: MessageItem): Promise<MessageItem> => {
-        let updated = { ...msg };
+        const me = currentUserId || 0;
+        const senderId = msg.sender_id || msg.sender?.user_id || 0;
+        // The other person in this chat (the older formats are keyed by both ids)
+        const otherId = otherUser?.user_id || partnerId || (senderId && senderId !== me ? senderId : undefined);
+        const updated: MessageItem = { ...msg };
 
         const raw = msg.content || msg.text || '';
         if (raw && typeof raw === 'string' && raw.trim().startsWith('{')) {
-            try {
-                const senderId = msg.sender_id || (msg.sender?.user_id) || 0;
-                const dec = await CryptoService.decryptMessage(
-                    currentUserId || 0,
-                    senderId,
-                    raw,
-                    otherUser?.user_id
-                );
-                updated.content = dec;
-                updated.text = dec;
-            } catch {
-                if (raw.includes('"ciphertext"')) {
-                    updated.content = '🔒 Encrypted message';
-                    updated.text = '🔒 Encrypted message';
+            const opened = await CryptoService.open(me, otherId, raw);
+            updated.content = opened.text;
+            updated.text = opened.text;
+            updated.e2ee = opened.state;
+            updated.e2ee_media = opened.media;
+            if (Array.isArray(updated.media) && updated.media.length > 0) {
+                if (opened.state === 'e2ee' && opened.media?.length) {
+                    const keys = opened.media;
+                    // Keys come in the order the files were sent; the rest are tried if that ever differs
+                    updated.media = updated.media.map((item: any, i: number) => ({
+                        ...item,
+                        enc: [keys[i], ...keys.filter((_, j) => j !== i)].filter(Boolean),
+                    }));
+                } else if (opened.state === 'locked') {
+                    updated.media = updated.media.map((item: any) => ({ ...item, locked: true }));
                 }
             }
         }
 
-        if (updated.reply_to_snippet && updated.reply_to_snippet.text) {
-            const replyRaw = updated.reply_to_snippet.text;
-            if (typeof replyRaw === 'string' && replyRaw.trim().startsWith('{')) {
-                try {
-                    const replySenderId = updated.reply_to_snippet.sender_id || 0;
-                    const decReply = await CryptoService.decryptMessage(
-                        currentUserId || 0,
-                        replySenderId,
-                        replyRaw,
-                        otherUser?.user_id
-                    );
-                    updated.reply_to_snippet = {
-                        ...updated.reply_to_snippet,
-                        text: decReply
-                    };
-                } catch {
-                    if (replyRaw.includes('"ciphertext"')) {
-                        updated.reply_to_snippet = {
-                            ...updated.reply_to_snippet,
-                            text: '🔒 Encrypted message'
-                        };
-                    }
-                }
-            }
+        const replyRaw = updated.reply_to_snippet?.text;
+        if (typeof replyRaw === 'string' && replyRaw.trim().startsWith('{')) {
+            const opened = await CryptoService.open(me, otherId, replyRaw);
+            const mediaLabel = opened.media?.some((m) => m.type?.includes('video')) ? '🎥 Video' : '📷 Photo';
+            updated.reply_to_snippet = {
+                ...updated.reply_to_snippet,
+                text: opened.text || (opened.media?.length ? mediaLabel : ''),
+            };
         }
 
         return updated;
-    }, [currentUserId, otherUser]);
+    }, [currentUserId, otherUser, partnerId]);
 
     const loadInitialMessages = useCallback(async () => {
         if (!chatId) return;
@@ -627,8 +652,14 @@ export default function CustomChatScreen() {
         }, 3000);
     };
 
-    const handleCameraPick = async () => {
+    // iOS won't show the camera or the photo picker while the "Add Media" sheet is still fading out
+    const closeMediaPicker = () => {
         setMediaPickerVisible(false);
+        return new Promise((resolve) => setTimeout(resolve, 450));
+    };
+
+    const handleCameraPick = async () => {
+        await closeMediaPicker();
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -662,26 +693,28 @@ export default function CustomChatScreen() {
     };
 
     const handleGalleryPick = async () => {
-        setMediaPickerVisible(false);
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            setToast({ visible: true, message: 'Gallery permission denied', isSuccess: false });
-            return;
-        }
-
+        await closeMediaPicker();
         const maxAllowed = 10 - selectedMediaFiles.length;
         if (maxAllowed <= 0) {
             setToast({ visible: true, message: 'Maximum 10 media files allowed', isSuccess: false });
             return;
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images', 'videos'],
-            allowsMultipleSelection: true,
-            selectionLimit: maxAllowed,
-            quality: 0.85,
-        });
+        // The system photo picker needs no library permission (iOS 14+, Android):
+        // people pick what to share without giving the app their whole library
+        let result: ImagePicker.ImagePickerResult;
+        try {
+            result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images', 'videos'],
+                allowsMultipleSelection: true,
+                selectionLimit: maxAllowed,
+                quality: 0.85,
+            });
+        } catch {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            setToast({ visible: true, message: "Couldn't open your photos", isSuccess: false });
+            return;
+        }
 
         if (!result.canceled && result.assets && result.assets.length > 0) {
             const newItems = result.assets.map(asset => {
@@ -697,6 +730,16 @@ export default function CustomChatScreen() {
             });
             setSelectedMediaFiles(prev => [...prev, ...newItems].slice(0, 10));
         }
+    };
+
+    /** Who wrote a message: live messages carry only sender_id, not the sender object */
+    const senderName = (msg: MessageItem | null | undefined): string => {
+        if (!msg) return 'User';
+        const senderId = msg.sender_id || msg.sender?.user_id;
+        if (senderId && senderId === currentUserId) return 'You';
+        if (msg.sender?.username && msg.sender.username !== 'Me') return msg.sender.username;
+        if (senderId && otherUser && senderId === otherUser.user_id) return otherUser.username;
+        return 'User';
     };
 
     const handleSendMessage = async () => {
@@ -743,7 +786,7 @@ export default function CustomChatScreen() {
             );
 
             try {
-                await editMessage(chatId, numMsgId, messageText, otherUser?.user_id);
+                await editMessage(chatId, numMsgId, messageText, otherUser?.user_id, editingMessage.e2ee_media);
                 setToast({ visible: true, message: 'Message edited', isSuccess: true });
             } catch (err: any) {
                 console.error('Failed to edit message:', err);
@@ -794,7 +837,7 @@ export default function CustomChatScreen() {
             reply_to_snippet: replyToMessage ? {
                 id: replyToId,
                 sender_id: replyToMessage.sender_id,
-                sender_name: replyToMessage.sender?.username || 'User',
+                sender_name: senderName(replyToMessage),
                 text: replyToMessage.content || replyToMessage.text || '',
             } : null,
             sender: {
@@ -1155,7 +1198,7 @@ export default function CustomChatScreen() {
                             <UserBadges official={otherUser?.official} seekerVerified={otherUser?.seeker_verified} size={16} />
                         </View>
                         <Text style={[styles.partnerStatus, { color: colors.subtext }]}>
-                            {isTyping ? 'typing...' : otherUser?.is_online ? 'Online' : 'Encrypted Chat'}
+                            {isTyping ? 'typing…' : otherUser?.is_online ? 'Online' : e2eeOn ? 'End-to-end encrypted' : 'Chat'}
                         </Text>
                     </View>
                 </TouchableOpacity>
@@ -1303,7 +1346,7 @@ export default function CustomChatScreen() {
                                 <View style={[styles.actionBanner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
                                     <View style={[styles.bannerBar, { backgroundColor: wpColors.accent }]} />
                                     <View style={styles.bannerContent}>
-                                        <Text style={[styles.bannerTitle, { color: wpColors.accent }]}>Replying to {replyToMessage.sender?.username || 'User'}</Text>
+                                        <Text style={[styles.bannerTitle, { color: wpColors.accent }]}>Replying to {senderName(replyToMessage)}</Text>
                                         <Text style={[styles.bannerText, { color: colors.subtext }]} numberOfLines={1}>
                                             {replyToMessage.content || replyToMessage.text}
                                         </Text>
@@ -1461,15 +1504,29 @@ export default function CustomChatScreen() {
                             </View>
 
                             <View style={styles.menuListCompact}>
-                                <TouchableOpacity style={[styles.menuItemCompact, { borderBottomColor: colors.divider }]} onPress={handleActionReply}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.menuItemCompact,
+                                        isActionMsgMine || !!(selectedActionMessage?.content || selectedActionMessage?.text)
+                                            ? { borderBottomColor: colors.divider }
+                                            : { borderBottomWidth: 0 },
+                                    ]}
+                                    onPress={handleActionReply}
+                                >
                                     <MessageSquare size={16} color={colors.accent} style={styles.menuIconCompact} />
                                     <Text style={[styles.menuTextCompact, { color: colors.text }]}>Reply</Text>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity style={[styles.menuItemCompact, { borderBottomColor: colors.divider }]} onPress={handleActionCopy}>
-                                    <Copy size={16} color={colors.text} style={styles.menuIconCompact} />
-                                    <Text style={[styles.menuTextCompact, { color: colors.text }]}>Copy Text</Text>
-                                </TouchableOpacity>
+                                {/* A photo-only message has no text to copy; the last row has no divider under it */}
+                                {!!(selectedActionMessage?.content || selectedActionMessage?.text) && (
+                                    <TouchableOpacity
+                                        style={[styles.menuItemCompact, isActionMsgMine ? { borderBottomColor: colors.divider } : { borderBottomWidth: 0 }]}
+                                        onPress={handleActionCopy}
+                                    >
+                                        <Copy size={16} color={colors.text} style={styles.menuIconCompact} />
+                                        <Text style={[styles.menuTextCompact, { color: colors.text }]}>Copy Text</Text>
+                                    </TouchableOpacity>
+                                )}
 
                                 {isActionMsgMine && (
                                     <>
@@ -1494,7 +1551,7 @@ export default function CustomChatScreen() {
                 visible={safetyModalVisible}
                 onClose={() => setSafetyModalVisible(false)}
                 contactName={partnerName}
-                safetyNumber={`1029 3847 5610 ${chatId.toString().padStart(4, '0')} 9283 7461 8234`}
+                state={safetyState}
             />
 
             <MediaPickerModal

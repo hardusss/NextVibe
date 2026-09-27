@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest, EventCheckin
+from ..src.proximity_presence import mark_sharing
 from user.models import User
 
 logger = logging.getLogger("posts.proximity")
@@ -97,6 +98,7 @@ class GenerateProximityTokenView(APIView):
 
         cache_key = f"{TOKEN_PREFIX}{token}"
         cache.set(cache_key, payload, timeout=TOKEN_TTL)
+        mark_sharing(request.user.user_id)
 
         logger.info(
             "proximity.token_generated user=%s type=%s event=%s",

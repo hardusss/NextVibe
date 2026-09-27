@@ -1,6 +1,6 @@
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
-from .models import Chat, Message
+from .models import Chat, Message, MessageReceipt
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 import logging
@@ -12,6 +12,17 @@ from user.src.blocking import blocked_user_ids
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
+
+VIDEO_EXTENSIONS = (".mp4", ".mov", ".m4v", ".webm")
+
+
+def last_message_media(message):
+    """Photo or video per attachment, for the chat list's "📷 Photo" label."""
+    return [
+        {"type": "video" if (name or "").lower().endswith(VIDEO_EXTENSIONS) else "image"}
+        for name in message.media.values_list("file", flat=True)
+    ]
+
 
 def get_avatar_url(user):
     try:
@@ -49,6 +60,11 @@ class ChatListView(APIView):
                     if not last_message:
                         continue
 
+                    # When the other person read it (for "Seen" on your own last message)
+                    read_at = (MessageReceipt.objects.filter(message=last_message, read_at__isnull=False)
+                               .exclude(user_id=last_message.sender_id)
+                               .order_by("read_at").values_list("read_at", flat=True).first())
+
                     # Per-user unread: messages from the other side without a read receipt for me.
                     unread_count = (
                         Message.objects
@@ -63,7 +79,11 @@ class ChatListView(APIView):
                         "unread_count": unread_count,
                         "last_message": {
                             "content": last_message.text or "",
-                            "created_at": last_message.created_at.isoformat() if last_message.created_at else ""
+                            "created_at": last_message.created_at.isoformat() if last_message.created_at else "",
+                            "sender_id": last_message.sender_id,
+                            "media": last_message_media(last_message),
+                            "is_read": read_at is not None,
+                            "read_at": read_at.isoformat() if read_at else None,
                         },
                         "other_user": {
                             "user_id": other_user.user_id,

@@ -12,6 +12,8 @@ import { getNotificationSettings, setWalletReminders as saveWalletReminders } fr
 import getUserDetail from "@/src/api/user.detail";
 import linkEmail from "@/src/api/link.email";
 import verifySeeker from "@/src/api/verify.seeker";
+import { useMwaAdapter } from "@/hooks/useMwaAdapter";
+import { signWalletProof } from "@/src/utils/walletProof";
 import { Switch } from "react-native-paper";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -120,6 +122,7 @@ function PageSettingsContent() {
     const [newEmail, setNewEmail] = useState("");
     const [isLinkingEmail, setIsLinkingEmail] = useState(false);
     const [isVerifyingSeeker, setIsVerifyingSeeker] = useState(false);
+    const { signMessage } = useMwaAdapter();
     const themePreference = useSettingsStore((state) => state.themePreference);
     const liquidGlassEnabled = useSettingsStore((state) => state.liquidGlassEnabled);
     const setThemePreference = useSettingsStore((state) => state.setThemePreference);
@@ -150,7 +153,12 @@ function PageSettingsContent() {
         if (isVerifyingSeeker) return;
         setIsVerifyingSeeker(true);
         try {
-            const result = await verifySeeker();
+            let result = await verifySeeker();
+            if (result.error === "WALLET_NOT_PROVEN" && Platform.OS === "android") {
+                // Once per wallet: its signature shows the wallet is theirs
+                const proof = await signWalletProof(signMessage);
+                if (proof) result = await verifySeeker(proof);
+            }
             if (result.seekerVerified) {
                 setUser((prev) => (prev ? { ...prev, seeker_verified: true } : prev));
                 showToast("You're Seeker Verified", true);
@@ -161,6 +169,10 @@ function PageSettingsContent() {
                 showToast("This Genesis Token is already linked to another NextVibe account.", false);
             } else if (result.error === "SGT_NOT_FOUND") {
                 showToast("No Seeker Genesis Token found in this wallet.", false);
+            } else if (result.error === "WALLET_NOT_PROVEN") {
+                showToast(Platform.OS === "android"
+                    ? "Sign the message with the wallet linked to your profile to verify."
+                    : "Verify on your Seeker: open NextVibe there and sign with this wallet.", false);
             } else {
                 showToast("Verification failed. Try again later.", false);
             }
@@ -859,6 +871,7 @@ function PageSettingsContent() {
                                 </IconChip>
                                 <View style={styles.rowBody}>
                                     <Text style={styles.rowText}>Reset Password</Text>
+                                    <Text style={styles.rowDescription}>With a code sent to your email</Text>
                                 </View>
                                 <ChevronRight size={18} color={colors.textSecondary} />
                             </TouchableOpacity>
@@ -910,6 +923,7 @@ function PageSettingsContent() {
             />
             <ResetPasswordSheet
                 isVisible={isVisibleResetPassword}
+                email={user?.email}
                 onClose={() => setIsVisibleResetPassword(false)}
                 onSuccess={() => {
                     showPopup('success', 'Success', 'Your password has been successfully changed');

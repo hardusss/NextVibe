@@ -53,6 +53,9 @@ class DeleteAccountView(APIView):
 
         # check_status caches ban state for 5 min — overwrite it immediately
         cache.set(f"user_ban_status_{user.user_id}", True, 300)
+        # No device can get a new access token for the deleted account
+        from user.src.sessions import revoke_refresh_tokens
+        revoke_refresh_tokens(user)
 
         # Proof of Meet photos the person is in come down everywhere we control
         # (after the scrub, so the v1 card that replaces them shows the deleted name)

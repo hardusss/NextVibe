@@ -16,6 +16,9 @@ export function parseISOToLocalDate(isoDate: string | null | undefined): Date | 
   return isNaN(date.getTime()) ? new Date(isoDate) : date;
 }
 
+/** "1 minute ago", "3 minutes ago" */
+const ago = (count: number, unit: string) => `${count} ${unit}${count === 1 ? '' : 's'} ago`;
+
 export default function timeAgo(timestamp: string | null): string {
   if (!timestamp) return '';
 
@@ -26,11 +29,11 @@ export default function timeAgo(timestamp: string | null): string {
   const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
 
   if (diff < 5) return 'just now';
-  if (diff < 60) return `${diff} seconds ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
-  if (diff < 2592000) return `${Math.floor(diff / 86400)} days ago`;
-  if (diff < 31536000) return `${Math.floor(diff / 2592000)} months ago`;
+  if (diff < 60) return ago(diff, 'second');
+  if (diff < 3600) return ago(Math.floor(diff / 60), 'minute');
+  if (diff < 86400) return ago(Math.floor(diff / 3600), 'hour');
+  if (diff < 2592000) return ago(Math.floor(diff / 86400), 'day');
+  if (diff < 31536000) return ago(Math.floor(diff / 2592000), 'month');
 
-  return `${Math.floor(diff / 31536000)} years ago`;
+  return ago(Math.floor(diff / 31536000), 'year');
 }

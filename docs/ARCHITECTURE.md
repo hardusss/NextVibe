@@ -41,9 +41,9 @@ flowchart LR
 |---|---|---|---|---|---|
 | API | `backend/NextVibeAPI` | Python 3, Django 4.2, DRF, Celery 5.5 | `manage.py`, `NextVibeAPI/wsgi.py`, `NextVibeAPI/celery.py` | 8000 in development | `nextvibe-backend`, `nextvibe-celery-worker`, `nextvibe-celery-beat` |
 | Realtime | `socket_service` | Python 3, FastAPI | `main.py` (`/ws`, `/api/v2/*`) | set by the unit (`realtime.nextvibe.io` in production) | `nextvibe-realtime` |
-| cNFT minting | `nft-service` | Bun, Elysia, Metaplex Umi | `src/index.ts` | 3000 | `nextvibe-nft` |
+| cNFT minting | `nft-service` | Bun, Elysia, Metaplex Umi | `src/index.ts` | `HOST:PORT` (default 127.0.0.1:3000) | `nextvibe-nft` |
 | Wallet history | `tx-indexer` | Bun, Elysia, BullMQ | `src/index.ts` | `PORT` (default 3000) | `nextvibe-indexer` |
-| Moderation | `moderation_service` | Go 1.22 | `main.go` | `PORT` (default 8080) | `nextvibe-moderation` |
+| Moderation | `moderation_service` | Go 1.22 | `main.go` | `HOST:PORT` (default 127.0.0.1:8080) | `nextvibe-moderation` |
 | App | `frontend/NextVibe` | Expo SDK 55, React Native 0.83 | `app/_layout.tsx` (expo-router) | — | EAS builds and OTA updates |
 
 The website (nextvibe.io, including the `/u/…` share pages) and the organizer dashboard
@@ -70,6 +70,12 @@ The website (nextvibe.io, including the `/u/…` share pages) and the organizer 
 - The API uses the same channel to reach the app without a socket of its own: it publishes
   `meet_photo` and `collectible` events there (`posts/src/realtime.py`), and the socket
   service delivers them to the user's connections.
+- Chats are end-to-end encrypted (v3): each app install publishes an X25519 public key
+  (`/api/v2/e2ee/devices`, table `e2ee_device` owned by the API's `e2ee` app), and the app
+  seals every message and chat file on the phone for all devices of both people
+  (`frontend/NextVibe/src/services/e2ee/`). The socket service stores and relays the sealed
+  text; chat files sit in the public bucket as sealed bytes under random names. See
+  [SECURITY.md](SECURITY.md#chats-and-encryption).
 
 ## Minting
 
@@ -80,6 +86,8 @@ The website (nextvibe.io, including the `/u/…` share pages) and the organizer 
    retries with back-off and respects a daily cap.
 3. nft-service signs with the backend keypair, pays the fee and mints into the shared
    Bubblegum tree. Metadata JSON is served by the API.
+4. Every call from the API carries `x-internal-secret` (`NFT_SERVICE_SECRET`);
+   `MINTS_DISABLED=true` makes nft-service refuse mints with 503 and the queue retries later.
 
 Details: [SOLANA.md](SOLANA.md).
 
@@ -87,8 +95,8 @@ Details: [SOLANA.md](SOLANA.md).
 
 - A new post is sent to moderation when the app finalizes it: Celery posts the text and media
   URLs to `http://127.0.0.1:8080/moderation`; the Go service checks them with OpenAI
-  `omni-moderation-latest` and calls back `/api/v1/posts/moderation-callback/`, which
-  approves or rejects the post and notifies the author.
+  `omni-moderation-latest` and calls back `/api/v1/posts/moderation-callback/` with
+  `X-Moderation-Secret`, which approves or rejects the post and notifies the author once.
 - Proof of Meet selfies and captions are checked synchronously before anyone sees them.
 - A Celery task removes posts still pending after 10 minutes.
 
@@ -111,7 +119,7 @@ Details: [SOLANA.md](SOLANA.md).
 | Redis db 1 | API | Cache: rate limits, Seeker check results, DAS answers, geocoding, the mint slot, tree status |
 | Redis (pub/sub) | API, socket service | `chat_pubsub_events`; presence, typing and per-user rate limits of the socket service |
 | Redis | tx-indexer | BullMQ queue `tx-fetch`, the busy-wallet counter |
-| Cloudflare R2, public bucket | API, socket service | Avatars, post media and previews, chat media, share cards (`media.nextvibe.io`) |
+| Cloudflare R2, public bucket | API, socket service | Avatars, post media and previews, chat media (random names; sealed on the phone in v3 chats), share cards (`media.nextvibe.io`) |
 | Cloudflare R2, private bucket | API | Proof of Meet selfie uploads, read through 10-minute signed URLs |
 
 Django migrations are not committed (`backend/.gitignore`); production generates them on the
@@ -146,7 +154,9 @@ host (`makemigrations` + `migrate`).
 ## Deployment
 
 Pushing `main` runs `.github/workflows/deploy.yml`: over SSH the host resets to `origin/main`,
-installs Python requirements (`backend/modules.txt`), runs `migrate` and `collectstatic`,
+installs Python requirements (`backend/modules.txt`), runs `migrate` (the `verification`
+and `e2ee` apps ship their migrations in the repo; the other apps' migrations are generated
+on the host) and `collectstatic`,
 builds the Go service, runs `bun install` for nft-service and tx-indexer, restarts the
 systemd units above and reloads nginx. The app ships through EAS builds and OTA updates; the
 two web apps are deployed separately.

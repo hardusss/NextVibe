@@ -20,8 +20,8 @@ class TwoFAView(APIView):
             user = User.objects.get(user_id=request.user.user_id)
             
             if user.secret_2fa:
-                qr_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/qrcodes/{user.email}_qr_code.png"
-                return Response({"data": {"code": user.secret_2fa, "qrcode": qr_url}})
+                qr = TwoFA(secret_key=user.secret_2fa).qr_data_uri(user.email)
+                return Response({"data": {"code": user.secret_2fa, "qrcode": qr}})
             else:
                 twoFa = TwoFA()
                 secret = twoFa.create_2fa(user.email)

@@ -26,6 +26,12 @@ import { BackHandler } from 'react-native';
 import ButtonWalletSignIn from '../SignInViaWallet/ButtonWalletSignIn';
 import ButtonLazorKitSignIn from '../SignInViaWallet/ButtonLazorKitSignIn';
 import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
+import EmailCodeStep from '../Auth/EmailCodeStep';
+import ForgotPassword from '../Auth/ForgotPassword';
+import { saveSession, sendEmailCode, verifyEmail, type CodeRequired, type Session } from '@/src/api/emailCodes';
+
+/** The sign-in form, the code that confirms the email, or forgot password. */
+type Step = { kind: 'signin' } | { kind: 'verify'; info: CodeRequired } | { kind: 'forgot' };
 
 export default function LoginView() {
     const router = useRouter();
@@ -39,24 +45,38 @@ export default function LoginView() {
     const [password, setPassword] = useState('');
     const [focusedInput, setFocusedInput] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [step, setStep] = useState<Step>({ kind: 'signin' });
 
     const { styles, colors } = getModernTheme(isDark, ACCENT_COLOR);
 
     useEffect(() => {
-        const handler = BackHandler.addEventListener('hardwareBackPress', () => true);
+        // Back leaves the code and forgot-password steps; the sign-in form stays put
+        const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+            if (step.kind !== 'signin') setStep({ kind: 'signin' });
+            return true;
+        });
         return () => handler.remove();
-    }, []);
+    }, [step.kind]);
 
     const handleLogin = async () => {
         if (isLoading) return;
         setIsLoading(true);
         try {
-            await Login(email, password, router);
+            const outcome = await Login(email, password, router);
+            if (outcome.status === 'verify') setStep({ kind: 'verify', info: outcome.info });
         } catch (e) {
             console.log(e);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    /** Signed in by a code: keep the button busy through the toast, then leave. */
+    const finishWithCode = async (session: Session, title: string) => {
+        await saveSession(session);
+        Toast.show({ type: 'success', text1: title, text2: 'Welcome to NextVibe.' });
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        navigateAfterSignIn(router, '/profile', 'push');
     };
 
     const handleWalletSuccess = (backendResponse: any) => {
@@ -105,126 +125,159 @@ export default function LoginView() {
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Header */}
-                    <View style={styles.headerContainer}>
-                        <View style={styles.logoWrap}>
-                            <Image
-                                source={require('../../assets/logo.png')}
-                                style={styles.logo}
-                                contentFit="contain"
-                            />
-                        </View>
-                        <Text style={styles.title}>Welcome back</Text>
-                        <Text style={styles.subtitle}>Sign in to continue your vibe</Text>
-                    </View>
-
-                    <View style={styles.formContainer}>
-
-                        {/* Email Input */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Email</Text>
-                            <View style={[styles.inputContainer, focusedInput === 'email' && styles.inputFocused]}>
-                                <Mail
-                                    size={18}
-                                    color={focusedInput === 'email' ? colors.iconActive : colors.iconInactive}
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    placeholder="you@example.com"
-                                    style={styles.input}
-                                    placeholderTextColor={colors.placeholderColor}
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    onFocus={() => setFocusedInput('email')}
-                                    onBlur={() => setFocusedInput(null)}
+                    {step.kind === 'verify' && (
+                        <EmailCodeStep
+                            email={step.info.email}
+                            title="Confirm your email"
+                            submitLabel="Confirm and sign in"
+                            initialResendIn={step.info.resendIn}
+                            initialError={step.info.sendError}
+                            autoSubmit
+                            onSubmit={async (code) => finishWithCode(await verifyEmail(email, password, code), 'Email confirmed')}
+                            onResend={() => sendEmailCode(email, password)}
+                            onBack={() => setStep({ kind: 'signin' })}
+                            backLabel="Back to sign in"
+                        />
+                    )}
+                    {step.kind === 'forgot' && (
+                        <ForgotPassword
+                            initialEmail={email}
+                            onDone={(session) => finishWithCode(session, 'Password updated')}
+                            onBack={() => setStep({ kind: 'signin' })}
+                        />
+                    )}
+                    {step.kind === 'signin' && (
+                    <>
+                        {/* Header */}
+                        <View style={styles.headerContainer}>
+                            <View style={styles.logoWrap}>
+                                <Image
+                                    source={require('../../assets/logo.png')}
+                                    style={styles.logo}
+                                    contentFit="contain"
                                 />
                             </View>
+                            <Text style={styles.title}>Welcome back</Text>
+                            <Text style={styles.subtitle}>Sign in to continue your vibe</Text>
                         </View>
 
-                        {/* Password Input */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Password</Text>
-                            <View style={[styles.inputContainer, focusedInput === 'password' && styles.inputFocused]}>
-                                <Lock
-                                    size={18}
-                                    color={focusedInput === 'password' ? colors.iconActive : colors.iconInactive}
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    placeholder="••••••••"
-                                    style={styles.input}
-                                    placeholderTextColor={colors.placeholderColor}
-                                    secureTextEntry={hidePassword}
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    onFocus={() => setFocusedInput('password')}
-                                    onBlur={() => setFocusedInput(null)}
-                                />
-                                <TouchableOpacity
-                                    onPress={() => setHidePassword(!hidePassword)}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                >
-                                    {hidePassword ? (
-                                        <EyeOff size={18} color={colors.iconInactive} />
-                                    ) : (
-                                        <Eye size={18} color={colors.iconInactive} />
-                                    )}
+                        <View style={styles.formContainer}>
+
+                            {/* Email Input */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Email</Text>
+                                <View style={[styles.inputContainer, focusedInput === 'email' && styles.inputFocused]}>
+                                    <Mail
+                                        size={18}
+                                        color={focusedInput === 'email' ? colors.iconActive : colors.iconInactive}
+                                        style={styles.inputIcon}
+                                    />
+                                    <TextInput
+                                        placeholder="you@example.com"
+                                        style={styles.input}
+                                        placeholderTextColor={colors.placeholderColor}
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                        onFocus={() => setFocusedInput('email')}
+                                        onBlur={() => setFocusedInput(null)}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Password Input */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Password</Text>
+                                <View style={[styles.inputContainer, focusedInput === 'password' && styles.inputFocused]}>
+                                    <Lock
+                                        size={18}
+                                        color={focusedInput === 'password' ? colors.iconActive : colors.iconInactive}
+                                        style={styles.inputIcon}
+                                    />
+                                    <TextInput
+                                        placeholder="••••••••"
+                                        style={styles.input}
+                                        placeholderTextColor={colors.placeholderColor}
+                                        secureTextEntry={hidePassword}
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        onFocus={() => setFocusedInput('password')}
+                                        onBlur={() => setFocusedInput(null)}
+                                    />
+                                    <TouchableOpacity
+                                        onPress={() => setHidePassword(!hidePassword)}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                        {hidePassword ? (
+                                            <EyeOff size={18} color={colors.iconInactive} />
+                                        ) : (
+                                            <Eye size={18} color={colors.iconInactive} />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.forgotLink}
+                                onPress={() => setStep({ kind: 'forgot' })}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                                <Text style={styles.forgotText}>Forgot password?</Text>
+                            </TouchableOpacity>
+
+                            {/* Login Button */}
+                            <TouchableOpacity
+                                style={styles.loginButton}
+                                onPress={handleLogin}
+                                activeOpacity={0.8}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.loginButtonText}>Sign in</Text>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* Divider */}
+                            <View style={styles.dividerContainer}>
+                                <View style={styles.dividerLine} />
+                                <Text style={styles.dividerText}>or continue with</Text>
+                                <View style={styles.dividerLine} />
+                            </View>
+
+                            {Platform.OS === 'ios' ? (
+                                <View style={{ gap: 10 }}>
+                                    {/* Google + Apple side by side */}
+                                    <View style={styles.socialRow}>
+                                        <GoogleIconButton page="login" />
+                                        <AppleButtonAuth page="login" />
+                                    </View>
+                                    {/* Full-width Lazorkit button */}
+                                    <ButtonLazorKitSignIn
+                                        onSuccess={handleWalletSuccess}
+                                        onError={handleWalletError}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={{ gap: 12 }}>
+                                    <GoogleButtonAuth page="login" />
+                                    <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
+                                </View>
+                            )}
+
+                            {/* Footer */}
+                            <View style={styles.footerContainer}>
+                                <Text style={styles.footerText}>Don't have an account?</Text>
+                                <TouchableOpacity onPress={() => router.replace('/register')}>
+                                    <Text style={styles.registerLink}> Register</Text>
                                 </TouchableOpacity>
                             </View>
+
                         </View>
-
-                        {/* Login Button */}
-                        <TouchableOpacity
-                            style={styles.loginButton}
-                            onPress={handleLogin}
-                            activeOpacity={0.8}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.loginButtonText}>Sign in</Text>
-                            )}
-                        </TouchableOpacity>
-
-                        {/* Divider */}
-                        <View style={styles.dividerContainer}>
-                            <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>or continue with</Text>
-                            <View style={styles.dividerLine} />
-                        </View>
-
-                        {Platform.OS === 'ios' ? (
-                            <View style={{ gap: 10 }}>
-                                {/* Google + Apple side by side */}
-                                <View style={styles.socialRow}>
-                                    <GoogleIconButton page="login" />
-                                    <AppleButtonAuth page="login" />
-                                </View>
-                                {/* Full-width Lazorkit button */}
-                                <ButtonLazorKitSignIn
-                                    onSuccess={handleWalletSuccess}
-                                    onError={handleWalletError}
-                                />
-                            </View>
-                        ) : (
-                            <View style={{ gap: 12 }}>
-                                <GoogleButtonAuth page="login" />
-                                <ButtonWalletSignIn onSuccess={handleWalletSuccess} onError={handleWalletError} />
-                            </View>
-                        )}
-
-                        {/* Footer */}
-                        <View style={styles.footerContainer}>
-                            <Text style={styles.footerText}>Don't have an account?</Text>
-                            <TouchableOpacity onPress={() => router.replace('/register')}>
-                                <Text style={styles.registerLink}> Register</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                    </View>
+                    </>
+                    )}
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -323,6 +376,18 @@ const getModernTheme = (isDark: boolean, accentColor: string) => {
             color: isDark ? '#FFFFFF' : '#000000',
             fontSize: 15,
             fontFamily: 'Dank Mono',
+            includeFontPadding: false,
+        },
+        forgotLink: {
+            alignSelf: 'flex-end',
+            marginTop: -6,
+            marginBottom: 6,
+            marginRight: 4,
+        },
+        forgotText: {
+            color: accentColor,
+            fontSize: 13,
+            fontFamily: 'Dank Mono Bold',
             includeFontPadding: false,
         },
         loginButton: {

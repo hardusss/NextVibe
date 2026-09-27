@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Dimensions, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PlayCircle, X } from 'lucide-react-native';
+import { Lock, PlayCircle, X } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import type { MediaKey } from '@/src/services/e2ee/core';
+import { useOpenedMedia } from '@/hooks/useOpenedMedia';
 
 interface MediaPreviewProps {
   uri: string;
@@ -13,6 +15,11 @@ interface MediaPreviewProps {
   isInGrid?: boolean;
   isTemp?: boolean;
   uploadProgress?: number;
+  /** End-to-end encrypted media: opened into a local file before it's shown. */
+  mediaKeys?: MediaKey[];
+  /** Encrypted for another device. */
+  locked?: boolean;
+  onLongPress?: () => void;
 }
 
 interface OnLoadEvent {
@@ -22,7 +29,25 @@ interface OnLoadEvent {
   };
 }
 
-export default function MediaPreview({ uri, type, customSize, isInGrid, isTemp, uploadProgress }: MediaPreviewProps) {
+/** The player exists only while a video is open full screen. */
+function FullScreenVideo({ uri, playing }: { uri: string; playing: boolean }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+  });
+
+  React.useEffect(() => {
+    if (playing) player.play();
+    else player.pause();
+  }, [playing, player]);
+
+  return <VideoView player={player} style={styles.fullScreenMedia} contentFit="contain" nativeControls={true} />;
+}
+
+export default function MediaPreview({ uri: remoteUri, type, customSize, isInGrid, isTemp, uploadProgress, mediaKeys, locked, onLongPress }: MediaPreviewProps) {
+  const opened = useOpenedMedia(remoteUri, locked ? null : mediaKeys);
+  // The file to show: the remote one, or the local copy of an encrypted one ('' while it opens)
+  const uri = locked ? '' : (opened.uri || '');
+  const unavailable = locked || opened.failed;
   const [isLoading, setIsLoading] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -31,26 +56,15 @@ export default function MediaPreview({ uri, type, customSize, isInGrid, isTemp, 
 
   // Auto-detect video type if not explicitly provided
   const isVideo = type === 'video' || (
-    uri && (
-      uri.toLowerCase().includes('.mp4') ||
-      uri.toLowerCase().includes('.mov') ||
-      uri.toLowerCase().includes('.m4v') ||
-      uri.toLowerCase().includes('.webm') ||
-      uri.startsWith('data:video/')
+    remoteUri && (
+      remoteUri.toLowerCase().includes('.mp4') ||
+      remoteUri.toLowerCase().includes('.mov') ||
+      remoteUri.toLowerCase().includes('.m4v') ||
+      remoteUri.toLowerCase().includes('.webm') ||
+      remoteUri.startsWith('data:video/')
     )
   );
 
-  const fullScreenPlayer = isVideo && uri ? useVideoPlayer(uri, (player) => {
-    player.loop = true;
-  }) : null;
-
-  React.useEffect(() => {
-    if (isFullScreen && isPlaying && isVideo && fullScreenPlayer) {
-      fullScreenPlayer.play();
-    } else if (fullScreenPlayer) {
-      fullScreenPlayer.pause();
-    }
-  }, [isFullScreen, isPlaying, isVideo, fullScreenPlayer]);
 
   React.useEffect(() => {
     if (isVideo && uri) {
@@ -98,6 +112,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid, isTemp, 
   };
 
   const handleOpenModal = () => {
+    if (!uri) return;
     setIsFullScreen(true);
     setIsPlaying(true);
   };
@@ -113,6 +128,8 @@ export default function MediaPreview({ uri, type, customSize, isInGrid, isTemp, 
     <TouchableOpacity
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       onPress={handleOpenModal}
+      onLongPress={onLongPress}
+      delayLongPress={280}
       activeOpacity={0.9}
     >
       <View
@@ -124,7 +141,16 @@ export default function MediaPreview({ uri, type, customSize, isInGrid, isTemp, 
           backgroundColor: '#15151e',
         }}
       >
-        {!isVideo ? (
+        {unavailable ? (
+          <View style={[StyleSheet.absoluteFill, styles.loadingContainer]}>
+            <Lock size={22} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.lockedText}>{locked ? 'Encrypted for another device' : "Can't open this file"}</Text>
+          </View>
+        ) : !uri ? (
+          <View style={[StyleSheet.absoluteFill, styles.loadingContainer]}>
+            <ActivityIndicator color="#a78bfa" />
+          </View>
+        ) : !isVideo ? (
           <>
             {isLoading && (
               <View style={[StyleSheet.absoluteFill, styles.loadingContainer]}>
@@ -221,14 +247,7 @@ export default function MediaPreview({ uri, type, customSize, isInGrid, isTemp, 
             contentFit="contain"
           />
         ) : (
-          fullScreenPlayer && (
-            <VideoView
-              player={fullScreenPlayer}
-              style={styles.fullScreenMedia}
-              contentFit="contain"
-              nativeControls={true}
-            />
-          )
+          isFullScreen && !!uri && <FullScreenVideo uri={uri} playing={isPlaying} />
         )}
       </View>
     </Modal>
@@ -289,6 +308,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
+  },
+  lockedText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
   uploadProgressText: {
     color: '#ffffff',

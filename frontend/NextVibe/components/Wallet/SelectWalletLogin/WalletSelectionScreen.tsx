@@ -22,6 +22,7 @@ import Web3Toast from '@/components/Shared/Toasts/Web3Toast';
 import { walletLogger, WalletTag, extractErrorMessage } from '@/src/utils/walletLogger';
 import { retryPendingWalletSave } from '@/src/services/walletDeepLink';
 import haptics from '@/src/utils/haptics';
+import { signWalletProof } from '@/src/utils/walletProof';
 
 const COLORS = {
   dark: {
@@ -71,7 +72,7 @@ const WalletSelectionScreen = () => {
   const colors = isDark ? COLORS.dark : COLORS.light;
   const router = useRouter();
   const { page } = useLocalSearchParams();
-  const { account, connect, disconnect } = useMwaAdapter();
+  const { account, connect, disconnect, signMessage } = useMwaAdapter();
 
   const isMounted = useRef(true);
 
@@ -126,8 +127,11 @@ const WalletSelectionScreen = () => {
       if (!connectedAcc) return;
 
       const walletAddr = connectedAcc.address.toString();
+      // One signature proves the wallet is theirs (Seeker Verified needs it); declining still links it
+      const proof = await signWalletProof(signMessage);
+      if (!isMounted.current) return;
       try {
-        await saveWallet(walletAddr);
+        await saveWallet(walletAddr, proof);
         if (!isMounted.current) return;
         walletLogger.info(WalletTag.MWA, `WalletSelectionScreen: saveWallet succeeded for ${walletAddr}, redirecting to /wallet-dash`);
         router.push('/wallet-dash');
@@ -146,7 +150,7 @@ const WalletSelectionScreen = () => {
     } finally {
       if (isMounted.current) setIsConnecting(false);
     }
-  }, [account, connect, disconnect, isConnecting]);
+  }, [account, connect, disconnect, isConnecting, signMessage]);
 
   const handleIosWalletConnect = useCallback(async (walletType: 'phantom' | 'solflare' | 'backpack') => {
     if (isConnecting) return;

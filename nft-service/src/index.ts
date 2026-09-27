@@ -20,6 +20,7 @@ import {
 } from '@solana/spl-token'
 import bs58 from 'bs58'
 import { config } from 'dotenv'
+import { isAuthorized, mintsDisabled, MINT_ROUTES } from './internal-auth'
 
 config()
 
@@ -69,6 +70,13 @@ const MAX_NAME_BYTES = 32;
 const MAX_URI_BYTES = 200;
 /** Merkle tree address for storing compressed NFT leaves */
 const MERKLE_TREE_ADDRESS = process.env.MERKLE_TREE_ADDRESS!;
+
+/** Shared with the API, which sends it as x-internal-secret on every call */
+const INTERNAL_SECRET = process.env.NFT_SERVICE_SECRET ?? '';
+if (!INTERNAL_SECRET) console.warn('NFT_SERVICE_SECRET is not set: every caller is accepted');
+/** Only the API on this host calls the service */
+const HOST = process.env.HOST || '127.0.0.1';
+const PORT = Number(process.env.PORT || 3000);
 
 /** SPL Memo program */
 const MEMO_PROGRAM_ID = publicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
@@ -247,6 +255,21 @@ const memoWithUserSigner = (memo: string, userPubkey: string) => {
 };
 
 new Elysia()
+
+    /**
+     * Every route needs the API's shared secret, and MINTS_DISABLED stops the
+     * routes that spend from the backend wallet (the API's queue waits).
+     */
+    .onBeforeHandle(({ request, set }: { request: Request, set: any }) => {
+        if (!isAuthorized(INTERNAL_SECRET, request.headers.get('x-internal-secret'))) {
+            set.status = 401
+            return { success: false, error: 'UNAUTHORIZED' }
+        }
+        if (mintsDisabled() && MINT_ROUTES.has(new URL(request.url).pathname)) {
+            set.status = 503
+            return { success: false, error: 'MINTS_DISABLED' }
+        }
+    })
 
     /**
      * GET /tree
@@ -666,10 +689,14 @@ new Elysia()
             signature = await umi.rpc.sendTransaction(tx, { skipPreflight: true, maxRetries: 3 })
             log("collect.submit.sent", { postId, edition, signature: bs58.encode(signature) })
             const latest = await umi.rpc.getLatestBlockhash()
-            await umi.rpc.confirmTransaction(signature, {
+            const confirmed = await umi.rpc.confirmTransaction(signature, {
                 strategy: { type: 'blockhash', ...latest },
                 commitment: 'confirmed',
             })
+            // Without preflight a rejected transaction still confirms: never record a collect that isn't there
+            if (confirmed?.value?.err) {
+                throw new Error(`collect failed on-chain: ${JSON.stringify(confirmed.value.err)}`)
+            }
             log("collect.submit.confirmed", {
                 postId, edition,
                 signature: bs58.encode(signature),
@@ -789,6 +816,6 @@ new Elysia()
         }
     })
 
-    .listen(3000)
+    .listen({ port: PORT, hostname: HOST })
 
-console.log("NFT service running on port 3000")
+console.log(`NFT service running on http://${HOST}:${PORT}`)

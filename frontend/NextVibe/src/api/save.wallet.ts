@@ -3,8 +3,10 @@ import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
 import { walletLogger, WalletTag, extractErrorMessage } from "../utils/walletLogger";
 import { startLanding } from "../stores/collectiblesStore";
+import type { WalletProof } from "../utils/walletProof";
 
-export default async function saveWallet(walletAddress: string) {
+/** `proof` (a signed verify message) marks the wallet proven; linking works without it. */
+export default async function saveWallet(walletAddress: string, proof?: WalletProof | null) {
     const TOKEN = await storage.getItem("access");
     const url = `${GetApiUrl()}/users/save-wallet/`;
 
@@ -27,9 +29,7 @@ export default async function saveWallet(walletAddress: string) {
     };
 
     try {
-        const response = await axios.post(url, {
-            walletAddress
-        }, config);
+        const response = await axios.post(url, proof ? { walletAddress, proof } : { walletAddress }, config);
         walletLogger.info(WalletTag.API, `saveWallet: Successfully linked wallet address ${walletAddress}`, response.data);
         // Everything saved off-chain is on its way to this wallet now:
         // "Putting 7 collectibles on Solana…", whichever screen connected it

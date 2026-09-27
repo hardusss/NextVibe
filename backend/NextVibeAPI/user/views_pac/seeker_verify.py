@@ -11,6 +11,7 @@ from user.src.seeker_verification import (
     check_sgt_onchain,
     grant_seeker_verified,
 )
+from verification.wallets import check_proof, is_proven, record_proof
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,11 @@ class SeekerVerifyView(APIView):
     Manual "Verify Seeker" action from the profile. Runs the on-chain
     Genesis Token check synchronously (bypassing the 24h cache) and
     returns { seekerVerified, source, error }.
+
+    The linked wallet must be proven: a wallet sign-in, or a signed
+    "Verify wallet for NextVibe" message sent here (or to save-wallet) as
+    `proof` = {message, signature}. Otherwise the answer is
+    400 WALLET_NOT_PROVEN and the app asks the wallet to sign.
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
@@ -38,6 +44,20 @@ class SeekerVerifyView(APIView):
                 {"seekerVerified": bool(user.seeker_verified), "source": user.seeker_verified_source, "error": "NO_WALLET"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        if not is_proven(user, user.wallet_address):
+            proof = request.data.get("proof") if hasattr(request.data, "get") else None
+            proof_error = check_proof(user.wallet_address, proof) if proof is not None else "missing"
+            if proof_error:
+                if proof is not None:
+                    logger.warning("seeker.verify user=%s wallet=%s proof refused: %s",
+                                   user.user_id, user.wallet_address, proof_error)
+                return Response(
+                    {"seekerVerified": bool(user.seeker_verified), "source": user.seeker_verified_source,
+                     "error": "WALLET_NOT_PROVEN"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            record_proof(user, user.wallet_address)
 
         try:
             mint = check_sgt_onchain(user.wallet_address, force=True)

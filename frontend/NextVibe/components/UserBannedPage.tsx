@@ -63,7 +63,7 @@ export default function UserBannedPage() {
                 </Text>
 
                 <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                    We noticed activity that goes against our community guidelines.
+                    Something on your account goes against our guidelines.
                 </Text>
 
                 <Text style={[styles.subtitle, { color: theme.text, marginTop: 12 }]}>

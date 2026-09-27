@@ -44,15 +44,18 @@ async function bootstrap(): Promise<void> {
   worker = startWorker();
 
   const app = new Elysia()
+    // API docs at /swagger outside production only
     .use(
-      swagger({
-        documentation: {
-          info: {
-            title: "NextVibe TX Indexer",
-            version: "1.0.0",
-          },
-        },
-      })
+      env.NODE_ENV === "production"
+        ? new Elysia({ name: "no-swagger" })
+        : swagger({
+            documentation: {
+              info: {
+                title: "NextVibe TX Indexer",
+                version: "1.0.0",
+              },
+            },
+          })
     )
     .get("/health", async ({ set }) => {
       const [mysqlOk, redisOk] = await Promise.all([pingMysql(), pingRedis()]);

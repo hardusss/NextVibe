@@ -845,9 +845,10 @@ class ModerationTests(MeetPhotoTestCase):
             with self.assertRaises(moderation.ModerationUnavailable):
                 REAL_IMAGE_PASSES("https://r2/signed.jpg", ref=self.slug)
 
+    @override_settings(MODERATION_CALLBACK_SECRET="s3cret")
     def test_callback_ignores_photo_checks(self):
         response = APIClient().post("/api/v1/posts/moderation-callback/", {"id": "meet-photo-AbC", "files": []},
-                                    format="json")
+                                    format="json", HTTP_X_MODERATION_SECRET="s3cret")
         self.assertEqual(response.json(), {"status": "ignored"})
 
 
@@ -857,7 +858,7 @@ class MintTests(MeetPhotoTestCase):
         bodies = []
         assets = iter([PHOTOGRAPHER_ASSET, SUBJECT_ASSET])
 
-        def post(url, json, timeout):
+        def post(url, json, timeout, headers=None):
             bodies.append(json)
             response = mock.Mock(status_code=200)
             response.json.return_value = {"success": True, "assetId": next(assets), "signature": "sig"}

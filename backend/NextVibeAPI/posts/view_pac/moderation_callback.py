@@ -1,20 +1,30 @@
+import hmac
+
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ..models import Post
+from ..src.moderation_notify import notify_author
 from django.contrib.auth import get_user_model
-from user.models import Notification
-from user.src.clear_notify_cache import clear_notification_cache
 
 User = get_user_model()
 
 
 class ModerationCallbackView(APIView):
     """
-    Webhook endpoint for get result moderation from go service
+    Result callback from the Go moderation service. Only calls carrying the
+    shared X-Moderation-Secret are accepted; without MODERATION_CALLBACK_SECRET
+    every call is refused (the Celery task already applies each result).
     """
-    
+    authentication_classes = []
+
     def post(self, request):
+        expected = getattr(settings, "MODERATION_CALLBACK_SECRET", "")
+        given = request.headers.get("X-Moderation-Secret", "")
+        if not expected or not hmac.compare_digest(given.encode(), expected.encode()):
+            return Response({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
         data = request.data
         post_id = data.get("id")
         
@@ -48,30 +58,5 @@ class ModerationCallbackView(APIView):
         post.moderation_status = "approved" if post_passed else "denied"
         post.save(update_fields=['categories', 'is_approved', 'moderation_status'])
         
-        # Notify user if post moderation is not success
-        if not post_passed:
-            reason = data.get("reason", "violated our guidelines")
-            existing = Notification.objects.filter(
-                recipient=post.owner,
-                post=post,
-            ).exists()
-            if not existing:
-                Notification.objects.create(
-                    recipient=post.owner,
-                    post=post,
-                    notification_type="moderation_fail",
-                    text_preview=f"Your post was rejected: {reason}"
-                )
-        else:
-            existing = Notification.objects.filter(
-                recipient=post.owner,
-                post=post,
-            ).exists()
-            if not existing:
-                Notification.objects.create(
-                    recipient=post.owner,
-                    post=post,
-                    notification_type="moderation_success",
-                    text_preview=f"Post published successfully"
-                ) 
+        notify_author(post, post_passed, data.get("reason"))
         return Response({"status": "ok"}, status=status.HTTP_200_OK)

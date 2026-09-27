@@ -21,8 +21,16 @@ and each app's `urls.py`); nothing here is planned or hypothetical.
 - The default permission is `AllowAny`, so every private view sets `IsAuthenticated` itself.
   Public views are marked **public** below.
 - Rate limits are per view (`ScopedRateThrottle` scopes in
-  `backend/NextVibeAPI/NextVibeAPI/setting/prod.py`, e.g. `auth` 10/min, `post` 15/min,
-  `mint` 5/min, `rpc_proxy` 300/min). There is no global default throttle.
+  `backend/NextVibeAPI/NextVibeAPI/setting/prod.py`, e.g. `auth` 30/min, `email_code` 5/min,
+  `email_code_check` 10/min, `post` 15/min, `mint` 5/min, `rpc_proxy` 300/min). There is no
+  global default throttle.
+- **Email confirmation** (`EMAIL_VERIFICATION_REQUIRED=true`): an email + password account
+  that hasn't confirmed its email gets no tokens. `POST /users/register/` answers `201` with
+  `{"verification_required": true, "email", "user_id", "resendIn"}`, and `/users/login/` and
+  `/users/token/` answer `403 {"code": "EMAIL_NOT_VERIFIED", "email", "resendIn"}`; both send a
+  6-digit code (`sendError` says when the email couldn't go out). `POST /users/email/verify/`
+  with `{email, password, code}` answers like login. Google, Apple and wallet sign-in never
+  ask for a code. With the switch off, nothing changes.
 - The socket service (realtime chat) accepts the same access token; see
   [ARCHITECTURE.md](ARCHITECTURE.md#realtime).
 
@@ -35,10 +43,14 @@ and each app's `urls.py`); nothing here is planned or hypothetical.
 | POST | `/users/google-sign-in/` | Sign in or sign up with a Google ID token |
 | POST | `/users/apple-sign-in/` | Sign in or sign up with an Apple identity token |
 | POST | `/users/wallet-sign-in/` | Sign in or sign up with a Solana wallet |
-| POST | `/users/token/` | simplejwt token pair from email and password |
+| POST | `/users/token/` | simplejwt token pair from email and password (login rate limit; `403 EMAIL_NOT_VERIFIED` like login) |
+| POST | `/users/email/send-code/` | A new code to confirm the email (`{email, password}`; `429 COOLDOWN` with `retryIn`) |
+| POST | `/users/email/verify/` | Confirm the email with the code (`{email, password, code}`); answers like login |
+| POST | `/users/password/forgot/` | Email a password reset code (`{email}`; the same answer whether or not an account has it) |
+| POST | `/users/password/reset/` | Set a new password with the code (`{email, code, newPassword}`); signs out other devices, answers like login |
 | POST | `/users/token/refresh/` | New access token from a refresh token |
 | GET, POST, PUT | `/users/2fa/` | Two-factor authentication setup and checks |
-| PUT | `/users/reset-password/` | Change the password |
+| PUT | `/users/reset-password/` | Change the password with an authenticator code (older app versions) |
 | POST | `/users/link-email/` | Add an email to a wallet-only account |
 | GET | `/users/check-status/` | Whether the signed-in account is banned |
 | DELETE | `/users/delete-account/` | Anonymizing soft delete of the account |
@@ -60,9 +72,9 @@ and each app's `urls.py`); nothing here is planned or hypothetical.
 | GET | `/users/count-unread-notifications/` | Unread notification count |
 | PUT | `/users/read-notifications/` | Mark notifications read |
 | GET, POST | `/users/save-push-token/` (alias `/users/me/push-token/`) | Read or store the Expo push token (one per account) |
-| POST, DELETE | `/users/save-wallet/` | Link or unlink the user's Solana wallet |
+| POST, DELETE | `/users/save-wallet/` | Link or unlink the user's Solana wallet; an optional `proof` (`{message: "Verify wallet for NextVibe.\nNonce: <ms>", signature: [64 bytes]}`) marks it proven (`walletProven`) |
 | GET | `/users/invite-info/` | The user's invite code and how many people used it |
-| POST | `/users/seeker/verify/` | Check the linked wallet for a Seeker Genesis Token and grant Seeker Verified |
+| POST | `/users/seeker/verify/` | Check the linked wallet for a Seeker Genesis Token and grant Seeker Verified; `400 WALLET_NOT_PROVEN` until the wallet is proven (send `proof` as for save-wallet) |
 | POST | `/users/mint-og/` | Mint the user's OG badge cNFT (limited edition) |
 | GET | `/users/<id>/share/` | **public** Data for the profile share page |
 | GET | `/users/<id>/card.png` | **public** Profile link-preview card |
@@ -136,8 +148,8 @@ See [TAP_TO_MEET.md](TAP_TO_MEET.md).
 |---|---|---|
 | POST | `/posts/proximity/generate-token/` | Short-lived token a phone broadcasts over NFC, Bluetooth or QR |
 | POST | `/posts/proximity/verify-token/` | Resolve a received token (`preview: true` shows who it is before confirming) |
-| POST | `/posts/irl-tap/` | Record a Tap to Meet outside an event |
-| POST | `/posts/event-nfc-connect/` | Record a tap between two people checked in to the same event |
+| POST | `/posts/irl-tap/` | Record a Tap to Meet outside an event (older builds; `403 NOT_SHARING` unless the other person has Tap to Meet open) |
+| POST | `/posts/event-nfc-connect/` | Record a tap between two people checked in to the same event (older builds; `403 NOT_SHARING` as above) |
 
 ## Proof of Meet — `/meet/` and `/meta/meet/`
 
@@ -191,7 +203,7 @@ Messages themselves flow through the socket service; these routes manage chat li
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/chat/chats/` | The user's chats |
+| GET | `/chat/chats/` | The user's chats; `last_message` has `content`, `created_at`, `sender_id`, `media` (`[{type: image\|video}]`), `is_read` and `read_at` |
 | GET | `/chat/unread-count/` | Unread messages count |
 | GET | `/chat/online-users/` | Which contacts are online |
 | POST | `/chat/create-chat/` | Start a chat |
@@ -200,6 +212,22 @@ Messages themselves flow through the socket service; these routes manage chat li
 | GET | `/cherry-members` | Members of the Cherry group |
 | GET, POST | `/cherry-mute` | Mute state of the Cherry group chat |
 | POST | `/cherry-webhook` | Webhook from Cherry |
+
+## Realtime service — `https://realtime.nextvibe.io/api/v2`
+
+The socket service (`socket_service`) checks the same access token. Chat messages go over
+`wss://realtime.nextvibe.io/ws`; these REST routes cover history and keys.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/messages/<chat_id>` | Chat history (stored text is a v3 envelope, an older envelope or plain text) |
+| POST | `/messages/chat/<chat_id>/read` | Mark a chat read |
+| POST | `/media/upload-url` | Presigned upload URL for a chat file (named `chat_media/chat_<chat>_<random>`) |
+| POST, DELETE | `/messages/<id>/reactions` | Add or remove a reaction |
+| PATCH, DELETE | `/messages/<id>` | Edit or delete a message |
+| POST | `/e2ee/devices` | Publish this install's X25519 public key (`{device_id, public_key}`) |
+| GET | `/e2ee/devices?user_ids=1,2` | Public keys of up to 20 people, to seal a message for all their devices |
+| POST | `/chat/report-message` | Report a message with its decrypted text (not stored yet; see [E2EE_MODERATION_POLICY.md](E2EE_MODERATION_POLICY.md#4-reporting)) |
 
 ## Email, push and webhooks (root paths on `api.nextvibe.io`)
 

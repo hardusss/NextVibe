@@ -2,26 +2,26 @@ import validationInput from "../validation/login-validator";
 import axios from "axios";
 import GetApiUrl from "../utils/url_api";
 import Toast from "react-native-toast-message";
-import { storage } from "../utils/storage";
 import { Router } from "expo-router";
 import { navigateAfterSignIn } from '@/src/navigation/afterSignIn';
+import { apiErrorMessage, codeRequired, saveSession, type CodeRequired } from "./emailCodes";
 
-export default async function Login(email: string, password: string, router: Router){
+export type LoginOutcome =
+    | { status: "signed-in" }
+    /** The email isn't confirmed yet: a code went to it (see emailCodes.ts). */
+    | { status: "verify"; info: CodeRequired }
+    | { status: "failed" };
+
+export default async function Login(email: string, password: string, router: Router): Promise<LoginOutcome> {
 
     const validation: boolean = validationInput(email, password);
     if (!validation) {
-        return;
+        return { status: "failed" };
     }
 
-    const data = {
-        email: email,
-        password: password 
-    }
-    axios.post(`${GetApiUrl()}/users/login/`, data)
-    .then(response => {
-        storage.setItem("id", `${response.data.user_id}`)
-        storage.setItem("access", response.data.token.access)
-        storage.setItem("refresh", response.data.token.refresh)
+    try {
+        const response = await axios.post(`${GetApiUrl()}/users/login/`, { email, password });
+        await saveSession(response.data);
         Toast.show({
             type: 'success',
             text1: 'Signed in',
@@ -30,13 +30,15 @@ export default async function Login(email: string, password: string, router: Rou
         setTimeout(() => {
             navigateAfterSignIn(router, "/profile", "push");
         }, 2000)
-
-    })
-    .catch(error => {
+        return { status: "signed-in" };
+    } catch (error: any) {
+        const info = error?.response?.status === 403 ? codeRequired(error.response.data, email) : null;
+        if (info) return { status: "verify", info };
         Toast.show({
             type: 'error',
             text1: 'Sign-in failed',
-            text2: error.message
+            text2: apiErrorMessage(error, error?.message ?? 'Please try again.')
         });
-    });
+        return { status: "failed" };
+    }
 }

@@ -83,6 +83,8 @@ INSTALLED_APPS = [
     'posts',
     'chat',
     'wallet',
+    'verification',
+    'e2ee',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -92,6 +94,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    # Records issued refresh tokens so a password change can revoke them (user/src/sessions.py)
+    'rest_framework_simplejwt.token_blacklist',
     'cloudinary',
     'cloudinary_storage',
     "storages",
@@ -132,6 +136,10 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute='*/2'),
     },
     # Connect-a-wallet reminders that are due (10:00–21:00 local time)
+    'flush-expired-refresh-tokens-daily': {
+        'task': 'posts.tasks.flush_expired_refresh_tokens',
+        'schedule': crontab(hour=3, minute=30),
+    },
     'wallet-reminders-hourly': {
         'task': 'posts.tasks.send_wallet_reminders',
         'schedule': crontab(minute=5),
@@ -155,7 +163,9 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=90),
     "ROTATE_REFRESH_TOKENS": True,  
-    "BLACKLIST_AFTER_ROTATION": True,
+    # Off on purpose: two tabs or requests refreshing at once must not sign
+    # someone out. Tokens are revoked on password changes and account deletion.
+    "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": True,
     'USER_ID_FIELD': 'user_id',
     'USER_ID_CLAIM': 'user_id', 
@@ -178,6 +188,9 @@ REST_FRAMEWORK = {
         "profile_edit": "10/min",
         "2fa": "5/min",
         "password_reset": "5/min",
+        # Email codes: sending, and checking a code (verification/views.py)
+        "email_code": "5/min",
+        "email_code_check": "10/min",
         "save_push_token": "5/min",
         "seeker_verify": "5/min",
         "follow": "40/min", 
@@ -186,7 +199,9 @@ REST_FRAMEWORK = {
         "readers": "100/min",
         "search": "100/min",
         "notifications": "150/min",  
-        "auth": "10/min",
+        "auth": "30/min",
+        # Wallet sign-in; people at one event often share an IP
+        "wallet_auth": "30/min",
         'invite': '30/min',
 
         # Posts/Feed

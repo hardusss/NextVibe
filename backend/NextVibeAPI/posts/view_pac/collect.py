@@ -40,6 +40,7 @@ from ..constants import (
     COLLECT_IRL_RESERVED_EDITIONS,
     COLLECT_MAX_EDITIONS,
     NFT_SERVICE_URL,
+    nft_service_headers,
 )
 from ..models import PendingClaim, Post, Reputation, UserCollection
 from ..src import collectibles
@@ -264,6 +265,7 @@ class CollectPrepareView(APIView):
             try:
                 mint_res = requests.post(
                     url=f"{NFT_SERVICE_URL}/mint",
+                    headers=nft_service_headers(),
                     json={
                         "recipient": request.user.wallet_address,
                         "postId": post.id,
@@ -303,6 +305,7 @@ class CollectPrepareView(APIView):
         try:
             prep_res = requests.post(
                 url=f"{NFT_SERVICE_URL}/collect/prepare",
+                headers=nft_service_headers(),
                 json={
                     "recipient": request.user.wallet_address,
                     "postId": post.id,
@@ -383,6 +386,7 @@ class CollectSubmitView(APIView):
         try:
             submit_raw = requests.post(
                 url=f"{NFT_SERVICE_URL}/collect/submit",
+                headers=nft_service_headers(),
                 json={
                     "signedTransaction": signed_tx,
                     "messageHash": claim.message_hash,

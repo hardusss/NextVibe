@@ -1,27 +1,35 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { 
-    View, 
-    Text, 
-    TouchableOpacity, 
-    StyleSheet, 
-    useColorScheme, 
-    TextInput, 
-    Vibration, 
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    StyleSheet,
+    useColorScheme,
     ActivityIndicator,
-    Keyboard
+    Keyboard,
+    Platform,
 } from 'react-native';
 import {
     BottomSheetModal,
     BottomSheetView,
     BottomSheetBackdrop,
-    BottomSheetBackdropProps
+    BottomSheetBackdropProps,
+    BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import { KeyRound, ShieldAlert } from 'lucide-react-native';
-import resetPassword from "@/src/api/reset.password";
-import { usePopup } from "../Popup";
+import {
+    apiErrorMessage,
+    requestPasswordReset,
+    resetPasswordWithCode,
+    retryAfter,
+    saveSession,
+} from '@/src/api/emailCodes';
+import haptics from '@/src/utils/haptics';
 
 interface Props {
     isVisible: boolean;
+    /** Where the code goes; without one there's nothing to reset with. */
+    email?: string | null;
     onClose: () => void;
     onSuccess: () => void;
 }
@@ -48,32 +56,49 @@ const lightColors = {
     inputBackground: "transparent"
 };
 
-const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
+const MIN_PASSWORD = 8;
+
+/**
+ * Settings → Reset password: a 6-digit code goes to the account's email,
+ * then the code and the new password set it. This device stays signed in
+ * (the answer carries a new session); every other device is signed out.
+ */
+const ResetPasswordSheet = ({ isVisible, email, onClose, onSuccess }: Props) => {
     const bottomSheetModalRef = useRef<BottomSheetModal>(null);
     const colorScheme = useColorScheme();
     const isDarkMode = colorScheme === 'dark';
     const colors = isDarkMode ? darkColors : lightColors;
     const styles = getStyles(colors);
-    const { showPopup } = usePopup();
-    
+
+    const [step, setStep] = useState<'start' | 'code'>('start');
     const [code, setCode] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [passwordError, setPasswordError] = useState('');
+    const [error, setError] = useState('');
+    const [notice, setNotice] = useState('');
+    const [resendIn, setResendIn] = useState(0);
 
     useEffect(() => {
         if (isVisible) {
+            setStep('start');
             setCode('');
             setPassword('');
             setConfirmPassword('');
-            setPasswordError('');
+            setError('');
+            setNotice('');
             bottomSheetModalRef.current?.present();
         } else {
             Keyboard.dismiss();
             bottomSheetModalRef.current?.dismiss();
         }
     }, [isVisible]);
+
+    useEffect(() => {
+        if (resendIn <= 0) return;
+        const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [resendIn]);
 
     const handleSheetChanges = useCallback((index: number) => {
         if (index === -1) {
@@ -93,54 +118,50 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
         [isDarkMode]
     );
 
-    const handleCodeChange = (text: string) => {
-        const formattedText = text.replace(/[^0-9]/g, '').slice(0, 6);
-        setCode(formattedText);
-    };
-
-    const validatePassword = () => {
-        if (password.length < 8) {
-            setPasswordError('Password must be at least 8 characters long');
-            return false;
+    const sendCode = async () => {
+        if (!email || isLoading || resendIn > 0) return;
+        setIsLoading(true);
+        setError('');
+        setNotice('');
+        try {
+            setResendIn(await requestPasswordReset(email));
+            if (step === 'code') setNotice('A new code is on its way.');
+            setStep('code');
+        } catch (e) {
+            const wait = retryAfter(e);
+            if (wait) setResendIn(wait);
+            setError(apiErrorMessage(e, "We couldn't send the code. Try again in a minute."));
+        } finally {
+            setIsLoading(false);
         }
-        if (password !== confirmPassword) {
-            setPasswordError('Passwords do not match');
-            return false;
-        }
-        setPasswordError('');
-        return true;
     };
 
     const handleResetPassword = async () => {
-        if (!validatePassword()) return;
+        if (!email || isLoading) return;
         if (code.length !== 6) {
-            showPopup('error', 'Error', 'Please enter a valid 6-digit code');
+            setError('Enter the 6-digit code from the email.');
             return;
         }
-        
+        if (password.length < MIN_PASSWORD) {
+            setError(`Use at least ${MIN_PASSWORD} characters.`);
+            return;
+        }
+        if (password !== confirmPassword) {
+            setError("Passwords don't match.");
+            return;
+        }
         setIsLoading(true);
+        setError('');
+        setNotice('');
         try {
-            const response = await resetPassword({
-                code: code,
-                newPassword: password
-            });
-            
-            if (response.status !== 200) {
-                showPopup("error", "Error", response.data.message);
-                setIsLoading(false);
-                return;
-            }
-            
-            showPopup('success', 'Success', 'Your password has been successfully reset.');
+            const session = await resetPasswordWithCode(email, code, password);
+            await saveSession(session);
+            haptics.notification('success');
             onSuccess();
             onClose();
-        } catch (error: any) {
-            if (error.response && error.response.status === 400) {
-                Vibration.vibrate();
-                showPopup('error', 'Error', 'Invalid confirmation code. Please try again.');
-            } else {
-                showPopup('error', 'Error', 'Failed to reset password. Please try again.');
-            }
+        } catch (e) {
+            haptics.notification('error');
+            setError(apiErrorMessage(e, 'Failed to reset password. Please try again.'));
         } finally {
             setIsLoading(false);
         }
@@ -159,61 +180,91 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
             keyboardBlurBehavior="restore"
         >
             <BottomSheetView style={styles.contentContainer}>
-                <Text style={styles.title}>Reset Password</Text>
-                <Text style={styles.subtitle}>Enter the 6-digit code from your authenticator app and a new password</Text>
+                <Text style={styles.title}>Reset password</Text>
+                {!email ? (
+                    <Text style={styles.subtitle}>
+                        Add an email to your account first. The code to set a password goes there.
+                    </Text>
+                ) : step === 'start' ? (
+                    <Text style={styles.subtitle}>
+                        We'll email a 6-digit code to <Text style={styles.strong}>{email}</Text>. You'll set the new password with it.
+                    </Text>
+                ) : (
+                    <Text style={styles.subtitle}>
+                        Enter the code we sent to <Text style={styles.strong}>{email}</Text> and your new password.
+                    </Text>
+                )}
 
-                <View style={styles.section}>
-                    <Text style={styles.label}>AUTHENTICATOR CODE</Text>
-                    <TextInput
-                        style={styles.input}
-                        keyboardType="numeric"
-                        maxLength={6}
-                        value={code}
-                        onChangeText={handleCodeChange}
-                        placeholder="000000"
-                        placeholderTextColor={colors.textSecondary}
-                        selectionColor={colors.accent}
-                    />
-                </View>
-                
-                <View style={styles.section}>
-                    <Text style={styles.label}>NEW PASSWORD</Text>
-                    <TextInput
-                        style={styles.input}
-                        secureTextEntry
-                        value={password}
-                        onChangeText={setPassword}
-                        placeholder="••••••••"
-                        placeholderTextColor={colors.textSecondary}
-                        selectionColor={colors.accent}
-                    />
-                </View>
-                
-                <View style={styles.section}>
-                    <Text style={styles.label}>CONFIRM PASSWORD</Text>
-                    <TextInput
-                        style={styles.input}
-                        secureTextEntry
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
-                        placeholder="••••••••"
-                        placeholderTextColor={colors.textSecondary}
-                        selectionColor={colors.accent}
-                    />
-                </View>
-                
-                {passwordError ? (
+                {!!email && step === 'code' && (
+                    <>
+                        <View style={styles.section}>
+                            <Text style={styles.label}>CODE FROM THE EMAIL</Text>
+                            <BottomSheetTextInput
+                                style={styles.input}
+                                keyboardType="number-pad"
+                                textContentType="oneTimeCode"
+                                autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+                                maxLength={6}
+                                value={code}
+                                onChangeText={(text) => { setCode(text.replace(/[^0-9]/g, '').slice(0, 6)); setError(''); }}
+                                placeholder="000000"
+                                placeholderTextColor={colors.textSecondary}
+                                selectionColor={colors.accent}
+                            />
+                        </View>
+
+                        <View style={styles.section}>
+                            <Text style={styles.label}>NEW PASSWORD</Text>
+                            <BottomSheetTextInput
+                                style={styles.input}
+                                secureTextEntry
+                                textContentType="newPassword"
+                                autoComplete="new-password"
+                                value={password}
+                                onChangeText={(text) => { setPassword(text); setError(''); }}
+                                placeholder="At least 8 characters"
+                                placeholderTextColor={colors.textSecondary}
+                                selectionColor={colors.accent}
+                            />
+                        </View>
+
+                        <View style={styles.section}>
+                            <Text style={styles.label}>CONFIRM PASSWORD</Text>
+                            <BottomSheetTextInput
+                                style={styles.input}
+                                secureTextEntry
+                                textContentType="newPassword"
+                                autoComplete="new-password"
+                                value={confirmPassword}
+                                onChangeText={(text) => { setConfirmPassword(text); setError(''); }}
+                                placeholder="••••••••"
+                                placeholderTextColor={colors.textSecondary}
+                                selectionColor={colors.accent}
+                            />
+                        </View>
+
+                        <TouchableOpacity onPress={sendCode} disabled={resendIn > 0 || isLoading} hitSlop={8}>
+                            <Text style={[styles.resend, (resendIn > 0 || isLoading) && { color: colors.textSecondary }]}>
+                                {resendIn > 0 ? `Send a new code in ${resendIn}s` : 'Send a new code'}
+                            </Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {error ? (
                     <View style={styles.errorContainer}>
                         <ShieldAlert size={16} color={colors.danger} />
-                        <Text style={styles.errorText}>{passwordError}</Text>
+                        <Text style={styles.errorText}>{error}</Text>
                     </View>
+                ) : notice ? (
+                    <Text style={styles.notice}>{notice}</Text>
                 ) : null}
-                
+
                 <View style={styles.spacer} />
 
-                <TouchableOpacity 
-                    style={[styles.row, styles.lastRow]} 
-                    onPress={handleResetPassword}
+                <TouchableOpacity
+                    style={[styles.row, styles.lastRow]}
+                    onPress={!email ? onClose : step === 'start' ? sendCode : handleResetPassword}
                     disabled={isLoading}
                 >
                     <View style={styles.rowLeft}>
@@ -223,7 +274,9 @@ const ResetPasswordSheet = ({ isVisible, onClose, onSuccess }: Props) => {
                             <KeyRound size={24} color={colors.link} strokeWidth={1.5} />
                         )}
                         <Text style={styles.linkTextMain}>
-                            {isLoading ? 'Resetting...' : 'Confirm Reset Password'}
+                            {!email ? 'Close' : step === 'start'
+                                ? (isLoading ? 'Sending…' : 'Send code')
+                                : (isLoading ? 'Saving…' : 'Save new password')}
                         </Text>
                     </View>
                 </TouchableOpacity>
@@ -259,14 +312,19 @@ const getStyles = (colors: any) => StyleSheet.create({
     },
     subtitle: {
         fontSize: 14,
+        lineHeight: 20,
         color: colors.textSecondary,
         textAlign: "center",
-        marginBottom: 32,
+        marginBottom: 28,
         fontWeight: "400",
         paddingHorizontal: 10,
     },
+    strong: {
+        color: colors.textPrimary,
+        fontWeight: "600",
+    },
     section: {
-        marginBottom: 24,
+        marginBottom: 22,
     },
     label: {
         fontSize: 11,
@@ -284,10 +342,16 @@ const getStyles = (colors: any) => StyleSheet.create({
         borderBottomColor: colors.border,
         minHeight: 40,
     },
+    resend: {
+        color: colors.link,
+        fontSize: 14,
+        fontWeight: "600",
+        marginTop: -6,
+        marginBottom: 16,
+    },
     errorContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: -10,
         marginBottom: 16,
     },
     errorText: {
@@ -295,6 +359,13 @@ const getStyles = (colors: any) => StyleSheet.create({
         fontSize: 13,
         marginLeft: 6,
         fontWeight: '500',
+        flexShrink: 1,
+    },
+    notice: {
+        color: colors.link,
+        fontSize: 13,
+        fontWeight: '500',
+        marginBottom: 16,
     },
     spacer: {
         flex: 1,

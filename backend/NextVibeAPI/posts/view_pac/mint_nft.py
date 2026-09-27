@@ -11,7 +11,7 @@ from decimal import Decimal
 import logging
 import requests
 
-from ..constants import COLLECT_MAX_EDITIONS, NFT_SERVICE_URL, PUBLISH_DAILY_LIMIT
+from ..constants import COLLECT_MAX_EDITIONS, NFT_SERVICE_URL, PUBLISH_DAILY_LIMIT, nft_service_headers
 from ..models import PendingClaim, Post, UserCollection
 from ..src import collectibles
 
@@ -90,6 +90,7 @@ class MintNftView(APIView):
         try:
             mint_res = requests.post(
                 url=f"{NFT_SERVICE_URL}/mint",
+                headers=nft_service_headers(),
                 json={
                     "recipient": wallet_address,
                     "postId": post_id,

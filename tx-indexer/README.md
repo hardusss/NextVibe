@@ -28,8 +28,8 @@ wallet are kept (`src/services/transaction-filter.ts`).
 | POST | `/index/register` | `x-internal-secret` | Start indexing a wallet |
 | POST | `/index/sync-all` | `x-internal-secret` | Register every linked wallet |
 | GET | `/index/status` | `x-internal-secret` | Stored transaction count and the webhook's address count and URL |
-| POST | `/index/load-more` | — | Fetch older transactions for a wallet (called by the API) |
-| POST | `/index/refresh-latest` | — | Fetch the newest transactions for a wallet (called by the API) |
+| POST | `/index/load-more` | `x-internal-secret` | Fetch older transactions for a wallet (called by the API) |
+| POST | `/index/refresh-latest` | `x-internal-secret` | Fetch the newest transactions for a wallet (called by the API) |
 | POST | `/webhook/helius` | Bearer secret | Helius enhanced webhook |
 
 ## Run it
@@ -58,7 +58,7 @@ Listed in [.env.example](.env.example).
 | Variable | Required | Purpose |
 |---|---|---|
 | `PORT` | no | HTTP port (default 3000; nft-service also uses 3000, so pick another one on a shared host) |
-| `NODE_ENV` | no | development \| production (default development) |
+| `NODE_ENV` | no | development \| production (default development); production hides the API docs at /swagger |
 | `INTERNAL_SECRET` | yes | Shared secret checked on x-internal-secret and sent to Django; must equal the API's INDEXER_INTERNAL_SECRET |
 | `MYSQL_URL` | yes, or the MYSQL_* keys | MySQL connection URL (the same database as Django); when empty, the MYSQL_* keys below are required |
 | `MYSQL_HOST` | without MYSQL_URL | MySQL host, used when MYSQL_URL is empty |
@@ -84,7 +84,8 @@ Listed in [.env.example](.env.example).
 
 | File | What |
 |---|---|
-| `src/index.ts` | Elysia app (API docs at `/swagger`), the queue worker, the initial sync on start |
+| `src/index.ts` | Elysia app (API docs at `/swagger`, except with `NODE_ENV=production`), the queue worker, the initial sync on start |
+| `src/middleware/internal-auth.ts` | The `x-internal-secret` check (constant-time compare) |
 | `src/routes/` | `index.route.ts`, `history.route.ts`, `refresh.route.ts`, `webhook.route.ts` |
 | `src/queue/` | BullMQ queue and worker (stores transactions, notifies the API) |
 | `src/services/` | Helius client, webhook address sync, bot detection, transaction filter |
@@ -93,4 +94,5 @@ Listed in [.env.example](.env.example).
 
 ## Tests
 
-There are no tests. `bun run typecheck` runs `tsc --noEmit`.
+`bun test` runs `src/middleware/internal-auth.test.ts` (the secret check); `bun run typecheck`
+runs `tsc --noEmit`.

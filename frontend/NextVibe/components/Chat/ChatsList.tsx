@@ -298,7 +298,7 @@ export default function ChatsList() {
                 </View>
               </View>
               <Text style={{ color: '#A0A0B0', fontSize: 12 }} numberOfLines={1}>
-                Shared NextVibe community group for all users
+                One group chat for everyone on NextVibe
               </Text>
             </View>
           </LinearGradient>

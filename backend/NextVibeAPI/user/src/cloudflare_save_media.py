@@ -16,18 +16,14 @@ def get_s3_client():
     )
 
 
-def save_file_to_storage(file, filename, folder="uploads", is_qr: bool = False, email: str | None = None):
+def save_file_to_storage(file, filename, folder="uploads"):
     """
-    Save file to R2 storage
+    Save file to R2 storage under an unguessable name
     """
     try:
-        
-        if is_qr:
-            file_path = f"{folder}/{email}_qr_code.png"
-        else:
-            from uuid import uuid4
-            unique_filename = f"{uuid4().hex}_{filename}"
-            file_path = f"{folder}/{unique_filename}"
+        from uuid import uuid4
+        unique_filename = f"{uuid4().hex}_{filename}"
+        file_path = f"{folder}/{unique_filename}"
         
         content_type = 'application/octet-stream'
         if hasattr(file, 'content_type'):

@@ -1,198 +1,143 @@
 import * as SecureStore from 'expo-secure-store';
-import { Buffer } from 'buffer';
+import {
+    decryptV3,
+    encryptV3,
+    isV3,
+    legacyDecrypt,
+    legacyEncrypt,
+    parseEnvelope,
+    safetyNumber,
+    type MediaKey,
+} from './e2ee/core';
+import { getDeviceKey, getDevices, publishDeviceKey } from './e2ee/keys';
 
-const IDENTITY_KEY_STORAGE_PREFIX = 'e2ee_identity_key_';
-const SESSION_STORAGE_PREFIX = 'e2ee_session_';
+/** Old v1 identity (random bytes); only this device's own v1 messages used it. */
+const LEGACY_IDENTITY_PREFIX = 'e2ee_identity_key_';
 
-export interface PreKeyBundle {
-  user_id: number;
-  device_id: string;
-  identity_key: string;
-  registration_id: number;
-  signed_prekey: {
-    key_id: number;
-    public_key: string;
-    signature: string;
-  };
-  one_time_prekey?: {
-    key_id: number;
-    public_key: string;
-  } | null;
+export const LOCKED_TEXT = '🔒 Encrypted message';
+
+export type MessageState =
+    /** Plain text (very old messages, or anything that isn't an envelope). */
+    | 'plain'
+    /** v1/v2: readable on every device. */
+    | 'legacy'
+    /** v3: sealed for this device and opened. */
+    | 'e2ee'
+    /** v3 not sealed for this device (e.g. sent before this phone had a key). */
+    | 'locked';
+
+export interface OpenedMessage {
+    text: string;
+    media?: MediaKey[];
+    state: MessageState;
 }
 
-export interface EncryptedEnvelope {
-  v: number; // Protocol version
-  ciphertext: string;
-  nonce: string;
-  sender_device_id: string;
-  ephemeral_key?: string;
-  media_encryption_key?: string; // AES-256 key for file
-}
+export type SafetyState =
+    | { status: 'ready'; number: string }
+    /** The other person's app has no key yet: messages go in the older format. */
+    | { status: 'legacy' }
+    | { status: 'offline' };
 
+/**
+ * Chat encryption for the app (see e2ee/core.ts for the format).
+ * - sealText / mode: v3 whenever the other person has a device key, else v2
+ *   so their older app can still read it.
+ * - open / decryptMessage: every format ever sent, so old chats keep working.
+ */
 class CryptoService {
-  private static instance: CryptoService;
+    private static instance: CryptoService;
 
-  private constructor() {}
-
-  public static getInstance(): CryptoService {
-    if (!CryptoService.instance) {
-      CryptoService.instance = new CryptoService();
-    }
-    return CryptoService.instance;
-  }
-
-  /**
-   * Generates or retrieves local device identity keypair.
-   * Private key is stored securely in Expo SecureStore.
-   */
-  public async getOrCreateIdentityKeyPair(userId: number): Promise<{ publicKey: string; privateKey: string; deviceId: string }> {
-    const key = `${IDENTITY_KEY_STORAGE_PREFIX}${userId}`;
-    const stored = await SecureStore.getItemAsync(key);
-    
-    if (stored) {
-      return JSON.parse(stored);
+    public static getInstance(): CryptoService {
+        if (!CryptoService.instance) CryptoService.instance = new CryptoService();
+        return CryptoService.instance;
     }
 
-    // Generate lightweight random keys (mocked / deterministic entropy for JS Hermes runtime)
-    const randomBytes = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
-    const privateKey = Buffer.from(randomBytes).toString('base64');
-    const publicKey = Buffer.from(randomBytes.slice(0, 16)).toString('hex').toUpperCase();
-    const deviceId = `dev_${userId}_${Date.now().toString(36)}`;
-
-    const identityData = { publicKey, privateKey, deviceId };
-    await SecureStore.setItemAsync(key, JSON.stringify(identityData));
-
-    return identityData;
-  }
-
-  /**
-   * Conversation session secret. Must be derivable identically on BOTH devices:
-   * building it from the local device's private key (as v1 did) gives sender and
-   * recipient different keystreams, so every keystream cycle 8 bytes decrypt wrong —
-   * multi-byte UTF-8 (emoji, accents, CJK) comes out as U+FFFD on the other device.
-   */
-  private getSharedSessionSecret(userA: number, userB: number): string {
-    const u1 = Math.min(userA, userB);
-    const u2 = Math.max(userA, userB);
-    return `e2ee_secret_chat_${u1}_${u2}`;
-  }
-
-  private getLegacySessionSecret(userA: number, userB: number, privateKey: string): string {
-    const u1 = Math.min(userA, userB);
-    const u2 = Math.max(userA, userB);
-    return `e2ee_secret_chat_${u1}_${u2}_${privateKey.slice(0, 8)}`;
-  }
-
-  /**
-   * Encrypts plaintext message text for chat recipient.
-   * Returns standard E2EE envelope structure containing ciphertext & nonce.
-   */
-  public async encryptMessage(
-    senderUserId: number,
-    targetUserId: number,
-    plaintext: string,
-    mediaKey?: string
-  ): Promise<EncryptedEnvelope> {
-    const identity = await this.getOrCreateIdentityKeyPair(senderUserId);
-
-    const sessionSecret = this.getSharedSessionSecret(senderUserId, targetUserId);
-    const nonce = Buffer.from(Array.from({ length: 12 }, () => Math.floor(Math.random() * 256))).toString('base64');
-    
-    const textBuffer = Buffer.from(plaintext, 'utf-8');
-    const secretBuffer = Buffer.from(sessionSecret, 'utf-8');
-    
-    const cipherBytes = new Uint8Array(textBuffer.length);
-    for (let i = 0; i < textBuffer.length; i++) {
-      cipherBytes[i] = textBuffer[i] ^ secretBuffer[i % secretBuffer.length];
+    /** Publishes this phone's key so others can send it v3 messages (idempotent). */
+    public ensurePublished(userId: number): Promise<boolean> {
+        if (!userId) return Promise.resolve(false);
+        return publishDeviceKey(userId).catch(() => false);
     }
-    
-    const ciphertext = Buffer.from(cipherBytes).toString('base64');
 
-    return {
-      v: 2,
-      ciphertext,
-      nonce,
-      sender_device_id: identity.deviceId,
-      media_encryption_key: mediaKey
-    };
-  }
+    /** 'v3' when the other person has at least one device key, else 'legacy'. */
+    public async mode(senderUserId: number, targetUserId: number): Promise<'v3' | 'legacy'> {
+        if (!senderUserId || !targetUserId) return 'legacy';
+        try {
+            const devices = await getDevices([targetUserId]);
+            return (devices[targetUserId]?.length ?? 0) > 0 ? 'v3' : 'legacy';
+        } catch {
+            return 'legacy';
+        }
+    }
 
-  /**
-   * Decrypts E2EE message envelope back into plaintext.
-   */
-  public async decryptMessage(
-    currentUserId: number,
-    senderUserId: number,
-    envelopeJsonOrObj: any,
-    targetUserId?: number
-  ): Promise<string> {
-    try {
-      if (!envelopeJsonOrObj) return '';
-      let envelope: EncryptedEnvelope;
+    /**
+     * The stored message text: a v3 envelope for every device of both people
+     * (with the keys of its photos and videos), or a v2 one in 'legacy' mode.
+     */
+    public async sealText(senderUserId: number, targetUserId: number, text: string,
+        media?: MediaKey[], mode?: 'v3' | 'legacy'): Promise<string> {
+        const chosen = mode ?? await this.mode(senderUserId, targetUserId);
+        const device = await getDeviceKey(senderUserId);
+        if (chosen === 'v3') {
+            const devices = await getDevices([targetUserId, senderUserId]);
+            const recipients = [...(devices[targetUserId] ?? []), ...(devices[senderUserId] ?? [])];
+            return JSON.stringify(encryptV3({ t: text, m: media?.length ? media : undefined }, device, recipients));
+        }
+        return JSON.stringify(legacyEncrypt(senderUserId, targetUserId, text, device.deviceId));
+    }
 
-      if (typeof envelopeJsonOrObj === 'string') {
-        const trimmed = envelopeJsonOrObj.trim();
-        if (!trimmed.startsWith('{')) {
-          return envelopeJsonOrObj;
+    /** Opens any stored message text for this device. */
+    public async open(currentUserId: number, otherUserId: number | undefined, raw: unknown): Promise<OpenedMessage> {
+        const envelope = parseEnvelope(raw);
+        if (!envelope) {
+            const text = typeof raw === 'string' ? raw : ((raw as any)?.content || (raw as any)?.text || '');
+            return { text, state: 'plain' };
+        }
+        if (isV3(envelope)) {
+            try {
+                const device = await getDeviceKey(currentUserId);
+                const payload = decryptV3(envelope, device);
+                if (payload) return { text: payload.t, media: payload.m, state: 'e2ee' };
+            } catch {
+                // Falls through to locked
+            }
+            return { text: LOCKED_TEXT, state: 'locked' };
         }
         try {
-          envelope = JSON.parse(envelopeJsonOrObj);
+            const legacyKey = envelope.v >= 2 ? null : await this.legacyPrivateKey(currentUserId);
+            return {
+                text: legacyDecrypt(envelope, currentUserId, otherUserId || currentUserId, legacyKey),
+                state: 'legacy',
+            };
         } catch {
-          return envelopeJsonOrObj;
+            return { text: LOCKED_TEXT, state: 'locked' };
         }
-      } else {
-        envelope = envelopeJsonOrObj;
-      }
-
-      if (!envelope || typeof envelope !== 'object' || !envelope.ciphertext) {
-        return typeof envelopeJsonOrObj === 'string' ? envelopeJsonOrObj : (envelopeJsonOrObj?.content || envelopeJsonOrObj?.text || '');
-      }
-
-      const otherUser = targetUserId || (senderUserId === currentUserId ? currentUserId : senderUserId);
-
-      // v2 envelopes use the shared per-conversation secret. v1 envelopes were
-      // keyed with the sending device's private key, which only that device holds —
-      // keep the legacy derivation so a user's own old messages still decrypt.
-      let sessionSecret: string;
-      if (envelope.v >= 2) {
-        sessionSecret = this.getSharedSessionSecret(currentUserId, otherUser);
-      } else {
-        const identity = await this.getOrCreateIdentityKeyPair(currentUserId);
-        sessionSecret = this.getLegacySessionSecret(currentUserId, otherUser, identity.privateKey);
-      }
-
-      const cipherBytes = Buffer.from(envelope.ciphertext, 'base64');
-      const secretBuffer = Buffer.from(sessionSecret, 'utf-8');
-
-      const plainBytes = new Uint8Array(cipherBytes.length);
-      for (let i = 0; i < cipherBytes.length; i++) {
-        plainBytes[i] = cipherBytes[i] ^ secretBuffer[i % secretBuffer.length];
-      }
-
-      return Buffer.from(plainBytes).toString('utf-8');
-    } catch (err) {
-      console.error('Error decrypting message:', err);
-      return typeof envelopeJsonOrObj === 'string' ? envelopeJsonOrObj : (envelopeJsonOrObj?.content || envelopeJsonOrObj?.text || '[Encrypted Message]');
     }
-  }
 
-  /**
-   * Computes a 60-digit formatted Safety Number (Fingerprint) for identity key verification out-of-band.
-   * Formatted in 12 groups of 5 digits (Signal/WhatsApp standard).
-   */
-  public computeSafetyNumber(myIdentityKey: string, otherIdentityKey: string): string {
-    const keys = [myIdentityKey, otherIdentityKey].sort().join(':');
-    let hash = 0;
-    for (let i = 0; i < keys.length; i++) {
-      hash = (hash << 5) - hash + keys.charCodeAt(i);
-      hash |= 0;
+    /** Text only, for previews (chat list, notifications). */
+    public async decryptMessage(currentUserId: number, senderUserId: number, raw: unknown, targetUserId?: number): Promise<string> {
+        const other = targetUserId || (senderUserId === currentUserId ? currentUserId : senderUserId);
+        return (await this.open(currentUserId, other, raw)).text;
     }
-    
-    const absHash = Math.abs(hash).toString().padStart(10, '0');
-    const fullDigits = (absHash + absHash + absHash + absHash + absHash + absHash).slice(0, 30);
-    
-    return fullDigits.match(/.{1,5}/g)?.join(' ') || fullDigits;
-  }
+
+    /** The safety number to compare in person, from both people's device keys. */
+    public async safetyNumber(myUserId: number, otherUserId: number): Promise<SafetyState> {
+        const mine = await getDeviceKey(myUserId);
+        const devices = await getDevices([myUserId, otherUserId], true);
+        const theirs = devices[otherUserId];
+        if (theirs === null || theirs === undefined) return { status: 'offline' };
+        if (theirs.length === 0) return { status: 'legacy' };
+        const myKeys = [...(devices[myUserId] ?? []).map((d) => d.public_key), mine.publicKey];
+        return { status: 'ready', number: safetyNumber(myUserId, myKeys, otherUserId, theirs.map((d) => d.public_key)) };
+    }
+
+    private async legacyPrivateKey(userId: number): Promise<string | null> {
+        try {
+            const stored = await SecureStore.getItemAsync(`${LEGACY_IDENTITY_PREFIX}${userId}`);
+            return stored ? JSON.parse(stored).privateKey ?? null : null;
+        } catch {
+            return null;
+        }
+    }
 }
 
 export default CryptoService.getInstance();

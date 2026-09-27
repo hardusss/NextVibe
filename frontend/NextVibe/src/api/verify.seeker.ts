@@ -1,6 +1,7 @@
 import axios from "axios";
 import { storage } from "../utils/storage";
 import GetApiUrl from "../utils/url_api";
+import type { WalletProof } from "../utils/walletProof";
 
 export interface VerifySeekerResponse {
     seekerVerified: boolean;
@@ -11,15 +12,16 @@ export interface VerifySeekerResponse {
 /**
  * Manual "Verify Seeker" action — runs the on-chain Genesis Token
  * check for the connected wallet. Error codes: NO_WALLET,
+ * WALLET_NOT_PROVEN (sign the verify message and send it as `proof`),
  * SGT_NOT_FOUND, SGT_ALREADY_USED, CHECK_FAILED.
  */
-export default async function verifySeeker(): Promise<VerifySeekerResponse> {
+export default async function verifySeeker(proof?: WalletProof | null): Promise<VerifySeekerResponse> {
     const TOKEN = await storage.getItem("access");
     if (!TOKEN) return { seekerVerified: false, source: null, error: "NO_AUTH" };
 
     const url = `${GetApiUrl()}/users/seeker/verify/`;
     try {
-        const response = await axios.post(url, {}, {
+        const response = await axios.post(url, proof ? { proof } : {}, {
             headers: { "Authorization": `Bearer ${TOKEN}` },
         });
         return response.data;

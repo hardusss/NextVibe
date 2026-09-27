@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Elysia } from "elysia";
 import { env } from "../config/env";
 
@@ -9,8 +10,10 @@ export function isValidSolanaAddress(address: string): boolean {
 
 export function internalAuthGuard(headers: Record<string, string | undefined>): void {
   const secret = headers["x-internal-secret"];
+  const given = Buffer.from(secret ?? "");
+  const expected = Buffer.from(env.INTERNAL_SECRET);
 
-  if (!secret || secret !== env.INTERNAL_SECRET) {
+  if (!secret || given.length !== expected.length || !timingSafeEqual(given, expected)) {
     throw new Error("Unauthorized");
   }
 }

@@ -22,6 +22,7 @@ import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
 import { syncPushToken } from "@/src/notifications/pushToken";
 import { usePushTokenSync } from "@/hooks/usePushTokenSync";
+import { useE2EEDevice } from "@/hooks/useE2EEDevice";
 import { useMeetPhotoInbox } from "@/hooks/useMeetPhotoInbox";
 import MapboxGL from '@rnmapbox/maps';
 import { vexo, identifyDevice } from 'vexo-analytics';
@@ -156,6 +157,7 @@ export default function RootLayout() {
     useBleScanner(userID !== null);
     // Push token: every launch and every sign-in, including wallet-only accounts.
     usePushTokenSync(userID);
+    useE2EEDevice(userID);
     useMeetPhotoInbox(userID);
 
     useEffect(() => {

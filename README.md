@@ -57,7 +57,7 @@ tap, give every attendee a POAP, and see on a live dashboard who came and who me
   NFC or Bluetooth.
 - **Organizer dashboard.** Requests, check-ins, POAP claims, a heat map of taps, who met whom,
   top attendees and push broadcasts, at https://dashboard.nextvibe.io.
-- **Also:** realtime chats ([encryption status](docs/SECURITY.md#chats-and-encryption)),
+- **Also:** end-to-end encrypted chats with photos and videos ([how](docs/SECURITY.md#chats-and-encryption)),
   AI moderation of every public post and selfie, and a map of posts and events on H3 cells.
 
 ## Architecture

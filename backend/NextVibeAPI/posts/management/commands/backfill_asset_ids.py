@@ -16,7 +16,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from posts.models import UserCollection
 from user.models import OgAvatarMint
-from posts.constants import NFT_SERVICE_URL
+from posts.constants import NFT_SERVICE_URL, nft_service_headers
 
 logger = logging.getLogger("posts.collect")
 
@@ -54,6 +54,7 @@ class Command(BaseCommand):
                 res = requests.post(
                     f"{NFT_SERVICE_URL}/asset-id-from-signature",
                     json={"signature": sig},
+                    headers=nft_service_headers(),
                     timeout=15,
                 )
                 if res.status_code == 200:
@@ -94,6 +95,7 @@ class Command(BaseCommand):
                 res = requests.post(
                     f"{NFT_SERVICE_URL}/asset-id-from-signature",
                     json={"signature": sig},
+                    headers=nft_service_headers(),
                     timeout=15,
                 )
                 if res.status_code == 200:
