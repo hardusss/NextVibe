@@ -1,208 +1,193 @@
 <p align="center">
-  <img src="https://nextvibe.io/logo.png" alt="NextVibe" width="120" />
+  <img src="https://nextvibe.io/logo.png" alt="NextVibe" width="110" />
 </p>
 
 <h1 align="center">NextVibe</h1>
 
-<p align="center">
-  <strong>The IRL Networking Layer on Solana</strong>
-</p>
+<p align="center"><strong>Tap phones. Prove you met.</strong> The IRL networking layer on Solana.</p>
 
-<p align="center">
-  <a href="https://nextvibe.io">Website</a> •
-  <a href="https://media.nextvibe.io/NextVibe.apk">Download APK</a> •
-  <a href="https://x.com/NextVibeWeb3">Twitter</a>
-</p>
-
----
-
-NextVibe is a mobile-first IRL Networking Layer built on Solana. It turns physical-world interactions — NFC taps, event check-ins, and real-life meetups — into an on-chain social graph backed by compressed NFTs, reputation scores, and verifiable proof of presence.
-
-> **NextVibe is live.** Download the app and sign up. Invite codes are optional: have one from a friend? Enter it when you join.
-
-## Why NextVibe Exists
-
-Existing Web3 social tools fail at the physical layer. LinkedIn is Web2. POAPs are passive. QR codes are dead. There is no standard for proving "I met this person IRL" and translating that into on-chain reputation.
-
-NextVibe solves this by making the **smartphone the networking primitive** — specifically crypto-native phones like the Solana Seeker that have NFC hardware access unrestricted by iOS limitations.
-
-## Core Primitives
-
-### 📳 NFC Tap-to-Connect
-A custom **Cross-Platform APDU NFC Module** transforms any Android device into an active Web3 emitter. One physical tap shares your profile, triggers a Solana Pay transaction, or initiates an event check-in. Apple locks down HCE — a Solana Seeker can push data to any iPhone, but not the reverse. This makes the Seeker the most powerful Web3 networking device in the room.
-
-### 🗺️ VibeMap
-A Mapbox-powered interactive map (with globe/3D terrain modes) that plots every post, cNFT drop, and live event geospatially. Filter by posts or events, see clustering at low zoom, and discover what's happening around you in real-time.
-
-### 🎫 Events & Check-ins
-Create events via Luma integration, manage attendee requests with approve/reject flows, and run NFC-based check-ins at the door. Check-ins feed directly into the reputation system and generate on-chain proof of attendance.
-
-### 💎 Gasless cNFT Minting
-Every post can be minted as a compressed NFT — limited to 50 editions — without the creator signing a single transaction. The backend acts as the fee payer. Collectors pay in SOL with an automatic 95/5 creator/platform revenue split.
-
-### ⭐ On-Chain Reputation
-Every NFC tap, event check-in, and interaction generates reputation points tracked with H3 geo-indexing. Your reputation score is a verifiable proof of your IRL networking activity, tied to specific locations and events.
-
-### 💳 Embedded Wallet
-Full in-app wallet experience: token dashboard, send/receive, swap, NFC deposits, and complete transaction history — all powered by a real-time Helius-backed transaction indexer.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        MOBILE APP                               │
-│        React Native · Expo · Solana MWA · LazorKit              │
-│    NFC Module · Mapbox · Vision Camera · Zustand                │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-          ┌──────────────┼──────────────┐
-          ▼              ▼              ▼
-   ┌─────────────┐ ┌──────────┐ ┌────────────────┐
-   │  Django API  │ │  Socket  │ │  Moderation    │
-   │  (REST)      │ │  Service │ │  Service       │
-   │  Celery +    │ │ FastAPI  │ │  Go + OpenAI   │
-   │  Redis       │ │ WebSocket│ │                │
-   └──────┬──────┘ └────┬─────┘ └────────────────┘
-          │              │
-          ▼              ▼
-   ┌─────────────────────────────┐
-   │         MySQL + Redis       │
-   └──────────┬──────────────────┘
-              │
-     ┌────────┴────────┐
-     ▼                 ▼
-┌──────────┐    ┌─────────────┐
-│ NFT      │    │ TX Indexer  │
-│ Service  │    │ Bun+Elysia  │
-│ Bun+Umi  │    │ Helius+     │
-│ Bubblegum│    │ BullMQ      │
-└──────────┘    └─────────────┘
-              │
-              ▼
-     ┌────────────────┐
-     │  Solana        │
-     │  (Mainnet)     │
-     │  Merkle Trees  │
-     │  cNFTs         │
-     └────────────────┘
-```
-
-## Tech Stack
-
-| Layer | Technologies |
-|-------|-------------|
-| **Mobile** | React Native 0.79, Expo 53, TypeScript, Zustand, Reanimated |
-| **Solana Integration** | MWA, LazorKit, @solana/web3.js, SPL Token |
-| **NFC** | Custom APDU module (Expo Native Module), react-native-nfc-manager |
-| **Maps** | Mapbox GL (globe + 3D terrain), H3 geo-indexing |
-| **API** | Django 4.2, Django REST Framework, Celery, Redis |
-| **Real-time** | FastAPI WebSockets |
-| **NFT Minting** | ElysiaJS (Bun), Metaplex Umi, Bubblegum (cNFTs) |
-| **TX Indexer** | ElysiaJS (Bun), BullMQ, Helius Enhanced API + Webhooks |
-| **Content Moderation** | Go HTTP service, OpenAI Moderation API |
-| **Storage** | MySQL, Cloudflare R2, Cloudinary |
-| **Auth** | JWT, Google OAuth, Apple Sign-In, Wallet Sign-In (ed25519), 2FA (TOTP) |
-
-## Microservices
-
-| Service | Path | Runtime | Port | Purpose |
-|---------|------|---------|------|---------|
-| **Data API** | `backend/` | Python (Django) | 8000 | REST API, auth, posts, events, reputation, user management |
-| **Socket Service** | `socket_service/` | Python (FastAPI) | 8001 | Real-time chat, presence, notifications via WebSocket |
-| **NFT Service** | `nft-service/` | Bun (ElysiaJS) | 3000 | Gasless cNFT minting via Metaplex Bubblegum |
-| **TX Indexer** | `tx-indexer/` | Bun (ElysiaJS) | 3001 | Wallet transaction indexing via Helius webhooks + BullMQ |
-| **Moderation** | `moderation_service/` | Go | 8080 | AI-powered text + image content moderation |
-| **Mobile App** | `frontend/NextVibe/` | React Native (Expo) | — | The user-facing application |
-
-## Local Development
-
-### Prerequisites
-
-- Python 3.11+, Node.js 18+, Bun 1.1+, Go 1.21+
-- MySQL 8.0+, Redis 7+
-- Android device with Solflare installed (or emulator)
-
-### Environment Setup
-
-Each service requires its own `.env` file. See the table below for locations:
-
-| Service | `.env` Location |
-|---------|----------------|
-| Django API | `backend/NextVibeAPI/.env` and `backend/NextVibeAPI/setting/.env` |
-| Frontend | `frontend/NextVibe/.env` |
-| Moderation | `moderation_service/.env` |
-| NFT Service | `nft-service/.env` |
-| Socket Service | `socket_service/.env` |
-| TX Indexer | `tx-indexer/.env` (see `tx-indexer/.env.example`) |
-
-### Start Services
-
-```bash
-# 1. Django API + Celery
-cd backend && python -m venv .venv && source .venv/bin/activate
-pip install -r modules.txt
-cd NextVibeAPI && python manage.py migrate && python manage.py runserver
-# (new terminal) celery -A NextVibeAPI worker -l info
-# (new terminal) celery -A NextVibeAPI beat -l info
-
-# 2. Moderation Service
-cd moderation_service && go build -o moderator_bin . && ./moderator_bin
-
-# 3. NFT Service
-cd nft-service && bun install && bun run dev
-
-# 4. TX Indexer
-cd tx-indexer && bun install && bun run dev
-
-# 5. Socket Service
-cd socket_service && uvicorn main:app --reload
-
-# 6. Mobile App
-cd frontend/NextVibe && npm install && npx expo start
-# Press 'a' for Android emulator or scan QR with Expo Go
-```
-
-## Key Features Summary
-
-| Feature | Description |
-|---------|-------------|
-| **NFC Tap-to-Connect** | Share profiles & social graph with a physical phone tap |
-| **NFC Tap-to-Pay** | Send SOL/SPL tokens IRL with one tap |
-| **NFC Event Check-in** | Verify event attendance via NFC at the door |
-| **VibeMap** | Globe/3D map view of all posts, NFTs, and live events |
-| **Camera-Only Posts** | Real-time camera capture only — no gallery uploads, no fakes |
-| **Gasless cNFT Minting** | Zero-cost minting for creators, 50-edition limited drops |
-| **Creator Monetization** | Automatic 95/5 SOL split on paid collections |
-| **Reputation System** | On-chain rep from taps, check-ins, and interactions (H3 geo-indexed) |
-| **Luma Events** | Create, manage, and promote IRL events with attendee management |
-| **Embedded Wallet** | Dashboard, send, swap, deposit, full tx history |
-| **Real-time Chat** | WebSocket-powered messaging with media support |
-| **AI Moderation** | Automated content screening via OpenAI (text + image) |
-| **OG Avatars** | Limited-edition cNFT avatars for early adopters (25 max) |
-| **Multi-Auth** | Email, Google, Apple, Wallet (ed25519 signature), 2FA |
-| **Push Notifications** | Expo push notifications for likes, comments, follows, events |
+NextVibe turns meeting someone in person into proof on Solana. Two people hold their phones
+together and both get a Proof of Meet: a card to share on X and a compressed NFT that names
+both of their wallets. Event organizers import a Luma event, check people in with the same
+tap, give every attendee a POAP, and see on a live dashboard who came and who met whom.
 
 ## Links
 
 | | |
 |---|---|
-| 🌐 **Website** | [nextvibe.io](https://nextvibe.io) |
-| 📱 **Download** | [APK](https://media.nextvibe.io/NextVibe.apk) |
-| 🎥 **Demo** | [YouTube](https://youtu.be/BZwYKiNW9kI?si=RCM8IiwMReNVF5wF) |
-| 📊 **Pitch Deck** | [Google Drive](https://drive.google.com/file/d/1gOSasFNecBx6WxJhF90kDOcvYDxhwWtR/view?usp=drive_link) |
-| 🎥 **Video Pitch** | [YouTube](https://youtu.be/1EpUWRV9mZY) |
-| 𝕏 **Project** | [@NextVibeWeb3](https://x.com/NextVibeWeb3) |
-| 𝕏 **Founder** | [@DanKlepar](https://x.com/DanKlepar) |
-| ✉️ **Email** | [dklepar29@gmail.com](mailto:dklepar29@gmail.com) |
-| 💬 **Telegram** | [@danylo_nv](https://t.me/danylo_nv) |
+| Website | https://nextvibe.io |
+| Solana dApp Store | `solanadappstore://details?id=com.nextvibe.app` (open on a Seeker) |
+| Android APK | https://media.nextvibe.io/NextVibe.apk |
+| iOS | TODO(founder): App Store link after approval |
+| Demo video | TODO(founder): link to the CLOCK IN demo video |
+| Organizer dashboard | https://dashboard.nextvibe.io |
+
+<p align="center">
+  <img src="docs/images/tap-ready.webp" alt="Tap to Meet: ready to tap" width="200" />
+  <img src="docs/images/tap-they-picked-you-up.webp" alt="Tap to Meet: they picked you up" width="200" />
+  <img src="docs/images/tap-confirm.webp" alt="Confirm the meet" width="190" />
+  <img src="docs/images/tap-result.webp" alt="You met: +1 REP" width="190" />
+</p>
+<p align="center">
+  <img src="docs/images/proof-of-meet-selfie.webp" alt="Proof of Meet with a selfie" width="150" />
+  <img src="docs/images/event-check-in.webp" alt="Event check-in with a POAP" width="170" />
+  <img src="docs/images/profile.webp" alt="Profile with REP and Tap to Meet" width="190" />
+  <img src="docs/images/dashboard-heatmap.webp" alt="Organizer dashboard: tap heat map" width="300" />
+</p>
+
+## What it does
+
+- **Tap to Meet.** Phones find each other over NFC (Android emulates an NFC tag that iPhones
+  read in the background), Bluetooth LE on both platforms, or a QR code on iPhone. The other
+  person confirms, and both get +1 REP. [How it works](docs/TAP_TO_MEET.md)
+- **Proof of Meet.** Every meet gets a public card (`nextvibe.io/u/meet/…`) and one cNFT per
+  person with both wallets as creators. The two can add one selfie, published only when both
+  say yes.
+- **Events.** Import a Luma event, prove it's yours with an NV code, approve requests, and
+  check people in with a tap (geofenced when the event has a location). Attendees get REP and
+  a POAP; taps at the event count toward the event's stats. [Events](docs/EVENTS.md)
+- **No wallet needed to start.** POAPs and Proof of Meet are saved to the profile first
+  ("POAP saved · claim anytime") and go on Solana when the person connects a wallet and claims.
+- **Free collects.** Posts can be collected as cNFTs, 50 editions each; NextVibe pays the
+  network fee, and on Android the collector co-signs with their wallet.
+- **Seeker Verified.** A badge for wallets that hold a Seeker Genesis Token, checked on-chain
+  through Helius, with a share card.
+- **Wallets.** Mobile Wallet Adapter with Seed Vault on Seeker, LazorKit passkey wallets, and
+  Phantom, Solflare or Backpack on iOS. Jupiter swaps on Android; tap-to-pay requests over
+  NFC or Bluetooth.
+- **Organizer dashboard.** Requests, check-ins, POAP claims, a heat map of taps, who met whom,
+  top attendees and push broadcasts, at https://dashboard.nextvibe.io.
+- **Also:** realtime chats ([encryption status](docs/SECURITY.md#chats-and-encryption)),
+  AI moderation of every public post and selfie, and a map of posts and events on H3 cells.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  App["NextVibe app<br/>Expo / React Native"] -- "REST" --> API["Django API + Celery"]
+  App -- "WebSocket" --> RT["socket_service"]
+  App -- "sign" --> W["Wallets<br/>MWA · Seed Vault · LazorKit"]
+  API --> DB[("MySQL")]
+  API --> R[("Redis")]
+  API --> R2[("Cloudflare R2")]
+  API --> NFT["nft-service<br/>Bubblegum"]
+  NFT --> SOL(("Solana"))
+  API --> MOD["moderation_service"]
+  H["Helius"] -- "webhooks" --> IDX["tx-indexer"]
+  IDX --> API
+  RT --> DB
+  RT --> R
+```
+
+Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · API: [docs/API.md](docs/API.md)
+
+## Repository map
+
+| Folder | What it is | Language | Docs |
+|---|---|---|---|
+| `frontend/NextVibe` | The mobile app (Android and iOS) | TypeScript, Expo SDK 55, React Native 0.83 | [README](frontend/NextVibe/README.md) |
+| `backend/NextVibeAPI` | REST API, Celery workers, push and email console | Python, Django 4.2, DRF, Celery | [README](backend/NextVibeAPI/README.md) |
+| `nft-service` | Compressed NFT minting and the Seeker Genesis Token check | TypeScript, Bun, Elysia, Metaplex Umi | [README](nft-service/README.md) |
+| `tx-indexer` | Wallet transaction history from Helius | TypeScript, Bun, Elysia, BullMQ | [README](tx-indexer/README.md) |
+| `socket_service` | Realtime chats and in-app events | Python, FastAPI | [README](socket_service/README.md) |
+| `moderation_service` | Text and image moderation | Go | [README](moderation_service/README.md) |
+| `docs` | Architecture, API, Solana, Tap to Meet, events, security | Markdown | [docs](docs) |
+
+The website (nextvibe.io, with the `/u/…` share pages) and the organizer dashboard are
+separate repositories.
+
+## How to run it
+
+### A. Just try it
+
+- **Solana Seeker / Android:** install NextVibe from the Solana dApp Store
+  (`solanadappstore://details?id=com.nextvibe.app`) or download the APK:
+  https://media.nextvibe.io/NextVibe.apk.
+- **iOS:** TODO(founder): App Store link after approval.
+
+Tap to Meet needs two phones. An invite code is optional when you sign up.
+
+### B. Run the app from source against the production API (recommended)
+
+The app already talks to `https://api.nextvibe.io/api/v1` (`frontend/NextVibe/src/utils/url_api.ts`),
+so there is no backend to set up. It needs a development build: NextVibe has its own native
+modules (NFC host card emulation, Bluetooth), Mapbox and the Mobile Wallet Adapter, so Expo Go
+won't run it.
+
+Requirements: Node.js, JDK 17, the Android SDK (Android Studio) and an Android phone with USB
+debugging (emulators can't do NFC, and their Bluetooth support is limited).
+
+```bash
+cd frontend/NextVibe
+cp .env.example .env        # set RNMAPBOX_MAPS_DOWNLOAD_TOKEN before the first prebuild
+npm install
+npx expo prebuild --platform android
+npx expo run:android
+```
+
+| Variable (`frontend/NextVibe/.env`) | Needed? | Without it |
+|---|---|---|
+| `RNMAPBOX_MAPS_DOWNLOAD_TOKEN` | yes | The Android build can't download the Mapbox SDK. Use a Mapbox secret token with `DOWNLOADS:READ`. |
+| `EXPO_PUBLIC_MAPBOX_TOKEN` | recommended | Maps stay empty and place names don't load. |
+| `EXPO_PUBLIC_JUPITER_API_KEY` | no | Swaps use Jupiter's keyless lite API. |
+| `EXPO_PUBLIC_PAYMASTER_URL`, `EXPO_PUBLIC_PAYMASTER_API_KEY` | no | Sponsored (gasless) wallet transactions don't work; everything else does. |
+| `EXPO_PUBLIC_VEXO_API_KEY` | no | No analytics. |
+
+If you ran prebuild before setting the Mapbox token, run
+`rm -rf node_modules/@rnmapbox/maps && npm install && npx expo prebuild --platform android --clean`.
+More in [frontend/NextVibe/README.md](frontend/NextVibe/README.md).
+
+Checked on Sep 27, 2026 from a clean export of this repository (Node 26.7, npm 11.19):
+`npm ci`, `npx expo prebuild --platform android` and a full Android JavaScript bundle
+(`npx expo export --platform android`, 5,089 modules) succeed. The last step,
+`npx expo run:android`, wasn't run there because that machine has no Android SDK.
+
+### C. Self-host the backend (advanced, not needed to evaluate)
+
+The backend reads more than 40 environment variables and needs accounts with Helius,
+Cloudflare R2, Resend, Mapbox, Expo push, OpenAI, Replicate and Cherry, a MySQL database, Redis,
+and a funded Solana keypair that pays fees and owns the Merkle tree and the collections (see
+`nft-service/src/create-tree.ts`). Running it locally is a lot of work; to evaluate NextVibe,
+use the production API (path B).
+
+If you still want to: every service has a `.env.example` and a README with its run steps:
+[API](backend/NextVibeAPI/README.md) · [nft-service](nft-service/README.md) ·
+[tx-indexer](tx-indexer/README.md) · [socket_service](socket_service/README.md) ·
+[moderation_service](moderation_service/README.md). Django migrations aren't committed; the
+API README explains how to create them for a new database.
+
+## Solana
+
+- **cNFTs everywhere.** POAPs, Proof of Meet, collected posts and the OG badge are Metaplex
+  Bubblegum compressed NFTs in one Merkle tree (depth 14, 16,384 leaves), minted with
+  `mintToCollectionV1` by `nft-service`.
+- **NextVibe pays.** One backend keypair is the fee payer, tree owner and collection
+  authority; people never need SOL for any of it. Mints go through a queue with daily caps
+  and retries (`backend/NextVibeAPI/posts/src/collectible_mint.py`).
+- **Co-signed collects.** On Android, a collect is one transaction with a mint and an SPL Memo
+  (`NextVibe | collected post <id> | #<n> of <total>`) that requires the collector's
+  signature from their wallet (Mobile Wallet Adapter, Seed Vault on Seeker).
+- **Both wallets on-chain.** Each Proof of Meet leaf lists both people's wallets as creators.
+- **Seeker Genesis Token check** over Helius RPC (Token-2022 mint authority and group).
+- **Helius** for RPC, DAS lookups and the webhooks behind wallet history (`tx-indexer`).
+
+Step by step, with the code for each flow: [docs/SOLANA.md](docs/SOLANA.md).
+
+## Built during CLOCK IN
+
+The work done since Sep 8, 2026, with dates and files, is in
+[CHANGELOG-hackathon.md](CHANGELOG-hackathon.md).
 
 ## Team
 
-- **Danylo Klepar** — Founder & Lead Developer. Full-stack architecture, Solana integrations, microservices backend.
-- **Mark Vendysh** — Co-Founder. Business development, finance, operations.
+- **Danylo Klepar**, founder and developer: [@DanKlepar](https://x.com/DanKlepar),
+  Telegram [@danylo_nv](https://t.me/danylo_nv), dklepar29@gmail.com
+- **Mark Vendysh**, co-founder, business development and operations
+
+Project on X: [@NextVibeWeb3](https://x.com/NextVibeWeb3). Security reports:
+[docs/SECURITY.md](docs/SECURITY.md).
 
 ## License
 
-**All Rights Reserved.**
-
-This project and its source code are proprietary. You may view the code for educational and evaluation purposes. You are **strictly prohibited** from copying, modifying, distributing, selling, or using this project (or any of its parts) as a template for your own projects without explicit written permission from the author.
+TODO(founder): choose a license. Until one is added, all rights are reserved, as the previous
+README stated.

@@ -3,6 +3,9 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Sep 27 — Documentation for judges
+- docs: the root README is rewritten around what NextVibe does today (Tap to Meet, Proof of Meet, events and POAPs, wallet-optional collectibles, free collects, Seeker Verified), with screenshots, an architecture diagram, a repository map and three ways to run it (install, run the app from source against the production API, self-host). New `docs/ARCHITECTURE.md`, `API.md` (generated from the URL configuration), `SOLANA.md`, `TAP_TO_MEET.md`, `EVENTS.md` and `SECURITY.md`; a README and a `.env.example` for every service. Files: `README.md`, `docs/`, `*/README.md`, `*/.env.example`
+
 ## Sep 27 — One vocabulary across the app, pushes, cards and the web
 - copy(frontend): the collect sheet says "Free" (no more "≈ free · network fee only"); feed, post and profile badges show supply as "46 left" and editions as "#5 of 50"; "REP" everywhere (history, collect sheet, invite tiers); "Reputation added for both of you." ends the same way on every result screen; check-in announcements say POAP instead of event NFT; sentence case on the sign-in, profile, Tap to Meet and check-in screens; "Proof of Meet cards" instead of "Proof of Meets". Files: `frontend/NextVibe/components/{NftClaim,Home,PostDetails,ProfilePage,Events,LoginPage,RegisterPage,oauth-components,SignInViaWallet}/…`, `src/api/login.ts`, `src/proximity/errors.ts`, `src/validation/register-validator.ts`
 - copy(backend): pushes, check-in answers, history rows, cNFT Edition traits and the collect memo use the same words ("POAP saved · claim anytime", "#3 of 50", "Bonus REP"). Files: `backend/NextVibeAPI/posts/{view_pac,src}/…`, `user/signals.py`
