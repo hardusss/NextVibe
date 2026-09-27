@@ -16,11 +16,10 @@ class UserLoginSerializer(serializers.Serializer):
 
         user = self.User.all_objects.filter(email=email).first()
 
-        if not user:
-            raise serializers.ValidationError("User with this email does not exist")
-
-        if not user.check_password(password):
-            raise serializers.ValidationError("Password is incorrect")
+        # One answer for both cases, so the form doesn't reveal which emails
+        # have an account
+        if not user or not user.check_password(password):
+            raise serializers.ValidationError("Invalid email or password.")
 
         attrs['user'] = user
         return attrs
