@@ -3,8 +3,32 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
+from ..constants import GEOFENCE_RINGS
 from ..models import Post, Reputation
+from ..src import geocode
 import h3
+
+
+def _iso(dt):
+    return dt.isoformat() if dt else None
+
+
+def _event_timezone(post):
+    """IANA zone name at the event cell (e.g. "Asia/Bangkok"), or None.
+
+    The organizer portal buckets taps into event days by it. The country
+    lookup is cached by geocode for 30 days, so only the first call can wait
+    on the geocoder (capped at a second and a half)."""
+    if not post.h3_geo:
+        return None
+    try:
+        _, country = geocode.place_for_cell(post.h3_geo)
+        latlng = geocode.cell_latlng(post.h3_geo)
+        tz = geocode.timezone_at(*latlng, country) if latlng else None
+        return tz.key if tz else None
+    except Exception as e:
+        print(f"[EventTapsView] Failed to resolve timezone for {post.h3_geo}: {e}")
+        return None
 
 
 class EventTapsView(APIView):
@@ -77,7 +101,8 @@ class EventTapsView(APIView):
                     "type": "checkin",
                     "user": serialize_user(rep.user),
                     "given_by": serialize_user(rep.given_by),
-                    "points": rep.points
+                    "points": rep.points,
+                    "created_at": _iso(rep.created_at),
                 })
 
         # 2. Process Networking (group mutual scanner/scanned pairs to avoid duplicate map markers)
@@ -120,12 +145,20 @@ class EventTapsView(APIView):
                 "user": serialize_user(user_a),
                 "given_by": serialize_user(user_b),
                 "points": points_a,
-                "points_given_by": points_b
+                "points_given_by": points_b,
+                # When the pair met: the first of the (up to two) mirrored rows
+                "created_at": _iso(min(r.created_at for r in group)),
             })
 
         return Response({
             "event_id": post.id,
             "title": post.about or "Event",
             "center": center_coords,
+            # Check-in zone: gridDisk(h3_geo, zone_rings), same rule as the geofence
+            "h3_geo": post.h3_geo,
+            "zone_rings": GEOFENCE_RINGS,
+            "start_time": _iso(post.luma_event_start_time),
+            "end_time": _iso(post.luma_event_end_time),
+            "timezone": _event_timezone(post),
             "taps": taps
         }, status=status.HTTP_200_OK)

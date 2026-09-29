@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest, EventCheckin
+from ..constants import GEOFENCE_RINGS
 from ..src.proximity_presence import mark_sharing
 from user.models import User
 
@@ -237,7 +238,7 @@ class VerifyProximityTokenView(APIView):
                 lng = float(longitude)
                 event_res = h3.get_resolution(post.h3_geo)
                 user_cell = h3.latlng_to_cell(lat, lng, event_res)
-                if h3.grid_distance(user_cell, post.h3_geo) > 2:
+                if h3.grid_distance(user_cell, post.h3_geo) > GEOFENCE_RINGS:
                     return Response(
                         {"error": "You must be physically present at the event zone to check in."},
                         status=status.HTTP_400_BAD_REQUEST

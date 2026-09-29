@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
 from ..tasks import send_post_for_moderation
+from ..constants import GEOFENCE_RINGS
 import h3
 
 User = get_user_model()
@@ -85,8 +86,8 @@ class PostViewSet(viewsets.ModelViewSet):
                         event_res = h3.get_resolution(event.h3_geo)
                         post_cell_at_event_res = h3.latlng_to_cell(lat, lng, event_res)
                         
-                        # Verify geolocation: post cell is same or adjacent to the event cell (grid distance <= 2 for GPS margin)
-                        if h3.grid_distance(post_cell_at_event_res, event.h3_geo) <= 2:
+                        # Verify geolocation: post cell is within the event zone (GEOFENCE_RINGS rings, for GPS margin)
+                        if h3.grid_distance(post_cell_at_event_res, event.h3_geo) <= GEOFENCE_RINGS:
                             rep_points = 10
                             
                             # Mark post as created during the event and store reputation earned

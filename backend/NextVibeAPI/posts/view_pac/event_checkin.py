@@ -10,6 +10,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from ..models import Collectible, Post, EventRequest, EventCheckin, Reputation
+from ..constants import GEOFENCE_RINGS
 from ..src import collectibles
 
 logger = logging.getLogger("posts.checkin")
@@ -74,7 +75,7 @@ def _verify_event_geofence(post, lat, lng):
         import h3
         event_res = h3.get_resolution(post.h3_geo)
         user_cell = h3.latlng_to_cell(float(lat), float(lng), event_res)
-        if h3.grid_distance(user_cell, post.h3_geo) > 2:
+        if h3.grid_distance(user_cell, post.h3_geo) > GEOFENCE_RINGS:
             return Response(
                 {"error": "You must be physically present at the event zone to check in."},
                 status=status.HTTP_400_BAD_REQUEST,

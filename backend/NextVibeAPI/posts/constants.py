@@ -50,3 +50,9 @@ IRL_TAP_DAILY_LIMIT = 15
 # H3 resolution stored on IRL tap reputation rows (coarse on purpose —
 # event taps keep res 15, IRL taps only need neighbourhood precision).
 IRL_TAP_H3_RESOLUTION = 9
+
+# Event geofence: a user counts as "at the event" when their H3 cell (at the
+# event cell's resolution) is within this many rings of Post.h3_geo, i.e.
+# gridDisk(h3_geo, GEOFENCE_RINGS). Check-in, networking taps, event posts and
+# the organizer map (event-taps) all use it.
+GEOFENCE_RINGS = 2

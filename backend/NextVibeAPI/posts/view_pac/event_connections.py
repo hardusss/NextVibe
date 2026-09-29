@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from ..models import EventCheckin, Reputation, Post
-from ..constants import IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
+from ..constants import GEOFENCE_RINGS, IRL_TAP_POINTS, IRL_TAP_DAILY_LIMIT, IRL_TAP_H3_RESOLUTION
 from ..src import collectibles
 from ..src.proximity_presence import is_sharing
 from ..src.meets import ensure_user_meet_slugs, meet_url, slug_for_pair_event, slug_for_pair_today, tap_slug
@@ -464,7 +464,7 @@ def process_nfc_connect(requesting_user, event_id, scanned_user_id, latitude=Non
                 lng = float(longitude)
                 event_res = h3.get_resolution(post.h3_geo)
                 user_cell = h3.latlng_to_cell(lat, lng, event_res)
-                if h3.grid_distance(user_cell, post.h3_geo) > 2:
+                if h3.grid_distance(user_cell, post.h3_geo) > GEOFENCE_RINGS:
                     return Response({"error": "You must be physically present at the event zone to network."}, status=status.HTTP_400_BAD_REQUEST)
             except Exception:
                 logger.warning("networking.geofence_error event=%s", post.id, exc_info=True)
