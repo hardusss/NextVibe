@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from ..models import Post, EventRequest, EventCheckin, Reputation, UserCollection
+from ..models import Collectible, MeetPhoto, Post, EventRequest, EventCheckin, Reputation, UserCollection
 from django.db.models import Sum, Count
 from django.conf import settings
 from collections import defaultdict
@@ -112,6 +112,27 @@ class EventAnalyticsView(APIView):
 
             hourly_activity = sorted(hourly_map.values(), key=lambda x: x["hour"])
 
+            # 8. Proof of Meets at the event and how many carry a selfie
+            #    (a photo both people agreed to: approved and minting, or minted)
+            meet_rows = reps.filter(is_checkin=False, post__isnull=True).values_list("user_id", "given_by_id", "meet_slug")
+            meet_pairs = {frozenset((u, g)) for u, g, _ in meet_rows if u and g and u != g}
+            meet_slugs = {slug for _, _, slug in meet_rows if slug}
+            meets_with_selfie = MeetPhoto.objects.filter(
+                meet_slug__in=meet_slugs,
+                status__in=[MeetPhoto.Status.APPROVED, MeetPhoto.Status.MINTED],
+            ).values("meet_slug").distinct().count() if meet_slugs else 0
+
+            # 9. Seeker Verified among checked-in guests
+            guest_ids = EventCheckin.objects.filter(post=post, is_registered=True).values_list("user_id", flat=True)
+            seeker_verified_guests = User.objects.filter(user_id__in=guest_ids, seeker_verified=True).count()
+
+            # 10. POAPs: minted on-chain vs saved off-chain (wallet-optional check-in)
+            poap_counts = dict(
+                Collectible.objects.filter(kind=Collectible.Kind.POAP, source_id=str(post.id))
+                .order_by().values_list("status").annotate(n=Count("id"))
+            )
+            S = Collectible.Status
+
             data = {
                 "total_requests": total_requests,
                 "accepted_requests": accepted_requests,
@@ -123,6 +144,15 @@ class EventAnalyticsView(APIView):
                 "cnft_claim_rate": cnft_claim_rate,
                 "ecosystem_stats": ecosystem_stats,
                 "hourly_activity": hourly_activity,
+                "proof_of_meets": len(meet_pairs),
+                "meets_with_selfie": meets_with_selfie,
+                "seeker_verified_guests": seeker_verified_guests,
+                "poap_status": {
+                    "onchain": poap_counts.get(S.MINTED, 0),
+                    "saved": poap_counts.get(S.OFFCHAIN, 0),
+                    "pending": poap_counts.get(S.QUEUED, 0) + poap_counts.get(S.MINTING, 0),
+                    "failed": poap_counts.get(S.FAILED, 0),
+                },
             }
 
             return Response(data, status=status.HTTP_200_OK)
