@@ -238,8 +238,13 @@ class ProximityTokenTests(TestCase):
         self.assertEqual(response.data["interaction_type"], "checkin")
         self.assertEqual(response.data["post_name"], "Test Event")
 
-    def test_checkin_flow_unregistered_user(self):
-        """Test check-in flow for an unregistered user."""
+    def test_checkin_flow_rejected_user(self):
+        """Test check-in flow for a user the organizer rejected (no request at all is a walk-in)."""
+        EventRequest.objects.create(
+            user=self.user_scanner,
+            post=self.event,
+            status=EventRequest.Status.REJECTED,
+        )
         gen_response = self.broadcaster_client.post(
             "/api/v1/posts/proximity/generate-token/",
             {"interaction_type": "checkin", "event_id": self.event.id},

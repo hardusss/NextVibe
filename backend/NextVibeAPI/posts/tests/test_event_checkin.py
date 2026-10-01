@@ -158,8 +158,9 @@ class EventCheckinTestCase(TestCase):
         self.assert_checked_in(mint_status="pending")
         self.assertEqual(self.poap().status, "queued")
 
-    def test_unregistered_verify_creates_nothing(self):
-        EventRequest.objects.filter(user=self.attendee, post=self.event).delete()
+    def test_rejected_verify_creates_nothing(self):
+        # No request at all is a walk-in now (test_walk_in_checkin.py); a rejected one stays out
+        EventRequest.objects.filter(user=self.attendee, post=self.event).update(status=EventRequest.Status.REJECTED)
         res = self.checkin()
         self.assertEqual(res.status_code, 200)
         self.assertFalse(res.data["verified"])

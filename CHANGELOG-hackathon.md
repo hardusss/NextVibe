@@ -3,6 +3,9 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Oct 1 — Walk-in check-in
+- fix(backend): a guest who passes the geofence without an approved request is approved and checked in in the same request, on the check-in endpoint and the proximity-token path (none or pending becomes approved; rejected stays rejected; nobody outside the zone gets a request). Response shapes unchanged. Files: `backend/NextVibeAPI/posts/view_pac/{event_checkin,proximity_token}.py`, `posts/tests/{test_walk_in_checkin,test_event_checkin,test_proximity_token}.py`
+
 ## Sep 27 — Docs match the security work
 - docs: `SECURITY.md` describes sessions (revoked on password changes and account deletion), email codes and the email confirmation switch, wallet proofs for Seeker Verified, end-to-end encrypted chats (what the server still sees, older messages, lost keys), the internal services' shared secrets and localhost defaults. `E2EE_MODERATION_POLICY.md` now describes the v3 design as built and says plainly that chat reports aren't stored yet (TODO for the founder). `API.md` lists the email-code and password-reset routes, the answers while email confirmation is on, the wallet `proof`, `NOT_SHARING`, the chat list's new fields and the realtime service's routes. Service READMEs cover the new env keys, maintenance commands and test commands. Files: `README.md`, `docs/{SECURITY,E2EE_MODERATION_POLICY,API,ARCHITECTURE}.md`, `backend/NextVibeAPI/README.md`, `frontend/NextVibe/README.md`, `{nft-service,tx-indexer,moderation_service,socket_service}/README.md`
 

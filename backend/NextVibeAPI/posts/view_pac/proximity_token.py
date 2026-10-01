@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
-from ..models import Post, EventRequest, EventCheckin
+from ..models import Post, EventCheckin
 from ..constants import GEOFENCE_RINGS
 from ..src.proximity_presence import mark_sharing
 from user.models import User
@@ -250,15 +250,11 @@ class VerifyProximityTokenView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        is_registered = EventRequest.objects.filter(
-            user=user,
-            post=post,
-            status=EventRequest.Status.APPROVED
-        ).exists()
+        from .event_checkin import approve_walk_in, grant_checkin, _res15_cell
+        is_registered = approve_walk_in(user, post)
 
         earned_points = 0
         if is_registered:
-            from .event_checkin import grant_checkin, _res15_cell
             _, earned_points = grant_checkin(user, post, _res15_cell(latitude, longitude))
 
         post_image = None

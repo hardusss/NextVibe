@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from ..models import Collectible, Post, EventRequest, EventCheckin, Reputation
 from ..constants import GEOFENCE_RINGS
@@ -59,6 +59,34 @@ def grant_checkin(user, post, h3_geo=None):
         user.pk, post.id, earned_points, created, existing_rep is None,
     )
     return checkin, earned_points
+
+
+def approve_walk_in(user, post) -> bool:
+    """True if the user may check in. A guest who passed the geofence gets an APPROVED
+    request automatically: none -> create APPROVED, PENDING -> APPROVED.
+    REJECTED stays rejected (the organizer said no)."""
+    try:
+        with transaction.atomic():
+            req, created = EventRequest.objects.get_or_create(
+                user=user, post=post, defaults={"status": EventRequest.Status.APPROVED},
+            )
+    except IntegrityError:
+        # A concurrent check-in created the row first
+        created = False
+        req = EventRequest.objects.get(user=user, post=post)
+
+    if created:
+        logger.info("checkin.walk_in_approved user=%s post=%s was=%s", user.pk, post.id, "none")
+        return True
+    if req.status == EventRequest.Status.PENDING:
+        with transaction.atomic():
+            updated = EventRequest.objects.filter(
+                pk=req.pk, status=EventRequest.Status.PENDING,
+            ).update(status=EventRequest.Status.APPROVED)
+        if updated:
+            logger.info("checkin.walk_in_approved user=%s post=%s was=%s", user.pk, post.id, "pending")
+        req.refresh_from_db(fields=["status"])
+    return req.status == EventRequest.Status.APPROVED
 
 
 def _verify_event_geofence(post, lat, lng):
@@ -116,11 +144,7 @@ class EventCheckinView(APIView):
         if geo_error:
             return geo_error
 
-        is_registered = EventRequest.objects.filter(
-            user=request.user,
-            post=post,
-            status=EventRequest.Status.APPROVED
-        ).exists()
+        is_registered = approve_walk_in(request.user, post)
 
         earned_points = 0
         if is_registered:
