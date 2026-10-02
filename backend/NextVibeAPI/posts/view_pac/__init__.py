@@ -28,5 +28,6 @@ from .event_analytics import EventAnalyticsView, EventTopUsersView, EventSocialG
 from .event_update import EventUpdateView
 from .event_taps import EventTapsView
 from .event_posts import EventPostsView
+from .all_events import AllEventsView
 from .proximity_token import GenerateProximityTokenView, VerifyProximityTokenView
 from .post_share import PostShareView, post_card_image

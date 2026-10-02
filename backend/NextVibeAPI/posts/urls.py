@@ -15,7 +15,7 @@ from .view_pac import (
     EventCheckinView, EventCheckinListView, UserEventConnectionsView, ClaimEventNftView, EventNFCConnectView,
     IRLTapView, ActiveCheckinView,
     EventAnalyticsView, EventTopUsersView, EventUpdateView, EventTapsView, EventSocialGraphView, EventBroadcastView,
-    EventPostsView,
+    EventPostsView, AllEventsView,
     GenerateProximityTokenView, VerifyProximityTokenView,
     PostShareView, post_card_image,
     )
@@ -69,6 +69,7 @@ urlpatterns = [
     path("event-social-graph/<int:post_id>/", EventSocialGraphView.as_view(), name="event_social_graph"),
     path("event-broadcast/<int:post_id>/", EventBroadcastView.as_view(), name="event_broadcast"),
     path("event-posts/<int:post_id>/", EventPostsView.as_view(), name="event_posts"),
+    path("all-events/", AllEventsView.as_view(), name="all_events"),
     path("proximity/generate-token/", GenerateProximityTokenView.as_view(), name="proximity_generate_token"),
     path("proximity/verify-token/", VerifyProximityTokenView.as_view(), name="proximity_verify_token"),
     # Public link previews for nextvibe.io/u/post/<id> (landing _worker.js)
