@@ -3,6 +3,10 @@
 # Colosseum Crypto World's Fair Changelog (Sep 14 – Oct 12, 2026)
 All work below was built during the hackathon window. Format: date · scope · summary · key files.
 
+## Oct 2 — Admins see every event on the organizer dashboard
+- feat(backend): a `User.is_admin` flag (set it in the Django admin, where users can be filtered by it) — ⚠️ needs a backend migration generated on the deploy host right after the backend deploys (`python manage.py makemigrations user && python manage.py migrate`); until then every request that loads a user fails on the missing column. An admin reads any event's organizer data: analytics, top attendees, taps, the social graph, approved attendees and the check-in list (`can_view_event` in `posts/src/event_access.py`). New `GET /posts/all-events/` (admins only, 403 for anyone else): every event newest first, deleted and denied ones left out, the posts-menu fields plus the owner, `index`/`limit` up to 500. Broadcasts, edits, request approvals and deletes stay owner-only. `is_admin` shows only on your own profile. Tests: `posts/tests/test_event_owner_access.py`. Files: `backend/NextVibeAPI/user/{models,admin}.py`, `user/views_pac/user_detail.py`, `posts/src/event_access.py`, `posts/view_pac/{all_events,event_analytics,event_taps,event_requests,event_checkin,__init__}.py`, `posts/urls.py`, `docs/{API,EVENTS,SECURITY}.md`
+- feat(dashboard): an admin's event picker and Events page list every event, other people's with the host's @username; on those the dashboard hides the broadcast and raffle panels and the Events page the edit and delete buttons (repo `nextvibe-organizers-portal`).
+
 ## Oct 1 — Walk-in check-in
 - fix(backend): a guest who passes the geofence without an approved request is approved and checked in in the same request, on the check-in endpoint and the proximity-token path (none or pending becomes approved; rejected stays rejected; nobody outside the zone gets a request). Response shapes unchanged. Files: `backend/NextVibeAPI/posts/view_pac/{event_checkin,proximity_token}.py`, `posts/tests/{test_walk_in_checkin,test_event_checkin,test_proximity_token}.py`
 

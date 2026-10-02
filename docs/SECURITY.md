@@ -42,7 +42,8 @@ TODO(founder): confirm this address or replace it with a dedicated security mail
   link-preview cards, the public profile) return an explicit list of fields.
 - Blocking hides two people from each other everywhere, and a tap between them is refused
   without showing the name. A tap only counts while the other person has Tap to Meet open.
-- An event's attendee lists and tap graphs are for the event's owner only.
+- An event's attendee lists and tap graphs are for the event's owner only, and for NextVibe
+  admins (`User.is_admin`), who can read any event's but change none.
 - Wallet addresses are public on-chain. Each Proof of Meet cNFT names both people's wallets
   as creators on purpose: that's the proof.
 - Seeker Verified is granted only for a wallet the account has proven it controls: a wallet

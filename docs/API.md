@@ -117,27 +117,29 @@ and each app's `urls.py`); nothing here is planned or hypothetical.
 
 ## Events and check-in — `/posts/`
 
-Events are posts with event fields; see [EVENTS.md](EVENTS.md).
+Events are posts with event fields; see [EVENTS.md](EVENTS.md). "Organizer or admin" endpoints
+also answer admins (`User.is_admin`) for any event; changing an event stays with its owner.
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/posts/all-events/` | Every event, newest first, with its owner (admins only; `index`, `limit` up to 500) |
 | POST | `/posts/luma-event/preview/` | Read a Luma event page before importing it |
 | POST | `/posts/luma-event/verify/` | Verify ownership of a Luma event and import it |
 | PATCH | `/posts/event-update/<post_id>/` | Edit an event (organizer) |
 | POST | `/posts/event-requests/create/<post_id>/` | Ask to join an event |
 | GET | `/posts/event-requests/` | Join requests (organizer) |
 | POST | `/posts/event-requests/action/<request_id>/` | Approve or reject a request |
-| GET | `/posts/event-requests/attendees/<post_id>/` | Approved attendees |
+| GET | `/posts/event-requests/attendees/<post_id>/` | Approved attendees (organizer or admin) |
 | POST | `/posts/event-checkin/<post_id>/` | Check in at an event (location and time window checked) |
-| GET | `/posts/event-checkin/list/<post_id>/` | Checked-in people (organizer) |
+| GET | `/posts/event-checkin/list/<post_id>/` | Checked-in people (organizer or admin) |
 | POST | `/posts/claim-event-cnft/<post_id>/` | Claim the event POAP |
 | GET | `/posts/active-checkin/` | Events the user is checked in to right now |
 | GET | `/posts/user-event-connections/` | Events attended and reputation breakdown |
 | GET | `/posts/event-posts/<post_id>/` | Posts made during an event |
-| GET | `/posts/event-analytics/<post_id>/` | Dashboard analytics (organizer) |
-| GET | `/posts/event-top-users/<post_id>/` | Top attendees by REP and taps (organizer) |
-| GET | `/posts/event-taps/<post_id>/` | Check-in and tap coordinates for the heat map (organizer) |
-| GET | `/posts/event-social-graph/<post_id>/` | Who met whom at the event (organizer) |
+| GET | `/posts/event-analytics/<post_id>/` | Dashboard analytics (organizer or admin) |
+| GET | `/posts/event-top-users/<post_id>/` | Top attendees by REP and taps (organizer or admin) |
+| GET | `/posts/event-taps/<post_id>/` | Check-in and tap coordinates for the heat map (organizer or admin) |
+| GET | `/posts/event-social-graph/<post_id>/` | Who met whom at the event (organizer or admin) |
 | POST | `/posts/event-broadcast/<post_id>/` | Push a message to approved attendees (organizer) |
 
 ## Tap to Meet — `/posts/`

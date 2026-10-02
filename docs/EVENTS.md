@@ -96,7 +96,7 @@ The dashboard at **https://dashboard.nextvibe.io** is a separate Next.js app
 | Panel | Endpoint |
 |---|---|
 | Create an event (Luma preview, NV code, post, cover, publish) | `luma-event/preview`, `luma-event/verify`, `posts/`, `add-media/`, `finalize/`, `cnft-mint/` |
-| Events list | `GET /posts/posts-menu/<user_id>/?is_event=true` |
+| Events list | `GET /posts/posts-menu/<user_id>/?is_event=true`; admins: `GET /posts/all-events/` |
 | Requests and attendees | `GET /posts/event-requests/`, `POST …/action/<id>/`, `GET …/attendees/<event_id>/` |
 | Analytics: requests, check-ins, taps, total REP, POAP claims, wallet share, hourly activity | `GET /posts/event-analytics/<event_id>/` |
 | Top attendees | `GET /posts/event-top-users/<event_id>/` |
@@ -105,6 +105,10 @@ The dashboard at **https://dashboard.nextvibe.io** is a separate Next.js app
 | Posts made at the event | `GET /posts/event-posts/<event_id>/` |
 | Broadcast push | `POST /posts/event-broadcast/<event_id>/` |
 | Edit or delete the event | `PATCH /posts/event-update/<event_id>/`, `DELETE /posts/delete-post/` |
+
+Admins (`User.is_admin`, set in the Django admin) see every event in the dashboard, not only
+their own, read-only: analytics, attendees, the heat map, the graph and the event's posts.
+Editing, deleting, requests, broadcasts and raffles stay with the event's owner.
 
 The app has the same organizer tools for phones: add a Luma event, requests, attendees and
 the tap check-in sheet (`components/Events/EventsScreen.tsx`).
