@@ -21,6 +21,7 @@ BANED_FIELDS = [
     "count_generations_ai",
     "is_staff",
     "is_superuser",
+    "is_admin",
     "is_active",
     "last_activity"
 ]

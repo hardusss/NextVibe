@@ -58,6 +58,9 @@ class User(AbstractBaseUser):
     is_online = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+    # NextVibe team: sees every event's organizer data, not only their own
+    # events (read-only; changing an event stays with its owner)
+    is_admin = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_baned = models.BooleanField(default=False)
     last_activity = models.DateTimeField(default=timezone.now)

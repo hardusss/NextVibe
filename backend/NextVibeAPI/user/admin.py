@@ -6,7 +6,7 @@ from django.contrib import admin
 class UserAdmin(admin.ModelAdmin):
     list_display = ["username", "email", "is_online", "is_baned", "seeker_verified"]
 
-    list_filter = ('is_baned', 'is_staff', 'is_superuser', 'is_active')
+    list_filter = ('is_baned', 'is_staff', 'is_superuser', 'is_admin', 'is_active')
 
     search_fields = ('username', 'email')
 
