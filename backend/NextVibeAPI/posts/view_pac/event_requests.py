@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from ..models import Post, EventRequest
 from user.models import Notification
 from user.src.blocking import is_blocked_between
+from ..src.event_access import can_view_event
 from django.db import IntegrityError
 
 class EventRequestCreateView(APIView):
@@ -97,8 +98,8 @@ class EventAttendeesView(APIView):
     def get(self, request, post_id):
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
 
-        # Only owner can see attendees
-        if post.owner != request.user:
+        # Only owner (or an admin) can see attendees
+        if not can_view_event(request.user, post):
             return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
 
         approved = EventRequest.objects.filter(

@@ -8,13 +8,14 @@ from django.conf import settings
 from collections import defaultdict
 from user.models import User, Notification
 from user.src.blocking import blocked_user_ids
+from ..src.event_access import can_view_event
 import traceback
 
 
 class EventAnalyticsView(APIView):
     """
     GET /posts/event-analytics/<int:post_id>/
-    Returns analytics data for a specific event (only accessible by the event owner).
+    Returns analytics data for a specific event (the event owner and admins).
     """
     permission_classes = [IsAuthenticated]
 
@@ -25,8 +26,8 @@ class EventAnalyticsView(APIView):
             except Post.DoesNotExist:
                 return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            # Ensure only the owner can view analytics
-            if post.owner != request.user:
+            # Ensure only the owner (or an admin) can view analytics
+            if not can_view_event(request.user, post):
                 return Response({"error": "Only the event owner can view analytics"}, status=status.HTTP_403_FORBIDDEN)
 
             # 1. Event Requests counts
@@ -177,8 +178,8 @@ class EventTopUsersView(APIView):
             except Post.DoesNotExist:
                 return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            # Only the owner sees who came and their wallets
-            if post.owner != request.user:
+            # Only the owner (or an admin) sees who came and their wallets
+            if not can_view_event(request.user, post):
                 return Response({"error": "Only the event owner can view top attendees"},
                                 status=status.HTTP_403_FORBIDDEN)
 
@@ -233,8 +234,8 @@ class EventSocialGraphView(APIView):
             except Post.DoesNotExist:
                 return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            # Ensure only the owner can view
-            if post.owner != request.user:
+            # Ensure only the owner (or an admin) can view
+            if not can_view_event(request.user, post):
                 return Response({"error": "Only the event owner can view the social graph"}, status=status.HTTP_403_FORBIDDEN)
 
             # Fetch all reputation records for the event

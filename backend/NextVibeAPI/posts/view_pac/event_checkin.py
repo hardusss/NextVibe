@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404
 from ..models import Collectible, Post, EventRequest, EventCheckin, Reputation
 from ..constants import GEOFENCE_RINGS
 from ..src import collectibles
+from ..src.event_access import can_view_event
 
 logger = logging.getLogger("posts.checkin")
 
@@ -295,14 +296,14 @@ class EventCheckinListView(APIView):
     """
     GET /posts/event-checkin/list/<post_id>/
     Returns all users who checked in via NFC for this event.
-    Only the event owner can access this endpoint.
+    Only the event owner (or an admin) can access this endpoint.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, post_id):
         post = get_object_or_404(Post, id=post_id, is_luma_event=True)
 
-        if post.owner != request.user:
+        if not can_view_event(request.user, post):
             return Response(
                 {"error": "Not authorized"},
                 status=status.HTTP_403_FORBIDDEN

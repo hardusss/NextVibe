@@ -6,6 +6,7 @@ from django.conf import settings
 from ..constants import GEOFENCE_RINGS
 from ..models import Post, Reputation
 from ..src import geocode
+from ..src.event_access import can_view_event
 import h3
 
 
@@ -45,8 +46,8 @@ class EventTapsView(APIView):
         except Post.DoesNotExist:
             return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Where people checked in and tapped is for the organizer only
-        if post.owner != request.user:
+        # Where people checked in and tapped is for the organizer (and admins) only
+        if not can_view_event(request.user, post):
             return Response({"error": "Only the event owner can view taps"}, status=status.HTTP_403_FORBIDDEN)
 
         # Decode event's default center location from its h3_geo
