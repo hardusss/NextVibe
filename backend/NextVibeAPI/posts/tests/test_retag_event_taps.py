@@ -265,3 +265,18 @@ class RetagEventTapsTest(TestCase):
         res = client.get(f"/api/v1/posts/event-posts/{self.day1.id}/")
         self.assertEqual(res.status_code, 200)
         self.assertEqual([p["id"] for p in res.json()["results"]], [post])
+
+    def test_post_without_location_links_when_its_author_was_there(self):
+        EventCheckin.objects.create(user=self.people["ana"], post=self.day1, is_registered=True)
+        self._irl("bo", "cy", DAY2 + timedelta(hours=1))  # moved to day 2 in the same run
+        checked_in = self._post("ana", DAY1 + timedelta(hours=2), h3_geo=False)
+        tapped = self._post("bo", DAY2 + timedelta(hours=3), h3_geo=False)
+        wrong_day = self._post("bo", DAY1 + timedelta(hours=3), h3_geo=False)  # tapped on day 2 only
+        stranger = self._post("di", DAY1 + timedelta(hours=2), h3_geo=False)
+        out = self._run(*self._events_args(self.day1, self.day2), "--apply")
+        self.assertIn("author there", out)
+        self.assertEqual(self._on_event(checked_in), self.day1.id)
+        self.assertEqual(self._on_event(tapped), self.day2.id)
+        self.assertIsNone(self._on_event(wrong_day))
+        self.assertIsNone(self._on_event(stranger))
+        self.assertIn("no location, and the author neither checked in nor tapped at the event", out)

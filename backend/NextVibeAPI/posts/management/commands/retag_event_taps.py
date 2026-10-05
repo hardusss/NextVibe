@@ -24,7 +24,9 @@ Posts get the same treatment. A post made at the event by someone who wasn't
 checked in has no on_event (post_create links only checked-in authors), so
 the dashboard's event posts leave it out. A post that isn't linked to any
 event, was created inside the event's window and has an h3_geo inside the
-geofence (same rule) gets on_event set; nothing else on it changes. No REP
+geofence (same rule) gets on_event set; nothing else on it changes. A post
+without a location (the app sent none) is linked when its author was at the
+event: checked in, or tapped someone there. No REP
 is awarded for it (post_create's 10 REP and its Reputation row are not
 created), so nobody's REP total changes.
 
@@ -45,7 +47,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from posts.constants import GEOFENCE_RINGS
-from posts.models import Collectible, MeetPhoto, Post, Reputation
+from posts.models import Collectible, EventCheckin, MeetPhoto, Post, Reputation
 from posts.src.meets import ROW_FIELDS, TIER_LABELS, group_rows, meet_tier, tap_rows
 from posts.view_pac.event_checkin import geofence_rings
 from user.models import User
@@ -107,7 +109,7 @@ class Command(BaseCommand):
         moving, skipped = self._plan(events)
         self._print_plan(moving, skipped)
         self._print_impact(moving)
-        posts, skipped_posts = self._plan_posts(events)
+        posts, skipped_posts = self._plan_posts(events, moving)
         self._print_posts(posts, skipped_posts)
 
         if not options["apply"]:
@@ -227,9 +229,13 @@ class Command(BaseCommand):
         meet.event, meet.rings = targets[0], max(rings)
         return meet
 
-    def _plan_posts(self, events):
+    def _plan_posts(self, events, moving):
         """(posts to link, posts skipped) as dicts, oldest first. Only posts
-        not linked to any event, created inside an event's window."""
+        not linked to any event, created inside an event's window. A post
+        with a location must be inside the geofence; one without (the app
+        sent none) goes to the event whose author was there: checked in, or
+        tapped someone (counting the meets this run moves)."""
+        present = _people_present(events, moving)
         start = min(e.luma_event_start_time for e in events)
         end = max(e.luma_event_end_time for e in events)
         rows = (
@@ -241,13 +247,19 @@ class Command(BaseCommand):
         )
         moving, skipped = [], []
         for post in rows:
-            post.update(event=None, rings=None, reason=None)
+            post.update(event=None, rings=None, reason=None, basis="geofence")
             in_window = [e for e in events
                          if e.luma_event_start_time <= post["create_at"] <= e.luma_event_end_time]
             if not in_window:
                 post["reason"] = "outside every event window"  # between two event days
             elif not post["h3_geo"]:
-                post["reason"] = "no location (h3_geo)"
+                seen = [e for e in in_window if post["owner_id"] in present[e.id]]
+                if len(seen) == 1:
+                    post["event"], post["basis"] = seen[0], "author there"
+                elif seen:
+                    post["reason"] = "ambiguous: no location, author at events " + ", ".join(str(e.id) for e in seen)
+                else:
+                    post["reason"] = "no location, and the author neither checked in nor tapped at the event"
             else:
                 try:
                     lat, lng = h3.cell_to_latlng(post["h3_geo"])
@@ -275,17 +287,19 @@ class Command(BaseCommand):
         self.stdout.write(f"\nWould link {len(posts)} posts to their event (Post.on_event):")
         if posts:
             self.stdout.write(f"  {'post':>8}  {'event':>6}  {'created (' + self.tz.key + ')':<26}  {'rings':>5}  "
-                              f"{'res':>3}  author")
+                              f"{'res':>3}  {'why':<12}  author")
         for p in posts:
-            self.stdout.write(f"  {p['id']:>8}  {p['event'].id:>6}  {self._fmt(p['create_at']):<26}  {p['rings']:>5}  "
-                              f"{h3.get_resolution(p['h3_geo']):>3}  @{p['owner__username']}")
+            rings = "—" if p["rings"] is None else str(p["rings"])
+            res = h3.get_resolution(p["h3_geo"]) if p["h3_geo"] else "—"
+            self.stdout.write(f"  {p['id']:>8}  {p['event'].id:>6}  {self._fmt(p['create_at']):<26}  {rings:>5}  "
+                              f"{res:>3}  {p['basis']:<12}  @{p['owner__username']}")
         self.stdout.write(f"\nPosts skipped {len(skipped)}:")
         for p in skipped:
             rings = "" if p["rings"] is None else str(p["rings"])
             self.stdout.write(f"  {p['id']:>8}  {self._fmt(p['create_at']):<26}  {rings:>5}  "
                               f"@{p['owner__username']}  — {p['reason']}")
-        for event_id, n in sorted(Counter(p["event"].id for p in posts).items()):
-            self.stdout.write(f"  posts to event {event_id}: {n}")
+        for (event_id, basis), n in sorted(Counter((p["event"].id, p["basis"]) for p in posts).items()):
+            self.stdout.write(f"  posts to event {event_id} ({basis}): {n}")
         for reason, n in Counter(_reason_kind(p["reason"]) for p in skipped).most_common():
             self.stdout.write(f"  posts skipped, {reason}: {n}")
         if posts:
@@ -469,6 +483,22 @@ def _has_event_tap(pair, event_id):
     a, b = tuple(pair)
     return Reputation.objects.filter(event_id=event_id, is_checkin=False, post__isnull=True).filter(
         Q(user_id=a, given_by_id=b) | Q(user_id=b, given_by_id=a)).exists()
+
+
+def _people_present(events, moving):
+    """{event id: user ids seen there}: checked in, or in a tap at the event
+    (existing event taps, and the meets this run moves)."""
+    ids = [e.id for e in events]
+    present = {e.id: set() for e in events}
+    for event_id, user_id in EventCheckin.objects.filter(post_id__in=ids, is_registered=True).values_list(
+            "post_id", "user_id"):
+        present[event_id].add(user_id)
+    taps = Reputation.objects.filter(event_id__in=ids, is_checkin=False, post__isnull=True, source="event")
+    for event_id, user_id, given_by_id in taps.values_list("event_id", "user_id", "given_by_id"):
+        present[event_id] |= {user_id, given_by_id}
+    for meet in moving:
+        present[meet.event.id] |= set(meet.pair)
+    return present
 
 
 def _event_inside_cell(event, cell):
