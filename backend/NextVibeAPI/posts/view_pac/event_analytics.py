@@ -9,6 +9,7 @@ from collections import defaultdict
 from user.models import User, Notification
 from user.src.blocking import blocked_user_ids
 from ..src.event_access import can_view_event
+from ..src.meets import tap_rows
 import traceback
 
 
@@ -295,13 +296,48 @@ class EventSocialGraphView(APIView):
 
             return Response({
                 "nodes": nodes,
-                "edges": edges
+                "edges": edges,
+                # For the dashboard's replay: how many checked in, and every
+                # event tap in the order it happened
+                "total_checkins": EventCheckin.objects.filter(post=post, is_registered=True).count(),
+                "taps": replay_taps(post),
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
             traceback.print_exc()
             return Response({"error": "Internal server error occurred."},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def replay_taps(post):
+    """
+    The event's taps (source 'event'), one per meet, oldest first:
+    {time, h3, user_a, user_b}. time is when the first of its two rows was
+    written; h3 the cell it was tapped in (None when the phone sent no
+    location); user_a confirmed the tap.
+    """
+    rows = (
+        tap_rows().filter(source="event", event=post)
+        .order_by("created_at", "id")
+        .values("user_id", "given_by_id", "created_at", "h3_geo", "meet_slug")
+    )
+    taps, seen = [], {}
+    for row in rows:
+        pair = frozenset((row["user_id"], row["given_by_id"]))
+        key = row["meet_slug"] or pair
+        if key in seen:
+            tap = seen[key]
+            tap["h3"] = tap["h3"] or row["h3_geo"]
+            continue
+        tap = {
+            "time": row["created_at"].isoformat(),
+            "h3": row["h3_geo"],
+            "user_a": row["user_id"],
+            "user_b": row["given_by_id"],
+        }
+        seen[key] = tap
+        taps.append(tap)
+    return taps
 
 
 class EventBroadcastView(APIView):
