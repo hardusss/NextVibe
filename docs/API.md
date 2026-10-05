@@ -139,7 +139,7 @@ also answer admins (`User.is_admin`) for any event; changing an event stays with
 | GET | `/posts/event-analytics/<post_id>/` | Dashboard analytics (organizer or admin) |
 | GET | `/posts/event-top-users/<post_id>/` | Top attendees by REP and taps (organizer or admin) |
 | GET | `/posts/event-taps/<post_id>/` | Check-in and tap coordinates for the heat map (organizer or admin) |
-| GET | `/posts/event-social-graph/<post_id>/` | Who met whom at the event (organizer or admin) |
+| GET | `/posts/event-social-graph/<post_id>/` | Who met whom at the event (organizer or admin); for the dashboard replay also `total_checkins` and `taps` (`{time, h3, user_a, user_b}` per event tap, oldest first) |
 | POST | `/posts/event-broadcast/<post_id>/` | Push a message to approved attendees (organizer) |
 
 ## Tap to Meet — `/posts/`
