@@ -90,6 +90,16 @@ def approve_walk_in(user, post) -> bool:
     return req.status == EventRequest.Status.APPROVED
 
 
+def geofence_rings(post, lat, lng) -> int:
+    """Rings between a point and the event cell, at the event cell's
+    resolution: inside the event zone when <= GEOFENCE_RINGS. Raises on
+    invalid coordinates or cells."""
+    import h3
+    event_res = h3.get_resolution(post.h3_geo)
+    user_cell = h3.latlng_to_cell(float(lat), float(lng), event_res)
+    return h3.grid_distance(user_cell, post.h3_geo)
+
+
 def _verify_event_geofence(post, lat, lng):
     """Returns an error Response when the coordinates fall outside the event
     zone (or are invalid), else None. Callers pass floats or None."""
@@ -101,10 +111,7 @@ def _verify_event_geofence(post, lat, lng):
             status=status.HTTP_400_BAD_REQUEST,
         )
     try:
-        import h3
-        event_res = h3.get_resolution(post.h3_geo)
-        user_cell = h3.latlng_to_cell(float(lat), float(lng), event_res)
-        if h3.grid_distance(user_cell, post.h3_geo) > GEOFENCE_RINGS:
+        if geofence_rings(post, lat, lng) > GEOFENCE_RINGS:
             return Response(
                 {"error": "You must be physically present at the event zone to check in."},
                 status=status.HTTP_400_BAD_REQUEST,
