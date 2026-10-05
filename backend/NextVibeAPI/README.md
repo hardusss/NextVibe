@@ -163,7 +163,7 @@ DJANGO_SETTINGS_MODULE=test_settings python manage.py test posts user chat nvcli
 | `manage.py purge_2fa_qr_codes [--dry-run] [--reset-secrets]` | Delete the 2FA QR codes uploaded to the public bucket before they were made in memory; `--reset-secrets` also turns 2FA off so people set it up again |
 | `manage.py rename_chat_media [--apply] [--limit N]` | Give chat photos and videos from before random names (`chat_media/message_<id>_<n>`) random names, update their messages and delete the old files; dry run unless `--apply` |
 | `manage.py grant_seeker_badges [--dry-run]` | Seeker Verified bootstrap; only wallets the account has proven are granted |
-| `manage.py retag_event_taps --event ID [--event ID] [--apply] \| --revert BACKUP.json` | Move IRL taps made inside an event's window and geofence to that event (both rows of a meet, never a second meet for a pair); dry run unless `--apply`, which writes a JSON backup that `--revert` restores |
+| `manage.py retag_event_taps --event ID [--event ID] [--apply] \| --revert BACKUP.json` | Move IRL taps and unlinked posts made inside an event's window and geofence to that event (both rows of a meet, never a second meet for a pair; posts get `on_event`, no REP); dry run unless `--apply`, which writes a JSON backup that `--revert` restores |
 | `manage.py flushexpiredtokens` | Also scheduled daily: drop expired refresh-token records |
 
 ## Main files

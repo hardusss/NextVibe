@@ -209,3 +209,59 @@ class RetagEventTapsTest(TestCase):
         path = os.path.join(self.backup_dir, os.listdir(self.backup_dir)[0])
         call_command("retag_event_taps", "--revert", path, stdout=StringIO())
         self.assertEqual(snapshot(), before)
+
+    # ── Posts ────────────────────────────────────────────────────────────
+
+    def _post(self, author, when, where=VENUE, h3_geo=True, on_event=None):
+        post = Post.objects.create(owner=self.people[author], about="at the hackathon", on_event=on_event,
+                                   h3_geo=cell(where, 11) if h3_geo else None, moderation_status="approved")
+        Post.objects.filter(id=post.id).update(create_at=when)
+        return post.id
+
+    def _on_event(self, post_id):
+        return Post.all_objects.get(id=post_id).on_event_id
+
+    def test_posts_inside_window_and_geofence_link_to_their_day(self):
+        day1 = self._post("ana", DAY1 + timedelta(hours=1))
+        day2 = self._post("bo", DAY2 + timedelta(hours=1))
+        far = self._post("cy", DAY1 + timedelta(hours=1), where=FAR)
+        no_location = self._post("di", DAY1 + timedelta(hours=1), h3_geo=False)
+        before = self._post("ana", DAY1 - timedelta(minutes=5))
+        between = self._post("bo", DAY1 + timedelta(hours=16))  # night between the two days
+        out = self._run(*self._events_args(self.day1, self.day2), "--apply")
+        self.assertIn("Would link 2 posts", out)
+        self.assertEqual(self._on_event(day1), self.day1.id)
+        self.assertEqual(self._on_event(day2), self.day2.id)
+        for post_id in (far, no_location, before, between):
+            self.assertIsNone(self._on_event(post_id))
+        # No REP for them: post_create's award isn't replayed
+        self.assertFalse(Reputation.objects.filter(post_id__in=[day1, day2]).exists())
+
+    def test_post_already_on_an_event_is_left_alone(self):
+        other = self._event("Other event", DAY1)
+        linked = self._post("ana", DAY1 + timedelta(hours=1), on_event=other)
+        self._run(*self._events_args(self.day1), "--apply")
+        self.assertEqual(self._on_event(linked), other.id)
+
+    def test_posts_dry_run_and_revert(self):
+        post = self._post("ana", DAY1 + timedelta(hours=1))
+        self._run(*self._events_args(self.day1))
+        self.assertIsNone(self._on_event(post))
+
+        self._run(*self._events_args(self.day1), "--apply")
+        self.assertEqual(self._on_event(post), self.day1.id)
+        path = os.path.join(self.backup_dir, os.listdir(self.backup_dir)[0])
+        out = StringIO()
+        call_command("retag_event_taps", "--revert", path, stdout=out)
+        self.assertIn("Reverted 0 rows and 1 posts", out.getvalue())
+        self.assertIsNone(self._on_event(post))
+
+    def test_linked_posts_show_in_event_posts(self):
+        post = self._post("ana", DAY1 + timedelta(hours=1))
+        self._run(*self._events_args(self.day1), "--apply")
+        from rest_framework.test import APIClient
+        client = APIClient()
+        client.force_authenticate(user=self.owner)
+        res = client.get(f"/api/v1/posts/event-posts/{self.day1.id}/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual([p["id"] for p in res.json()["results"]], [post])

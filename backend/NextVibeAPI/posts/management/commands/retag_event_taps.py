@@ -20,6 +20,14 @@ h3_geo and meet_slug stay, so Proof of Meet links, collectibles (source_id)
 and selfies (MeetPhoto.meet_slug) keep pointing at the same meet. Check-ins,
 requests, POAPs, collectibles and selfies are never touched.
 
+Posts get the same treatment. A post made at the event by someone who wasn't
+checked in has no on_event (post_create links only checked-in authors), so
+the dashboard's event posts leave it out. A post that isn't linked to any
+event, was created inside the event's window and has an h3_geo inside the
+geofence (same rule) gets on_event set; nothing else on it changes. No REP
+is awarded for it (post_create's 10 REP and its Reputation row are not
+created), so nobody's REP total changes.
+
     python manage.py retag_event_taps --event 812 --event 813      # dry run: what would move
     python manage.py retag_event_taps --event 812 --apply          # move; writes a backup first
     python manage.py retag_event_taps --revert retag_event_taps-812-20261005T120000Z.json
@@ -66,7 +74,8 @@ class Meet:
 
 
 class Command(BaseCommand):
-    help = "Move IRL taps made inside an event's window and geofence to that event (dry run unless --apply)."
+    help = ("Move IRL taps and unlinked posts made inside an event's window and geofence to that event "
+            "(dry run unless --apply).")
 
     def add_arguments(self, parser):
         parser.add_argument("--event", type=int, action="append", default=[], metavar="ID",
@@ -98,15 +107,19 @@ class Command(BaseCommand):
         moving, skipped = self._plan(events)
         self._print_plan(moving, skipped)
         self._print_impact(moving)
+        posts, skipped_posts = self._plan_posts(events)
+        self._print_posts(posts, skipped_posts)
 
         if not options["apply"]:
-            self.stdout.write(self.style.WARNING("\nDry run: nothing changed. Re-run with --apply to move these meets."))
+            self.stdout.write(self.style.WARNING(
+                "\nDry run: nothing changed. Re-run with --apply to move these meets and posts."))
             return
-        if not moving:
+        if not moving and not posts:
             self.stdout.write("Nothing to move.")
             return
-        path = self._apply(moving, events, options["backup_dir"])
-        self.stdout.write(self.style.SUCCESS(f"\nMoved {len(moving)} meets ({2 * len(moving)} rows). Backup: {path}"))
+        path = self._apply(moving, posts, events, options["backup_dir"])
+        self.stdout.write(self.style.SUCCESS(
+            f"\nMoved {len(moving)} meets ({2 * len(moving)} rows) and {len(posts)} posts. Backup: {path}"))
         self._clear_caches(events)
 
     # ── Plan ─────────────────────────────────────────────────────────────
@@ -214,6 +227,72 @@ class Command(BaseCommand):
         meet.event, meet.rings = targets[0], max(rings)
         return meet
 
+    def _plan_posts(self, events):
+        """(posts to link, posts skipped) as dicts, oldest first. Only posts
+        not linked to any event, created inside an event's window."""
+        start = min(e.luma_event_start_time for e in events)
+        end = max(e.luma_event_end_time for e in events)
+        rows = (
+            Post.all_objects
+            .filter(is_luma_event=False, on_event__isnull=True, create_at__gte=start, create_at__lte=end)
+            .exclude(id__in=[e.id for e in events])
+            .order_by("create_at", "id")
+            .values("id", "owner_id", "owner__username", "create_at", "h3_geo")
+        )
+        moving, skipped = [], []
+        for post in rows:
+            post.update(event=None, rings=None, reason=None)
+            in_window = [e for e in events
+                         if e.luma_event_start_time <= post["create_at"] <= e.luma_event_end_time]
+            if not in_window:
+                post["reason"] = "outside every event window"  # between two event days
+            elif not post["h3_geo"]:
+                post["reason"] = "no location (h3_geo)"
+            else:
+                try:
+                    lat, lng = h3.cell_to_latlng(post["h3_geo"])
+                    distances = {e.id: geofence_rings(e, lat, lng) for e in in_window}
+                except Exception:
+                    post["reason"] = f"invalid h3_geo {post['h3_geo']!r}"
+                else:
+                    inside = [e for e in in_window if distances[e.id] <= GEOFENCE_RINGS]
+                    if len(inside) == 1:
+                        post["event"], post["rings"] = inside[0], distances[inside[0].id]
+                    elif inside:
+                        post["reason"] = "ambiguous: inside the window and geofence of events " + ", ".join(
+                            str(e.id) for e in inside)
+                    else:
+                        nearest = min(in_window, key=lambda e: distances[e.id])
+                        post["rings"] = distances[nearest.id]
+                        post["reason"] = f"outside the geofence ({post['rings']} rings > {GEOFENCE_RINGS})"
+                        if _event_inside_cell(nearest, post["h3_geo"]):
+                            post["reason"] += (f"; the venue is inside this post's "
+                                               f"res-{h3.get_resolution(post['h3_geo'])} cell")
+            (skipped if post["reason"] else moving).append(post)
+        return moving, skipped
+
+    def _print_posts(self, posts, skipped):
+        self.stdout.write(f"\nWould link {len(posts)} posts to their event (Post.on_event):")
+        if posts:
+            self.stdout.write(f"  {'post':>8}  {'event':>6}  {'created (' + self.tz.key + ')':<26}  {'rings':>5}  "
+                              f"{'res':>3}  author")
+        for p in posts:
+            self.stdout.write(f"  {p['id']:>8}  {p['event'].id:>6}  {self._fmt(p['create_at']):<26}  {p['rings']:>5}  "
+                              f"{h3.get_resolution(p['h3_geo']):>3}  @{p['owner__username']}")
+        self.stdout.write(f"\nPosts skipped {len(skipped)}:")
+        for p in skipped:
+            rings = "" if p["rings"] is None else str(p["rings"])
+            self.stdout.write(f"  {p['id']:>8}  {self._fmt(p['create_at']):<26}  {rings:>5}  "
+                              f"@{p['owner__username']}  — {p['reason']}")
+        for event_id, n in sorted(Counter(p["event"].id for p in posts).items()):
+            self.stdout.write(f"  posts to event {event_id}: {n}")
+        for reason, n in Counter(_reason_kind(p["reason"]) for p in skipped).most_common():
+            self.stdout.write(f"  posts skipped, {reason}: {n}")
+        if posts:
+            # user-event-connections lists every post with on_event as "Post at event", +10 when it has no REP
+            self.stdout.write(f"  authors' History will list these as \"Post at event\" (+10 REP shown, none awarded): "
+                              f"{len({p['owner_id'] for p in posts})} people")
+
     # ── Report ───────────────────────────────────────────────────────────
 
     def _print_plan(self, moving, skipped):
@@ -278,9 +357,14 @@ class Command(BaseCommand):
 
     # ── Apply / revert ───────────────────────────────────────────────────
 
-    def _apply(self, moving, events, backup_dir):
+    def _apply(self, moving, posts, events, backup_dir):
         ids = [r["id"] for m in moving for r in m.rows]
         with transaction.atomic():
+            locked_posts = {p.id: p for p in Post.all_objects.select_for_update().filter(id__in=[p["id"] for p in posts])}
+            for post in posts:
+                now = locked_posts.get(post["id"])
+                if now is None or now.on_event_id is not None:
+                    raise CommandError(f"Post {post['id']} changed since the plan; nothing was moved. Re-run.")
             locked = {r.id: r for r in Reputation.objects.select_for_update().filter(id__in=ids)}
             for meet in moving:
                 for row in meet.rows:
@@ -298,6 +382,11 @@ class Command(BaseCommand):
                      "new_source": "event", "new_event_id": meet.event.id, "meet_slug": meet.slug}
                     for meet in moving for row in meet.rows
                 ],
+                "posts": [
+                    {"id": post["id"], "on_event_id": locked_posts[post["id"]].on_event_id,
+                     "new_on_event_id": post["event"].id}
+                    for post in posts
+                ],
             }
             path = _write_backup(backup, backup_dir, [e.id for e in events])
             self.stdout.write(f"Backup written: {path}")
@@ -305,6 +394,9 @@ class Command(BaseCommand):
                 event_ids = [r["id"] for m in moving if m.event.id == event.id for r in m.rows]
                 if event_ids:
                     Reputation.objects.filter(id__in=event_ids).update(source="event", event=event)
+                post_ids = [p["id"] for p in posts if p["event"].id == event.id]
+                if post_ids:
+                    Post.all_objects.filter(id__in=post_ids).update(on_event=event)
         return path
 
     def _revert(self, path):
@@ -317,7 +409,18 @@ class Command(BaseCommand):
         if backup.get("command") != "retag_event_taps":
             raise CommandError(f"{path} is not a retag_event_taps backup.")
         by_id = {r["id"]: r for r in rows}
+        posts = {p["id"]: p for p in backup.get("posts", [])}
         with transaction.atomic():
+            locked_posts = {p.id: p for p in Post.all_objects.select_for_update().filter(id__in=list(posts))}
+            for post_id, post in posts.items():
+                now = locked_posts.get(post_id)
+                if now is None:
+                    raise CommandError(f"Post {post_id} no longer exists; nothing was reverted.")
+                if now.on_event_id != post["new_on_event_id"]:
+                    raise CommandError(f"Post {post_id} changed after the move (on_event={now.on_event_id}); "
+                                       f"nothing was reverted.")
+            for post_id, post in posts.items():
+                Post.all_objects.filter(id=post_id).update(on_event_id=post["on_event_id"])
             locked = {r.id: r for r in Reputation.objects.select_for_update().filter(id__in=list(by_id))}
             for row_id, row in by_id.items():
                 now = locked.get(row_id)
@@ -331,7 +434,7 @@ class Command(BaseCommand):
                 groups[(row["source"], row["event_id"])].append(row_id)
             for (source, event_id), ids in groups.items():
                 Reputation.objects.filter(id__in=ids).update(source=source, event_id=event_id)
-        self.stdout.write(self.style.SUCCESS(f"Reverted {len(by_id)} rows from {path}."))
+        self.stdout.write(self.style.SUCCESS(f"Reverted {len(by_id)} rows and {len(posts)} posts from {path}."))
         events = list(Post.objects.filter(id__in=backup.get("events", [])))
         self._clear_caches(events)
 
